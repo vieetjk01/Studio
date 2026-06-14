@@ -21,7 +21,7 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
     <div className="animate-fade-in">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-light text-accent">{t("myAlbums")}</h1>
-        <Link href="/dashboard/albums/new" className="btn-primary">
+        <Link href="/dashboard/create" className="btn-primary">
           <Plus size={16} /> {t("newAlbum")}
         </Link>
       </div>
@@ -29,7 +29,7 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
       {albums.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
           <p className="text-accent-muted">{t("noAlbums")}</p>
-          <Link href="/dashboard/albums/new" className="btn-ghost mt-4">
+          <Link href="/dashboard/create" className="btn-ghost mt-4">
             <Plus size={16} /> {t("newAlbum")}
           </Link>
         </div>

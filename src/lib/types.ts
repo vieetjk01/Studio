@@ -25,8 +25,41 @@ export interface Album {
   watermark_enabled: boolean;
   watermark_text: string | null;
   status: AlbumStatus;
+  is_showcase: boolean;
+  is_pinned: boolean;
+  kind: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface SiteSettings {
+  id: number;
+  profile_name: string;
+  profile_role: string;
+  profile_location: string;
+  profile_bio: string;
+  profile_avatar_url: string | null;
+  profile_cover_url: string | null;
+  stat_years: number;
+  contact_phone: string;
+  contact_email: string;
+  contact_instagram: string;
+  contact_address: string;
+  contact_hours: string;
+  updated_at: string;
+}
+
+export type BookingService = "wedding" | "event" | "sports" | "other";
+
+export interface Booking {
+  id: string;
+  service: BookingService;
+  name: string;
+  phone: string;
+  date: string | null;
+  note: string | null;
+  handled: boolean;
+  created_at: string;
 }
 
 export type SourceKind = "file" | "folder";

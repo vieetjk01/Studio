@@ -1,74 +1,85 @@
-"use client";
+import { createAdminClient } from "@/lib/supabase/admin";
+import ProfileHome from "./ProfileHome";
+import type { SiteSettings } from "@/lib/types";
 
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import Brand from "@/components/Brand";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useLang } from "@/lib/i18n";
+export const dynamic = "force-dynamic";
 
-export default function HomePage() {
-  const { t, lang } = useLang();
+const DEFAULT_SETTINGS: SiteSettings = {
+  id: 1,
+  profile_name: "Vieetjk",
+  profile_role: "Nhiếp ảnh gia cưới & chân dung · Studio",
+  profile_location: "Hà Nội · Việt Nam",
+  profile_bio:
+    "Mình là Vieetjk — kể chuyện qua từng khung hình cưới và chân dung. Mỗi buổi chụp được lưu thành một album riêng, nơi bạn thong thả xem lại, đánh dấu những tấm ưng ý nhất.",
+  profile_avatar_url: null,
+  profile_cover_url: null,
+  stat_years: 8,
+  contact_phone: "0987 654 321",
+  contact_email: "hello@vieetjk.studio",
+  contact_instagram: "@vieetjk.studio",
+  contact_address: "12 Nhà Thờ, Hoàn Kiếm, Hà Nội",
+  contact_hours: "Thứ 2 – Chủ nhật · 8:00–20:00",
+  updated_at: new Date().toISOString(),
+};
+
+export default async function HomePage() {
+  const db = createAdminClient();
+
+  const [settingsRes, showcaseRes, albumCountRes, photoCountRes] = await Promise.all([
+    db.from("site_settings").select("*").eq("id", 1).maybeSingle(),
+    db
+      .from("albums")
+      .select("id, slug, title, kind, cover_url, is_pinned, photos(count)")
+      .eq("status", "published")
+      .eq("is_showcase", true)
+      .order("is_pinned", { ascending: false })
+      .order("updated_at", { ascending: false }),
+    db.from("albums").select("id", { count: "exact", head: true }).eq("status", "published"),
+    db.from("photos").select("id", { count: "exact", head: true }),
+  ]);
+
+  const settings = (settingsRes.data as SiteSettings | null) ?? DEFAULT_SETTINGS;
+
+  const showcase = (showcaseRes.data ?? []).map((a) => ({
+    slug: a.slug,
+    title: a.title,
+    kind: (a.kind as string | null) ?? "Album",
+    cover_url: a.cover_url as string | null,
+    pinned: a.is_pinned as boolean,
+    count: (a.photos as { count: number }[] | null)?.[0]?.count ?? 0,
+  }));
+
+  // Featured photos: a handful from the showcase albums.
+  let featured: { fileId: string; slug: string }[] = [];
+  if (showcase.length > 0) {
+    const slugs = showcase.map((s) => s.slug);
+    const { data: ids } = await db
+      .from("albums")
+      .select("id, slug")
+      .in("slug", slugs);
+    const idToSlug = new Map((ids ?? []).map((r) => [r.id, r.slug]));
+    const { data: photos } = await db
+      .from("photos")
+      .select("drive_file_id, album_id, position")
+      .in("album_id", [...idToSlug.keys()])
+      .order("position")
+      .limit(12);
+    featured = (photos ?? []).map((p) => ({
+      fileId: p.drive_file_id,
+      slug: idToSlug.get(p.album_id) ?? "",
+    }));
+  }
 
   return (
-    <main className="relative flex min-h-screen flex-col">
-      <header
-        className="sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 md:px-10"
-        style={{
-          background: "color-mix(in srgb, var(--bg) 80%, transparent)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <Brand />
-        <div className="flex items-center gap-3">
-          <LanguageSwitcher />
-          <Link href="/login" className="btn-ghost px-4 py-2 text-[13.5px]">
-            {t("login")}
-          </Link>
-        </div>
-      </header>
-
-      <section className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
-        <div
-          className="mb-7 inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--gold)", boxShadow: "0 0 10px var(--gold)" }}
-          />
-          <span className="text-[11px] uppercase tracking-[0.18em]" style={{ color: "var(--text2)" }}>
-            {t("tagline")}
-          </span>
-        </div>
-
-        <h1 className="max-w-3xl text-[clamp(40px,6.3vw,74px)] font-bold leading-[0.98] tracking-[-0.025em]">
-          {lang === "vi" ? "Chọn ảnh đẹp nhất của bạn," : "Choose your finest photographs,"}
-          <span className="block font-serif font-normal italic" style={{ color: "var(--gold)" }}>
-            {lang === "vi" ? "một cách tinh tế" : "beautifully"}
-            <span className="not-italic" style={{ color: "var(--text)" }}>
-              .
-            </span>
-          </span>
-        </h1>
-
-        <p className="mt-7 max-w-xl text-[clamp(15px,1.5vw,17.5px)] leading-relaxed" style={{ color: "var(--text2)" }}>
-          {lang === "vi"
-            ? "Nền tảng để khách hàng xem và chọn ảnh từ album riêng — có watermark, giới hạn lượt chọn và bảo vệ bằng mật khẩu."
-            : "A platform for clients to browse and select photos from private albums — watermarked, limit-aware and password protected."}
-        </p>
-
-        <div className="mt-10 flex items-center gap-4">
-          <Link href="/login" className="btn-primary px-6 py-3 text-[15px]">
-            {t("login")}
-            <ArrowRight size={17} />
-          </Link>
-        </div>
-      </section>
-
-      <footer className="px-6 py-6 text-center text-xs" style={{ color: "var(--text3)" }}>
-        © {new Date().getFullYear()} Vieetjk — {t("tagline")}
-      </footer>
-    </main>
+    <ProfileHome
+      settings={settings}
+      showcase={showcase}
+      featured={featured}
+      stats={{
+        albums: albumCountRes.count ?? 0,
+        photos: photoCountRes.count ?? 0,
+        years: settings.stat_years,
+      }}
+    />
   );
 }

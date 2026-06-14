@@ -38,6 +38,9 @@ export default function AlbumEditor({
     watermark_text: album.watermark_text ?? "Vieetjk",
     status: album.status,
     cover_url: album.cover_url,
+    is_showcase: album.is_showcase,
+    is_pinned: album.is_pinned,
+    kind: album.kind ?? "",
   });
   const [hasPassword, setHasPassword] = useState(!!album.password_hash);
   const [newPassword, setNewPassword] = useState("");
@@ -69,6 +72,9 @@ export default function AlbumEditor({
         watermark_text: form.watermark_text || null,
         status: form.status,
         cover_url: form.cover_url,
+        is_showcase: form.is_showcase,
+        is_pinned: form.is_pinned,
+        kind: form.kind || null,
       })
       .eq("id", album.id);
     setSaving(false);
@@ -266,6 +272,42 @@ export default function AlbumEditor({
               <option value="draft">{t("draft")}</option>
               <option value="published">{t("published")}</option>
             </select>
+          </div>
+
+          {/* Showcase on homepage */}
+          <div className="space-y-3 rounded-md border border-ink-800 p-3">
+            <label className="flex items-center gap-2 text-sm text-accent">
+              <input
+                type="checkbox"
+                checked={form.is_showcase}
+                onChange={(e) => setForm({ ...form, is_showcase: e.target.checked })}
+              />
+              {t("showcaseOnHome")}
+            </label>
+            <p className="text-xs" style={{ color: "var(--text3)" }}>
+              {t("showcaseHint")}
+            </p>
+            {form.is_showcase && (
+              <>
+                <label className="flex items-center gap-2 text-sm text-accent">
+                  <input
+                    type="checkbox"
+                    checked={form.is_pinned}
+                    onChange={(e) => setForm({ ...form, is_pinned: e.target.checked })}
+                  />
+                  {t("pinnedFeatured")}
+                </label>
+                <div>
+                  <label className="label">{t("albumKind")}</label>
+                  <input
+                    className="input"
+                    placeholder="Phóng sự cưới · Chân dung · Sự kiện…"
+                    value={form.kind}
+                    onChange={(e) => setForm({ ...form, kind: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <button

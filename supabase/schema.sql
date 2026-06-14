@@ -215,6 +215,61 @@ create policy selections_owner_rw on public.selections
   );
 
 -- ============================================================================
+-- Showcase / pinned flags for the public profile homepage
+-- ============================================================================
+alter table public.albums add column if not exists is_showcase boolean not null default false;
+alter table public.albums add column if not exists is_pinned   boolean not null default false;
+alter table public.albums add column if not exists kind        text;  -- e.g. "Phóng sự cưới"
+
+-- ============================================================================
+-- site_settings: single-row studio profile + contact info (public read)
+-- ============================================================================
+create table if not exists public.site_settings (
+  id               smallint primary key default 1 check (id = 1),
+  profile_name     text not null default 'Vieetjk',
+  profile_role     text not null default 'Nhiếp ảnh gia cưới & chân dung · Studio',
+  profile_location text not null default 'Hà Nội · Việt Nam',
+  profile_bio      text not null default 'Mình là Vieetjk — kể chuyện qua từng khung hình cưới và chân dung. Mỗi buổi chụp được lưu thành một album riêng, nơi bạn thong thả xem lại, đánh dấu những tấm ưng ý nhất và tải về bản gốc bất cứ lúc nào.',
+  profile_avatar_url text,
+  profile_cover_url  text,
+  stat_years       integer not null default 8,
+  contact_phone    text not null default '0987 654 321',
+  contact_email    text not null default 'hello@vieetjk.studio',
+  contact_instagram text not null default '@vieetjk.studio',
+  contact_address  text not null default '12 Nhà Thờ, Hoàn Kiếm, Hà Nội',
+  contact_hours    text not null default 'Thứ 2 – Chủ nhật · 8:00–20:00',
+  updated_at       timestamptz not null default now()
+);
+insert into public.site_settings (id) values (1) on conflict (id) do nothing;
+
+alter table public.site_settings enable row level security;
+drop policy if exists site_settings_public_read on public.site_settings;
+create policy site_settings_public_read on public.site_settings
+  for select using (true);
+drop policy if exists site_settings_admin_write on public.site_settings;
+create policy site_settings_admin_write on public.site_settings
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================================
+-- bookings: leads from the homepage booking form (insert via service role)
+-- ============================================================================
+create table if not exists public.bookings (
+  id          uuid primary key default gen_random_uuid(),
+  service     text not null default 'other',
+  name        text not null,
+  phone       text not null,
+  date        text,
+  note        text,
+  handled     boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+alter table public.bookings enable row level security;
+-- Only admins read/manage; customer inserts happen through the service role.
+drop policy if exists bookings_admin_all on public.bookings;
+create policy bookings_admin_all on public.bookings
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true
 --   where email = 'you@example.com';

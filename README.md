@@ -19,8 +19,9 @@ a masonry gallery with selection rings, and a lightbox with a per-photo note
 panel.
 
 > Already have a database from an earlier version? Re-run `supabase/schema.sql`
-> (it is idempotent) to add the `selections.client_note` column used by customer
-> notes.
+> (it is idempotent) — it adds `selections.client_note`, the album showcase
+> flags (`is_showcase`, `is_pinned`, `kind`), and the `site_settings` and
+> `bookings` tables used by the homepage and settings.
 
 ---
 
@@ -44,6 +45,15 @@ panel.
   selections (with the client's notes) and add their own notes per chosen photo.
 - **Admin** — manage photographers: roles, activation, album limit, ZIP
   permission, and create new accounts.
+- **Profile homepage** — public studio portfolio: cover, avatar, bio, live
+  stats, featured photos, view-only **reference albums**, a **booking form**
+  (4 service types → stored as leads) and a contact block.
+- **Reference (showcase) albums** — flag any published album as "show on
+  homepage"; it renders view-only (no selection/download) at `/showcase/[slug]`.
+- **2-step create flow** — `/dashboard/create`: paste Drive links + options,
+  then get a shareable client link **with a real QR code**.
+- **Studio settings & bookings** — admins edit the homepage profile/contact and
+  review booking leads at `/dashboard/settings`.
 - **Bilingual UI** — Vietnamese / English toggle.
 
 ---
@@ -106,13 +116,15 @@ variables above in **Project Settings → Environment Variables**. Deploy.
 
 | Route | Who | Purpose |
 |---|---|---|
-| `/` | public | Landing page |
+| `/` | public | Studio profile homepage (portfolio + booking + contact) |
+| `/showcase/[slug]` | public | Reference album — view-only gallery + lightbox |
 | `/login` | public | Photographer / admin sign-in |
 | `/dashboard` | auth | Album list |
-| `/dashboard/albums/new` | auth | Create album |
+| `/dashboard/create` | auth | 2-step create flow (Drive links → share link + QR) |
 | `/dashboard/albums/[id]` | owner/admin | Edit album, sources, photos, settings |
 | `/dashboard/albums/[id]/selections` | owner/admin | Customer selections + notes |
 | `/dashboard/admin` | admin | Manage photographers |
+| `/dashboard/settings` | admin | Studio profile/contact + booking leads |
 | `/a/[slug]` | public | Customer album (password → select → export/zip) |
 
 ---

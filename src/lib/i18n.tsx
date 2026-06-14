@@ -43,6 +43,13 @@ export const dict: Dict = {
   draft: { vi: "Nháp", en: "Draft" },
   published: { vi: "Đã xuất bản", en: "Published" },
   status: { vi: "Trạng thái", en: "Status" },
+  showcaseOnHome: { vi: "Hiển thị ngoài trang chủ (album tham khảo)", en: "Show on homepage (reference album)" },
+  showcaseHint: {
+    vi: "Album sẽ hiện ở mục “Album tham khảo” trên trang chủ — chỉ để xem, không cho chọn ảnh.",
+    en: "Appears under “Reference albums” on the homepage — view-only, no selection.",
+  },
+  pinnedFeatured: { vi: "Ghim nổi bật (ưu tiên hiển thị)", en: "Pin as featured" },
+  albumKind: { vi: "Thể loại", en: "Category" },
   // album editor
   albumTitle: { vi: "Tên album", en: "Album title" },
   description: { vi: "Mô tả", en: "Description" },
