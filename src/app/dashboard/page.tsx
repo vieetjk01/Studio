@@ -1,0 +1,15 @@
+import { createClient } from "@/lib/supabase/server";
+import AlbumList from "./AlbumList";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const supabase = createClient();
+
+  const { data: albums } = await supabase
+    .from("albums")
+    .select("*, photos(count), selections(count)")
+    .order("updated_at", { ascending: false });
+
+  return <AlbumList albums={albums ?? []} />;
+}

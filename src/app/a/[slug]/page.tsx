@@ -1,0 +1,74 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import CustomerAlbum from "./CustomerAlbum";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import Brand from "@/components/Brand";
+
+export const dynamic = "force-dynamic";
+
+export default async function PublicAlbumPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const admin = createAdminClient();
+
+  const { data: album } = await admin
+    .from("albums")
+    .select(
+      "id, slug, title, description, status, password_hash, selection_limit, watermark_enabled, watermark_text"
+    )
+    .eq("slug", params.slug)
+    .single();
+
+  if (!album || album.status !== "published") {
+    return (
+      <main className="flex min-h-screen flex-col">
+        <header className="flex items-center justify-between px-6 py-5 md:px-10">
+          <Brand />
+          <LanguageSwitcher />
+        </header>
+        <div className="flex flex-1 items-center justify-center px-6 text-center">
+          <p className="text-accent-muted">This album is not available.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const hasPassword = !!album.password_hash;
+
+  let photos = null;
+  let sources = null;
+  if (!hasPassword) {
+    const [{ data: p }, { data: s }] = await Promise.all([
+      admin
+        .from("photos")
+        .select("id, drive_file_id, name, source_id, position")
+        .eq("album_id", album.id)
+        .order("position"),
+      admin
+        .from("album_sources")
+        .select("id, name, position")
+        .eq("album_id", album.id)
+        .order("position"),
+    ]);
+    photos = p ?? [];
+    sources = s ?? [];
+  }
+
+  return (
+    <CustomerAlbum
+      album={{
+        id: album.id,
+        slug: album.slug,
+        title: album.title,
+        description: album.description,
+        selection_limit: album.selection_limit,
+        watermark_enabled: album.watermark_enabled,
+        watermark_text: album.watermark_text,
+        hasPassword,
+      }}
+      initialPhotos={photos}
+      initialSources={sources}
+    />
+  );
+}
