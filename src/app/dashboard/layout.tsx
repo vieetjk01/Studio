@@ -19,9 +19,32 @@ export default async function DashboardLayout({
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!profile) redirect("/login");
+  // Authenticated but no profile row (e.g. the account was created before
+  // schema.sql ran, so the new-user trigger never created a profile).
+  // Don't bounce to /login — that loops. Explain how to fix it.
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 text-center">
+        <div className="card max-w-lg p-8">
+          <h1 className="font-serif text-2xl font-medium">Chưa có hồ sơ cho tài khoản này</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+            Bạn đã đăng nhập với <b>{user.email}</b> nhưng chưa có hàng trong bảng{" "}
+            <code>profiles</code>. Chạy lệnh sau trong Supabase SQL Editor để tạo
+            &amp; cấp quyền admin:
+          </p>
+          <pre className="mt-4 overflow-x-auto rounded-lg p-4 text-left text-xs" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+{`insert into public.profiles (id, email, role, is_active, full_name)
+select id, email, 'admin', true, 'Admin'
+from auth.users where email = '${user.email}'
+on conflict (id) do update set role='admin', is_active=true;`}
+          </pre>
+          <a href="/dashboard" className="btn-ghost mt-5">Tải lại</a>
+        </div>
+      </div>
+    );
+  }
 
   if (!profile.is_active) {
     return (
