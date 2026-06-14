@@ -47,7 +47,9 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         full_name: form.full_name || form.email,
         role: "photographer",
         max_albums: null,
-        can_zip: true,
+        monthly_album_limit: 5,
+        can_zip: false,
+        can_notes: false,
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -109,8 +111,9 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
               <th className="px-4 py-3">{t("email")}</th>
               <th className="px-4 py-3">{t("role")}</th>
               <th className="px-4 py-3">{t("active")}</th>
-              <th className="px-4 py-3">{t("maxAlbums")}</th>
+              <th className="px-4 py-3">{t("monthlyLimit")}</th>
               <th className="px-4 py-3">{t("canZip")}</th>
+              <th className="px-4 py-3">{t("canNotes")}</th>
             </tr>
           </thead>
           <tbody>
@@ -145,10 +148,10 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     min={0}
                     className="input w-20 px-2 py-1 text-xs"
                     placeholder="∞"
-                    value={p.max_albums ?? ""}
+                    value={p.monthly_album_limit ?? ""}
                     onChange={(e) =>
                       update(p, {
-                        max_albums:
+                        monthly_album_limit:
                           e.target.value === "" ? null : Number(e.target.value),
                       })
                     }
@@ -159,6 +162,13 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     type="checkbox"
                     checked={p.can_zip}
                     onChange={(e) => update(p, { can_zip: e.target.checked })}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={p.can_notes}
+                    onChange={(e) => update(p, { can_notes: e.target.checked })}
                   />
                 </td>
               </tr>

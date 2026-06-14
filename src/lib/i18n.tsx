@@ -112,7 +112,9 @@ export const dict: Dict = {
   role: { vi: "Vai trò", en: "Role" },
   active: { vi: "Kích hoạt", en: "Active" },
   maxAlbums: { vi: "Giới hạn album", en: "Album limit" },
-  canZip: { vi: "Cho phép tải ZIP", en: "Allow ZIP" },
+  monthlyLimit: { vi: "Album/tháng", en: "Albums/month" },
+  canZip: { vi: "Cho tải ảnh", en: "Allow download" },
+  canNotes: { vi: "Cho ghi chú", en: "Allow notes" },
   update: { vi: "Cập nhật", en: "Update" },
   createUser: { vi: "Tạo tài khoản", en: "Create account" },
   // misc

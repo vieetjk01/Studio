@@ -40,6 +40,8 @@ interface PublicAlbum {
   watermark_enabled: boolean;
   watermark_text: string | null;
   hasPassword: boolean;
+  allowZip: boolean;
+  allowNotes: boolean;
 }
 
 export default function CustomerAlbum({
@@ -374,10 +376,12 @@ export default function CustomerAlbum({
           <ToolButton onClick={exportList} disabled={selected.size === 0}>
             <FileText size={14} /> {t("exportList")}
           </ToolButton>
-          <ToolButton onClick={downloadZip} disabled={selected.size === 0 || zipProgress !== null}>
-            <Download size={14} />
-            {zipProgress !== null ? `${zipProgress}%` : t("downloadZip")}
-          </ToolButton>
+          {album.allowZip && (
+            <ToolButton onClick={downloadZip} disabled={selected.size === 0 || zipProgress !== null}>
+              <Download size={14} />
+              {zipProgress !== null ? `${zipProgress}%` : t("downloadZip")}
+            </ToolButton>
+          )}
 
           <button
             onClick={() => (selected.size === 0 ? showToast(t("limitReached")) : setSendOpen(true))}
@@ -460,7 +464,7 @@ export default function CustomerAlbum({
                     <Check size={15} strokeWidth={3} />
                   </button>
                   {/* note badge */}
-                  {note?.trim() && (
+                  {album.allowNotes && note?.trim() && (
                     <div
                       onClick={() => setLbIdx(idx)}
                       title={note}
@@ -503,15 +507,17 @@ export default function CustomerAlbum({
               <Check size={15} strokeWidth={2.6} />
               {selected.has(lbPhoto.id) ? "Đã chọn" : t("selectThis")}
             </button>
-            <a
-              href={`/api/img?id=${lbPhoto.drive_file_id}&w=2400`}
-              download={lbPhoto.name}
-              title={t("downloadZip")}
-              className="flex h-10 w-10 items-center justify-center rounded-lg"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
-            >
-              <Download size={17} />
-            </a>
+            {album.allowZip && (
+              <a
+                href={`/api/img?id=${lbPhoto.drive_file_id}&w=2400`}
+                download={lbPhoto.name}
+                title={t("downloadZip")}
+                className="flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+              >
+                <Download size={17} />
+              </a>
+            )}
             <button
               onClick={() => setLbIdx(null)}
               className="flex h-10 w-10 items-center justify-center rounded-lg"
@@ -551,6 +557,7 @@ export default function CustomerAlbum({
             </div>
 
             {/* note panel */}
+            {album.allowNotes && (
             <aside
               className="flex max-w-full flex-col gap-4 overflow-y-auto p-5 md:p-7"
               style={{ flex: "0 0 340px", borderLeft: "1px solid var(--border)" }}
@@ -578,6 +585,7 @@ export default function CustomerAlbum({
                 </div>
               </div>
             </aside>
+            )}
           </div>
         </div>
       )}

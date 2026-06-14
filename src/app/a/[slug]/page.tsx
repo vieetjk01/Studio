@@ -15,7 +15,7 @@ export default async function PublicAlbumPage({
   const { data: album } = await admin
     .from("albums")
     .select(
-      "id, slug, title, description, status, password_hash, selection_limit, watermark_enabled, watermark_text"
+      "id, owner_id, slug, title, description, status, password_hash, selection_limit, watermark_enabled, watermark_text"
     )
     .eq("slug", params.slug)
     .single();
@@ -35,6 +35,16 @@ export default async function PublicAlbumPage({
   }
 
   const hasPassword = !!album.password_hash;
+
+  // Owner permissions gate customer download (ZIP) and notes.
+  const { data: owner } = await admin
+    .from("profiles")
+    .select("role, can_zip, can_notes")
+    .eq("id", album.owner_id)
+    .maybeSingle();
+  const isAdminOwner = owner?.role === "admin";
+  const allowZip = isAdminOwner || !!owner?.can_zip;
+  const allowNotes = isAdminOwner || !!owner?.can_notes;
 
   let photos = null;
   let sources = null;
@@ -66,6 +76,8 @@ export default async function PublicAlbumPage({
         watermark_enabled: album.watermark_enabled,
         watermark_text: album.watermark_text,
         hasPassword,
+        allowZip,
+        allowNotes,
       }}
       initialPhotos={photos}
       initialSources={sources}

@@ -91,7 +91,11 @@ them in **with Google** on demand. To enable it:
    `*.vercel.app` / `http://localhost:3000/auth/callback` for testing).
 
 New sign-ups become active photographers automatically and can create albums
-right away; an admin can deactivate or limit any account later.
+right away. By default a new account is on a **free tier**: up to **5 albums per
+month**, customer **download (ZIP) disabled**, and customer **notes disabled**.
+An admin can raise the monthly limit and toggle download/notes per account in
+**Dashboard → Admin** (admins themselves are unlimited and always allow
+download/notes). The monthly quota is enforced by a database trigger.
 
 ### 3. Environment variables
 

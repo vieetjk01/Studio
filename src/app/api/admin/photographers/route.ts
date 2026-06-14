@@ -14,14 +14,24 @@ export async function POST(req: Request) {
     role?: "admin" | "photographer";
     is_active?: boolean;
     max_albums?: number | null;
+    monthly_album_limit?: number | null;
     can_zip?: boolean;
+    can_notes?: boolean;
     full_name?: string;
   };
 
   if (!body.id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
 
   const patch: Record<string, unknown> = {};
-  for (const k of ["role", "is_active", "max_albums", "can_zip", "full_name"] as const) {
+  for (const k of [
+    "role",
+    "is_active",
+    "max_albums",
+    "monthly_album_limit",
+    "can_zip",
+    "can_notes",
+    "full_name",
+  ] as const) {
     if (body[k] !== undefined) patch[k] = body[k];
   }
 

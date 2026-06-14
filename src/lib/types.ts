@@ -6,7 +6,9 @@ export interface Profile {
   full_name: string | null;
   role: Role;
   max_albums: number | null;
+  monthly_album_limit: number | null;
   can_zip: boolean;
+  can_notes: boolean;
   is_active: boolean;
   created_at: string;
 }

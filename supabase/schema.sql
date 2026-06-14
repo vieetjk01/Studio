@@ -16,11 +16,17 @@ create table if not exists public.profiles (
   role          text not null default 'photographer'
                   check (role in ('admin', 'photographer')),
   -- per-photographer limits / permissions
-  max_albums    integer,                 -- null = unlimited
-  can_zip       boolean not null default true,
+  max_albums    integer,                 -- null = unlimited (hard total cap)
+  monthly_album_limit integer default 5, -- albums creatable per calendar month (null = unlimited)
+  can_zip       boolean not null default false, -- may customers download (ZIP)?
+  can_notes     boolean not null default false, -- may customers add notes?
   is_active     boolean not null default true,
   created_at    timestamptz not null default now()
 );
+-- For databases created before these existed:
+alter table public.profiles add column if not exists monthly_album_limit integer default 5;
+alter table public.profiles add column if not exists can_notes boolean not null default false;
+alter table public.profiles alter column can_zip set default false;
 
 -- ============================================================================
 -- albums
@@ -277,7 +283,44 @@ create policy bookings_admin_all on public.bookings
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
+-- Enforce the monthly album-creation quota (admins exempt). Runs in the DB so
+-- it can't be bypassed from the client.
+-- ============================================================================
+create or replace function public.enforce_album_quota()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  lim   integer;
+  isadm boolean;
+  used  integer;
+begin
+  select monthly_album_limit, (role = 'admin')
+    into lim, isadm
+    from public.profiles where id = new.owner_id;
+
+  if coalesce(isadm, false) then return new; end if;
+  if lim is null then return new; end if;
+
+  select count(*) into used
+    from public.albums
+    where owner_id = new.owner_id
+      and created_at >= date_trunc('month', now());
+
+  if used >= lim then
+    raise exception 'Đã đạt giới hạn % album trong tháng này.', lim
+      using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists albums_quota on public.albums;
+create trigger albums_quota
+  before insert on public.albums
+  for each row execute function public.enforce_album_quota();
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
---   update public.profiles set role = 'admin', is_active = true
+--   update public.profiles set role = 'admin', is_active = true,
+--     can_zip = true, can_notes = true, monthly_album_limit = null
 --   where email = 'you@example.com';
 -- ============================================================================
