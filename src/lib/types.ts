@@ -58,6 +58,7 @@ export interface Selection {
   photo_name: string;
   session_id: string;
   client_name: string | null;
+  client_note: string | null;
   photographer_note: string | null;
   created_at: string;
 }

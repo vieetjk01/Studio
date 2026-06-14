@@ -16,10 +16,12 @@ export async function POST(
     sessionId?: string;
     clientName?: string;
     photoIds?: string[];
+    notes?: Record<string, string>;
   };
 
   const sessionId = body.sessionId?.trim();
   const photoIds = Array.isArray(body.photoIds) ? body.photoIds : [];
+  const notes = body.notes && typeof body.notes === "object" ? body.notes : {};
 
   if (!sessionId) {
     return NextResponse.json({ error: "missing_session" }, { status: 400 });
@@ -65,6 +67,7 @@ export async function POST(
       photo_name: valid.get(id) ?? "",
       session_id: sessionId,
       client_name: body.clientName?.trim() || null,
+      client_note: notes[id]?.trim() || null,
     }));
 
   if (rows.length > 0) {

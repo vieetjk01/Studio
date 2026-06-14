@@ -150,6 +150,18 @@ export default function SelectionsView({
                         <p className="truncate text-xs text-accent">
                           {item.photo_name}
                         </p>
+                        {item.client_note && (
+                          <p
+                            className="mt-1 rounded px-2 py-1 text-[11px] leading-snug"
+                            style={{
+                              background: "color-mix(in srgb, var(--gold) 12%, transparent)",
+                              color: "var(--gold)",
+                            }}
+                            title={item.client_note}
+                          >
+                            “{item.client_note}”
+                          </p>
+                        )}
                         <input
                           defaultValue={item.photographer_note ?? ""}
                           placeholder={t("addNote")}

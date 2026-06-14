@@ -87,12 +87,16 @@ create table if not exists public.selections (
   photo_name       text not null default '',
   session_id       text not null,
   client_name      text,
+  client_note      text,            -- note left by the customer on this photo
   photographer_note text,           -- note added by the photographer
   created_at       timestamptz not null default now(),
   unique (album_id, photo_id, session_id)
 );
 create index if not exists selections_album_idx on public.selections (album_id);
 create index if not exists selections_session_idx on public.selections (album_id, session_id);
+
+-- For databases created before client notes existed:
+alter table public.selections add column if not exists client_note text;
 
 -- ============================================================================
 -- updated_at trigger for albums

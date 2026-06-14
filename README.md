@@ -10,6 +10,18 @@
 
 Built with **Next.js 14 (App Router) · TypeScript · Tailwind CSS · Supabase**.
 
+The UI follows the **Vieetjk Gallery “Obsidian”** design: deep-ink palette
+(`#0a0a0c`), champagne-gold accent (`#E8C57C`), the TJK wordmark logo, and an
+editorial type pairing — **Cormorant Garamond** (headings) + **Hanken Grotesk**
+(UI). The customer selection page mirrors that design: editorial album title,
+guest banner, a sticky toolbar (filter selected / export / copy / ZIP / send),
+a masonry gallery with selection rings, and a lightbox with a per-photo note
+panel.
+
+> Already have a database from an earlier version? Re-run `supabase/schema.sql`
+> (it is idempotent) to add the `selections.client_note` column used by customer
+> notes.
+
 ---
 
 ## ✨ Features / Tính năng
@@ -26,8 +38,10 @@ Built with **Next.js 14 (App Router) · TypeScript · Tailwind CSS · Supabase**
 - **Export / copy** — export the selection as a `.txt`, or copy the list with
   file extensions stripped.
 - **Download ZIP** — client-side zip of selected images (watermarked if enabled).
+- **Customer notes** — clients can leave a note on each photo (in the lightbox);
+  notes are sent to the studio with the selection.
 - **Photographer tools** — edit album, change cover, re-sync Drive, view customer
-  selections and add notes per chosen photo.
+  selections (with the client's notes) and add their own notes per chosen photo.
 - **Admin** — manage photographers: roles, activation, album limit, ZIP
   permission, and create new accounts.
 - **Bilingual UI** — Vietnamese / English toggle.
