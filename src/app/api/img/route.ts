@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+const UA = "Mozilla/5.0 (compatible; VieetjkGallery/1.0)";
+
 /**
- * Proxy a Google Drive image so it can be fetched cross-origin (for the ZIP
- * download / canvas watermarking). Streams the bytes through our origin.
+ * Proxy a Google Drive image so it embeds reliably (no hotlink/referrer issues)
+ * and can be fetched cross-origin for the ZIP download. Fetches the bytes
+ * server-side, trying several Google endpoints in turn.
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -18,20 +21,24 @@ export async function GET(req: Request) {
   const sources = [
     `https://lh3.googleusercontent.com/d/${id}=w${w}`,
     `https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,
+    `https://drive.usercontent.google.com/download?id=${id}&export=view`,
     `https://drive.google.com/uc?export=download&id=${id}`,
   ];
 
+  let lastStatus = 0;
   for (const url of sources) {
     try {
       const res = await fetch(url, {
         cache: "no-store",
         redirect: "follow",
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; VieetjkGallery/1.0)" },
+        headers: { "User-Agent": UA },
       });
-      if (res.ok && res.body) {
-        const contentType = res.headers.get("content-type") ?? "image/jpeg";
-        if (!contentType.startsWith("image/")) continue;
-        return new NextResponse(res.body, {
+      lastStatus = res.status;
+      const contentType = res.headers.get("content-type") ?? "";
+      if (res.ok && contentType.startsWith("image/")) {
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength < 100) continue; // tiny = placeholder, try next
+        return new NextResponse(buf, {
           headers: {
             "Content-Type": contentType,
             "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
@@ -43,5 +50,8 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ error: "fetch_failed" }, { status: 502 });
+  return NextResponse.json(
+    { error: "fetch_failed", hint: "Ảnh có thể chưa được chia sẻ công khai trên Drive.", lastStatus },
+    { status: 502 }
+  );
 }
