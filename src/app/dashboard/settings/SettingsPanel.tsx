@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Inbox } from "lucide-react";
+import { Save, Inbox, Crown } from "lucide-react";
 import { useLang } from "@/lib/i18n";
-import type { SiteSettings, Booking } from "@/lib/types";
+import type { SiteSettings, Booking, UpgradeRequest } from "@/lib/types";
 
 const SERVICE_LABEL: Record<string, string> = {
   wedding: "Đám cưới",
@@ -33,9 +33,11 @@ const EMPTY: Partial<SiteSettings> = {
 export default function SettingsPanel({
   settings,
   bookings,
+  upgrades,
 }: {
   settings: SiteSettings | null;
   bookings: Booking[];
+  upgrades: UpgradeRequest[];
 }) {
   const { t } = useLang();
   const [form, setForm] = useState<Partial<SiteSettings>>(settings ?? EMPTY);
@@ -157,6 +159,36 @@ export default function SettingsPanel({
                 )}
                 <span className="ml-auto text-xs" style={{ color: "var(--text3)" }}>
                   {new Date(b.created_at).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Upgrade requests */}
+      <div className="mt-8">
+        <h2 className="mb-4 flex items-center gap-2 font-serif text-2xl font-medium">
+          <Crown size={20} /> Yêu cầu nâng cấp ({upgrades.length})
+        </h2>
+        {upgrades.length === 0 ? (
+          <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>
+            Chưa có yêu cầu nâng cấp nào.
+          </div>
+        ) : (
+          <div className="card divide-y" style={{ borderColor: "var(--border)" }}>
+            {upgrades.map((u) => (
+              <div key={u.id} className="flex flex-wrap items-center gap-4 p-4">
+                <div className="min-w-0">
+                  <div className="font-medium">{u.email ?? u.user_id}</div>
+                  {u.note && (
+                    <p className="text-xs" style={{ color: "var(--text2)" }} title={u.note}>
+                      {u.note}
+                    </p>
+                  )}
+                </div>
+                <span className="ml-auto text-xs" style={{ color: "var(--text3)" }}>
+                  {new Date(u.created_at).toLocaleString()}
                 </span>
               </div>
             ))}

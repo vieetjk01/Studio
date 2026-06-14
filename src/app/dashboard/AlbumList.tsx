@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Plus, Image as ImageIcon, CheckSquare, ExternalLink } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import PlanUsage from "@/components/PlanUsage";
 
 interface AlbumRow {
   id: string;
@@ -19,6 +20,7 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
 
   return (
     <div className="animate-fade-in">
+      <PlanUsage />
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-light text-accent">{t("myAlbums")}</h1>
         <Link href="/dashboard/create" className="btn-primary">

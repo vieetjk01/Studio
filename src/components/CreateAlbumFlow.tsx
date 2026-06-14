@@ -16,6 +16,7 @@ import {
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { isFolderLink } from "@/lib/drive";
+import PlanUsage from "@/components/PlanUsage";
 
 function slugify(s: string) {
   const base = s
@@ -195,6 +196,8 @@ export default function CreateAlbumFlow() {
     : "Tạo trang chọn";
 
   return (
+    <>
+    <PlanUsage />
     <div className="grid gap-[clamp(16px,2vw,24px)] [grid-template-columns:repeat(auto-fit,minmax(330px,1fr))]">
       {/* STEP 1 */}
       <div className="card p-[clamp(20px,3vw,32px)]">
@@ -329,6 +332,7 @@ export default function CreateAlbumFlow() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

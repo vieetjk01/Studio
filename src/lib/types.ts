@@ -67,6 +67,15 @@ export interface Booking {
   created_at: string;
 }
 
+export interface UpgradeRequest {
+  id: string;
+  user_id: string | null;
+  email: string | null;
+  note: string | null;
+  handled: boolean;
+  created_at: string;
+}
+
 export type SourceKind = "file" | "folder";
 
 export interface AlbumSource {

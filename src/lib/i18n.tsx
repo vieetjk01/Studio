@@ -117,6 +117,7 @@ export const dict: Dict = {
   canNotes: { vi: "Cho ghi chú", en: "Allow notes" },
   update: { vi: "Cập nhật", en: "Update" },
   createUser: { vi: "Tạo tài khoản", en: "Create account" },
+  upgrade: { vi: "Nâng cấp", en: "Upgrade" },
   // misc
   loading: { vi: "Đang tải…", en: "Loading…" },
   confirmDelete: { vi: "Bạn chắc chắn muốn xóa?", en: "Are you sure you want to delete?" },

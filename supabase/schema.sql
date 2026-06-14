@@ -283,6 +283,23 @@ create policy bookings_admin_all on public.bookings
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
+-- upgrade_requests: photographers asking to lift the free-tier limits
+-- (inserted via the service role; admins read/manage)
+-- ============================================================================
+create table if not exists public.upgrade_requests (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users (id) on delete cascade,
+  email       text,
+  note        text,
+  handled     boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+alter table public.upgrade_requests enable row level security;
+drop policy if exists upgrade_admin_all on public.upgrade_requests;
+create policy upgrade_admin_all on public.upgrade_requests
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================================
 -- Enforce the monthly album-creation quota (admins exempt). Runs in the DB so
 -- it can't be bypassed from the client.
 -- ============================================================================

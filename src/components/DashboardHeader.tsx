@@ -38,6 +38,7 @@ export default function DashboardHeader({ profile }: { profile: Profile }) {
         <nav className="hidden items-center gap-6 md:flex">
           {link("/dashboard", t("myAlbums"))}
           {link("/dashboard/create", t("newAlbum"))}
+          {profile.role !== "admin" && link("/dashboard/upgrade", t("upgrade"))}
           {profile.role === "admin" && link("/dashboard/admin", t("admin"))}
           {profile.role === "admin" && link("/dashboard/settings", t("settings"))}
         </nav>

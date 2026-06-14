@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import SettingsPanel from "./SettingsPanel";
-import type { SiteSettings, Booking } from "@/lib/types";
+import type { SiteSettings, Booking, UpgradeRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +21,17 @@ export default async function SettingsPage() {
   if (me?.role !== "admin") redirect("/dashboard");
 
   const db = createAdminClient();
-  const [{ data: settings }, { data: bookings }] = await Promise.all([
+  const [{ data: settings }, { data: bookings }, { data: upgrades }] = await Promise.all([
     db.from("site_settings").select("*").eq("id", 1).maybeSingle(),
     db.from("bookings").select("*").order("created_at", { ascending: false }).limit(50),
+    db.from("upgrade_requests").select("*").order("created_at", { ascending: false }).limit(50),
   ]);
 
   return (
     <SettingsPanel
       settings={settings as SiteSettings | null}
       bookings={(bookings ?? []) as Booking[]}
+      upgrades={(upgrades ?? []) as UpgradeRequest[]}
     />
   );
 }
