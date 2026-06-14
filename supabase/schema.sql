@@ -104,6 +104,20 @@ create index if not exists selections_session_idx on public.selections (album_id
 -- For databases created before client notes existed:
 alter table public.selections add column if not exists client_note text;
 
+-- Enable Supabase Realtime on selections (live updates on the photographer's
+-- dashboard). Idempotent — only adds the table if not already published.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'selections'
+  ) then
+    alter publication supabase_realtime add table public.selections;
+  end if;
+end $$;
+
 -- ============================================================================
 -- updated_at trigger for albums
 -- ============================================================================

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Copy, Download, Check } from "lucide-react";
+import { ArrowLeft, Copy, Download, Check, Wifi } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { thumbnailUrl, stripExtension } from "@/lib/drive";
@@ -33,6 +33,31 @@ export default function SelectionsView({
 
   const [rows, setRows] = useState<Selection[]>(selections);
   const [copied, setCopied] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+
+  // Live updates: refetch whenever the customer's selection changes.
+  useEffect(() => {
+    async function refetch() {
+      const { data } = await supabase
+        .from("selections")
+        .select("*")
+        .eq("album_id", album.id)
+        .order("created_at", { ascending: true });
+      if (data) setRows(data as Selection[]);
+    }
+    const channel = supabase
+      .channel(`selections-${album.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "selections", filter: `album_id=eq.${album.id}` },
+        () => refetch()
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [album.id]);
 
   const groups = useMemo<Group[]>(() => {
     const map = new Map<string, Group>();
@@ -88,9 +113,19 @@ export default function SelectionsView({
       >
         <ArrowLeft size={15} /> {t("back")}
       </Link>
-      <h1 className="mb-8 text-2xl font-light text-accent">
-        {t("customerSelections")} — {album.title}
-      </h1>
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-light text-accent">
+          {t("customerSelections")} — {album.title}
+        </h1>
+        {live && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
+            style={{ background: "color-mix(in srgb,#3fbf7f 14%,transparent)", color: "#5fd29a" }}
+          >
+            <Wifi size={12} /> Trực tiếp
+          </span>
+        )}
+      </div>
 
       {groups.length === 0 ? (
         <div className="card py-16 text-center text-accent-muted">

@@ -95,15 +95,23 @@ export default function CustomerAlbum({
     const noteMap: Record<string, string> = {};
     for (const id of sel) if (notesRef.current[id]?.trim()) noteMap[id] = notesRef.current[id];
     try {
-      await fetch(`/api/a/${album.slug}/select`, {
+      const res = await fetch(`/api/a/${album.slug}/select`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: SHARED, photoIds: sel, notes: noteMap }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setSaveStatus("idle");
+        flashToast(`Chưa lưu được lựa chọn (${d.error ?? res.status})`);
+        return;
+      }
       setSaveStatus("saved");
     } catch {
       setSaveStatus("idle");
+      flashToast("Mất kết nối khi lưu lựa chọn");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [album.slug]);
 
   const scheduleSave = useCallback(() => {
@@ -116,29 +124,25 @@ export default function CustomerAlbum({
   const atLimit = limit != null && selected.size >= limit;
 
   function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else {
-        if (limit != null && next.size >= limit) {
-          flashToast(t("limitReached"));
-          return prev;
-        }
-        next.add(id);
+    const next = new Set(selectedRef.current);
+    if (next.has(id)) next.delete(id);
+    else {
+      if (limit != null && next.size >= limit) {
+        flashToast(t("limitReached"));
+        return;
       }
-      selectedRef.current = next;
-      scheduleSave();
-      return next;
-    });
+      next.add(id);
+    }
+    selectedRef.current = next;
+    setSelected(next);
+    scheduleSave();
   }
 
   function setNote(id: string, text: string) {
-    setNotes((prev) => {
-      const next = { ...prev, [id]: text };
-      notesRef.current = next;
-      scheduleSave();
-      return next;
-    });
+    const next = { ...notesRef.current, [id]: text };
+    notesRef.current = next;
+    setNotes(next);
+    scheduleSave();
   }
 
   function flashToast(msg: string) {
