@@ -110,6 +110,26 @@ npm run dev
 Push to GitHub, import the repo in Vercel, and add the four environment
 variables above in **Project Settings → Environment Variables**. Deploy.
 
+### 7. (Optional) Split across two domains
+
+Serve the public site and the app on separate hosts from the **same** Vercel
+project:
+
+1. In **Settings → Domains**, add both `vieetjk.com` and `album.vieetjk.com`.
+2. Add two env vars and redeploy:
+   - `NEXT_PUBLIC_MAIN_HOST=vieetjk.com`
+   - `NEXT_PUBLIC_APP_HOST=album.vieetjk.com`
+
+Middleware then routes by host:
+
+- **vieetjk.com** → profile homepage, showcase albums, booking, contact, social.
+  App routes are redirected to the app host.
+- **album.vieetjk.com** → login, dashboard, album management, and the customer
+  selection pages (`/a/[slug]`). `/` redirects to `/dashboard`.
+
+When the two vars are unset (local dev, `*.vercel.app`), the full app runs on a
+single host.
+
 ---
 
 ## 🗺 Routes

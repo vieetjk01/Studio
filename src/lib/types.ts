@@ -44,6 +44,9 @@ export interface SiteSettings {
   contact_phone: string;
   contact_email: string;
   contact_instagram: string;
+  contact_facebook: string | null;
+  contact_tiktok: string | null;
+  contact_youtube: string | null;
   contact_address: string;
   contact_hours: string;
   updated_at: string;

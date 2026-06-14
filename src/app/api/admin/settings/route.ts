@@ -15,6 +15,9 @@ const FIELDS = [
   "contact_phone",
   "contact_email",
   "contact_instagram",
+  "contact_facebook",
+  "contact_tiktok",
+  "contact_youtube",
   "contact_address",
   "contact_hours",
 ] as const;

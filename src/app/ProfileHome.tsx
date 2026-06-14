@@ -6,7 +6,6 @@ import {
   ArrowRight,
   MapPin,
   MessageSquare,
-  Plus,
   Eye,
   Send,
   Check,
@@ -18,10 +17,14 @@ import {
   Calendar,
   Zap,
   MoreHorizontal,
+  Facebook,
+  Youtube,
+  Music2,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
+import { appUrl } from "@/lib/hosts";
 import { thumbnailUrl } from "@/lib/drive";
 import type { SiteSettings, BookingService } from "@/lib/types";
 
@@ -120,12 +123,12 @@ export default function ProfileHome({
         </nav>
         <div className="ml-auto flex items-center gap-3">
           <LanguageSwitcher />
-          <Link href="/login" className="text-sm font-medium" style={{ color: "var(--text2)" }}>
+          <button onClick={() => scrollTo(contactRef)} className="hidden text-sm font-medium sm:block" style={{ color: "var(--text2)" }}>
+            Đặt lịch
+          </button>
+          <a href={appUrl("/login")} className="btn-ghost px-4 py-2 text-[13.5px]">
             {t("login")}
-          </Link>
-          <Link href="/dashboard/create" className="btn-primary px-4 py-2 text-[13.5px]">
-            {t("newAlbum")}
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -164,9 +167,9 @@ export default function ProfileHome({
               <button onClick={() => scrollTo(contactRef)} className="btn-ghost px-4 py-2.5 text-[13.5px]">
                 <MessageSquare size={15} /> Liên hệ
               </button>
-              <Link href="/dashboard/create" className="btn-primary px-5 py-2.5 text-[13.5px]" style={{ boxShadow: "0 10px 30px rgba(0,0,0,.4)" }}>
-                <Plus size={15} /> Tạo trang chọn ảnh
-              </Link>
+              <button onClick={() => scrollTo(contactRef)} className="btn-primary px-5 py-2.5 text-[13.5px]" style={{ boxShadow: "0 10px 30px rgba(0,0,0,.4)" }}>
+                <Calendar size={15} /> Đặt lịch chụp
+              </button>
             </div>
           </div>
 
@@ -354,11 +357,21 @@ export default function ProfileHome({
               Liên hệ trực tiếp qua các kênh dưới đây — phản hồi nhanh trong giờ làm việc.
             </p>
             <div className="flex flex-col">
-              <ContactRow Icon={Phone} label="Điện thoại" value={settings.contact_phone} href={`tel:${settings.contact_phone.replace(/\s/g, "")}`} />
-              <ContactRow Icon={Mail} label="Email" value={settings.contact_email} href={`mailto:${settings.contact_email}`} />
-              <ContactRow Icon={Instagram} label="Instagram" value={settings.contact_instagram} />
-              <ContactRow Icon={MapPin} label="Địa chỉ studio" value={settings.contact_address} />
-              <ContactRow Icon={Clock} label="Giờ làm việc" value={settings.contact_hours} last />
+              {(() => {
+                const rows: { Icon: typeof Phone; label: string; value: string; href?: string }[] = [
+                  { Icon: Phone, label: "Điện thoại", value: settings.contact_phone, href: `tel:${settings.contact_phone.replace(/\s/g, "")}` },
+                  { Icon: Mail, label: "Email", value: settings.contact_email, href: `mailto:${settings.contact_email}` },
+                  { Icon: Instagram, label: "Instagram", value: settings.contact_instagram },
+                ];
+                if (settings.contact_facebook) rows.push({ Icon: Facebook, label: "Facebook", value: settings.contact_facebook });
+                if (settings.contact_tiktok) rows.push({ Icon: Music2, label: "TikTok", value: settings.contact_tiktok });
+                if (settings.contact_youtube) rows.push({ Icon: Youtube, label: "YouTube", value: settings.contact_youtube });
+                rows.push({ Icon: MapPin, label: "Địa chỉ studio", value: settings.contact_address });
+                rows.push({ Icon: Clock, label: "Giờ làm việc", value: settings.contact_hours });
+                return rows.map((r, i) => (
+                  <ContactRow key={r.label} Icon={r.Icon} label={r.label} value={r.value} href={r.href} last={i === rows.length - 1} />
+                ));
+              })()}
             </div>
           </div>
         </div>

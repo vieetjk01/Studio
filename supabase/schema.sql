@@ -236,11 +236,18 @@ create table if not exists public.site_settings (
   contact_phone    text not null default '0987 654 321',
   contact_email    text not null default 'hello@vieetjk.studio',
   contact_instagram text not null default '@vieetjk.studio',
+  contact_facebook text,
+  contact_tiktok   text,
+  contact_youtube  text,
   contact_address  text not null default '12 Nhà Thờ, Hoàn Kiếm, Hà Nội',
   contact_hours    text not null default 'Thứ 2 – Chủ nhật · 8:00–20:00',
   updated_at       timestamptz not null default now()
 );
 insert into public.site_settings (id) values (1) on conflict (id) do nothing;
+-- Social links for databases created before these existed:
+alter table public.site_settings add column if not exists contact_facebook text;
+alter table public.site_settings add column if not exists contact_tiktok   text;
+alter table public.site_settings add column if not exists contact_youtube  text;
 
 alter table public.site_settings enable row level security;
 drop policy if exists site_settings_public_read on public.site_settings;

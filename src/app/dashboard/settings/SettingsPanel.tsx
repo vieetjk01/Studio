@@ -23,6 +23,9 @@ const EMPTY: Partial<SiteSettings> = {
   contact_phone: "",
   contact_email: "",
   contact_instagram: "",
+  contact_facebook: "",
+  contact_tiktok: "",
+  contact_youtube: "",
   contact_address: "",
   contact_hours: "",
 };
@@ -113,6 +116,9 @@ export default function SettingsPanel({
           {field("contact_phone", "Điện thoại")}
           {field("contact_email", "Email")}
           {field("contact_instagram", "Instagram")}
+          {field("contact_facebook", "Facebook", { placeholder: "facebook.com/vieetjk" })}
+          {field("contact_tiktok", "TikTok", { placeholder: "@vieetjk" })}
+          {field("contact_youtube", "YouTube", { placeholder: "youtube.com/@vieetjk" })}
           {field("contact_address", "Địa chỉ studio")}
           {field("contact_hours", "Giờ làm việc")}
           <button onClick={save} disabled={saving} className="btn-primary w-full">
