@@ -22,15 +22,45 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
+
+    // Guard: NEXT_PUBLIC_* vars are inlined at build time. If they're missing
+    // the auth request would hang forever — fail fast with a clear message.
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      setError(
+        "Thiếu cấu hình Supabase (NEXT_PUBLIC_SUPABASE_URL / ANON_KEY). Thêm trên Vercel rồi Redeploy."
+      );
       setLoading(false);
       return;
     }
-    router.push(next);
-    router.refresh();
+
+    try {
+      const supabase = createClient();
+      // Fail instead of hanging if Supabase is unreachable (paused project, bad URL).
+      const timeout = new Promise<{ error: { message: string } }>((resolve) =>
+        setTimeout(
+          () => resolve({ error: { message: "Hết thời gian kết nối tới Supabase. Kiểm tra URL/khóa và xem project có đang bị pause không." } }),
+          15000
+        )
+      );
+      const { error } = (await Promise.race([
+        supabase.auth.signInWithPassword({ email, password }),
+        timeout,
+      ])) as { error: { message: string } | null };
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      router.push(next);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
+      setLoading(false);
+    }
   }
 
   return (
