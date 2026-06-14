@@ -5,6 +5,15 @@ import Brand from "@/components/Brand";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const { data } = await createAdminClient()
+    .from("albums")
+    .select("title")
+    .eq("slug", params.slug)
+    .maybeSingle();
+  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+}
+
 export default async function PublicAlbumPage({
   params,
 }: {
@@ -48,8 +57,10 @@ export default async function PublicAlbumPage({
 
   let photos = null;
   let sources = null;
+  let selected: string[] = [];
+  let notes: Record<string, string> = {};
   if (!hasPassword) {
-    const [{ data: p }, { data: s }] = await Promise.all([
+    const [{ data: p }, { data: s }, { data: sel }] = await Promise.all([
       admin
         .from("photos")
         .select("id, drive_file_id, name, source_id, position")
@@ -60,9 +71,15 @@ export default async function PublicAlbumPage({
         .select("id, name, position")
         .eq("album_id", album.id)
         .order("position"),
+      admin
+        .from("selections")
+        .select("photo_id, client_note")
+        .eq("album_id", album.id),
     ]);
     photos = p ?? [];
     sources = s ?? [];
+    selected = (sel ?? []).map((r) => r.photo_id);
+    for (const r of sel ?? []) if (r.client_note) notes[r.photo_id] = r.client_note;
   }
 
   return (
@@ -81,6 +98,8 @@ export default async function PublicAlbumPage({
       }}
       initialPhotos={photos}
       initialSources={sources}
+      initialSelected={selected}
+      initialNotes={notes}
     />
   );
 }

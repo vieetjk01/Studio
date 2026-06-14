@@ -103,7 +103,10 @@ export default function SelectionsView({
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="font-medium text-accent">
-                    {g.clientName || `${t("session")} ${g.sessionId.slice(0, 8)}`}
+                    {g.clientName ||
+                      (g.sessionId === "shared"
+                        ? "Lựa chọn của khách"
+                        : `${t("session")} ${g.sessionId.slice(0, 8)}`)}
                   </h3>
                   <p className="text-xs text-accent-muted">
                     {g.items.length} {t("photos")} ·{" "}

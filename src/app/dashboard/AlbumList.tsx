@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Plus, Image as ImageIcon, CheckSquare, ExternalLink } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import { thumbnailUrl } from "@/lib/drive";
 import PlanUsage from "@/components/PlanUsage";
 
 interface AlbumRow {
@@ -11,7 +12,7 @@ interface AlbumRow {
   title: string;
   cover_url: string | null;
   status: "draft" | "published";
-  photos: { count: number }[];
+  photos: { drive_file_id: string }[];
   selections: { count: number }[];
 }
 
@@ -37,13 +38,19 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {albums.map((a) => (
+          {albums.map((a) => {
+            const cover =
+              a.cover_url ||
+              (a.photos?.[0]?.drive_file_id
+                ? thumbnailUrl(a.photos[0].drive_file_id, 800)
+                : null);
+            return (
             <div key={a.id} className="card group overflow-hidden">
               <div className="relative aspect-[4/3] bg-ink-850">
-                {a.cover_url ? (
+                {cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={a.cover_url}
+                    src={cover}
                     alt={a.title}
                     className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100"
                   />
@@ -66,7 +73,7 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
                 <h3 className="truncate font-medium text-accent">{a.title}</h3>
                 <div className="mt-2 flex items-center gap-4 text-xs text-accent-muted">
                   <span className="flex items-center gap-1">
-                    <ImageIcon size={13} /> {a.photos?.[0]?.count ?? 0} {t("photos")}
+                    <ImageIcon size={13} /> {a.photos?.length ?? 0} {t("photos")}
                   </span>
                   <span className="flex items-center gap-1">
                     <CheckSquare size={13} /> {a.selections?.[0]?.count ?? 0}{" "}
@@ -90,7 +97,8 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

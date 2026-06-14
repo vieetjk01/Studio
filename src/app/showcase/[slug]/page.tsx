@@ -4,6 +4,15 @@ import ShowcaseAlbum from "./ShowcaseAlbum";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const { data } = await createAdminClient()
+    .from("albums")
+    .select("title")
+    .eq("slug", params.slug)
+    .maybeSingle();
+  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+}
+
 export default async function ShowcasePage({
   params,
 }: {

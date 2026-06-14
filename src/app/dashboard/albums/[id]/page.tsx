@@ -5,6 +5,15 @@ import type { Album, AlbumSource, Photo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const { data } = await createClient()
+    .from("albums")
+    .select("title")
+    .eq("id", params.id)
+    .maybeSingle();
+  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+}
+
 export default async function AlbumEditPage({
   params,
 }: {

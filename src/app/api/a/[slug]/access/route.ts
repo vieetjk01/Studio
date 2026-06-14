@@ -49,5 +49,18 @@ export async function POST(
     .eq("album_id", album.id)
     .order("position");
 
-  return NextResponse.json({ photos: photos ?? [], sources: sources ?? [] });
+  const { data: sel } = await admin
+    .from("selections")
+    .select("photo_id, client_note")
+    .eq("album_id", album.id);
+  const selected = (sel ?? []).map((s) => s.photo_id);
+  const notes: Record<string, string> = {};
+  for (const s of sel ?? []) if (s.client_note) notes[s.photo_id] = s.client_note;
+
+  return NextResponse.json({
+    photos: photos ?? [],
+    sources: sources ?? [],
+    selected,
+    notes,
+  });
 }
