@@ -67,12 +67,12 @@ export default function ShowcaseAlbum({
           </p>
         </div>
 
-        <div className="mt-7" style={{ columns: "280px", columnGap: "14px" }}>
+        <div className="mt-7 grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(170px,1fr))]">
           {photos.map((p, idx) => (
             <div
               key={p.id}
-              className="mb-3.5 overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
-              style={{ breakInside: "avoid", background: "var(--surface)" }}
+              className="aspect-square overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
+              style={{ background: "var(--surface)" }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -80,7 +80,7 @@ export default function ShowcaseAlbum({
                 alt={p.name}
                 loading="lazy"
                 onClick={() => setLbIdx(idx)}
-                className="block w-full cursor-zoom-in transition-transform duration-700 hover:scale-[1.03]"
+                className="h-full w-full cursor-zoom-in object-cover transition-transform duration-700 hover:scale-[1.03]"
               />
             </div>
           ))}

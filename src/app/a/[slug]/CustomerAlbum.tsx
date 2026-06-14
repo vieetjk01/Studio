@@ -406,16 +406,16 @@ export default function CustomerAlbum({
             </p>
           </div>
         ) : (
-          // Masonry gallery
-          <div style={{ columns: "280px", columnGap: "14px" }}>
+          // Grid gallery (left-to-right reading order)
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(170px,1fr))]">
             {visiblePhotos.map((p, idx) => {
               const isSel = selected.has(p.id);
               const note = notes[p.id];
               return (
                 <div
                   key={p.id}
-                  className="relative mb-3.5 overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
-                  style={{ breakInside: "avoid", background: "var(--surface)" }}
+                  className="relative aspect-square overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
+                  style={{ background: "var(--surface)" }}
                 >
                   {/* selection ring */}
                   <div
@@ -430,7 +430,7 @@ export default function CustomerAlbum({
                     draggable={false}
                     onClick={() => setLbIdx(idx)}
                     onContextMenu={(e) => wm && e.preventDefault()}
-                    className="block w-full cursor-zoom-in select-none transition-transform duration-700 hover:scale-[1.03]"
+                    className="h-full w-full cursor-zoom-in select-none object-cover transition-transform duration-700 hover:scale-[1.03]"
                   />
                   {/* watermark overlay */}
                   {wm && (

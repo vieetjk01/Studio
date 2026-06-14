@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSource } from "@/lib/drive-server";
+import { thumbnailUrl } from "@/lib/drive";
 import type { AlbumSource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,20 @@ export async function POST(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const albumId = params.id;
+
+  // Surface the most common misconfiguration explicitly.
+  if (!process.env.GOOGLE_API_KEY) {
+    return NextResponse.json(
+      { error: "GOOGLE_API_KEY chưa được cấu hình trên server (Vercel).", total: 0, added: 0, errors: ["GOOGLE_API_KEY missing"] },
+      { status: 200 }
+    );
+  }
+
+  const { data: album } = await supabase
+    .from("albums")
+    .select("cover_url")
+    .eq("id", albumId)
+    .maybeSingle();
 
   const { data: sources, error: srcErr } = await supabase
     .from("album_sources")
@@ -75,6 +90,24 @@ export async function POST(
         .upsert(rows, { onConflict: "album_id,drive_file_id", count: "exact" });
       if (upErr) errors.push(`${source.name}: ${upErr.message}`);
       else added += count ?? 0;
+    }
+  }
+
+  // Auto-set the album cover to the first photo if none is set yet, so the
+  // dashboard shows a preview thumbnail.
+  if (!album?.cover_url) {
+    const { data: first } = await supabase
+      .from("photos")
+      .select("drive_file_id")
+      .eq("album_id", albumId)
+      .order("position")
+      .limit(1)
+      .maybeSingle();
+    if (first?.drive_file_id) {
+      await supabase
+        .from("albums")
+        .update({ cover_url: thumbnailUrl(first.drive_file_id, 800) })
+        .eq("id", albumId);
     }
   }
 

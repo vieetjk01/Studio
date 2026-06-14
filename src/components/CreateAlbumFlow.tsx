@@ -48,6 +48,7 @@ export default function CreateAlbumFlow() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null);
   const [result, setResult] = useState<{ slug: string; id: string; count: number } | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -98,6 +99,7 @@ export default function CreateAlbumFlow() {
   async function create() {
     setError(null);
     setNotice(null);
+    setWarn(null);
     if (!name.trim()) {
       setError("Hãy nhập tên album");
       return;
@@ -165,6 +167,13 @@ export default function CreateAlbumFlow() {
         const syncRes = await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
         const syncData = await syncRes.json().catch(() => ({}));
         count = syncData.total ?? 0;
+        if (count === 0) {
+          const detail = syncData.error || (syncData.errors || []).join("; ");
+          setWarn(
+            "Album đã tạo nhưng chưa lấy được ảnh nào từ Drive. Hãy kiểm tra: thư mục đã chia sẻ ở chế độ “Anyone with the link”, và link là link THƯ MỤC Drive." +
+              (detail ? ` (Chi tiết: ${detail})` : "")
+          );
+        }
       }
 
       const link = `${window.location.origin}/a/${album.slug}`;
@@ -302,6 +311,12 @@ export default function CreateAlbumFlow() {
             {copied ? <Check size={16} /> : <Copy size={16} />}
           </button>
         </div>
+
+        {warn && (
+          <p className="mt-3.5 rounded-xl px-4 py-3 text-[13px] leading-relaxed" style={{ background: "color-mix(in srgb, var(--gold) 12%, transparent)", color: "var(--gold)" }}>
+            {warn}
+          </p>
+        )}
 
         <div className="mt-[18px] flex aspect-square max-h-[330px] flex-col items-center justify-center gap-4 rounded-2xl p-5" style={{ border: "1px dashed var(--border2)", background: "var(--surface2)" }}>
           {qr ? (
