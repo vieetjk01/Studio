@@ -23,14 +23,18 @@ export async function GET(req: Request) {
 
   for (const url of sources) {
     try {
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(url, {
+        cache: "no-store",
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; VieetjkGallery/1.0)" },
+      });
       if (res.ok && res.body) {
         const contentType = res.headers.get("content-type") ?? "image/jpeg";
         if (!contentType.startsWith("image/")) continue;
         return new NextResponse(res.body, {
           headers: {
             "Content-Type": contentType,
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
           },
         });
       }
