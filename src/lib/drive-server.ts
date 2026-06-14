@@ -60,6 +60,8 @@ export async function listFolderImages(folderId: string): Promise<DriveFile[]> {
   return out;
 }
 
+const FOLDER_MIME = "application/vnd.google-apps.folder";
+
 /** Resolve a Drive source (file or folder link) to a list of image files. */
 export async function resolveSource(
   url: string,
@@ -70,10 +72,28 @@ export async function resolveSource(
     if (!folderId) return [];
     return listFolderImages(folderId);
   }
+
+  // kind === "file" — but the link may actually point to a folder (e.g. an
+  // "open?id=" link that doesn't contain "/folders/"). Detect via metadata.
   const fileId = extractFileId(url);
   if (!fileId) return [];
+
   const meta = await getFileMeta(fileId);
-  if (meta) return [meta];
-  // Fall back to a bare entry if metadata is unavailable (e.g. key restricted).
+  if (meta) {
+    if (meta.mimeType === FOLDER_MIME) {
+      return listFolderImages(fileId); // it was a folder all along
+    }
+    if (meta.mimeType.startsWith("image/")) return [meta];
+    return []; // not an image and not a folder -> nothing to show
+  }
+
+  // Metadata unavailable (e.g. restricted key): try listing as a folder first,
+  // then fall back to treating it as a single image file.
+  try {
+    const asFolder = await listFolderImages(fileId);
+    if (asFolder.length > 0) return asFolder;
+  } catch {
+    /* not a folder */
+  }
   return [{ id: fileId, name: fileId, mimeType: "image/*" }];
 }

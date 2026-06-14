@@ -93,20 +93,22 @@ export async function POST(
     }
   }
 
-  // Auto-set the album cover to the first photo if none is set yet, so the
-  // dashboard shows a preview thumbnail.
-  if (!album?.cover_url) {
-    const { data: first } = await supabase
-      .from("photos")
-      .select("drive_file_id")
-      .eq("album_id", albumId)
-      .order("position")
-      .limit(1)
-      .maybeSingle();
-    if (first?.drive_file_id) {
+  // Set the album cover to the first photo if there's no cover yet, or if the
+  // current cover points to a file that is no longer in the album.
+  const { data: allPhotos } = await supabase
+    .from("photos")
+    .select("drive_file_id")
+    .eq("album_id", albumId)
+    .order("position");
+
+  if (allPhotos && allPhotos.length > 0) {
+    const ids = new Set(allPhotos.map((p) => p.drive_file_id));
+    const coverId = album?.cover_url?.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+    const coverValid = coverId ? ids.has(coverId) : false;
+    if (!album?.cover_url || !coverValid) {
       await supabase
         .from("albums")
-        .update({ cover_url: thumbnailUrl(first.drive_file_id, 800) })
+        .update({ cover_url: thumbnailUrl(allPhotos[0].drive_file_id, 800) })
         .eq("id", albumId);
     }
   }
