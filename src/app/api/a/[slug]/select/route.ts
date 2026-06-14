@@ -77,3 +77,33 @@ export async function POST(
 
   return NextResponse.json({ ok: true, count: rows.length });
 }
+
+/**
+ * Return the album's shared selection so any visitor can see what has already
+ * been chosen (and avoid picking the same photos).
+ */
+export async function GET(
+  _req: Request,
+  { params }: { params: { slug: string } }
+) {
+  const admin = createAdminClient();
+  const { data: album } = await admin
+    .from("albums")
+    .select("id, status")
+    .eq("slug", params.slug)
+    .single();
+
+  if (!album || album.status !== "published") {
+    return NextResponse.json({ selected: [], notes: {} });
+  }
+
+  const { data: sel } = await admin
+    .from("selections")
+    .select("photo_id, client_note")
+    .eq("album_id", album.id);
+
+  const selected = (sel ?? []).map((s) => s.photo_id);
+  const notes: Record<string, string> = {};
+  for (const s of sel ?? []) if (s.client_note) notes[s.photo_id] = s.client_note;
+  return NextResponse.json({ selected, notes });
+}

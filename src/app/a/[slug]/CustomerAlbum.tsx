@@ -90,6 +90,7 @@ export default function CustomerAlbum({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveNow = useCallback(async () => {
+    saveTimer.current = null;
     setSaveStatus("saving");
     const sel = [...selectedRef.current];
     const noteMap: Record<string, string> = {};
@@ -119,6 +120,23 @@ export default function CustomerAlbum({
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(saveNow, 700);
   }, [saveNow]);
+
+  // Keep the shared selection in sync with other people viewing the same link.
+  const refresh = useCallback(async () => {
+    if (saveTimer.current) return; // don't clobber a pending local change
+    try {
+      const res = await fetch(`/api/a/${album.slug}/select`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const sel = new Set<string>(data.selected ?? []);
+      selectedRef.current = sel;
+      notesRef.current = { ...notesRef.current, ...(data.notes ?? {}) };
+      setSelected(sel);
+      setNotes((prev) => ({ ...prev, ...(data.notes ?? {}) }));
+    } catch {
+      /* ignore */
+    }
+  }, [album.slug]);
 
   const limit = album.selection_limit;
   const atLimit = limit != null && selected.size >= limit;
@@ -218,6 +236,20 @@ export default function CustomerAlbum({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lbIdx, visiblePhotos.length]);
+
+  // Poll for others' selections so concurrent viewers stay in sync.
+  useEffect(() => {
+    if (!unlocked) return;
+    const iv = setInterval(refresh, 6000);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [unlocked, refresh]);
 
   // ── Password gate ──────────────────────────────────────────────
   if (!unlocked) {
