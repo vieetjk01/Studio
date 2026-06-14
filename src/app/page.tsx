@@ -23,51 +23,68 @@ const DEFAULT_SETTINGS: SiteSettings = {
 };
 
 export default async function HomePage() {
-  const db = createAdminClient();
-
-  const [settingsRes, showcaseRes, albumCountRes, photoCountRes] = await Promise.all([
-    db.from("site_settings").select("*").eq("id", 1).maybeSingle(),
-    db
-      .from("albums")
-      .select("id, slug, title, kind, cover_url, is_pinned, photos(count)")
-      .eq("status", "published")
-      .eq("is_showcase", true)
-      .order("is_pinned", { ascending: false })
-      .order("updated_at", { ascending: false }),
-    db.from("albums").select("id", { count: "exact", head: true }).eq("status", "published"),
-    db.from("photos").select("id", { count: "exact", head: true }),
-  ]);
-
-  const settings = (settingsRes.data as SiteSettings | null) ?? DEFAULT_SETTINGS;
-
-  const showcase = (showcaseRes.data ?? []).map((a) => ({
-    slug: a.slug,
-    title: a.title,
-    kind: (a.kind as string | null) ?? "Album",
-    cover_url: a.cover_url as string | null,
-    pinned: a.is_pinned as boolean,
-    count: (a.photos as { count: number }[] | null)?.[0]?.count ?? 0,
-  }));
-
-  // Featured photos: a handful from the showcase albums.
+  let settings: SiteSettings = DEFAULT_SETTINGS;
+  let showcase: {
+    slug: string;
+    title: string;
+    kind: string;
+    cover_url: string | null;
+    pinned: boolean;
+    count: number;
+  }[] = [];
   let featured: { fileId: string; slug: string }[] = [];
-  if (showcase.length > 0) {
-    const slugs = showcase.map((s) => s.slug);
-    const { data: ids } = await db
-      .from("albums")
-      .select("id, slug")
-      .in("slug", slugs);
-    const idToSlug = new Map((ids ?? []).map((r) => [r.id, r.slug]));
-    const { data: photos } = await db
-      .from("photos")
-      .select("drive_file_id, album_id, position")
-      .in("album_id", [...idToSlug.keys()])
-      .order("position")
-      .limit(12);
-    featured = (photos ?? []).map((p) => ({
-      fileId: p.drive_file_id,
-      slug: idToSlug.get(p.album_id) ?? "",
+  let albumCount = 0;
+  let photoCount = 0;
+
+  // The homepage must never 500 just because Supabase isn't configured/seeded
+  // yet — degrade gracefully to defaults if anything goes wrong.
+  try {
+    const db = createAdminClient();
+
+    const [settingsRes, showcaseRes, albumCountRes, photoCountRes] = await Promise.all([
+      db.from("site_settings").select("*").eq("id", 1).maybeSingle(),
+      db
+        .from("albums")
+        .select("id, slug, title, kind, cover_url, is_pinned, photos(count)")
+        .eq("status", "published")
+        .eq("is_showcase", true)
+        .order("is_pinned", { ascending: false })
+        .order("updated_at", { ascending: false }),
+      db.from("albums").select("id", { count: "exact", head: true }).eq("status", "published"),
+      db.from("photos").select("id", { count: "exact", head: true }),
+    ]);
+
+    settings = (settingsRes.data as SiteSettings | null) ?? DEFAULT_SETTINGS;
+    albumCount = albumCountRes.count ?? 0;
+    photoCount = photoCountRes.count ?? 0;
+
+    showcase = (showcaseRes.data ?? []).map((a) => ({
+      slug: a.slug,
+      title: a.title,
+      kind: (a.kind as string | null) ?? "Album",
+      cover_url: a.cover_url as string | null,
+      pinned: a.is_pinned as boolean,
+      count: (a.photos as { count: number }[] | null)?.[0]?.count ?? 0,
     }));
+
+    // Featured photos: a handful from the showcase albums.
+    if (showcase.length > 0) {
+      const slugs = showcase.map((s) => s.slug);
+      const { data: ids } = await db.from("albums").select("id, slug").in("slug", slugs);
+      const idToSlug = new Map((ids ?? []).map((r) => [r.id, r.slug]));
+      const { data: photos } = await db
+        .from("photos")
+        .select("drive_file_id, album_id, position")
+        .in("album_id", [...idToSlug.keys()])
+        .order("position")
+        .limit(12);
+      featured = (photos ?? []).map((p) => ({
+        fileId: p.drive_file_id,
+        slug: idToSlug.get(p.album_id) ?? "",
+      }));
+    }
+  } catch (e) {
+    console.error("[home] failed to load data, using defaults:", e);
   }
 
   return (
@@ -75,11 +92,7 @@ export default async function HomePage() {
       settings={settings}
       showcase={showcase}
       featured={featured}
-      stats={{
-        albums: albumCountRes.count ?? 0,
-        photos: photoCountRes.count ?? 0,
-        years: settings.stat_years,
-      }}
+      stats={{ albums: albumCount, photos: photoCount, years: settings.stat_years }}
     />
   );
 }
