@@ -76,6 +76,23 @@ panel.
 3. Drive sources must be shared as **“Anyone with the link”** for the key to
    read them. *(Folder/ảnh phải được chia sẻ ở chế độ “Anyone with the link”.)*
 
+### 2b. Google sign-in (OAuth) — for photographers
+
+The app subdomain's home (`/start`) lets a photographer create albums and signs
+them in **with Google** on demand. To enable it:
+
+1. In **Supabase → Authentication → Providers → Google**, enable it and paste a
+   Google OAuth **Client ID / Secret** (create them in Google Cloud → APIs &
+   Services → Credentials → OAuth client, type *Web application*).
+2. In that Google OAuth client, add the **Authorized redirect URI** that
+   Supabase shows you (`https://<project>.supabase.co/auth/v1/callback`).
+3. In **Supabase → Authentication → URL Configuration**, add your site URLs to
+   **Redirect URLs**, e.g. `https://album.vieetjk.com/auth/callback` (and your
+   `*.vercel.app` / `http://localhost:3000/auth/callback` for testing).
+
+New sign-ups become active photographers automatically and can create albums
+right away; an admin can deactivate or limit any account later.
+
 ### 3. Environment variables
 
 Copy `.env.example` to `.env.local` and fill in:

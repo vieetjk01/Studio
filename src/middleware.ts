@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
 
-const APP_PREFIXES = ["/dashboard", "/login", "/a/"];
+const APP_PREFIXES = ["/dashboard", "/login", "/a/", "/start", "/auth"];
 const MAIN_PREFIXES = ["/showcase"];
 
 function isAppPath(path: string) {
@@ -29,10 +29,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
     }
     if (host === APP_HOST) {
-      // The app subdomain has no marketing pages.
+      // App subdomain home = the public "create album" landing + guide.
       if (pathname === "/") {
-        return NextResponse.redirect(new URL("/dashboard", `https://${APP_HOST}`));
+        return NextResponse.rewrite(new URL("/start", request.url));
       }
+      // Marketing pages live on the main site.
       if (MAIN_PREFIXES.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
       }

@@ -124,9 +124,9 @@ begin
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data ->> 'full_name', new.email),
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', new.email),
     'photographer',
-    false
+    true   -- self-serve: new sign-ups (incl. Google) can create albums right away
   )
   on conflict (id) do nothing;
   return new;
