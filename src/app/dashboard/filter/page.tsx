@@ -31,7 +31,11 @@ interface SourceFile {
 }
 
 const norm = (s: string) => stripExtension(s).trim().toLowerCase();
-const IMG_RE = /\.(jpe?g|png|webp|gif|heic|heif|tiff?|bmp)$/i;
+// Accepted image/RAW extensions (RAW files often have an empty MIME type).
+const IMG_RE =
+  /\.(jpe?g|png|webp|gif|heic|heif|tiff?|bmp|avif|cr2|cr3|nef|nrw|arw|sr2|srf|raf|rw2|orf|dng|pef|srw|raw|3fr|fff|iiq|rwl|mrw|mef|mos|erf|kdc|dcr|x3f)$/i;
+// Extensions the browser can render in an <img> for previews.
+const DISPLAYABLE_RE = /\.(jpe?g|png|webp|gif|bmp|avif)$/i;
 
 export default function FilterPage() {
   const supabase = createClient();
@@ -108,7 +112,7 @@ export default function FilterPage() {
     }
   }
   function pickSourceInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(e.target.files ?? []).filter((f) => IMG_RE.test(f.name));
     setSrcDirName(`${files.length} ảnh đã chọn`);
     setLocalFiles(files.map((file, i) => ({ key: `${i}-${file.name}`, name: file.name, file })));
   }
@@ -148,6 +152,8 @@ export default function FilterPage() {
     const urls: Record<string, string> = {};
     (async () => {
       for (const m of matched.slice(0, 300)) {
+        // RAW files can't be rendered by the browser — skip preview, show icon.
+        if (!DISPLAYABLE_RE.test(m.name)) continue;
         try {
           const file = m.handle ? await m.handle.getFile() : m.file;
           if (file) urls[m.key] = URL.createObjectURL(file);
@@ -274,7 +280,7 @@ export default function FilterPage() {
               >
                 <FolderInput size={16} /> Chọn thư mục nguồn
               </button>
-              <input ref={fileInput} type="file" multiple accept="image/*" hidden onChange={pickSourceInput} />
+              <input ref={fileInput} type="file" multiple hidden onChange={pickSourceInput} />
               {srcDirName && (
                 <p className="mt-2 text-[13px]" style={{ color: "var(--text2)" }}>
                   Nguồn: <b>{srcDirName}</b> · {localFiles.length} ảnh (không upload — xử lý cục bộ).
