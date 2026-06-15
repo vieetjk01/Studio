@@ -74,6 +74,7 @@ export default function CustomerAlbum({
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected ?? []));
   const [notes, setNotes] = useState<Record<string, string>>(initialNotes ?? {});
   const [selectedOnly, setSelectedOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   const [lbIdx, setLbIdx] = useState<number | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
@@ -206,17 +207,18 @@ export default function CustomerAlbum({
     setUnlocked(true);
   }
 
-  const visiblePhotos = useMemo(
-    () => (selectedOnly ? photos.filter((p) => selected.has(p.id)) : photos),
-    [photos, selectedOnly, selected]
-  );
+  const visiblePhotos = useMemo(() => {
+    let base = activeTab === "all" ? photos : photos.filter((p) => p.source_id === activeTab);
+    if (selectedOnly) base = base.filter((p) => selected.has(p.id));
+    return base;
+  }, [photos, activeTab, selectedOnly, selected]);
   const selectedPhotos = useMemo(() => photos.filter((p) => selected.has(p.id)), [photos, selected]);
 
   // Group visible photos into sections by Drive source (each link = a section),
   // keeping each photo's index within visiblePhotos for lightbox navigation.
   const sections = useMemo(() => {
     const indexed = visiblePhotos.map((p, idx) => ({ p, idx }));
-    if (selectedOnly || sources.length <= 1) {
+    if (activeTab !== "all" || selectedOnly || sources.length <= 1) {
       return [{ id: "all", name: "", items: indexed }];
     }
     const byId = new Map<string, { p: PublicPhoto; idx: number }[]>();
@@ -234,7 +236,7 @@ export default function CustomerAlbum({
     }
     for (const [sid, items] of byId) ordered.push({ id: sid, name: sid === "none" ? "Khác" : "", items });
     return ordered;
-  }, [visiblePhotos, sources, selectedOnly]);
+  }, [visiblePhotos, sources, selectedOnly, activeTab]);
 
   function copyList() {
     navigator.clipboard.writeText(selectedPhotos.map((p) => stripExtension(p.name)).join("\n"));
@@ -377,6 +379,33 @@ export default function CustomerAlbum({
             </div>
           </div>
         </div>
+
+        {/* Link tabs — switch between Drive sources */}
+        {sources.length > 1 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveTab("all")}
+              className="rounded-full px-4 py-1.5 text-[13px] transition-colors"
+              style={activeTab === "all" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+            >
+              Tất cả
+            </button>
+            {sources.map((s) => {
+              const n = photos.filter((p) => p.source_id === s.id).length;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveTab(s.id)}
+                  className="rounded-full px-4 py-1.5 text-[13px] transition-colors"
+                  style={activeTab === s.id ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+                >
+                  {s.name}
+                  <span className="ml-1.5 opacity-60">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Sticky toolbar */}
         <div

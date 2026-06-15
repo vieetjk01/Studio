@@ -52,13 +52,21 @@ export async function POST(
 
   for (const source of (sources ?? []) as AlbumSource[]) {
     let files;
+    let folderName: string | null = null;
     try {
-      files = await resolveSource(source.drive_url, source.kind);
+      const resolved = await resolveSource(source.drive_url, source.kind);
+      files = resolved.files;
+      folderName = resolved.folderName;
     } catch (e) {
       errors.push(
         `${source.name}: ${e instanceof Error ? e.message : "unknown error"}`
       );
       continue;
+    }
+
+    // Name the source after the Drive folder (unless renamed to something custom).
+    if (folderName && /^(Folder|Nhóm|Untitled|File)\b/i.test(source.name)) {
+      await supabase.from("album_sources").update({ name: folderName }).eq("id", source.id);
     }
 
     const fileIds = files.map((f) => f.id);

@@ -62,38 +62,62 @@ export async function listFolderImages(folderId: string): Promise<DriveFile[]> {
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
-/** Resolve a Drive source (file or folder link) to a list of image files. */
+export interface ResolvedSource {
+  folderName: string | null; // name of the Drive folder, if the source is a folder
+  files: DriveFile[];
+}
+
+/** List the sub-folders directly inside a folder. */
+export async function listSubFolders(folderId: string): Promise<DriveFile[]> {
+  const params = new URLSearchParams({
+    q: `'${folderId}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`,
+    fields: "files(id, name, mimeType)",
+    pageSize: "1000",
+    orderBy: "name_natural",
+    key: key(),
+  });
+  const res = await fetch(`${API}/files?${params.toString()}`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { files?: DriveFile[] };
+  return data.files ?? [];
+}
+
+/** Resolve a Drive source (file or folder link) to its folder name + images. */
 export async function resolveSource(
   url: string,
   kind: "file" | "folder"
-): Promise<DriveFile[]> {
+): Promise<ResolvedSource> {
   if (kind === "folder") {
     const folderId = extractFolderId(url);
-    if (!folderId) return [];
-    return listFolderImages(folderId);
+    if (!folderId) return { folderName: null, files: [] };
+    const [meta, files] = await Promise.all([
+      getFileMeta(folderId),
+      listFolderImages(folderId),
+    ]);
+    return { folderName: meta?.name ?? null, files };
   }
 
   // kind === "file" — but the link may actually point to a folder (e.g. an
   // "open?id=" link that doesn't contain "/folders/"). Detect via metadata.
   const fileId = extractFileId(url);
-  if (!fileId) return [];
+  if (!fileId) return { folderName: null, files: [] };
 
   const meta = await getFileMeta(fileId);
   if (meta) {
     if (meta.mimeType === FOLDER_MIME) {
-      return listFolderImages(fileId); // it was a folder all along
+      return { folderName: meta.name, files: await listFolderImages(fileId) };
     }
-    if (meta.mimeType.startsWith("image/")) return [meta];
-    return []; // not an image and not a folder -> nothing to show
+    if (meta.mimeType.startsWith("image/")) return { folderName: null, files: [meta] };
+    return { folderName: null, files: [] };
   }
 
   // Metadata unavailable (e.g. restricted key): try listing as a folder first,
   // then fall back to treating it as a single image file.
   try {
     const asFolder = await listFolderImages(fileId);
-    if (asFolder.length > 0) return asFolder;
+    if (asFolder.length > 0) return { folderName: null, files: asFolder };
   } catch {
     /* not a folder */
   }
-  return [{ id: fileId, name: fileId, mimeType: "image/*" }];
+  return { folderName: null, files: [{ id: fileId, name: fileId, mimeType: "image/*" }] };
 }

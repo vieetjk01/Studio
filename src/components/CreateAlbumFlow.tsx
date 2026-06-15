@@ -12,6 +12,7 @@ import {
   Eye,
   QrCode,
   Sparkles,
+  FolderTree,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -49,6 +50,30 @@ export default function CreateAlbumFlow() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
+  const [splitting, setSplitting] = useState(false);
+  const [splitMsg, setSplitMsg] = useState<string | null>(null);
+
+  async function splitSubfolders() {
+    const parent = drives.map((d) => d.trim()).find(Boolean);
+    if (!parent) {
+      setSplitMsg("Hãy dán link folder tổng ở ô đầu tiên trước.");
+      return;
+    }
+    setSplitting(true);
+    setSplitMsg(null);
+    const res = await fetch("/api/drive/subfolders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: parent }),
+    });
+    const data = await res.json();
+    setSplitting(false);
+    if (data.error) return setSplitMsg(data.error);
+    const folders = (data.folders ?? []) as { url: string }[];
+    if (folders.length === 0) return setSplitMsg("Không tìm thấy folder con trong link này.");
+    setDrives(folders.map((f) => f.url));
+    setSplitMsg(`Đã thêm ${folders.length} folder con — mỗi folder sẽ là một tab riêng trong album.`);
+  }
   const [result, setResult] = useState<{ slug: string; id: string; count: number } | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -237,9 +262,15 @@ export default function CreateAlbumFlow() {
             </div>
           ))}
         </div>
-        <button onClick={() => setDrives((arr) => [...arr, ""])} className="mt-2.5 flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--gold)" }}>
-          <Plus size={15} /> Thêm link Drive
-        </button>
+        <div className="mt-2.5 flex flex-wrap items-center gap-4">
+          <button onClick={() => setDrives((arr) => [...arr, ""])} className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--gold)" }}>
+            <Plus size={15} /> Thêm link Drive
+          </button>
+          <button onClick={splitSubfolders} disabled={splitting} className="flex items-center gap-1.5 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--gold)" }}>
+            <FolderTree size={15} /> {splitting ? "Đang tách…" : "Tách folder con từ link tổng"}
+          </button>
+        </div>
+        {splitMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--text2)" }}>{splitMsg}</p>}
 
         <div className="mt-[18px] grid grid-cols-2 gap-3">
           <div>
