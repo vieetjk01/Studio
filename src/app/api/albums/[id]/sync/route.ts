@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSource, listSubFolders } from "@/lib/drive-server";
 import { thumbnailUrl, extractFolderId } from "@/lib/drive";
+import { fetchAllPhotos, chunk } from "@/lib/photos";
 import type { AlbumSource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +92,15 @@ export async function POST(
   let added = 0;
   const errors: string[] = [];
 
+  // Existing photos (all of them, past the 1000-row cap), grouped per source.
+  const existingPhotos = await fetchAllPhotos(supabase, albumId, "id, drive_file_id, source_id");
+  const existingBySource = new Map<string, Map<string, string>>();
+  for (const p of existingPhotos) {
+    const sid = (p.source_id as string) ?? "none";
+    if (!existingBySource.has(sid)) existingBySource.set(sid, new Map());
+    existingBySource.get(sid)!.set(p.drive_file_id, p.id);
+  }
+
   for (const source of (sources ?? []) as AlbumSource[]) {
     let files;
     let folderName: string | null = null;
@@ -110,33 +120,32 @@ export async function POST(
       await supabase.from("album_sources").update({ name: folderName }).eq("id", source.id);
     }
 
-    const fileIds = files.map((f) => f.id);
+    const fileIdSet = new Set(files.map((f) => f.id));
     total += files.length;
 
-    // Remove photos from this source that are no longer present.
-    if (fileIds.length > 0) {
-      await supabase
-        .from("photos")
-        .delete()
-        .eq("source_id", source.id)
-        .not("drive_file_id", "in", `(${fileIds.join(",")})`);
-    } else {
-      await supabase.from("photos").delete().eq("source_id", source.id);
+    // Remove photos from this source that are no longer on Drive (delete by id,
+    // chunked — avoids a giant URL when an album has thousands of photos).
+    const prev = existingBySource.get(source.id);
+    if (prev) {
+      const stale: string[] = [];
+      for (const [driveId, id] of prev) if (!fileIdSet.has(driveId)) stale.push(id);
+      for (const ids of chunk(stale, 200)) {
+        await supabase.from("photos").delete().in("id", ids);
+      }
     }
 
-    // Upsert current files.
+    // Upsert current files in chunks (handles thousands per source).
     const rows = files.map((f, i) => ({
       album_id: albumId,
       source_id: source.id,
       drive_file_id: f.id,
       name: f.name,
-      position: source.position * 10000 + i,
+      position: source.position * 100000 + i,
     }));
-
-    if (rows.length > 0) {
+    for (const part of chunk(rows, 500)) {
       const { error: upErr, count } = await supabase
         .from("photos")
-        .upsert(rows, { onConflict: "album_id,drive_file_id", count: "exact" });
+        .upsert(part, { onConflict: "album_id,drive_file_id", count: "exact" });
       if (upErr) errors.push(`${source.name}: ${upErr.message}`);
       else added += count ?? 0;
     }
@@ -144,11 +153,7 @@ export async function POST(
 
   // Set the album cover to the first photo if there's no cover yet, or if the
   // current cover points to a file that is no longer in the album.
-  const { data: allPhotos } = await supabase
-    .from("photos")
-    .select("drive_file_id")
-    .eq("album_id", albumId)
-    .order("position");
+  const allPhotos = await fetchAllPhotos(supabase, albumId, "drive_file_id");
 
   if (allPhotos && allPhotos.length > 0) {
     const ids = new Set(allPhotos.map((p) => p.drive_file_id));

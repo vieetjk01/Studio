@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllPhotos } from "@/lib/photos";
 import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Brand from "@/components/Brand";
@@ -60,12 +61,8 @@ export default async function PublicAlbumPage({
   let selected: string[] = [];
   let notes: Record<string, string> = {};
   if (!hasPassword) {
-    const [{ data: p }, { data: s }, { data: sel }] = await Promise.all([
-      admin
-        .from("photos")
-        .select("id, drive_file_id, name, source_id, position")
-        .eq("album_id", album.id)
-        .order("position"),
+    const [p, { data: s }, { data: sel }] = await Promise.all([
+      fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position"),
       admin
         .from("album_sources")
         .select("id, name, position")

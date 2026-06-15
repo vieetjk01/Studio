@@ -16,6 +16,7 @@ import {
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
+import { fetchAllPhotos } from "@/lib/photos";
 import type { Album, AlbumSource, Photo, SourceKind } from "@/lib/types";
 
 export default function AlbumEditor({
@@ -147,12 +148,15 @@ export default function AlbumEditor({
     setSyncing(false);
     if (!res.ok) return flash(data.error ?? t("error"));
 
-    const { data: fresh } = await supabase
-      .from("photos")
+    const fresh = await fetchAllPhotos(supabase, album.id, "*");
+    setPhotos(fresh as Photo[]);
+    // refresh sources too (sync may have auto-added sub-folder sources)
+    const { data: freshSources } = await supabase
+      .from("album_sources")
       .select("*")
       .eq("album_id", album.id)
       .order("position");
-    setPhotos((fresh ?? []) as Photo[]);
+    if (freshSources) setSources(freshSources as AlbumSource[]);
     flash(
       `${data.total} ${t("photos")}` +
         (data.errors?.length ? ` · ${data.errors.join("; ")}` : "")

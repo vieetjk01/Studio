@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllPhotos } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +38,7 @@ export async function POST(
     }
   }
 
-  const { data: photos } = await admin
-    .from("photos")
-    .select("id, drive_file_id, name, source_id, position")
-    .eq("album_id", album.id)
-    .order("position");
+  const photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position");
 
   const { data: sources } = await admin
     .from("album_sources")

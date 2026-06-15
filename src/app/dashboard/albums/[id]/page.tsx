@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllPhotos } from "@/lib/photos";
 import AlbumEditor from "./AlbumEditor";
 import type { Album, AlbumSource, Photo } from "@/lib/types";
 
@@ -29,17 +30,13 @@ export default async function AlbumEditPage({
 
   if (!album) notFound();
 
-  const [{ data: sources }, { data: photos }] = await Promise.all([
+  const [{ data: sources }, photos] = await Promise.all([
     supabase
       .from("album_sources")
       .select("*")
       .eq("album_id", params.id)
       .order("position"),
-    supabase
-      .from("photos")
-      .select("*")
-      .eq("album_id", params.id)
-      .order("position"),
+    fetchAllPhotos(supabase, params.id, "*"),
   ]);
 
   return (
