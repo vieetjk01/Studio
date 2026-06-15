@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   RefreshCw,
@@ -28,6 +29,21 @@ export default function AlbumEditor({
 }) {
   const { t } = useLang();
   const supabase = createClient();
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  async function deleteAlbum() {
+    if (!confirm("Xóa album này? Thao tác không thể hoàn tác. (Số album đã tạo trong tháng vẫn được tính.)")) return;
+    setDeleting(true);
+    const { error } = await supabase.from("albums").delete().eq("id", album.id);
+    if (error) {
+      setDeleting(false);
+      flash(error.message);
+      return;
+    }
+    router.push("/dashboard");
+    router.refresh();
+  }
 
   const [form, setForm] = useState({
     title: album.title,
@@ -178,6 +194,9 @@ export default function AlbumEditor({
           <Link href={`/a/${form.slug}`} target="_blank" className="btn-ghost">
             <ExternalLink size={15} /> {t("view")}
           </Link>
+          <button onClick={deleteAlbum} disabled={deleting} className="btn-danger">
+            <Trash2 size={15} /> {deleting ? "Đang xóa…" : t("delete")}
+          </button>
         </div>
       </div>
 

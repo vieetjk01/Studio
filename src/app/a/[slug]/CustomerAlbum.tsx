@@ -74,7 +74,6 @@ export default function CustomerAlbum({
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected ?? []));
   const [notes, setNotes] = useState<Record<string, string>>(initialNotes ?? {});
   const [selectedOnly, setSelectedOnly] = useState(false);
-  const [activeSource, setActiveSource] = useState<string>("all");
 
   const [lbIdx, setLbIdx] = useState<number | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
@@ -207,15 +206,35 @@ export default function CustomerAlbum({
     setUnlocked(true);
   }
 
-  const sourceFiltered = useMemo(
-    () => (activeSource === "all" ? photos : photos.filter((p) => p.source_id === activeSource)),
-    [photos, activeSource]
-  );
   const visiblePhotos = useMemo(
-    () => (selectedOnly ? sourceFiltered.filter((p) => selected.has(p.id)) : sourceFiltered),
-    [sourceFiltered, selectedOnly, selected]
+    () => (selectedOnly ? photos.filter((p) => selected.has(p.id)) : photos),
+    [photos, selectedOnly, selected]
   );
   const selectedPhotos = useMemo(() => photos.filter((p) => selected.has(p.id)), [photos, selected]);
+
+  // Group visible photos into sections by Drive source (each link = a section),
+  // keeping each photo's index within visiblePhotos for lightbox navigation.
+  const sections = useMemo(() => {
+    const indexed = visiblePhotos.map((p, idx) => ({ p, idx }));
+    if (selectedOnly || sources.length <= 1) {
+      return [{ id: "all", name: "", items: indexed }];
+    }
+    const byId = new Map<string, { p: PublicPhoto; idx: number }[]>();
+    for (const it of indexed) {
+      const sid = it.p.source_id ?? "none";
+      if (!byId.has(sid)) byId.set(sid, []);
+      byId.get(sid)!.push(it);
+    }
+    const ordered: { id: string; name: string; items: { p: PublicPhoto; idx: number }[] }[] = [];
+    for (const s of sources) {
+      if (byId.has(s.id)) {
+        ordered.push({ id: s.id, name: s.name, items: byId.get(s.id)! });
+        byId.delete(s.id);
+      }
+    }
+    for (const [sid, items] of byId) ordered.push({ id: sid, name: sid === "none" ? "Khác" : "", items });
+    return ordered;
+  }, [visiblePhotos, sources, selectedOnly]);
 
   function copyList() {
     navigator.clipboard.writeText(selectedPhotos.map((p) => stripExtension(p.name)).join("\n"));
@@ -359,20 +378,6 @@ export default function CustomerAlbum({
           </div>
         </div>
 
-        {/* Source tabs */}
-        {sources.length > 1 && (
-          <div className="mt-6 flex flex-wrap gap-2">
-            <SourceTab active={activeSource === "all"} onClick={() => setActiveSource("all")}>
-              {t("allPhotos")}
-            </SourceTab>
-            {sources.map((s) => (
-              <SourceTab key={s.id} active={activeSource === s.id} onClick={() => setActiveSource(s.id)}>
-                {s.name}
-              </SourceTab>
-            ))}
-          </div>
-        )}
-
         {/* Sticky toolbar */}
         <div
           className="sticky top-[64px] z-20 mt-6 mb-7 flex flex-wrap items-center gap-2.5 rounded-2xl p-3 animate-[vkFade_.5s_ease_both]"
@@ -438,9 +443,20 @@ export default function CustomerAlbum({
             <p className="text-[13.5px]">Nhấn vào trái tim ở góc mỗi ảnh để chọn.</p>
           </div>
         ) : (
-          // Grid gallery (left-to-right reading order)
-          <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-            {visiblePhotos.map((p, idx) => {
+          // Sections — each Drive source shown separately, left-to-right
+          <div className="space-y-9">
+            {sections.map((sec) => (
+              <section key={sec.id}>
+                {sec.name && (
+                  <h2 className="mb-3 font-serif text-xl font-medium">
+                    {sec.name}
+                    <span className="ml-2 text-[13px] font-normal" style={{ color: "var(--text3)" }}>
+                      · {sec.items.length} ảnh
+                    </span>
+                  </h2>
+                )}
+                <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
+            {sec.items.map(({ p, idx }) => {
               const isSel = selected.has(p.id);
               const note = notes[p.id];
               return (
@@ -514,6 +530,9 @@ export default function CustomerAlbum({
                 </div>
               );
             })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </div>
@@ -631,18 +650,6 @@ export default function CustomerAlbum({
         </div>
       )}
     </main>
-  );
-}
-
-function SourceTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className="rounded-full px-4 py-1.5 text-xs transition-colors"
-      style={active ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "transparent", border: "1px solid var(--border)", color: "var(--text2)" }}
-    >
-      {children}
-    </button>
   );
 }
 

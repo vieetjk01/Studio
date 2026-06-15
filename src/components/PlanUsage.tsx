@@ -32,9 +32,9 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
       const { count } = await supabase
-        .from("albums")
+        .from("album_creations")
         .select("id", { count: "exact", head: true })
-        .eq("owner_id", user.id)
+        .eq("user_id", user.id)
         .gte("created_at", start.toISOString());
 
       const pro =

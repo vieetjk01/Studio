@@ -314,9 +314,28 @@ create policy upgrade_admin_all on public.upgrade_requests
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
--- Enforce the monthly album-creation quota (admins exempt). Runs in the DB so
--- it can't be bypassed from the client.
+-- Monthly album-creation quota. Counted from an append-only creation log so
+-- that DELETING an album does NOT free up the monthly quota. Admins exempt.
 -- ============================================================================
+create table if not exists public.album_creations (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.album_creations enable row level security;
+drop policy if exists album_creations_read on public.album_creations;
+create policy album_creations_read on public.album_creations
+  for select using (user_id = auth.uid() or public.is_admin());
+
+-- One-time backfill from existing albums.
+do $$
+begin
+  if not exists (select 1 from public.album_creations) then
+    insert into public.album_creations (user_id, created_at)
+    select owner_id, created_at from public.albums;
+  end if;
+end $$;
+
 create or replace function public.enforce_album_quota()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -332,8 +351,8 @@ begin
   if lim is null then return new; end if;
 
   select count(*) into used
-    from public.albums
-    where owner_id = new.owner_id
+    from public.album_creations
+    where user_id = new.owner_id
       and created_at >= date_trunc('month', now());
 
   if used >= lim then
@@ -348,6 +367,20 @@ drop trigger if exists albums_quota on public.albums;
 create trigger albums_quota
   before insert on public.albums
   for each row execute function public.enforce_album_quota();
+
+-- Log each creation (append-only; survives album deletion).
+create or replace function public.log_album_creation()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.album_creations (user_id, created_at) values (new.owner_id, now());
+  return new;
+end;
+$$;
+
+drop trigger if exists albums_log_creation on public.albums;
+create trigger albums_log_creation
+  after insert on public.albums
+  for each row execute function public.log_album_creation();
 
 -- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
