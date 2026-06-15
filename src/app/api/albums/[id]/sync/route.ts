@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { resolveSource } from "@/lib/drive-server";
-import { thumbnailUrl } from "@/lib/drive";
+import { resolveSource, listSubFolders } from "@/lib/drive-server";
+import { thumbnailUrl, extractFolderId } from "@/lib/drive";
 import type { AlbumSource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,47 @@ export async function POST(
     .select("cover_url")
     .eq("id", albumId)
     .maybeSingle();
+
+  // ── Auto-expand: any folder source that contains sub-folders gets a separate
+  // source (tab) per sub-folder, so pasting one parent link is enough. ────────
+  {
+    const { data: existing } = await supabase
+      .from("album_sources")
+      .select("*")
+      .eq("album_id", albumId)
+      .order("position");
+    const existingUrls = new Set((existing ?? []).map((s) => s.drive_url));
+    let maxPos = Math.max(0, ...(existing ?? []).map((s) => s.position));
+    const newRows: {
+      album_id: string;
+      name: string;
+      drive_url: string;
+      kind: string;
+      position: number;
+    }[] = [];
+
+    for (const src of (existing ?? []) as AlbumSource[]) {
+      if (src.kind !== "folder") continue;
+      const folderId = extractFolderId(src.drive_url);
+      if (!folderId) continue;
+      let subs: { id: string; name: string }[] = [];
+      try {
+        subs = await listSubFolders(folderId);
+      } catch {
+        subs = [];
+      }
+      for (const sub of subs) {
+        const url = `https://drive.google.com/drive/folders/${sub.id}`;
+        if (existingUrls.has(url)) continue;
+        existingUrls.add(url);
+        maxPos += 1;
+        newRows.push({ album_id: albumId, name: sub.name, drive_url: url, kind: "folder", position: maxPos });
+      }
+    }
+    if (newRows.length > 0) {
+      await supabase.from("album_sources").insert(newRows);
+    }
+  }
 
   const { data: sources, error: srcErr } = await supabase
     .from("album_sources")

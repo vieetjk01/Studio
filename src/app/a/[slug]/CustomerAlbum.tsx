@@ -214,11 +214,18 @@ export default function CustomerAlbum({
   }, [photos, activeTab, selectedOnly, selected]);
   const selectedPhotos = useMemo(() => photos.filter((p) => selected.has(p.id)), [photos, selected]);
 
+  // Only sources that actually contain photos become tabs/sections (a parent
+  // folder with only sub-folders has no direct photos and is skipped).
+  const tabSources = useMemo(
+    () => sources.filter((s) => photos.some((p) => p.source_id === s.id)),
+    [sources, photos]
+  );
+
   // Group visible photos into sections by Drive source (each link = a section),
   // keeping each photo's index within visiblePhotos for lightbox navigation.
   const sections = useMemo(() => {
     const indexed = visiblePhotos.map((p, idx) => ({ p, idx }));
-    if (activeTab !== "all" || selectedOnly || sources.length <= 1) {
+    if (activeTab !== "all" || selectedOnly || tabSources.length <= 1) {
       return [{ id: "all", name: "", items: indexed }];
     }
     const byId = new Map<string, { p: PublicPhoto; idx: number }[]>();
@@ -236,7 +243,7 @@ export default function CustomerAlbum({
     }
     for (const [sid, items] of byId) ordered.push({ id: sid, name: sid === "none" ? "Khác" : "", items });
     return ordered;
-  }, [visiblePhotos, sources, selectedOnly, activeTab]);
+  }, [visiblePhotos, sources, selectedOnly, activeTab, tabSources.length]);
 
   function copyList() {
     navigator.clipboard.writeText(selectedPhotos.map((p) => stripExtension(p.name)).join("\n"));
@@ -381,7 +388,7 @@ export default function CustomerAlbum({
         </div>
 
         {/* Link tabs — switch between Drive sources */}
-        {sources.length > 1 && (
+        {tabSources.length > 1 && (
           <div className="mt-6 flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab("all")}
@@ -390,7 +397,7 @@ export default function CustomerAlbum({
             >
               Tất cả
             </button>
-            {sources.map((s) => {
+            {tabSources.map((s) => {
               const n = photos.filter((p) => p.source_id === s.id).length;
               return (
                 <button
