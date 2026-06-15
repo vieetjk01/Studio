@@ -103,6 +103,7 @@ export default function CustomerAlbum({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: SHARED, photoIds: sel, notes: noteMap }),
+        keepalive: true,
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -123,7 +124,15 @@ export default function CustomerAlbum({
     setSaveStatus("saving");
     dirtyUntil.current = Date.now() + 4000;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(saveNow, 350);
+    saveTimer.current = setTimeout(saveNow, 250);
+  }, [saveNow]);
+
+  // Flush a pending save immediately (e.g. before the page unloads).
+  const flush = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveNow();
+    }
   }, [saveNow]);
 
   // Keep the shared selection in sync with other people viewing the same link.
@@ -242,19 +251,28 @@ export default function CustomerAlbum({
     return () => window.removeEventListener("keydown", onKey);
   }, [lbIdx, visiblePhotos.length]);
 
-  // Poll for others' selections so concurrent viewers stay in sync.
+  // Load the current selection immediately on open (don't wait for SSR/poll),
+  // keep it in sync, and flush any pending save before the page goes away.
   useEffect(() => {
     if (!unlocked) return;
-    const iv = setInterval(refresh, 8000);
+    refresh(); // fresh load right away — avoids showing stale/empty picks
+    const iv = setInterval(refresh, 5000);
     const onFocus = () => refresh();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+      else refresh();
+    };
+    const onHide = () => flush();
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHide);
     return () => {
       clearInterval(iv);
       window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onHide);
     };
-  }, [unlocked, refresh]);
+  }, [unlocked, refresh, flush]);
 
   // ── Password gate ──────────────────────────────────────────────
   if (!unlocked) {
