@@ -95,7 +95,13 @@ export default function SelectionsView({
   }
 
   function exportList(group: Group) {
-    const text = group.items.map((i) => i.photo_name).join("\n");
+    // Filename without extension, plus the customer/photographer note if any.
+    const text = group.items
+      .map((i) => {
+        const note = i.client_note || i.photographer_note;
+        return stripExtension(i.photo_name) + (note ? ` — ${note}` : "");
+      })
+      .join("\n");
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

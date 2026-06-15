@@ -224,8 +224,14 @@ export default function CustomerAlbum({
     flashToast(t("copied"));
   }
   function exportList() {
+    const text = selectedPhotos
+      .map((p) => {
+        const note = notes[p.id]?.trim();
+        return stripExtension(p.name) + (note ? ` — ${note}` : "");
+      })
+      .join("\n");
     triggerDownload(
-      new Blob([selectedPhotos.map((p) => p.name).join("\n")], { type: "text/plain;charset=utf-8" }),
+      new Blob([text], { type: "text/plain;charset=utf-8" }),
       `${album.slug}-selection.txt`
     );
   }
