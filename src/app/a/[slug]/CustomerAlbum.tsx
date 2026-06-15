@@ -88,6 +88,9 @@ export default function CustomerAlbum({
   const selectedRef = useRef(selected);
   const notesRef = useRef(notes);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Window during which polling must not overwrite the local selection
+  // (covers the debounce + server-commit lag so taps never "revert").
+  const dirtyUntil = useRef(0);
 
   const saveNow = useCallback(async () => {
     saveTimer.current = null;
@@ -107,6 +110,7 @@ export default function CustomerAlbum({
         flashToast(`Chưa lưu được lựa chọn (${d.error ?? res.status})`);
         return;
       }
+      dirtyUntil.current = Date.now() + 2500; // grace for read-after-write
       setSaveStatus("saved");
     } catch {
       setSaveStatus("idle");
@@ -117,13 +121,14 @@ export default function CustomerAlbum({
 
   const scheduleSave = useCallback(() => {
     setSaveStatus("saving");
+    dirtyUntil.current = Date.now() + 4000;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(saveNow, 700);
+    saveTimer.current = setTimeout(saveNow, 350);
   }, [saveNow]);
 
   // Keep the shared selection in sync with other people viewing the same link.
   const refresh = useCallback(async () => {
-    if (saveTimer.current) return; // don't clobber a pending local change
+    if (saveTimer.current || Date.now() < dirtyUntil.current) return; // don't clobber a recent local change
     try {
       const res = await fetch(`/api/a/${album.slug}/select`, { cache: "no-store" });
       if (!res.ok) return;
@@ -240,7 +245,7 @@ export default function CustomerAlbum({
   // Poll for others' selections so concurrent viewers stay in sync.
   useEffect(() => {
     if (!unlocked) return;
-    const iv = setInterval(refresh, 6000);
+    const iv = setInterval(refresh, 8000);
     const onFocus = () => refresh();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
@@ -410,71 +415,77 @@ export default function CustomerAlbum({
           </div>
         ) : (
           // Grid gallery (left-to-right reading order)
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(170px,1fr))]">
+          <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
             {visiblePhotos.map((p, idx) => {
               const isSel = selected.has(p.id);
               const note = notes[p.id];
               return (
                 <div
                   key={p.id}
-                  className="relative aspect-square overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
-                  style={{ background: "var(--surface)" }}
+                  className="overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
                 >
-                  <div
-                    className="pointer-events-none absolute inset-0 z-[3] rounded-xl"
-                    style={isSel ? { boxShadow: "inset 0 0 0 3px var(--gold)" } : undefined}
-                  />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={thumbnailUrl(p.drive_file_id, 600)}
-                    alt={p.name}
-                    loading="lazy"
-                    draggable={false}
-                    onClick={() => setLbIdx(idx)}
-                    onContextMenu={(e) => wm && e.preventDefault()}
-                    className="h-full w-full cursor-zoom-in select-none object-cover transition-transform duration-700 hover:scale-[1.03]"
-                  />
-                  {wm && (
-                    <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
-                      {Array.from({ length: 8 }).map((_, i) => (
-                        <span key={i} className="rotate-[-30deg] whitespace-nowrap text-xs font-semibold tracking-widest text-white">
-                          {wm}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div
-                    className="pointer-events-none absolute inset-x-0 top-0 h-16"
-                    style={{ background: "linear-gradient(to bottom, rgba(0,0,0,.5), transparent)" }}
-                  />
-                  {/* heart select */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggle(p.id);
-                    }}
-                    title={t("selectThis")}
-                    className="absolute right-2.5 top-2.5 z-[4] flex h-9 w-9 items-center justify-center rounded-full transition-all hover:scale-110"
-                    style={
-                      isSel
-                        ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
-                        : { background: "rgba(10,10,12,.45)", color: "#fff", border: "2px solid rgba(255,255,255,.7)" }
-                    }
-                  >
-                    <Heart size={17} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
-                  </button>
-                  {album.allowNotes && note?.trim() && (
+                  <div className="relative aspect-square">
                     <div
+                      className="pointer-events-none absolute inset-0 z-[3]"
+                      style={isSel ? { boxShadow: "inset 0 0 0 3px var(--gold)" } : undefined}
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={thumbnailUrl(p.drive_file_id, 600)}
+                      alt={p.name}
+                      loading="lazy"
+                      draggable={false}
                       onClick={() => setLbIdx(idx)}
-                      title={note}
-                      className="absolute bottom-2.5 left-2.5 z-[4] flex max-w-[calc(100%-20px)] cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-                      style={{ background: "rgba(10,10,12,.66)", backdropFilter: "blur(8px)", border: "1px solid var(--border)" }}
+                      onContextMenu={(e) => wm && e.preventDefault()}
+                      className="h-full w-full cursor-zoom-in select-none object-cover"
+                    />
+                    {wm && (
+                      <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <span key={i} className="rotate-[-30deg] whitespace-nowrap text-xs font-semibold tracking-widest text-white">
+                            {wm}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 h-16"
+                      style={{ background: "linear-gradient(to bottom, rgba(0,0,0,.5), transparent)" }}
+                    />
+                    {/* heart select — large tap target for mobile */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle(p.id);
+                      }}
+                      title={t("selectThis")}
+                      className="absolute right-2 top-2 z-[4] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90"
+                      style={
+                        isSel
+                          ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
+                          : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }
+                      }
                     >
-                      <FileText size={13} />
-                      <span className="truncate text-[11.5px]" style={{ color: "var(--text)" }}>
-                        {note}
+                      <Heart size={20} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
+                    </button>
+                  </div>
+
+                  {/* note under the thumbnail */}
+                  {album.allowNotes && (
+                    <button
+                      onClick={() => setLbIdx(idx)}
+                      className="flex w-full items-center gap-1.5 px-2.5 py-2 text-left"
+                      style={{ borderTop: "1px solid var(--border)" }}
+                    >
+                      <FileText size={12} className="flex-shrink-0" style={{ color: note?.trim() ? "var(--gold)" : "var(--text3)" }} />
+                      <span
+                        className="truncate text-[11.5px]"
+                        style={{ color: note?.trim() ? "var(--text)" : "var(--text3)" }}
+                      >
+                        {note?.trim() || "Thêm ghi chú…"}
                       </span>
-                    </div>
+                    </button>
                   )}
                 </div>
               );
@@ -526,8 +537,8 @@ export default function CustomerAlbum({
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-wrap">
-            <div className="relative flex min-h-0 flex-1 items-center justify-center p-4 md:p-10" style={{ flexBasis: "480px" }}>
+          <div className="flex min-h-0 flex-1 flex-wrap overflow-y-auto">
+            <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10" style={{ flexBasis: "480px" }}>
               <button
                 onClick={() => setLbIdx(Math.max(0, lbIdx - 1))}
                 disabled={lbIdx === 0}
@@ -542,7 +553,7 @@ export default function CustomerAlbum({
                 alt={lbPhoto.name}
                 draggable={false}
                 onContextMenu={(e) => wm && e.preventDefault()}
-                className="max-h-[78vh] max-w-full select-none rounded object-contain animate-[vkPop_.35s_ease_both]"
+                className="max-h-[46vh] max-w-full select-none rounded object-contain animate-[vkPop_.35s_ease_both] md:max-h-[78vh]"
                 style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
               />
               <button
@@ -557,8 +568,8 @@ export default function CustomerAlbum({
 
             {album.allowNotes && (
               <aside
-                className="flex max-w-full flex-col gap-4 overflow-y-auto p-5 md:p-7"
-                style={{ flex: "0 0 340px", borderLeft: "1px solid var(--border)" }}
+                className="flex w-full flex-shrink-0 flex-col gap-4 border-t p-5 md:w-[340px] md:flex-none md:overflow-y-auto md:border-l md:border-t-0 md:p-7"
+                style={{ borderColor: "var(--border)" }}
               >
                 <div>
                   <h3 className="font-serif text-2xl font-medium">{t("note")}</h3>
