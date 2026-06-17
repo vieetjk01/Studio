@@ -18,12 +18,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "bad_id" }, { status: 400 });
   }
 
-  const sources = [
-    `https://lh3.googleusercontent.com/d/${id}=w${w}`,
-    `https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,
-    `https://drive.usercontent.google.com/download?id=${id}&export=view`,
-    `https://drive.google.com/uc?export=download&id=${id}`,
-  ];
+  const width = Number(w) || 1600;
+  const thumb = `https://drive.google.com/thumbnail?id=${id}&sz=w${width}`;
+  const lh3 = `https://lh3.googleusercontent.com/d/${id}=w${width}`;
+  // For thumbnail sizes, Drive's thumbnail endpoint works for BOTH images and
+  // videos (poster frame); lh3 doesn't render videos. For full-size requests
+  // prefer lh3 (original quality).
+  const sources =
+    width <= 1024
+      ? [thumb, lh3, `https://drive.usercontent.google.com/download?id=${id}&export=view`]
+      : [lh3, thumb, `https://drive.usercontent.google.com/download?id=${id}&export=view`, `https://drive.google.com/uc?export=download&id=${id}`];
 
   let lastStatus = 0;
   for (const url of sources) {

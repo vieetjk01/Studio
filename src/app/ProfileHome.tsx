@@ -152,8 +152,8 @@ export default function ProfileHome({
           )}
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--bg) 1%, rgba(10,10,12,.15) 55%, rgba(10,10,12,.5))" }} />
         </div>
-        <div className="mx-auto max-w-[1180px] px-6 md:px-10">
-          <div className="-mt-[clamp(58px,7vw,78px)] flex flex-wrap items-end gap-[clamp(16px,3vw,28px)]">
+        <div className="relative z-10 mx-auto max-w-[1180px] px-6 md:px-10">
+          <div className="-mt-[clamp(48px,7vw,72px)] flex flex-wrap items-end gap-[clamp(16px,3vw,28px)]">
             <div
               className="h-[clamp(106px,15vw,150px)] w-[clamp(106px,15vw,150px)] flex-shrink-0 overflow-hidden rounded-full"
               style={{ border: "4px solid var(--bg)", boxShadow: "0 20px 50px rgba(0,0,0,.5)", background: "var(--surface)" }}

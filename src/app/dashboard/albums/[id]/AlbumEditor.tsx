@@ -311,42 +311,6 @@ export default function AlbumEditor({
             </select>
           </div>
 
-          {/* Showcase on homepage */}
-          <div className="space-y-3 rounded-md border border-ink-800 p-3">
-            <label className="flex items-center gap-2 text-sm text-accent">
-              <input
-                type="checkbox"
-                checked={form.is_showcase}
-                onChange={(e) => setForm({ ...form, is_showcase: e.target.checked })}
-              />
-              {t("showcaseOnHome")}
-            </label>
-            <p className="text-xs" style={{ color: "var(--text3)" }}>
-              {t("showcaseHint")}
-            </p>
-            {form.is_showcase && (
-              <>
-                <label className="flex items-center gap-2 text-sm text-accent">
-                  <input
-                    type="checkbox"
-                    checked={form.is_pinned}
-                    onChange={(e) => setForm({ ...form, is_pinned: e.target.checked })}
-                  />
-                  {t("pinnedFeatured")}
-                </label>
-                <div>
-                  <label className="label">{t("albumKind")}</label>
-                  <input
-                    className="input"
-                    placeholder="Phóng sự cưới · Chân dung · Sự kiện…"
-                    value={form.kind}
-                    onChange={(e) => setForm({ ...form, kind: e.target.value })}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-
           <button
             onClick={saveSettings}
             disabled={saving}
