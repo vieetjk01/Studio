@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Calendar, Lock, Pin } from "lucide-react";
+import { Search, Calendar, Lock, Pin, Play } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { GALLERY_CATEGORIES } from "@/lib/types";
@@ -30,21 +30,22 @@ function periodKey(d: string | null) {
   return `${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
 }
 
+const yearKey = (d: string | null) => (d ? String(new Date(d).getFullYear()) : "Khác");
+
 export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GalleryCard[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [media, setMedia] = useState<"image" | "video">("image");
   const [cat, setCat] = useState("all");
+  const [year, setYear] = useState("all");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const PER_MONTH = 4;
 
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
-    if (!q) {
-      setResults(null);
-      return;
-    }
+    if (!q) return setResults(null);
     setSearching(true);
     const res = await fetch(`/api/album/search?q=${encodeURIComponent(q)}`);
     const data = await res.json();
@@ -53,22 +54,36 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
   }
 
   const base = results ?? galleries;
-  const shown = useMemo(
-    () => (cat === "all" ? base : base.filter((g) => g.category === cat)),
-    [base, cat]
-  );
+  const images = useMemo(() => base.filter((g) => g.category !== "video"), [base]);
+  const videos = useMemo(() => base.filter((g) => g.category === "video"), [base]);
 
-  // Group by month/year (only when not searching).
-  const groups = useMemo(() => {
+  // Image mode: filter by category, group by month.
+  const shownImages = useMemo(
+    () => (cat === "all" ? images : images.filter((g) => g.category === cat)),
+    [images, cat]
+  );
+  const imageGroups = useMemo(() => {
     if (results) return null;
     const map = new Map<string, GalleryCard[]>();
-    for (const g of shown) {
+    for (const g of shownImages) {
       const k = periodKey(g.event_date);
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(g);
     }
     return [...map.entries()];
-  }, [shown, results]);
+  }, [shownImages, results]);
+
+  // Video mode: filter by year.
+  const videoYears = useMemo(
+    () => [...new Set(videos.map((g) => yearKey(g.event_date)))],
+    [videos]
+  );
+  const shownVideos = useMemo(
+    () => (year === "all" ? videos : videos.filter((g) => yearKey(g.event_date) === year)),
+    [videos, year]
+  );
+
+  const current = media === "image" ? shownImages : shownVideos;
 
   return (
     <main className="min-h-screen pb-24">
@@ -101,37 +116,53 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
           )}
         </form>
 
-        {/* Category filter */}
-        <div className="mt-5 flex flex-wrap gap-2">
-          <CatTab active={cat === "all"} onClick={() => setCat("all")}>Tất cả</CatTab>
-          {GALLERY_CATEGORIES.map((c) => (
-            <CatTab key={c.value} active={cat === c.value} onClick={() => setCat(c.value)}>{c.label}</CatTab>
-          ))}
+        {/* Media toggle: Hình ảnh / Video */}
+        <div className="mt-6 inline-flex rounded-full p-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <button onClick={() => setMedia("image")} className="rounded-full px-5 py-1.5 text-[13.5px] font-medium transition-colors" style={media === "image" ? { background: "var(--accent)", color: "var(--accentInk)" } : { color: "var(--text2)" }}>
+            Hình ảnh ({images.length})
+          </button>
+          <button onClick={() => setMedia("video")} className="rounded-full px-5 py-1.5 text-[13.5px] font-medium transition-colors" style={media === "video" ? { background: "var(--accent)", color: "var(--accentInk)" } : { color: "var(--text2)" }}>
+            Video ({videos.length})
+          </button>
         </div>
 
-        {shown.length === 0 ? (
+        {/* Sub-filter: categories (image) or years (video) */}
+        {media === "image" ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <CatTab active={cat === "all"} onClick={() => setCat("all")}>Tất cả</CatTab>
+            {GALLERY_CATEGORIES.filter((c) => c.value !== "video").map((c) => (
+              <CatTab key={c.value} active={cat === c.value} onClick={() => setCat(c.value)}>{c.label}</CatTab>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <CatTab active={year === "all"} onClick={() => setYear("all")}>Tất cả</CatTab>
+            {videoYears.map((y) => (
+              <CatTab key={y} active={year === y} onClick={() => setYear(y)}>{y === "Khác" ? y : `Năm ${y}`}</CatTab>
+            ))}
+          </div>
+        )}
+
+        {current.length === 0 ? (
           <p className="py-20 text-center text-sm" style={{ color: "var(--text3)" }}>
-            {results ? "Không tìm thấy album phù hợp." : "Chưa có album nào."}
+            {results ? "Không tìm thấy album phù hợp." : media === "video" ? "Chưa có video nào." : "Chưa có album ảnh nào."}
           </p>
-        ) : results ? (
+        ) : media === "video" || results ? (
           <div className="mt-8">
-            <Grid items={shown} />
+            <Grid items={current} video={media === "video"} />
           </div>
         ) : (
           <div className="mt-8 space-y-10">
-            {groups!.map(([period, items]) => {
+            {imageGroups!.map(([period, items]) => {
               const isOpen = expanded[period];
-              const visible = isOpen ? items : items.slice(0, PER_MONTH);
+              const vis = isOpen ? items : items.slice(0, PER_MONTH);
               return (
                 <section key={period}>
                   <h2 className="mb-4 font-serif text-2xl font-medium">{period}</h2>
-                  <Grid items={visible} />
+                  <Grid items={vis} />
                   {items.length > PER_MONTH && (
                     <div className="mt-4 text-center">
-                      <button
-                        onClick={() => setExpanded((e) => ({ ...e, [period]: !isOpen }))}
-                        className="btn-ghost"
-                      >
+                      <button onClick={() => setExpanded((e) => ({ ...e, [period]: !isOpen }))} className="btn-ghost">
                         {isOpen ? "Thu gọn" : `Xem thêm (${items.length - PER_MONTH})`}
                       </button>
                     </div>
@@ -158,7 +189,7 @@ function CatTab({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function Grid({ items }: { items: GalleryCard[] }) {
+function Grid({ items, video }: { items: GalleryCard[]; video?: boolean }) {
   return (
     <div className="grid gap-[clamp(14px,2vw,20px)] [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
       {items.map((g) => (
@@ -176,6 +207,11 @@ function Grid({ items }: { items: GalleryCard[] }) {
               <div className="absolute inset-0" style={{ background: "var(--surface2)" }} />
             )}
             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,0) 55%)" }} />
+            {video && (
+              <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.5)", color: "#fff", backdropFilter: "blur(6px)" }}>
+                <Play size={20} fill="currentColor" strokeWidth={0} />
+              </span>
+            )}
             <span className="absolute left-3 top-3 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "rgba(10,10,12,.6)", color: "#fff", backdropFilter: "blur(6px)" }}>
               {catLabel(g.category, g.category_label)}
             </span>

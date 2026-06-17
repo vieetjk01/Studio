@@ -71,6 +71,7 @@ export default function FilterPage() {
     supabase
       .from("albums")
       .select("id, title")
+      .eq("is_gallery", false)
       .order("updated_at", { ascending: false })
       .then(({ data }) => setAlbums(data ?? []));
     // eslint-disable-next-line react-hooks/exhaustive-deps

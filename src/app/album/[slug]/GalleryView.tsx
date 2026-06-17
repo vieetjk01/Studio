@@ -11,6 +11,8 @@ import { buildZip, triggerDownload } from "@/lib/download";
 import type { Feedback } from "@/lib/types";
 
 interface P { id: string; drive_file_id: string; name: string; source_id: string | null; position: number; is_video?: boolean; }
+
+const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
 interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; }
 
@@ -169,7 +171,7 @@ export default function GalleryView({
                   <div key={p.id} onClick={() => setLbIdx(i)} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.04]" />
-                    {p.is_video && (
+                    {isVideo(p) && (
                       <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
                         <Play size={20} fill="currentColor" strokeWidth={0} />
                       </span>
@@ -226,12 +228,12 @@ export default function GalleryView({
           <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3.5 md:px-7" style={{ borderBottom: "1px solid var(--border)" }}>
             <span className="text-[13px]" style={{ color: "var(--text2)" }}>{lbIdx + 1} / {visible.length}</span>
             <div className="flex-1" />
-            <a href={lb.is_video ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={lb.is_video ? "_blank" : undefined} download={lb.is_video ? undefined : lb.name} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+            <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
             <button onClick={() => setLbIdx(null)} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10">
             <button onClick={() => setLbIdx(Math.max(0, lbIdx - 1))} disabled={lbIdx === 0} className="absolute left-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronLeft size={22} /></button>
-            {lb.is_video ? (
+            {isVideo(lb) ? (
               <iframe
                 src={`https://drive.google.com/file/d/${lb.drive_file_id}/preview`}
                 allow="autoplay; fullscreen"
