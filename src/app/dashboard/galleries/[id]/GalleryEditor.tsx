@@ -34,6 +34,7 @@ export default function GalleryEditor({
     category_label: album.category_label ?? "",
     status: album.status,
     gallery_pinned: album.gallery_pinned,
+    download_enabled: album.download_enabled ?? true,
     cover_url: album.cover_url,
   });
   const [newPhone, setNewPhone] = useState("");
@@ -62,6 +63,7 @@ export default function GalleryEditor({
         category_label: form.category === "khac" ? form.category_label || "Khác" : null,
         status: form.status,
         gallery_pinned: form.gallery_pinned,
+        download_enabled: form.download_enabled,
         cover_url: form.cover_url,
       })
       .eq("id", album.id);
@@ -184,6 +186,10 @@ export default function GalleryEditor({
           <label className="flex items-center gap-2 rounded-md border p-3 text-sm" style={{ borderColor: "var(--border)" }}>
             <input type="checkbox" checked={form.gallery_pinned} onChange={(e) => setForm({ ...form, gallery_pinned: e.target.checked })} />
             <Pin size={14} /> Ghim ra trang chủ (xem không cần mật khẩu)
+          </label>
+          <label className="flex items-center gap-2 rounded-md border p-3 text-sm" style={{ borderColor: "var(--border)" }}>
+            <input type="checkbox" checked={form.download_enabled} onChange={(e) => setForm({ ...form, download_enabled: e.target.checked })} />
+            Cho phép khách tải ảnh / video xuống
           </label>
           <button onClick={save} disabled={saving} className="btn-primary w-full"><Save size={15} /> {saving ? "Đang lưu…" : "Lưu"}</button>
         </div>

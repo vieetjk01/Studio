@@ -44,6 +44,7 @@ export default function CreateAlbumFlow() {
   const [max, setMax] = useState("");
   const [watermark, setWatermark] = useState("Vieetjk Studio");
   const [allowNote, setAllowNote] = useState(true);
+  const [allowDownload, setAllowDownload] = useState(true);
 
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -152,6 +153,7 @@ export default function CreateAlbumFlow() {
           slug,
           selection_limit: max ? Number(max) : null,
           watermark_enabled: !!watermark.trim(),
+          download_enabled: allowDownload,
           watermark_text: watermark.trim() || null,
           status: "published",
         })
@@ -299,6 +301,17 @@ export default function CreateAlbumFlow() {
               className="absolute top-[3px] h-5 w-5 rounded-full transition-all"
               style={allowNote ? { left: "23px", background: "#0a0a0c" } : { left: "3px", background: "var(--text2)" }}
             />
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+          <span className="flex-1 text-[13.5px]">Cho phép khách tải ảnh xuống</span>
+          <button
+            onClick={() => setAllowDownload((v) => !v)}
+            className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full transition-all"
+            style={allowDownload ? { background: "var(--gold)" } : { background: "var(--surface)", border: "1px solid var(--border2)" }}
+          >
+            <span className="absolute top-[3px] h-5 w-5 rounded-full transition-all" style={allowDownload ? { left: "23px", background: "#0a0a0c" } : { left: "3px", background: "var(--text2)" }} />
           </button>
         </div>
 

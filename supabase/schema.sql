@@ -258,6 +258,7 @@ create index if not exists albums_gallery_idx on public.albums (is_gallery, stat
 alter table public.photos add column if not exists is_video boolean not null default false;
 alter table public.profiles add column if not exists can_galleries boolean not null default false;
 alter table public.site_settings add column if not exists featured_images text[] not null default '{}';
+alter table public.albums add column if not exists download_enabled boolean not null default true;
 
 -- ============================================================================
 -- feedback: client testimonials for a gallery / the photographer

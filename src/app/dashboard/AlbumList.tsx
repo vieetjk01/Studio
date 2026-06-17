@@ -82,8 +82,14 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <Link
+                    href={`/dashboard/albums/${a.id}/selections`}
+                    className="btn-primary flex-1 py-1.5 text-xs"
+                  >
+                    <CheckSquare size={13} /> {t("customerSelections")}
+                  </Link>
+                  <Link
                     href={`/dashboard/albums/${a.id}`}
-                    className="btn-ghost flex-1 py-1.5 text-xs"
+                    className="btn-ghost py-1.5 text-xs"
                   >
                     {t("edit")}
                   </Link>

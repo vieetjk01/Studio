@@ -31,6 +31,9 @@ interface SourceFile {
 }
 
 const norm = (s: string) => stripExtension(s).trim().toLowerCase();
+const ext = (n: string) => (n.includes(".") ? n.split(".").pop()!.toLowerCase() : "");
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "tif", "tiff", "bmp", "avif"]);
+const RAW_EXTS = new Set(["cr2", "cr3", "nef", "nrw", "arw", "sr2", "srf", "raf", "rw2", "orf", "dng", "pef", "srw", "raw", "3fr", "fff", "iiq", "rwl", "mrw", "mef", "mos", "erf", "kdc", "dcr", "x3f"]);
 // Accepted image/RAW extensions (RAW files often have an empty MIME type).
 const IMG_RE =
   /\.(jpe?g|png|webp|gif|heic|heif|tiff?|bmp|avif|cr2|cr3|nef|nrw|arw|sr2|srf|raf|rw2|orf|dng|pef|srw|raw|3fr|fff|iiq|rwl|mrw|mef|mos|erf|kdc|dcr|x3f)$/i;
@@ -143,6 +146,19 @@ export default function FilterPage() {
   const wantedSet = useMemo(() => new Set(wantedNames.map(norm)), [wantedNames]);
   const matched = useMemo(() => sourceFiles.filter((f) => wantedSet.has(norm(f.name))), [sourceFiles, wantedSet]);
   const matchedNorm = useMemo(() => new Set(matched.map((f) => norm(f.name))), [matched]);
+
+  // Filter matched results by file format (image / RAW / a specific extension).
+  const [fmt, setFmt] = useState("all");
+  const availableExts = useMemo(
+    () => [...new Set(matched.map((m) => ext(m.name)).filter(Boolean))].sort(),
+    [matched]
+  );
+  const shown = useMemo(() => {
+    if (fmt === "all") return matched;
+    if (fmt === "image") return matched.filter((m) => IMAGE_EXTS.has(ext(m.name)));
+    if (fmt === "raw") return matched.filter((m) => RAW_EXTS.has(ext(m.name)));
+    return matched.filter((m) => ext(m.name) === fmt);
+  }, [matched, fmt]);
   const notFound = useMemo(() => wantedNames.filter((n) => !matchedNorm.has(norm(n))), [wantedNames, matchedNorm]);
   const matchedKey = matched.map((m) => m.key).join("|");
 
@@ -173,23 +189,23 @@ export default function FilterPage() {
   }, [matchedKey, photoSource]);
 
   function copyMatched() {
-    navigator.clipboard.writeText(matched.map((f) => stripExtension(f.name)).join("\n"));
+    navigator.clipboard.writeText(shown.map((f) => stripExtension(f.name)).join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   }
   function exportMatched() {
     triggerDownload(
-      new Blob([matched.map((f) => stripExtension(f.name)).join("\n")], { type: "text/plain;charset=utf-8" }),
+      new Blob([shown.map((f) => stripExtension(f.name)).join("\n")], { type: "text/plain;charset=utf-8" }),
       "loc-anh.txt"
     );
   }
   async function zipMatched() {
-    if (matched.length === 0) return;
+    if (shown.length === 0) return;
     setZipProgress(0);
     if (photoSource === "local") {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
-      for (const m of matched) {
+      for (const m of shown) {
         const file = m.handle ? await m.handle.getFile() : m.file;
         if (file) zip.file(m.name, file);
       }
@@ -197,7 +213,7 @@ export default function FilterPage() {
       triggerDownload(blob, "loc-anh.zip");
     } else {
       const blob = await buildZip(
-        matched.map((f) => ({ fileId: f.driveId!, name: f.name })),
+        shown.map((f) => ({ fileId: f.driveId!, name: f.name })),
         { watermark: null, onProgress: (d, tot) => setZipProgress(Math.round((d / tot) * 100)) }
       );
       triggerDownload(blob, "loc-anh.zip");
@@ -207,11 +223,11 @@ export default function FilterPage() {
 
   // Copy matched files directly from source folder to destination folder.
   async function copyToDest() {
-    if (!destDir || matched.length === 0) return;
+    if (!destDir || shown.length === 0) return;
     setCopying(true);
     setCopyMsg(null);
     let done = 0;
-    for (const m of matched) {
+    for (const m of shown) {
       try {
         const file = m.handle ? await m.handle.getFile() : m.file;
         if (!file) continue;
@@ -220,13 +236,13 @@ export default function FilterPage() {
         await w.write(file);
         await w.close();
         done++;
-        setCopyMsg(`Đang copy… ${done}/${matched.length}`);
+        setCopyMsg(`Đang copy… ${done}/${shown.length}`);
       } catch {
         /* skip this file */
       }
     }
     setCopying(false);
-    setCopyMsg(`Đã copy ${done}/${matched.length} ảnh sang “${destName}”.`);
+    setCopyMsg(`Đã copy ${done}/${shown.length} ảnh sang “${destName}”.`);
   }
 
   const srcTab = (key: "drive" | "local", label: string, Icon: typeof Link2) => (
@@ -295,10 +311,10 @@ export default function FilterPage() {
                   </button>
                   <button
                     onClick={copyToDest}
-                    disabled={!destDir || matched.length === 0 || copying}
+                    disabled={!destDir || shown.length === 0 || copying}
                     className="btn-primary mt-3 w-full py-3 disabled:opacity-40"
                   >
-                    <CopyCheck size={16} /> {copying ? "Đang copy…" : `Copy ${matched.length} ảnh sang thư mục đích`}
+                    <CopyCheck size={16} /> {copying ? "Đang copy…" : `Copy ${shown.length} ảnh sang thư mục đích`}
                   </button>
                   {copyMsg && <p className="mt-2 text-[13px]" style={{ color: "var(--gold)" }}>{copyMsg}</p>}
                 </>
@@ -344,32 +360,41 @@ export default function FilterPage() {
       {/* Results */}
       <div className="mt-6 card p-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h2 className="font-serif text-2xl font-medium">Kết quả lọc: {matched.length} ảnh</h2>
+          <h2 className="font-serif text-2xl font-medium">Kết quả lọc: {shown.length} ảnh</h2>
+          {/* Format filter */}
+          <select value={fmt} onChange={(e) => setFmt(e.target.value)} className="input w-auto px-2 py-1 text-xs">
+            <option value="all">Mọi định dạng</option>
+            <option value="image">Ảnh thường (JPG/PNG…)</option>
+            <option value="raw">RAW máy ảnh</option>
+            {availableExts.map((x) => (
+              <option key={x} value={x}>.{x.toUpperCase()}</option>
+            ))}
+          </select>
           {notFound.length > 0 && (
             <span className="rounded-full px-2.5 py-1 text-[12px]" style={{ background: "color-mix(in srgb,#f59e0b 16%,transparent)", color: "#fbbf24" }}>
               {notFound.length} tên không tìm thấy
             </span>
           )}
           <div className="ml-auto flex flex-wrap gap-2">
-            <button onClick={copyMatched} disabled={matched.length === 0} className="btn-ghost text-[13px] disabled:opacity-40">
+            <button onClick={copyMatched} disabled={shown.length === 0} className="btn-ghost text-[13px] disabled:opacity-40">
               {copied ? <Check size={14} /> : <Copy size={14} />} Copy (không đuôi)
             </button>
-            <button onClick={exportMatched} disabled={matched.length === 0} className="btn-ghost text-[13px] disabled:opacity-40">
+            <button onClick={exportMatched} disabled={shown.length === 0} className="btn-ghost text-[13px] disabled:opacity-40">
               <FileText size={14} /> Xuất .txt
             </button>
-            <button onClick={zipMatched} disabled={matched.length === 0 || zipProgress !== null} className="btn-primary text-[13px] disabled:opacity-40">
+            <button onClick={zipMatched} disabled={shown.length === 0 || zipProgress !== null} className="btn-primary text-[13px] disabled:opacity-40">
               <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : "Tải ZIP"}
             </button>
           </div>
         </div>
 
-        {matched.length === 0 ? (
+        {shown.length === 0 ? (
           <p className="py-10 text-center text-sm" style={{ color: "var(--text3)" }}>
-            {sourceFiles.length === 0 ? "Chọn nguồn ảnh và nhập danh sách để bắt đầu lọc." : "Chưa có ảnh nào khớp danh sách."}
+            {sourceFiles.length === 0 ? "Chọn nguồn ảnh và nhập danh sách để bắt đầu lọc." : matched.length === 0 ? "Chưa có ảnh nào khớp danh sách." : "Không có file đúng định dạng đã chọn."}
           </p>
         ) : (
           <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(130px,1fr))]">
-            {matched.map((f) => (
+            {shown.map((f) => (
               <div key={f.key} className="overflow-hidden rounded-lg" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
                 <div className="flex aspect-square items-center justify-center" style={{ color: "var(--text3)" }}>
                   {f.driveId || thumbs[f.key] ? (

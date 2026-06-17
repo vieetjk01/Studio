@@ -27,6 +27,7 @@ export interface Album {
   selection_limit: number | null;
   watermark_enabled: boolean;
   watermark_text: string | null;
+  download_enabled: boolean;
   status: AlbumStatus;
   is_showcase: boolean;
   is_pinned: boolean;

@@ -53,6 +53,7 @@ export default function AlbumEditor({
     selection_limit: album.selection_limit ?? "",
     watermark_enabled: album.watermark_enabled,
     watermark_text: album.watermark_text ?? "Vieetjk",
+    download_enabled: album.download_enabled ?? true,
     status: album.status,
     cover_url: album.cover_url,
     is_showcase: album.is_showcase,
@@ -87,6 +88,7 @@ export default function AlbumEditor({
           form.selection_limit === "" ? null : Number(form.selection_limit),
         watermark_enabled: form.watermark_enabled,
         watermark_text: form.watermark_text || null,
+        download_enabled: form.download_enabled,
         status: form.status,
         cover_url: form.cover_url,
         is_showcase: form.is_showcase,
@@ -281,7 +283,19 @@ export default function AlbumEditor({
                 }
               />
             )}
+            <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>
+              Bật watermark để chữ tự gắn lên ảnh khi khách xem (kể cả ảnh phóng to) — chống chụp màn hình.
+            </p>
           </div>
+
+          <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
+            <input
+              type="checkbox"
+              checked={form.download_enabled}
+              onChange={(e) => setForm({ ...form, download_enabled: e.target.checked })}
+            />
+            Cho phép khách tải ảnh xuống
+          </label>
 
           <div>
             <label className="label">{t("status")}</label>

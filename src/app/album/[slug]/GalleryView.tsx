@@ -14,7 +14,7 @@ interface P { id: string; drive_file_id: string; name: string; source_id: string
 
 const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
-interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; }
+interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; }
 
 export default function GalleryView({
   gallery, initialPhotos, initialSources, feedback,
@@ -130,9 +130,11 @@ export default function GalleryView({
       <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 md:px-10" style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}>
         <Brand />
         <div className="flex items-center gap-3">
-          <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
-            <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : "Tải cả album"}
-          </button>
+          {gallery.allowDownload !== false && (
+            <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
+              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : "Tải cả album"}
+            </button>
+          )}
           <LanguageSwitcher />
         </div>
       </header>
@@ -228,7 +230,9 @@ export default function GalleryView({
           <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3.5 md:px-7" style={{ borderBottom: "1px solid var(--border)" }}>
             <span className="text-[13px]" style={{ color: "var(--text2)" }}>{lbIdx + 1} / {visible.length}</span>
             <div className="flex-1" />
-            <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+            {gallery.allowDownload !== false && (
+              <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+            )}
             <button onClick={() => setLbIdx(null)} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10">

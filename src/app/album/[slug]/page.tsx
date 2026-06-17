@@ -16,7 +16,7 @@ export default async function GalleryPage({ params }: { params: { slug: string }
   const admin = createAdminClient();
   const { data: album } = await admin
     .from("albums")
-    .select("id, slug, title, status, is_gallery, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name")
+    .select("id, slug, title, status, is_gallery, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled")
     .eq("slug", params.slug)
     .single();
 
@@ -60,6 +60,7 @@ export default async function GalleryPage({ params }: { params: { slug: string }
         event_date: album.event_date,
         cover_url: album.cover_url,
         hasPassword,
+        allowDownload: album.download_enabled !== false,
       }}
       initialPhotos={photos}
       initialSources={sources}

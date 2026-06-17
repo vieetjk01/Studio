@@ -626,15 +626,26 @@ export default function CustomerAlbum({
               >
                 <ChevronLeft size={22} />
               </button>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={fullImageUrl(lbPhoto.drive_file_id, 1600)}
-                alt={lbPhoto.name}
-                draggable={false}
-                onContextMenu={(e) => wm && e.preventDefault()}
-                className="max-h-[46vh] max-w-full select-none rounded object-contain animate-[vkPop_.35s_ease_both] md:max-h-[78vh]"
-                style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
-              />
+              <div className="relative inline-flex animate-[vkPop_.35s_ease_both]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={fullImageUrl(lbPhoto.drive_file_id, 1600)}
+                  alt={lbPhoto.name}
+                  draggable={false}
+                  onContextMenu={(e) => wm && e.preventDefault()}
+                  className="max-h-[46vh] max-w-full select-none rounded object-contain md:max-h-[78vh]"
+                  style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
+                />
+                {wm && (
+                  <div className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-x-12 gap-y-10 overflow-hidden opacity-30">
+                    {Array.from({ length: 16 }).map((_, i) => (
+                      <span key={i} className="rotate-[-30deg] whitespace-nowrap text-base font-semibold tracking-widest text-white drop-shadow">
+                        {wm}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => setLbIdx(Math.min(visiblePhotos.length - 1, lbIdx + 1))}
                 disabled={lbIdx >= visiblePhotos.length - 1}
