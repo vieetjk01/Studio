@@ -20,6 +20,8 @@ import {
   Facebook,
   Youtube,
   Music2,
+  Star,
+  Play,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -49,16 +51,29 @@ const SERVICES: {
   { k: "other", label: "Nội dung khác", desc: "TVC · sản phẩm · gia đình", Icon: MoreHorizontal },
 ];
 
+interface GalleryCard {
+  slug: string;
+  title: string;
+  cover_url: string | null;
+  event_date: string | null;
+}
+
 export default function ProfileHome({
   settings,
   showcase,
   featured,
   stats,
+  photoGalleries = [],
+  videoGalleries = [],
+  feedback = [],
 }: {
   settings: SiteSettings;
   showcase: ShowcaseAlbum[];
   featured: { fileId: string; slug: string }[];
   stats: { albums: number; photos: number; years: number };
+  photoGalleries?: GalleryCard[];
+  videoGalleries?: GalleryCard[];
+  feedback?: { id: string; client_name: string | null; rating: number | null; content: string }[];
 }) {
   const { t } = useLang();
   const libRef = useRef<HTMLDivElement>(null);
@@ -273,6 +288,58 @@ export default function ProfileHome({
         )}
       </section>
 
+      {/* Pinned photo galleries */}
+      {photoGalleries.length > 0 && (
+        <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
+          <div className="mb-5 flex items-end justify-between gap-3.5">
+            <div>
+              <p className="eyebrow mb-1.5">Album ảnh</p>
+              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Bộ ảnh nổi bật</h2>
+            </div>
+            <Link href="/album" className="flex items-center gap-1.5 text-[13.5px] font-medium" style={{ color: "var(--text2)" }}>
+              Xem tất cả <ArrowRight size={15} />
+            </Link>
+          </div>
+          <GalleryGrid items={photoGalleries} />
+        </section>
+      )}
+
+      {/* Pinned videos */}
+      {videoGalleries.length > 0 && (
+        <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
+          <div className="mb-5">
+            <p className="eyebrow mb-1.5">Video</p>
+            <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Phim & video</h2>
+          </div>
+          <GalleryGrid items={videoGalleries} video />
+        </section>
+      )}
+
+      {/* Feedback */}
+      {feedback.length > 0 && (
+        <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
+          <div className="mb-5">
+            <p className="eyebrow mb-1.5">Cảm nhận</p>
+            <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Khách hàng nói gì</h2>
+          </div>
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+            {feedback.map((f) => (
+              <div key={f.id} className="card p-5">
+                {f.rating ? (
+                  <div className="mb-2 flex items-center gap-0.5" style={{ color: "var(--gold)" }}>
+                    {Array.from({ length: f.rating }).map((_, i) => (
+                      <Star key={i} size={14} fill="currentColor" strokeWidth={0} />
+                    ))}
+                  </div>
+                ) : null}
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text2)" }}>“{f.content}”</p>
+                <p className="mt-3 text-[13px] font-medium">{f.client_name || "Khách hàng"}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Booking + contact */}
       <section ref={contactRef} className="mx-auto mt-[clamp(44px,6vw,76px)] max-w-[1180px] scroll-mt-20 px-6 md:px-10">
         <div className="grid items-start gap-[clamp(16px,2.5vw,26px)] [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
@@ -381,6 +448,44 @@ export default function ProfileHome({
         © {new Date().getFullYear()} Vieetjk — {t("tagline")}
       </footer>
     </main>
+  );
+}
+
+function GalleryGrid({ items, video }: { items: GalleryCard[]; video?: boolean }) {
+  return (
+    <div className="grid gap-[clamp(14px,2vw,20px)] [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+      {items.map((g) => (
+        <Link
+          key={g.slug}
+          href={`/album/${g.slug}`}
+          className="group relative overflow-hidden rounded-xl"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          <div className="relative aspect-[4/5] overflow-hidden">
+            {g.cover_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={g.cover_url} alt={g.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            ) : (
+              <div className="absolute inset-0" style={{ background: "var(--surface2)" }} />
+            )}
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,0) 55%)" }} />
+            {video && (
+              <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.5)", color: "#fff", backdropFilter: "blur(6px)" }}>
+                <Play size={20} fill="currentColor" strokeWidth={0} />
+              </span>
+            )}
+            <div className="absolute inset-x-3 bottom-3">
+              <h3 className="font-serif text-xl font-medium leading-tight text-white">{g.title}</h3>
+              {g.event_date && (
+                <p className="mt-0.5 flex items-center gap-1 text-[11.5px]" style={{ color: "rgba(255,255,255,.7)" }}>
+                  <Calendar size={11} /> {new Date(g.event_date).toLocaleDateString("vi-VN")}
+                </p>
+              )}
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 

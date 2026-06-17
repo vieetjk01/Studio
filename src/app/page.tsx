@@ -38,6 +38,10 @@ export default async function HomePage() {
   let featured: { fileId: string; slug: string }[] = [];
   let albumCount = 0;
   let photoCount = 0;
+  type GalleryCard = { slug: string; title: string; cover_url: string | null; event_date: string | null };
+  let pinnedPhotoGalleries: GalleryCard[] = [];
+  let pinnedVideoGalleries: GalleryCard[] = [];
+  let feedback: { id: string; client_name: string | null; rating: number | null; content: string }[] = [];
 
   // The homepage must never 500 just because Supabase isn't configured/seeded
   // yet — degrade gracefully to defaults if anything goes wrong.
@@ -86,6 +90,30 @@ export default async function HomePage() {
         slug: idToSlug.get(p.album_id) ?? "",
       }));
     }
+
+    // Pinned delivery galleries + feedback for the homepage.
+    const [galRes, fbRes] = await Promise.all([
+      db
+        .from("albums")
+        .select("slug, title, cover_url, event_date, category")
+        .eq("is_gallery", true)
+        .eq("status", "published")
+        .eq("gallery_pinned", true)
+        .order("event_date", { ascending: false, nullsFirst: false })
+        .limit(24),
+      db
+        .from("feedback")
+        .select("id, client_name, rating, content")
+        .eq("approved", true)
+        .order("created_at", { ascending: false })
+        .limit(9),
+    ]);
+    for (const g of galRes.data ?? []) {
+      const card = { slug: g.slug, title: g.title, cover_url: g.cover_url as string | null, event_date: g.event_date as string | null };
+      if (g.category === "video") pinnedVideoGalleries.push(card);
+      else pinnedPhotoGalleries.push(card);
+    }
+    feedback = (fbRes.data ?? []) as typeof feedback;
   } catch (e) {
     console.error("[home] failed to load data, using defaults:", e);
   }
@@ -96,6 +124,9 @@ export default async function HomePage() {
       showcase={showcase}
       featured={featured}
       stats={{ albums: albumCount, photos: photoCount, years: settings.stat_years }}
+      photoGalleries={pinnedPhotoGalleries}
+      videoGalleries={pinnedVideoGalleries}
+      feedback={feedback}
     />
   );
 }

@@ -30,8 +30,34 @@ export interface Album {
   is_showcase: boolean;
   is_pinned: boolean;
   kind: string | null;
+  // Delivery-gallery fields (is_gallery = true)
+  is_gallery: boolean;
+  client_name: string | null;
+  client_phone: string | null;
+  event_date: string | null;
+  category: string | null;
+  category_label: string | null;
+  gallery_pinned: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export const GALLERY_CATEGORIES = [
+  { value: "cuoi-hoi", label: "Cưới hỏi" },
+  { value: "su-kien", label: "Sự kiện" },
+  { value: "gia-dinh", label: "Gia đình" },
+  { value: "video", label: "Video" },
+  { value: "khac", label: "Khác" },
+] as const;
+
+export interface Feedback {
+  id: string;
+  album_id: string | null;
+  client_name: string | null;
+  rating: number | null;
+  content: string;
+  approved: boolean;
+  created_at: string;
 }
 
 export interface SiteSettings {

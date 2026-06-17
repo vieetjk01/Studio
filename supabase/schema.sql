@@ -242,6 +242,47 @@ alter table public.albums add column if not exists is_pinned   boolean not null 
 alter table public.albums add column if not exists kind        text;  -- e.g. "Phóng sự cưới"
 
 -- ============================================================================
+-- Delivery galleries (vieetjk.com/album) — reuse the albums/sources/photos
+-- infrastructure with is_gallery = true. View password = the client's phone.
+-- ============================================================================
+alter table public.albums add column if not exists is_gallery     boolean not null default false;
+alter table public.albums add column if not exists client_name    text;
+alter table public.albums add column if not exists client_phone   text;   -- view password; never sent to the public client
+alter table public.albums add column if not exists event_date     date;   -- wedding / engagement date
+alter table public.albums add column if not exists category        text;   -- cuoi-hoi | su-kien | gia-dinh | video | khac
+alter table public.albums add column if not exists category_label text;   -- custom label
+alter table public.albums add column if not exists gallery_pinned  boolean not null default false; -- pinned to homepage (no password)
+create index if not exists albums_gallery_idx on public.albums (is_gallery, status);
+
+-- ============================================================================
+-- feedback: client testimonials for a gallery / the photographer
+-- ============================================================================
+create table if not exists public.feedback (
+  id          uuid primary key default gen_random_uuid(),
+  album_id    uuid references public.albums (id) on delete cascade,
+  client_name text,
+  rating      integer,
+  content     text not null,
+  approved    boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+alter table public.feedback enable row level security;
+-- Public can read approved feedback (homepage / gallery); owner & admin manage.
+drop policy if exists feedback_public_read on public.feedback;
+create policy feedback_public_read on public.feedback
+  for select using (
+    approved
+    or exists (select 1 from public.albums a where a.id = album_id and (a.owner_id = auth.uid() or public.is_admin()))
+  );
+drop policy if exists feedback_owner_manage on public.feedback;
+create policy feedback_owner_manage on public.feedback
+  for all using (
+    exists (select 1 from public.albums a where a.id = album_id and (a.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.albums a where a.id = album_id and (a.owner_id = auth.uid() or public.is_admin()))
+  );
+
+-- ============================================================================
 -- site_settings: single-row studio profile + contact info (public read)
 -- ============================================================================
 create table if not exists public.site_settings (
@@ -347,6 +388,7 @@ begin
     into lim, isadm
     from public.profiles where id = new.owner_id;
 
+  if coalesce(new.is_gallery, false) then return new; end if; -- galleries don't use the selection quota
   if coalesce(isadm, false) then return new; end if;
   if lim is null then return new; end if;
 
@@ -372,6 +414,7 @@ create trigger albums_quota
 create or replace function public.log_album_creation()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
+  if coalesce(new.is_gallery, false) then return new; end if; -- galleries don't count
   insert into public.album_creations (user_id, created_at) values (new.owner_id, now());
   return new;
 end;

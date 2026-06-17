@@ -18,6 +18,11 @@ guest banner, a sticky toolbar (filter selected / export / copy / ZIP / send),
 a masonry gallery with selection rings, and a lightbox with a per-photo note
 panel.
 
+> Delivery galleries (`/album`) reuse the albums/sources/photos tables via
+> `is_gallery = true`; the view password is the client's phone (pinned galleries
+> are open). Re-run `supabase/schema.sql` to add the gallery columns + the
+> `feedback` table.
+>
 > Already have a database from an earlier version? Re-run `supabase/schema.sql`
 > (it is idempotent) — it adds `selections.client_note`, the album showcase
 > flags (`is_showcase`, `is_pinned`, `kind`), and the `site_settings` and
@@ -157,7 +162,10 @@ single host.
 
 | Route | Who | Purpose |
 |---|---|---|
-| `/` | public | Studio profile homepage (portfolio + booking + contact) |
+| `/` | public | Studio homepage (portfolio, pinned galleries, videos, feedback, booking) |
+| `/album` | public | Client gallery directory — search by name/phone, grouped by month |
+| `/album/[slug]` | public | Delivery gallery — password = client phone (pinned = open); download, feedback |
+| `/dashboard/galleries` | auth | Manage delivery galleries (create/edit/pin/delete) |
 | `/showcase/[slug]` | public | Reference album — view-only gallery + lightbox |
 | `/login` | public | Photographer / admin sign-in |
 | `/dashboard` | auth | Album list |

@@ -9,6 +9,7 @@ export default async function DashboardPage() {
   const { data: albums } = await supabase
     .from("albums")
     .select("*, photos(drive_file_id), selections(count)")
+    .eq("is_gallery", false)
     .order("updated_at", { ascending: false });
 
   return <AlbumList albums={albums ?? []} />;

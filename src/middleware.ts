@@ -9,7 +9,7 @@ const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
 
 const APP_PREFIXES = ["/dashboard", "/login", "/a/", "/start", "/auth"];
-const MAIN_PREFIXES = ["/showcase"];
+const MAIN_PREFIXES = ["/showcase", "/album"];
 
 function isAppPath(path: string) {
   return APP_PREFIXES.some((p) => path === p || path.startsWith(p));

@@ -119,6 +119,7 @@ export const dict: Dict = {
   createUser: { vi: "Tạo tài khoản", en: "Create account" },
   upgrade: { vi: "Nâng cấp", en: "Upgrade" },
   filterPhotos: { vi: "Lọc ảnh", en: "Filter" },
+  galleries: { vi: "Gallery khách", en: "Galleries" },
   // misc
   loading: { vi: "Đang tải…", en: "Loading…" },
   confirmDelete: { vi: "Bạn chắc chắn muốn xóa?", en: "Are you sure you want to delete?" },
