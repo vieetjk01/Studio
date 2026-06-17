@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     if (!ok) return NextResponse.json({ error: "wrong_password" }, { status: 401 });
   }
 
-  const photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position");
+  const photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
   const { data: sources } = await admin
     .from("album_sources")
     .select("id, name, position")

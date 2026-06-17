@@ -254,6 +254,11 @@ alter table public.albums add column if not exists category_label text;   -- cus
 alter table public.albums add column if not exists gallery_pinned  boolean not null default false; -- pinned to homepage (no password)
 create index if not exists albums_gallery_idx on public.albums (is_gallery, status);
 
+-- Video support + per-account gallery permission + admin-curated featured photos
+alter table public.photos add column if not exists is_video boolean not null default false;
+alter table public.profiles add column if not exists can_galleries boolean not null default false;
+alter table public.site_settings add column if not exists featured_images text[] not null default '{}';
+
 -- ============================================================================
 -- feedback: client testimonials for a gallery / the photographer
 -- ============================================================================
@@ -382,13 +387,21 @@ returns trigger language plpgsql security definer set search_path = public as $$
 declare
   lim   integer;
   isadm boolean;
+  cangal boolean;
   used  integer;
 begin
-  select monthly_album_limit, (role = 'admin')
-    into lim, isadm
+  select monthly_album_limit, (role = 'admin'), can_galleries
+    into lim, isadm, cangal
     from public.profiles where id = new.owner_id;
 
-  if coalesce(new.is_gallery, false) then return new; end if; -- galleries don't use the selection quota
+  if coalesce(new.is_gallery, false) then
+    -- Only admins / permitted accounts may create delivery galleries.
+    if not (coalesce(isadm, false) or coalesce(cangal, false)) then
+      raise exception 'Tài khoản chưa được cấp quyền tạo gallery khách.'
+        using errcode = 'P0001';
+    end if;
+    return new; -- galleries don't use the selection quota
+  end if;
   if coalesce(isadm, false) then return new; end if;
   if lim is null then return new; end if;
 

@@ -9,6 +9,7 @@ export interface Profile {
   monthly_album_limit: number | null;
   can_zip: boolean;
   can_notes: boolean;
+  can_galleries: boolean;
   is_active: boolean;
   created_at: string;
 }
@@ -77,6 +78,7 @@ export interface SiteSettings {
   contact_youtube: string | null;
   contact_address: string;
   contact_hours: string;
+  featured_images: string[] | null;
   updated_at: string;
 }
 
@@ -121,6 +123,7 @@ export interface Photo {
   drive_file_id: string;
   name: string;
   position: number;
+  is_video: boolean;
   created_at: string;
 }
 

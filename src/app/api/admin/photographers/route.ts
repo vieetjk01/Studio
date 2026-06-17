@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     monthly_album_limit?: number | null;
     can_zip?: boolean;
     can_notes?: boolean;
+    can_galleries?: boolean;
     full_name?: string;
   };
 
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     "monthly_album_limit",
     "can_zip",
     "can_notes",
+    "can_galleries",
     "full_name",
   ] as const) {
     if (body[k] !== undefined) patch[k] = body[k];

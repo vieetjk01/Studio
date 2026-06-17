@@ -141,6 +141,7 @@ export async function POST(
       drive_file_id: f.id,
       name: f.name,
       position: source.position * 100000 + i,
+      is_video: (f.mimeType ?? "").startsWith("video/"),
     }));
     for (const part of chunk(rows, 500)) {
       const { error: upErr, count } = await supabase

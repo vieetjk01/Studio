@@ -22,20 +22,12 @@ const DEFAULT_SETTINGS: SiteSettings = {
   contact_youtube: null,
   contact_address: "12 Nhà Thờ, Hoàn Kiếm, Hà Nội",
   contact_hours: "Thứ 2 – Chủ nhật · 8:00–20:00",
+  featured_images: [],
   updated_at: new Date().toISOString(),
 };
 
 export default async function HomePage() {
   let settings: SiteSettings = DEFAULT_SETTINGS;
-  let showcase: {
-    slug: string;
-    title: string;
-    kind: string;
-    cover_url: string | null;
-    pinned: boolean;
-    count: number;
-  }[] = [];
-  let featured: { fileId: string; slug: string }[] = [];
   let albumCount = 0;
   let photoCount = 0;
   type GalleryCard = { slug: string; title: string; cover_url: string | null; event_date: string | null };
@@ -48,51 +40,10 @@ export default async function HomePage() {
   try {
     const db = createAdminClient();
 
-    const [settingsRes, showcaseRes, albumCountRes, photoCountRes] = await Promise.all([
+    const [settingsRes, albumCountRes, photoCountRes, galRes, fbRes] = await Promise.all([
       db.from("site_settings").select("*").eq("id", 1).maybeSingle(),
-      db
-        .from("albums")
-        .select("id, slug, title, kind, cover_url, is_pinned, photos(count)")
-        .eq("status", "published")
-        .eq("is_showcase", true)
-        .order("is_pinned", { ascending: false })
-        .order("updated_at", { ascending: false }),
       db.from("albums").select("id", { count: "exact", head: true }).eq("status", "published"),
       db.from("photos").select("id", { count: "exact", head: true }),
-    ]);
-
-    settings = (settingsRes.data as SiteSettings | null) ?? DEFAULT_SETTINGS;
-    albumCount = albumCountRes.count ?? 0;
-    photoCount = photoCountRes.count ?? 0;
-
-    showcase = (showcaseRes.data ?? []).map((a) => ({
-      slug: a.slug,
-      title: a.title,
-      kind: (a.kind as string | null) ?? "Album",
-      cover_url: a.cover_url as string | null,
-      pinned: a.is_pinned as boolean,
-      count: (a.photos as { count: number }[] | null)?.[0]?.count ?? 0,
-    }));
-
-    // Featured photos: a handful from the showcase albums.
-    if (showcase.length > 0) {
-      const slugs = showcase.map((s) => s.slug);
-      const { data: ids } = await db.from("albums").select("id, slug").in("slug", slugs);
-      const idToSlug = new Map((ids ?? []).map((r) => [r.id, r.slug]));
-      const { data: photos } = await db
-        .from("photos")
-        .select("drive_file_id, album_id, position")
-        .in("album_id", [...idToSlug.keys()])
-        .order("position")
-        .limit(12);
-      featured = (photos ?? []).map((p) => ({
-        fileId: p.drive_file_id,
-        slug: idToSlug.get(p.album_id) ?? "",
-      }));
-    }
-
-    // Pinned delivery galleries + feedback for the homepage.
-    const [galRes, fbRes] = await Promise.all([
       db
         .from("albums")
         .select("slug, title, cover_url, event_date, category")
@@ -108,6 +59,11 @@ export default async function HomePage() {
         .order("created_at", { ascending: false })
         .limit(9),
     ]);
+
+    settings = (settingsRes.data as SiteSettings | null) ?? DEFAULT_SETTINGS;
+    albumCount = albumCountRes.count ?? 0;
+    photoCount = photoCountRes.count ?? 0;
+
     for (const g of galRes.data ?? []) {
       const card = { slug: g.slug, title: g.title, cover_url: g.cover_url as string | null, event_date: g.event_date as string | null };
       if (g.category === "video") pinnedVideoGalleries.push(card);
@@ -121,11 +77,10 @@ export default async function HomePage() {
   return (
     <ProfileHome
       settings={settings}
-      showcase={showcase}
-      featured={featured}
+      featuredImages={settings.featured_images ?? []}
       stats={{ albums: albumCount, photos: photoCount, years: settings.stat_years }}
-      photoGalleries={pinnedPhotoGalleries}
-      videoGalleries={pinnedVideoGalleries}
+      photoGalleries={pinnedPhotoGalleries.slice(0, 8)}
+      videoGalleries={pinnedVideoGalleries.slice(0, 8)}
       feedback={feedback}
     />
   );

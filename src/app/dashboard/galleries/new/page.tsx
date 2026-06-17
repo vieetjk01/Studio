@@ -60,7 +60,7 @@ export default function NewGalleryPage() {
   async function create() {
     setError(null);
     if (!title.trim()) return setError("Hãy nhập tên album.");
-    if (!phone.trim()) return setError("Hãy nhập số điện thoại khách (dùng làm mật khẩu xem).");
+    const viewPassword = phone.trim() || "0974374744"; // default password
     setBusy(true);
     try {
       const {
@@ -76,7 +76,7 @@ export default function NewGalleryPage() {
           slug: slugify(title),
           is_gallery: true,
           client_name: clientName.trim() || null,
-          client_phone: phone.trim(),
+          client_phone: viewPassword,
           event_date: eventDate || null,
           category,
           category_label: category === "khac" ? customCat.trim() || "Khác" : null,
@@ -104,7 +104,7 @@ export default function NewGalleryPage() {
       await fetch(`/api/albums/${album.id}/password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: phone.trim() }),
+        body: JSON.stringify({ password: viewPassword }),
       });
 
       if (links.length > 0) {
@@ -189,7 +189,7 @@ export default function NewGalleryPage() {
         )}
 
         <p className="rounded-lg px-3 py-2 text-[12.5px]" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
-          Khách sẽ xem album bằng mật khẩu là <b>số điện thoại</b> ở trên. Bạn có thể ghim album ra trang chủ (xem không cần mật khẩu) trong phần chỉnh sửa.
+          Khách xem album bằng mật khẩu là <b>số điện thoại</b> ở trên. Nếu để trống, mật khẩu mặc định là <b>0974374744</b>. Bạn có thể ghim album ra trang chủ (xem không cần mật khẩu) trong phần chỉnh sửa.
         </p>
 
         {error && <p className="text-sm text-red-400">{error}</p>}

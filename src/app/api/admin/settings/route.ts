@@ -34,6 +34,9 @@ export async function POST(req: Request) {
       patch[f] = f === "stat_years" ? Number(body[f]) || 0 : body[f] || null;
     }
   }
+  if (Array.isArray(body.featured_images)) {
+    patch.featured_images = (body.featured_images as string[]).map((s) => String(s).trim()).filter(Boolean);
+  }
 
   const db = createAdminClient();
   const { error } = await db

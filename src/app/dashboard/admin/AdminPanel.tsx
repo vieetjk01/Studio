@@ -50,6 +50,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         monthly_album_limit: 5,
         can_zip: false,
         can_notes: false,
+        can_galleries: false,
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -114,6 +115,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
               <th className="px-4 py-3">{t("monthlyLimit")}</th>
               <th className="px-4 py-3">{t("canZip")}</th>
               <th className="px-4 py-3">{t("canNotes")}</th>
+              <th className="px-4 py-3">Gallery</th>
             </tr>
           </thead>
           <tbody>
@@ -169,6 +171,13 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     type="checkbox"
                     checked={p.can_notes}
                     onChange={(e) => update(p, { can_notes: e.target.checked })}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={p.can_galleries}
+                    onChange={(e) => update(p, { can_galleries: e.target.checked })}
                   />
                 </td>
               </tr>

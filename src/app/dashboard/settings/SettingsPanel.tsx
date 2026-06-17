@@ -41,6 +41,7 @@ export default function SettingsPanel({
 }) {
   const { t } = useLang();
   const [form, setForm] = useState<Partial<SiteSettings>>(settings ?? EMPTY);
+  const [featuredText, setFeaturedText] = useState((settings?.featured_images ?? []).join("\n"));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -50,10 +51,11 @@ export default function SettingsPanel({
 
   async function save() {
     setSaving(true);
+    const featured_images = featuredText.split("\n").map((s) => s.trim()).filter(Boolean);
     const res = await fetch("/api/admin/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, featured_images }),
     });
     setSaving(false);
     setMsg(res.ok ? t("saved") : t("error"));
@@ -108,6 +110,18 @@ export default function SettingsPanel({
           {field("profile_avatar_url", "Link ảnh đại diện", { placeholder: "https://…" })}
           {field("profile_cover_url", "Link ảnh bìa", { placeholder: "https://…" })}
           {field("stat_years", "Số năm kinh nghiệm")}
+          <div>
+            <label className="label">Hình ảnh nổi bật (mỗi dòng 1 link)</label>
+            <textarea
+              className="input min-h-[120px] resize-y"
+              value={featuredText}
+              onChange={(e) => setFeaturedText(e.target.value)}
+              placeholder={"Dán link ảnh hoặc link Google Drive, mỗi dòng một ảnh.\nhttps://drive.google.com/file/d/FILE_ID/view"}
+            />
+            <p className="mt-1 text-[12px]" style={{ color: "var(--text3)" }}>
+              Hiển thị ở mục “Hình ảnh nổi bật” trên trang chủ (không lấy từ album).
+            </p>
+          </div>
         </div>
 
         {/* Contact */}

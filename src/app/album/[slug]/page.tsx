@@ -39,7 +39,7 @@ export default async function GalleryPage({ params }: { params: { slug: string }
   let photos = null;
   let sources = null;
   if (!hasPassword) {
-    photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position");
+    photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
     const { data: s } = await admin.from("album_sources").select("id, name, position").eq("album_id", album.id).order("position");
     sources = s ?? [];
   }

@@ -6,7 +6,6 @@ import {
   ArrowRight,
   MapPin,
   MessageSquare,
-  Eye,
   Send,
   Check,
   Phone,
@@ -30,14 +29,6 @@ import { appUrl } from "@/lib/hosts";
 import { thumbnailUrl } from "@/lib/drive";
 import type { SiteSettings, BookingService } from "@/lib/types";
 
-interface ShowcaseAlbum {
-  slug: string;
-  title: string;
-  kind: string;
-  cover_url: string | null;
-  pinned: boolean;
-  count: number;
-}
 
 const SERVICES: {
   k: BookingService;
@@ -58,25 +49,28 @@ interface GalleryCard {
   event_date: string | null;
 }
 
+function featuredSrc(url: string): string {
+  const m = url.match(/[-\w]{25,}/); // Drive file id
+  if (/drive\.google\.com|googleusercontent/.test(url) && m) return thumbnailUrl(m[0], 600);
+  return url;
+}
+
 export default function ProfileHome({
   settings,
-  showcase,
-  featured,
+  featuredImages = [],
   stats,
   photoGalleries = [],
   videoGalleries = [],
   feedback = [],
 }: {
   settings: SiteSettings;
-  showcase: ShowcaseAlbum[];
-  featured: { fileId: string; slug: string }[];
+  featuredImages?: string[];
   stats: { albums: number; photos: number; years: number };
   photoGalleries?: GalleryCard[];
   videoGalleries?: GalleryCard[];
   feedback?: { id: string; client_name: string | null; rating: number | null; content: string }[];
 }) {
   const { t } = useLang();
-  const libRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
 
   const [booking, setBooking] = useState({
@@ -129,9 +123,9 @@ export default function ProfileHome({
           <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
             Trang chủ
           </button>
-          <button onClick={() => scrollTo(libRef)} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
+          <Link href="/album" className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
             Album
-          </button>
+          </Link>
           <button onClick={() => scrollTo(contactRef)} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
             Liên hệ
           </button>
@@ -210,83 +204,28 @@ export default function ProfileHome({
         </div>
       </section>
 
-      {/* Featured photos */}
-      {featured.length > 0 && (
+      {/* Featured photos (curated by the admin) */}
+      {featuredImages.length > 0 && (
         <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
           <div className="mb-5 flex items-end justify-between gap-3.5">
             <div>
               <p className="eyebrow mb-1.5">Tuyển chọn</p>
-              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Ảnh nổi bật</h2>
+              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Hình ảnh nổi bật</h2>
             </div>
-            <button onClick={() => scrollTo(libRef)} className="flex items-center gap-1.5 text-[13.5px] font-medium" style={{ color: "var(--text2)" }}>
+            <Link href="/album" className="flex items-center gap-1.5 text-[13.5px] font-medium" style={{ color: "var(--text2)" }}>
               Xem tất cả <ArrowRight size={15} />
-            </button>
+            </Link>
           </div>
           <div style={{ columns: "230px", columnGap: "14px" }}>
-            {featured.map((f, i) => (
-              <Link
-                key={i}
-                href={`/showcase/${f.slug}`}
-                className="mb-3.5 block overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]"
-                style={{ breakInside: "avoid", background: "var(--surface)", border: "1px solid var(--border)" }}
-              >
+            {featuredImages.map((url, i) => (
+              <div key={i} className="mb-3.5 overflow-hidden rounded-xl animate-[vkPop_.45s_ease_both]" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={thumbnailUrl(f.fileId, 500)} alt="ảnh nổi bật" className="block w-full transition-transform duration-700 hover:scale-[1.04]" />
-              </Link>
+                <img src={featuredSrc(url)} alt="ảnh nổi bật" loading="lazy" className="block w-full" />
+              </div>
             ))}
           </div>
         </section>
       )}
-
-      {/* Showcase albums */}
-      <section ref={libRef} className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] scroll-mt-20 px-6 md:px-10">
-        <div className="mb-5 flex items-end justify-between gap-3.5">
-          <div>
-            <p className="eyebrow mb-1.5">Bộ sưu tập</p>
-            <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Album tham khảo</h2>
-          </div>
-          <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: "var(--text3)" }}>
-            <Eye size={14} /> Ảnh mẫu — chỉ để xem
-          </span>
-        </div>
-        {showcase.length === 0 ? (
-          <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
-            Chưa có album tham khảo. Bật “Hiển thị ngoài trang chủ” khi sửa album.
-          </div>
-        ) : (
-          <div className="grid gap-[clamp(14px,2vw,20px)] [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
-            {showcase.map((a) => (
-              <Link
-                key={a.slug}
-                href={`/showcase/${a.slug}`}
-                className="group relative overflow-hidden rounded-xl animate-[vkFade_.5s_ease_both]"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-              >
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  {a.cover_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={a.cover_url} alt={a.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  ) : (
-                    <div className="absolute inset-0" style={{ background: "var(--surface2)" }} />
-                  )}
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,0) 50%)" }} />
-                  {a.pinned && (
-                    <div className="absolute right-2.5 top-2.5 flex h-[26px] w-[26px] items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.6)", backdropFilter: "blur(6px)" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--logo)"><path d="M9 4h6l-1 7 4 3v2h-5v6l-1 1-1-1v-6H6v-2l4-3z" /></svg>
-                    </div>
-                  )}
-                  <div className="absolute inset-x-3.5 bottom-3.5">
-                    <h3 className="mb-0.5 font-serif text-xl font-medium leading-tight text-white">{a.title}</h3>
-                    <p className="text-[11.5px]" style={{ color: "rgba(255,255,255,.66)" }}>
-                      {a.kind} · {a.count} ảnh
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Pinned photo galleries */}
       {photoGalleries.length > 0 && (
@@ -341,7 +280,7 @@ export default function ProfileHome({
       )}
 
       {/* Booking + contact */}
-      <section ref={contactRef} className="mx-auto mt-[clamp(44px,6vw,76px)] max-w-[1180px] scroll-mt-20 px-6 md:px-10">
+      <section id="dat-lich" ref={contactRef} className="mx-auto mt-[clamp(44px,6vw,76px)] max-w-[1180px] scroll-mt-20 px-6 md:px-10">
         <div className="grid items-start gap-[clamp(16px,2.5vw,26px)] [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
           {/* Booking form */}
           <div className="card p-[clamp(22px,3vw,34px)] animate-[vkFade_.5s_ease_both]">

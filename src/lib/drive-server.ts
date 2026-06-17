@@ -29,11 +29,8 @@ export async function listFolderImages(folderId: string): Promise<DriveFile[]> {
   let pageToken: string | undefined;
 
   do {
-    const q = encodeURIComponent(
-      `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`
-    );
     const params = new URLSearchParams({
-      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+      q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
       fields: "nextPageToken, files(id, name, mimeType)",
       pageSize: "1000",
       orderBy: "name_natural",
@@ -54,7 +51,6 @@ export async function listFolderImages(folderId: string): Promise<DriveFile[]> {
     };
     if (data.files) out.push(...data.files);
     pageToken = data.nextPageToken;
-    void q;
   } while (pageToken);
 
   return out;
@@ -107,7 +103,8 @@ export async function resolveSource(
     if (meta.mimeType === FOLDER_MIME) {
       return { folderName: meta.name, files: await listFolderImages(fileId) };
     }
-    if (meta.mimeType.startsWith("image/")) return { folderName: null, files: [meta] };
+    if (meta.mimeType.startsWith("image/") || meta.mimeType.startsWith("video/"))
+      return { folderName: null, files: [meta] };
     return { folderName: null, files: [] };
   }
 

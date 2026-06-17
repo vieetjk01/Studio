@@ -13,6 +13,27 @@ function catLabel(cat: string | null, custom: string | null) {
 
 export default async function GalleriesPage() {
   const supabase = createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("role, can_galleries")
+    .eq("id", user?.id ?? "")
+    .maybeSingle();
+  const permitted = me?.role === "admin" || me?.can_galleries;
+  if (!permitted) {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <div className="card p-8">
+          <h1 className="font-serif text-2xl font-medium">Chưa được cấp quyền</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+            Tài khoản của bạn chưa được phép tạo gallery giao khách. Vui lòng liên hệ quản trị viên để được cấp quyền.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { data: galleries } = await supabase
     .from("albums")
     .select("*, photos(drive_file_id)")

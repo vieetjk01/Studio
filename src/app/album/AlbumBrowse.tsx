@@ -34,6 +34,9 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GalleryCard[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [cat, setCat] = useState("all");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const PER_MONTH = 4;
 
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +52,11 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
     setSearching(false);
   }
 
-  const shown = results ?? galleries;
+  const base = results ?? galleries;
+  const shown = useMemo(
+    () => (cat === "all" ? base : base.filter((g) => g.category === cat)),
+    [base, cat]
+  );
 
   // Group by month/year (only when not searching).
   const groups = useMemo(() => {
@@ -70,7 +77,10 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
         style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}
       >
         <Brand />
-        <LanguageSwitcher />
+        <div className="flex items-center gap-3">
+          <Link href="/#dat-lich" className="btn-ghost px-4 py-2 text-[13.5px]">Đặt lịch</Link>
+          <LanguageSwitcher />
+        </div>
       </header>
 
       <div className="mx-auto max-w-[1180px] px-6 pt-8 md:px-10">
@@ -91,6 +101,14 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
           )}
         </form>
 
+        {/* Category filter */}
+        <div className="mt-5 flex flex-wrap gap-2">
+          <CatTab active={cat === "all"} onClick={() => setCat("all")}>Tất cả</CatTab>
+          {GALLERY_CATEGORIES.map((c) => (
+            <CatTab key={c.value} active={cat === c.value} onClick={() => setCat(c.value)}>{c.label}</CatTab>
+          ))}
+        </div>
+
         {shown.length === 0 ? (
           <p className="py-20 text-center text-sm" style={{ color: "var(--text3)" }}>
             {results ? "Không tìm thấy album phù hợp." : "Chưa có album nào."}
@@ -101,16 +119,42 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
           </div>
         ) : (
           <div className="mt-8 space-y-10">
-            {groups!.map(([period, items]) => (
-              <section key={period}>
-                <h2 className="mb-4 font-serif text-2xl font-medium">{period}</h2>
-                <Grid items={items} />
-              </section>
-            ))}
+            {groups!.map(([period, items]) => {
+              const isOpen = expanded[period];
+              const visible = isOpen ? items : items.slice(0, PER_MONTH);
+              return (
+                <section key={period}>
+                  <h2 className="mb-4 font-serif text-2xl font-medium">{period}</h2>
+                  <Grid items={visible} />
+                  {items.length > PER_MONTH && (
+                    <div className="mt-4 text-center">
+                      <button
+                        onClick={() => setExpanded((e) => ({ ...e, [period]: !isOpen }))}
+                        className="btn-ghost"
+                      >
+                        {isOpen ? "Thu gọn" : `Xem thêm (${items.length - PER_MONTH})`}
+                      </button>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function CatTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-full px-4 py-1.5 text-[13px] transition-colors"
+      style={active ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+    >
+      {children}
+    </button>
   );
 }
 
