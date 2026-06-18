@@ -46,6 +46,19 @@ async function ensureGoogle(): Promise<void> {
 }
 
 /**
+ * Preload the Google scripts (call on mount) so the token popup later opens
+ * synchronously inside the click handler instead of after a network load —
+ * otherwise the browser blocks it as a non-user-gesture popup.
+ */
+export async function preloadGoogle(): Promise<void> {
+  try {
+    await ensureGoogle();
+  } catch {
+    /* ignore — surfaced when the user actually clicks */
+  }
+}
+
+/**
  * Request a Drive access token via Google Identity Services. `forceConsent`
  * shows the account/consent chooser (use when the previous token expired).
  */
@@ -57,7 +70,8 @@ export async function requestDriveToken(forceConsent = false): Promise<string> {
       scope: DRIVE_FILE_SCOPE,
       callback: (resp: any) =>
         resp?.access_token ? resolve(resp.access_token) : reject(new Error("no_token")),
-      error_callback: (err: any) => reject(err ?? new Error("token_error")),
+      error_callback: (err: any) =>
+        reject(new Error(err?.type || err?.message || "token_error")),
     });
     client.requestAccessToken({ prompt: forceConsent ? "consent" : "" });
   });

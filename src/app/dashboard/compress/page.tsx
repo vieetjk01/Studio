@@ -25,6 +25,7 @@ import {
 } from "@/lib/drive-write";
 import {
   pickerConfigured,
+  preloadGoogle,
   requestDriveToken,
   openDrivePicker,
   listFolderImages,
@@ -67,6 +68,7 @@ export default function CompressPage() {
 
   useEffect(() => {
     setFsSupported(typeof window !== "undefined" && "showDirectoryPicker" in window);
+    if (pickerConfigured) preloadGoogle();
   }, []);
 
   // Drive source
@@ -163,10 +165,12 @@ export default function CompressPage() {
       setSrcLabel(`${uniq.length} ảnh từ Google Drive (đã cấp quyền ghi)`);
       setResults([]);
     } catch (e: any) {
+      console.error("[compress] Drive picker error:", e);
+      const detail = e?.message || e?.type || "";
       setDriveError(
-        e?.message === "drive_unauthorized"
+        detail === "drive_unauthorized"
           ? "Cần cấp lại quyền Google Drive."
-          : "Không mở được Google Drive. Kiểm tra cấu hình Google (Client ID / API key / Picker API)."
+          : `Không mở được Google Drive${detail ? ` (lỗi: ${detail})` : ""}. Kiểm tra cấu hình Google (Client ID / API key / Picker API / Authorized JavaScript origins).`
       );
     }
     setPicking(false);
