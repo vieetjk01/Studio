@@ -14,11 +14,15 @@ function startOfTodayVN(): string {
   return new Date(startUtcMs).toISOString();
 }
 
+type Kind = "basic" | "picker";
+
 interface Status {
   userId: string;
   isAdmin: boolean;
-  limit: number | null; // null = unlimited
-  used: number;
+  basicLimit: number | null; // per day; null = unlimited
+  basicUsed: number; // today
+  pickerLimit: number | null; // lifetime; null = unlimited
+  pickerUsed: number; // lifetime total
 }
 
 async function getStatus(): Promise<Status | null> {
@@ -30,52 +34,81 @@ async function getStatus(): Promise<Status | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, compress_daily_limit")
+    .select("role, compress_daily_limit, compress_picker_limit")
     .eq("id", user.id)
     .maybeSingle();
 
   const isAdmin = profile?.role === "admin";
-  const limit = isAdmin ? null : profile?.compress_daily_limit ?? null;
-
   const db = createAdminClient();
-  const { count } = await db
+
+  const { count: basicUsed } = await db
     .from("compress_usages")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
+    .eq("kind", "basic")
     .gte("created_at", startOfTodayVN());
 
-  return { userId: user.id, isAdmin, limit, used: count ?? 0 };
-}
+  const { count: pickerUsed } = await db
+    .from("compress_usages")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("kind", "picker");
 
-function payload(s: Status, used = s.used) {
-  const unlimited = s.limit === null;
   return {
-    unlimited,
-    limit: s.limit,
-    used,
-    remaining: unlimited ? null : Math.max(0, (s.limit ?? 0) - used),
+    userId: user.id,
+    isAdmin,
+    basicLimit: isAdmin ? null : profile?.compress_daily_limit ?? null,
+    basicUsed: basicUsed ?? 0,
+    pickerLimit: isAdmin ? null : profile?.compress_picker_limit ?? null,
+    pickerUsed: pickerUsed ?? 0,
   };
 }
 
-/** Read the caller's daily compress quota status. */
+function quota(limit: number | null, used: number) {
+  const unlimited = limit === null;
+  return {
+    unlimited,
+    limit,
+    used,
+    remaining: unlimited ? null : Math.max(0, (limit ?? 0) - used),
+  };
+}
+
+function body(s: Status) {
+  return {
+    ok: true,
+    basic: quota(s.basicLimit, s.basicUsed),
+    picker: quota(s.pickerLimit, s.pickerUsed),
+  };
+}
+
+/** Read the caller's compress quota status (basic + picker). */
 export async function GET() {
   const s = await getStatus();
   if (!s) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  return NextResponse.json({ ok: true, ...payload(s) });
+  return NextResponse.json(body(s));
 }
 
-/** Consume one daily compress use (call right before compressing). */
-export async function POST() {
+/** Consume one compress use of the given kind (call right before compressing). */
+export async function POST(req: Request) {
   const s = await getStatus();
   if (!s) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const unlimited = s.limit === null;
-  if (!unlimited && s.used >= (s.limit ?? 0)) {
-    return NextResponse.json({ ok: false, ...payload(s) }, { status: 429 });
+  const { kind } = (await req.json().catch(() => ({}))) as { kind?: Kind };
+  const k: Kind = kind === "picker" ? "picker" : "basic";
+
+  const limit = k === "picker" ? s.pickerLimit : s.basicLimit;
+  const used = k === "picker" ? s.pickerUsed : s.basicUsed;
+
+  if (limit !== null && used >= limit) {
+    return NextResponse.json({ ok: false, kind: k, ...body(s) }, { status: 429 });
   }
 
   const db = createAdminClient();
-  await db.from("compress_usages").insert({ user_id: s.userId });
+  await db.from("compress_usages").insert({ user_id: s.userId, kind: k });
 
-  return NextResponse.json({ ok: true, ...payload(s, s.used + 1) });
+  // Reflect the just-consumed use in the returned counts.
+  if (k === "picker") s.pickerUsed += 1;
+  else s.basicUsed += 1;
+  return NextResponse.json({ ...body(s), kind: k });
 }

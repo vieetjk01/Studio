@@ -7,7 +7,7 @@
  * is never tainted and can be exported).
  */
 
-export type OutputFormat = "image/jpeg" | "image/webp";
+export type OutputFormat = "image/jpeg" | "image/webp" | "image/png";
 
 export type WmPosition =
   | "tile"
@@ -199,10 +199,17 @@ export async function compressImage(
   return { blob, width: w, height: h };
 }
 
+/** File extension for an output format. */
+export function formatExt(format: OutputFormat): string {
+  if (format === "image/webp") return "webp";
+  if (format === "image/png") return "png";
+  return "jpg";
+}
+
 /** Swap a filename's extension to match the output format. */
 export function outName(name: string, format: OutputFormat): string {
   const base = name.replace(/\.[^./\\]+$/, "");
-  return `${base}.${format === "image/webp" ? "webp" : "jpg"}`;
+  return `${base}.${formatExt(format)}`;
 }
 
 export function formatBytes(n: number): string {

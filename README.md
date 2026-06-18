@@ -162,11 +162,21 @@ Middleware then routes by host:
 When the host vars are unset (local dev, `*.vercel.app`), the full app runs on a
 single host and the compress tool stays at `/dashboard/compress`.
 
-> **Daily compress quota.** Free accounts may run the compressor **once per day**
-> (`profiles.compress_daily_limit`, default `1`; `null` = unlimited). Admins are
-> always unlimited and can raise/clear the per-account limit in
-> **Dashboard → Admin → “Nén/ngày”**. Usage is logged in `compress_usages`
-> (day boundary in Vietnam time). Re-run `supabase/schema.sql` to add these.
+> **Image tool tabs + quotas.** The tool has three tabs: **Nén ảnh** (compress),
+> **Gắn watermark** (standalone text/image watermark) and **Đổi định dạng**
+> (convert between JPEG/PNG/WebP). Each tab has a **preview**. Free-account limits
+> (admins always unlimited):
+> - **Compress** from local files / public Drive link: **2/day**
+>   (`profiles.compress_daily_limit`, counted per Vietnam-day).
+> - **Compress via the Google Picker** (writes back to Drive): **1 lifetime trial**
+>   (`profiles.compress_picker_limit`).
+> - **Watermark** and **Convert**: unlimited (download only, no Drive write-back).
+>
+> Usage is logged in `compress_usages` (`kind` = `basic` | `picker`). Admins set
+> per-account limits in **Dashboard → Admin** (“Nén/ngày”, “Nén Drive”). For the
+> Picker compress, the overwrite/new-copy choice is made **before** running and
+> the compress+write runs automatically. Re-run `supabase/schema.sql` to add the
+> columns + `kind`.
 
 > **Compress on a user's own Drive (Google Picker).** In the compress tool the
 > **“Chọn từ Google Drive”** button lets **any signed-in Google user** pick

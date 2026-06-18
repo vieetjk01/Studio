@@ -51,7 +51,8 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         can_zip: false,
         can_notes: false,
         can_galleries: false,
-        compress_daily_limit: 1,
+        compress_daily_limit: 2,
+        compress_picker_limit: 1,
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -118,6 +119,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
               <th className="px-4 py-3">{t("canNotes")}</th>
               <th className="px-4 py-3">Gallery</th>
               <th className="px-4 py-3">Nén/ngày</th>
+              <th className="px-4 py-3">Nén Drive</th>
             </tr>
           </thead>
           <tbody>
@@ -192,6 +194,21 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     onChange={(e) =>
                       update(p, {
                         compress_daily_limit:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min={0}
+                    className="input w-20 px-2 py-1 text-xs"
+                    placeholder="∞"
+                    value={p.compress_picker_limit ?? ""}
+                    onChange={(e) =>
+                      update(p, {
+                        compress_picker_limit:
                           e.target.value === "" ? null : Number(e.target.value),
                       })
                     }

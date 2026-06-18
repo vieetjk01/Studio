@@ -440,20 +440,28 @@ create trigger albums_log_creation
   for each row execute function public.log_album_creation();
 
 -- ============================================================================
--- Image-compress tool (img.vieetjk.com) — per-account DAILY usage limit.
--- Free accounts get compress_daily_limit = 1 (one compress run per day).
--- null = unlimited; admins are always exempt. Counted from an append-only log
--- (day boundary handled in the API using Vietnam time).
+-- Image-compress tool (img.vieetjk.com) — per-account usage limits.
+--   compress_daily_limit  : "basic" compress (local files + public Drive link),
+--                           counted PER DAY (Vietnam time). Free = 2/day.
+--   compress_picker_limit : compress via the Google Picker (writes back to the
+--                           user's own Drive), counted LIFETIME. Free = 1 (trial).
+-- null = unlimited; admins are always exempt. Counted from an append-only log.
 -- ============================================================================
-alter table public.profiles add column if not exists compress_daily_limit integer default 1;
+alter table public.profiles add column if not exists compress_daily_limit integer default 2;
+alter table public.profiles alter column compress_daily_limit set default 2;
+-- Bump accounts still on the old default (1) to the new free allowance (2).
+update public.profiles set compress_daily_limit = 2 where compress_daily_limit = 1;
+alter table public.profiles add column if not exists compress_picker_limit integer default 1;
 
 create table if not exists public.compress_usages (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid references auth.users (id) on delete cascade,
+  kind       text not null default 'basic',   -- 'basic' | 'picker'
   created_at timestamptz not null default now()
 );
+alter table public.compress_usages add column if not exists kind text not null default 'basic';
 create index if not exists compress_usages_user_idx
-  on public.compress_usages (user_id, created_at);
+  on public.compress_usages (user_id, kind, created_at);
 alter table public.compress_usages enable row level security;
 -- Users read their own usage; admins read all. Inserts happen via the service
 -- role through the /api/compress/use route, so no public insert policy needed.
