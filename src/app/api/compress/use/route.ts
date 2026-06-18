@@ -19,6 +19,7 @@ type Kind = "basic" | "picker";
 interface Status {
   userId: string;
   isAdmin: boolean;
+  pro: boolean; // can use image-watermark + compression in the watermark tab
   basicLimit: number | null; // per day; null = unlimited
   basicUsed: number; // today
   pickerLimit: number | null; // lifetime; null = unlimited
@@ -34,7 +35,7 @@ async function getStatus(): Promise<Status | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, compress_daily_limit, compress_picker_limit")
+    .select("role, compress_daily_limit, compress_picker_limit, can_watermark_pro")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -57,6 +58,7 @@ async function getStatus(): Promise<Status | null> {
   return {
     userId: user.id,
     isAdmin,
+    pro: isAdmin || !!profile?.can_watermark_pro,
     basicLimit: isAdmin ? null : profile?.compress_daily_limit ?? null,
     basicUsed: basicUsed ?? 0,
     pickerLimit: isAdmin ? null : profile?.compress_picker_limit ?? null,
@@ -76,6 +78,7 @@ function quota(limit: number | null, used: number) {
 
 function body(s: Status) {
   return {
+    pro: s.pro,
     basic: quota(s.basicLimit, s.basicUsed),
     picker: quota(s.pickerLimit, s.pickerUsed),
   };

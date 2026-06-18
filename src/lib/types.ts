@@ -12,6 +12,7 @@ export interface Profile {
   can_galleries: boolean;
   compress_daily_limit: number | null;
   compress_picker_limit: number | null;
+  can_watermark_pro: boolean;
   is_active: boolean;
   created_at: string;
 }

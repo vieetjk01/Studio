@@ -26,6 +26,7 @@ export default function CompressPage() {
   const [tool, setTool] = useState<Tool>("compress");
   const [driveToken, setDriveToken] = useState<string | null>(null);
   const [quota, setQuota] = useState<QuotaState | null>(null);
+  const [pro, setPro] = useState(false);
 
   useEffect(() => {
     if (pickerConfigured) preloadGoogle();
@@ -38,6 +39,7 @@ export default function CompressPage() {
       if (r.ok) {
         const d = await r.json();
         setQuota({ basic: d.basic, picker: d.picker });
+        setPro(!!d.pro);
       }
     } catch {
       /* ignore */
@@ -122,6 +124,7 @@ export default function CompressPage() {
       <ToolPanel
         key={tool}
         tool={tool}
+        pro={pro}
         ensureDriveToken={ensureDriveToken}
         quota={quota}
         consumeQuota={consumeQuota}

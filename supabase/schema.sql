@@ -452,6 +452,9 @@ alter table public.profiles alter column compress_daily_limit set default 2;
 -- Bump accounts still on the old default (1) to the new free allowance (2).
 update public.profiles set compress_daily_limit = 2 where compress_daily_limit = 1;
 alter table public.profiles add column if not exists compress_picker_limit integer default 1;
+-- "Pro" watermark features (image/logo watermark + compressing in the watermark
+-- tab): false for free accounts, admins always allowed.
+alter table public.profiles add column if not exists can_watermark_pro boolean not null default false;
 
 create table if not exists public.compress_usages (
   id         uuid primary key default gen_random_uuid(),

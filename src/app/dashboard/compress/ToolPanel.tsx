@@ -89,11 +89,13 @@ const POS_OPTIONS: { v: WmPosition; label: string }[] = [
 
 export default function ToolPanel({
   tool,
+  pro,
   ensureDriveToken,
   quota,
   consumeQuota,
 }: {
   tool: Tool;
+  pro: boolean;
   ensureDriveToken: (force?: boolean) => Promise<string>;
   quota: QuotaState | null;
   consumeQuota: (kind: "basic" | "picker") => Promise<{ ok: boolean; status: number; data: any }>;
@@ -271,9 +273,12 @@ export default function ToolPanel({
   }
 
   // ── Per-tool processing options ──────────────────────────────
+  // Free accounts: image/logo watermark is a pro feature — fall back to text.
+  const effectiveWmType: "text" | "image" = pro ? wmType : "text";
+
   function buildWatermark(): WatermarkOptions {
     return {
-      type: wmType,
+      type: effectiveWmType,
       position: wmPos,
       opacity: wmOpacity / 100,
       text: wmText,
@@ -285,7 +290,11 @@ export default function ToolPanel({
   }
   function optionsFor(): { quality: number; maxDim: number; format: OutputFormat; watermark: WatermarkOptions | null } {
     if (tool === "compress") return { quality: quality / 100, maxDim, format, watermark: null };
-    if (tool === "watermark") return { quality: quality / 100, maxDim, format, watermark: buildWatermark() };
+    if (tool === "watermark")
+      // Free accounts can't compress in the watermark tab: keep high quality, no resize.
+      return pro
+        ? { quality: quality / 100, maxDim, format, watermark: buildWatermark() }
+        : { quality: 0.92, maxDim: 0, format, watermark: buildWatermark() };
     return { quality: 0.95, maxDim: 0, format: targetFormat, watermark: null }; // convert
   }
   const outputFormat = tool === "convert" ? targetFormat : format;
@@ -372,7 +381,7 @@ export default function ToolPanel({
 
   async function run() {
     if (items.length === 0 || busy) return;
-    if (tool === "watermark" && wmType === "image" && !wmImg) {
+    if (tool === "watermark" && effectiveWmType === "image" && !wmImg) {
       alert("Hãy chọn ảnh watermark trước.");
       return;
     }
@@ -643,15 +652,22 @@ export default function ToolPanel({
 
         {tool === "watermark" && (
           <>
-            <div className="mb-3 flex gap-2">
-              <button onClick={() => setWmType("text")} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px]" style={wmType === "text" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <button onClick={() => setWmType("text")} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px]" style={effectiveWmType === "text" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}>
                 <Type size={14} /> Chữ
               </button>
-              <button onClick={() => setWmType("image")} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px]" style={wmType === "image" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}>
-                <ImageIcon size={14} /> Ảnh / Logo
+              <button
+                onClick={() => pro && setWmType("image")}
+                disabled={!pro}
+                title={pro ? "" : "Tính năng dành cho tài khoản nâng cấp"}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] disabled:cursor-not-allowed disabled:opacity-50"
+                style={effectiveWmType === "image" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}
+              >
+                <ImageIcon size={14} /> Ảnh / Logo {!pro && "🔒"}
               </button>
+              {!pro && <span className="text-[12px]" style={{ color: "var(--text3)" }}>Watermark logo cần nâng cấp</span>}
             </div>
-            {wmType === "text" ? (
+            {effectiveWmType === "text" ? (
               <>
                 <input value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder="Chữ watermark" className="input" />
                 <div className="mt-3 flex items-center gap-3">
@@ -695,19 +711,27 @@ export default function ToolPanel({
             <input type="range" min={5} max={100} value={wmOpacity} onChange={(e) => setWmOpacity(+e.target.value)} className="w-full accent-[var(--gold)]" />
 
             <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--border)" }}>
-              <label className="mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>
-                Nén kèm — chất lượng: <b style={{ color: "var(--text)" }}>{quality}</b>
-              </label>
-              <input type="range" min={40} max={100} value={quality} onChange={(e) => setQuality(+e.target.value)} className="w-full accent-[var(--gold)]" />
-              <label className="mt-2 block text-[13px]" style={{ color: "var(--text2)" }}>Kích thước tối đa</label>
-              <select value={maxDim} onChange={(e) => setMaxDim(+e.target.value)} className="input">
-                <option value={0}>Giữ nguyên</option>
-                <option value={4000}>4000 px</option>
-                <option value={2560}>2560 px</option>
-                <option value={2048}>2048 px</option>
-                <option value={1920}>1920 px</option>
-                <option value={1280}>1280 px</option>
-              </select>
+              {pro ? (
+                <>
+                  <label className="mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>
+                    Nén kèm — chất lượng: <b style={{ color: "var(--text)" }}>{quality}</b>
+                  </label>
+                  <input type="range" min={40} max={100} value={quality} onChange={(e) => setQuality(+e.target.value)} className="w-full accent-[var(--gold)]" />
+                  <label className="mt-2 block text-[13px]" style={{ color: "var(--text2)" }}>Kích thước tối đa</label>
+                  <select value={maxDim} onChange={(e) => setMaxDim(+e.target.value)} className="input">
+                    <option value={0}>Giữ nguyên</option>
+                    <option value={4000}>4000 px</option>
+                    <option value={2560}>2560 px</option>
+                    <option value={2048}>2048 px</option>
+                    <option value={1920}>1920 px</option>
+                    <option value={1280}>1280 px</option>
+                  </select>
+                </>
+              ) : (
+                <p className="text-[12.5px]" style={{ color: "var(--text3)" }}>
+                  🔒 Nén ảnh kèm watermark là tính năng dành cho <b>tài khoản nâng cấp</b>. Tài khoản miễn phí xuất ở chất lượng cao mặc định.
+                </p>
+              )}
             </div>
           </>
         )}

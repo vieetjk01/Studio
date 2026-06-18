@@ -53,6 +53,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         can_galleries: false,
         compress_daily_limit: 2,
         compress_picker_limit: 1,
+        can_watermark_pro: false,
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -120,6 +121,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
               <th className="px-4 py-3">Gallery</th>
               <th className="px-4 py-3">Nén/ngày</th>
               <th className="px-4 py-3">Nén Drive</th>
+              <th className="px-4 py-3">WM Pro</th>
             </tr>
           </thead>
           <tbody>
@@ -212,6 +214,13 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                           e.target.value === "" ? null : Number(e.target.value),
                       })
                     }
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={p.can_watermark_pro}
+                    onChange={(e) => update(p, { can_watermark_pro: e.target.checked })}
                   />
                 </td>
               </tr>
