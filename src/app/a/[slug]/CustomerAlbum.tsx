@@ -12,6 +12,8 @@ import {
   ChevronRight,
   X,
   ListChecks,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -77,6 +79,9 @@ export default function CustomerAlbum({
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const [lbIdx, setLbIdx] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [copied, setCopied] = useState(false);
@@ -284,6 +289,35 @@ export default function CustomerAlbum({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lbIdx, visiblePhotos.length]);
+
+  // Reset zoom whenever the lightbox opens or the photo changes.
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [lbIdx]);
+
+  function zoomBy(d: number) {
+    setZoom((z) => {
+      const n = Math.min(5, Math.max(1, +(z + d).toFixed(2)));
+      if (n === 1) setPan({ x: 0, y: 0 });
+      return n;
+    });
+  }
+  function onWheelZoom(e: React.WheelEvent) {
+    zoomBy(e.deltaY < 0 ? 0.3 : -0.3);
+  }
+  function onPanDown(e: React.PointerEvent) {
+    if (zoom <= 1) return;
+    drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  function onPanMove(e: React.PointerEvent) {
+    if (!drag.current) return;
+    setPan({ x: drag.current.px + (e.clientX - drag.current.x), y: drag.current.py + (e.clientY - drag.current.y) });
+  }
+  function onPanUp() {
+    drag.current = null;
+  }
 
   // Load the current selection immediately on open (don't wait for SSR/poll),
   // keep it in sync, and flush any pending save before the page goes away.
@@ -607,6 +641,12 @@ export default function CustomerAlbum({
                 <Download size={17} />
               </a>
             )}
+            <button onClick={() => zoomBy(-0.5)} disabled={zoom <= 1} title="Thu nhỏ" className="flex h-10 w-10 items-center justify-center rounded-lg disabled:opacity-40" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+              <ZoomOut size={17} />
+            </button>
+            <button onClick={() => zoomBy(0.5)} title="Phóng to" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+              <ZoomIn size={17} />
+            </button>
             <button
               onClick={() => setLbIdx(null)}
               className="flex h-10 w-10 items-center justify-center rounded-lg"
@@ -617,16 +657,33 @@ export default function CustomerAlbum({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-wrap overflow-y-auto">
-            <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10" style={{ flexBasis: "480px" }}>
+            <div
+              className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 md:p-10"
+              style={{ flexBasis: "480px" }}
+              onWheel={onWheelZoom}
+            >
               <button
                 onClick={() => setLbIdx(Math.max(0, lbIdx - 1))}
                 disabled={lbIdx === 0}
-                className="absolute left-3.5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25"
+                className="absolute left-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
               >
                 <ChevronLeft size={22} />
               </button>
-              <div className="relative inline-flex animate-[vkPop_.35s_ease_both]">
+              <div
+                className="relative inline-flex"
+                style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  transformOrigin: "center",
+                  transition: drag.current ? "none" : "transform .15s ease",
+                  cursor: zoom > 1 ? (drag.current ? "grabbing" : "grab") : "zoom-in",
+                  touchAction: "none",
+                }}
+                onPointerDown={onPanDown}
+                onPointerMove={onPanMove}
+                onPointerUp={onPanUp}
+                onDoubleClick={() => (zoom > 1 ? zoomBy(-10) : zoomBy(1.5))}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={fullImageUrl(lbPhoto.drive_file_id, 1600)}
@@ -649,7 +706,7 @@ export default function CustomerAlbum({
               <button
                 onClick={() => setLbIdx(Math.min(visiblePhotos.length - 1, lbIdx + 1))}
                 disabled={lbIdx >= visiblePhotos.length - 1}
-                className="absolute right-3.5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25"
+                className="absolute right-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
               >
                 <ChevronRight size={22} />
