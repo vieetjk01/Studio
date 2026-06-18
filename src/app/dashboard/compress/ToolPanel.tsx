@@ -104,6 +104,7 @@ export default function ToolPanel({
   const [items, setItems] = useState<SourceItem[]>([]);
   const [srcLabel, setSrcLabel] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
 
   // Drive link
   const [driveUrl, setDriveUrl] = useState("");
@@ -142,12 +143,13 @@ export default function ToolPanel({
 
   // Preview (live)
   const [previewSrc, setPreviewSrc] = useState<
-    { key: string; img: HTMLImageElement; origSize: number; label: string } | null
+    { key: string; img: HTMLImageElement; origSize: number; label: string; origUrl: string } | null
   >(null);
   const [preview, setPreview] = useState<
     { url: string; origSize: number; newSize: number; label: string } | null
   >(null);
   const [zoom, setZoom] = useState(1);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   const isPicker = source === "picker";
   const activeQuota = tool === "compress" ? (isPicker ? quota?.picker : quota?.basic) : null;
@@ -169,6 +171,30 @@ export default function ToolPanel({
     setItems(files.map((file, i) => ({ key: `${i}-${file.name}`, name: file.name, file })));
     setSrcLabel(`${files.length} ảnh đã chọn (xử lý cục bộ, không upload)`);
     resetOutputs();
+  }
+
+  async function pickLocalFolder() {
+    // Chrome/Edge: native folder picker; otherwise fall back to <input webkitdirectory>.
+    if (fsSupported) {
+      try {
+        const dir = await (window as any).showDirectoryPicker({ id: "vk-img-src" });
+        const files: SourceItem[] = [];
+        let i = 0;
+        for await (const entry of dir.values()) {
+          if (entry.kind === "file" && IMG_RE.test(entry.name)) {
+            const file = await entry.getFile();
+            files.push({ key: `${i++}-${entry.name}`, name: entry.name, file });
+          }
+        }
+        setItems(files);
+        setSrcLabel(`${dir.name} · ${files.length} ảnh (xử lý cục bộ, không upload)`);
+        resetOutputs();
+      } catch {
+        /* cancelled */
+      }
+    } else {
+      folderInput.current?.click();
+    }
   }
 
   async function loadDrive() {
@@ -290,7 +316,12 @@ export default function ToolPanel({
       try {
         const blob = await getBlob(it, 5000);
         const img = await loadImageFromBlob(blob);
-        if (!cancelled) setPreviewSrc({ key: it.key, img, origSize: blob.size, label: stripExtension(it.name) });
+        if (cancelled) return;
+        const origUrl = URL.createObjectURL(blob);
+        setPreviewSrc((prev) => {
+          if (prev) URL.revokeObjectURL(prev.origUrl);
+          return { key: it.key, img, origSize: blob.size, label: stripExtension(it.name), origUrl };
+        });
       } catch {
         if (!cancelled) setPreviewSrc(null);
       }
@@ -500,10 +531,22 @@ export default function ToolPanel({
 
         {source === "local" && (
           <>
-            <button onClick={() => fileInput.current?.click()} className="btn-ghost w-full py-3">
-              <FolderInput size={16} /> Chọn ảnh
-            </button>
+            <div className="flex gap-2.5">
+              <button onClick={() => fileInput.current?.click()} className="btn-ghost flex-1 py-3">
+                <ImageIcon size={16} /> Chọn ảnh
+              </button>
+              <button onClick={pickLocalFolder} className="btn-ghost flex-1 py-3">
+                <FolderInput size={16} /> Chọn thư mục
+              </button>
+            </div>
             <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={pickLocal} />
+            <input
+              ref={folderInput}
+              type="file"
+              hidden
+              onChange={pickLocal}
+              {...({ webkitdirectory: "", directory: "", mozdirectory: "" } as any)}
+            />
           </>
         )}
 
@@ -680,47 +723,63 @@ export default function ToolPanel({
         )}
       </div>
 
-      {/* Live preview panel (first image) */}
-      {preview && (
+      {/* Live preview panel (first image) — compare original vs processed */}
+      {preview && previewSrc && (
         <div className="card p-6 lg:col-span-2">
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h3 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-              <Eye size={15} /> Xem trước trực tiếp — {preview.label}
+              <Eye size={15} /> Xem trước — {preview.label}
             </h3>
+            {/* Gốc ⇄ Đã xử lý */}
+            <div className="flex overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
+              <button
+                onClick={() => setShowOriginal(true)}
+                className="px-3 py-1.5 text-[13px]"
+                style={showOriginal ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface2)", color: "var(--text2)" }}
+              >
+                Gốc
+              </button>
+              <button
+                onClick={() => setShowOriginal(false)}
+                className="px-3 py-1.5 text-[13px]"
+                style={!showOriginal ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface2)", color: "var(--text2)" }}
+              >
+                {tool === "convert" ? "Đã đổi" : "Đã nén"}
+              </button>
+            </div>
             <div className="ml-auto flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
               <button onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Thu nhỏ"><ZoomOut size={15} /></button>
               <span className="w-12 text-center">{Math.round(zoom * 100)}%</span>
-              <button onClick={() => setZoom((z) => Math.min(6, +(z + 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Phóng to"><ZoomIn size={15} /></button>
+              <button onClick={() => setZoom((z) => Math.min(8, +(z + 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Phóng to"><ZoomIn size={15} /></button>
               <button onClick={() => setZoom(1)} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Đặt lại"><RotateCcw size={14} /></button>
             </div>
           </div>
-          <div className="grid items-start gap-4 md:grid-cols-[1fr_auto]">
-            <div
-              className="max-h-[60vh] overflow-auto rounded-lg"
-              style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}
-              onWheel={(e) => {
-                if (!e.ctrlKey) return;
-                e.preventDefault();
-                setZoom((z) => Math.min(6, Math.max(1, +(z + (e.deltaY < 0 ? 0.3 : -0.3)).toFixed(2))));
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview.url} alt="preview" style={{ width: `${zoom * 100}%`, display: "block", margin: "0 auto" }} />
-            </div>
-            <div className="text-[13px]" style={{ color: "var(--text2)" }}>
-              {tool === "convert" ? (
-                <p>Kết quả: <b style={{ color: "var(--text)" }}>{formatBytes(preview.newSize)}</b> (.{formatExt(outputFormat)})</p>
-              ) : (
-                <>
-                  <p>Gốc: {formatBytes(preview.origSize)}</p>
-                  <p>Sau xử lý: <b style={{ color: "var(--text)" }}>{formatBytes(preview.newSize)}</b></p>
-                  {preview.origSize > 0 && preview.newSize < preview.origSize && (
-                    <p style={{ color: "var(--gold)" }}>Giảm {Math.round((1 - preview.newSize / preview.origSize) * 100)}%</p>
-                  )}
-                </>
-              )}
-              <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>Cập nhật trực tiếp theo thông số. Ảnh đầu tiên trong danh sách. Giữ <b>Ctrl</b> + lăn chuột để zoom.</p>
-            </div>
+
+          <div
+            className="max-h-[65vh] overflow-auto rounded-lg"
+            style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}
+            onWheel={(e) => {
+              if (!e.ctrlKey) return;
+              e.preventDefault();
+              setZoom((z) => Math.min(8, Math.max(1, +(z + (e.deltaY < 0 ? 0.4 : -0.4)).toFixed(2))));
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={showOriginal ? previewSrc.origUrl : preview.url}
+              alt="preview"
+              style={{ width: `${zoom * 100}%`, display: "block", margin: "0 auto", imageRendering: zoom > 2 ? "pixelated" : "auto" }}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]" style={{ color: "var(--text2)" }}>
+            <span>Đang xem: <b style={{ color: "var(--text)" }}>{showOriginal ? "Ảnh gốc" : tool === "convert" ? "Đã đổi định dạng" : "Đã nén"}</b></span>
+            <span>Gốc: {formatBytes(preview.origSize)}</span>
+            <span>Sau xử lý: <b style={{ color: "var(--text)" }}>{formatBytes(preview.newSize)}</b> {tool === "convert" && `(.${formatExt(outputFormat)})`}</span>
+            {tool !== "convert" && preview.origSize > 0 && preview.newSize < preview.origSize && (
+              <span style={{ color: "var(--gold)" }}>Giảm {Math.round((1 - preview.newSize / preview.origSize) * 100)}%</span>
+            )}
+            <span style={{ color: "var(--text3)" }}>Bấm <b>Gốc</b>/<b>Đã nén</b> để so sánh; phóng to để thấy rõ. (Ctrl + lăn chuột để zoom)</span>
           </div>
         </div>
       )}
