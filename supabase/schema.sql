@@ -440,6 +440,28 @@ create trigger albums_log_creation
   for each row execute function public.log_album_creation();
 
 -- ============================================================================
+-- Image-compress tool (img.vieetjk.com) — per-account DAILY usage limit.
+-- Free accounts get compress_daily_limit = 1 (one compress run per day).
+-- null = unlimited; admins are always exempt. Counted from an append-only log
+-- (day boundary handled in the API using Vietnam time).
+-- ============================================================================
+alter table public.profiles add column if not exists compress_daily_limit integer default 1;
+
+create table if not exists public.compress_usages (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists compress_usages_user_idx
+  on public.compress_usages (user_id, created_at);
+alter table public.compress_usages enable row level security;
+-- Users read their own usage; admins read all. Inserts happen via the service
+-- role through the /api/compress/use route, so no public insert policy needed.
+drop policy if exists compress_usages_read on public.compress_usages;
+create policy compress_usages_read on public.compress_usages
+  for select using (user_id = auth.uid() or public.is_admin());
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,
 --     can_zip = true, can_notes = true, monthly_album_limit = null

@@ -7,6 +7,18 @@ import { NextResponse, type NextRequest } from "next/server";
 // When unset (local dev, *.vercel.app previews) the full app is served on one host.
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
+// Image-tools subdomain (img.vieetjk.com) — home of the "Nén ảnh" compress tool.
+const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
+const COMPRESS_PATH = "/dashboard/compress";
+
+// Paths that are allowed to live on the image-tools host.
+function isImgPath(path: string) {
+  return (
+    path === COMPRESS_PATH ||
+    path.startsWith("/login") ||
+    path.startsWith("/auth")
+  );
+}
 
 const APP_PREFIXES = ["/dashboard", "/login", "/a/", "/start", "/auth"];
 const MAIN_PREFIXES = ["/showcase", "/album"];
@@ -29,6 +41,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
     }
     if (host === APP_HOST) {
+      // The compress tool is centralised on the image-tools subdomain.
+      if (IMG_HOST && pathname.startsWith(COMPRESS_PATH)) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${IMG_HOST}`));
+      }
       // App subdomain home = the public "create album" landing + guide.
       if (pathname === "/") {
         return NextResponse.rewrite(new URL("/start", request.url));
@@ -36,6 +52,18 @@ export async function middleware(request: NextRequest) {
       // Marketing pages live on the main site.
       if (MAIN_PREFIXES.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
+      }
+    }
+
+    // Image-tools subdomain: only the compress tool + auth live here.
+    if (IMG_HOST && host === IMG_HOST) {
+      if (pathname === "/") {
+        // Redirect (not rewrite) so the dashboard auth check below can attach
+        // ?next=/dashboard/compress and return here after sign-in.
+        return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
+      }
+      if (!isImgPath(pathname)) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
       }
     }
   }

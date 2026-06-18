@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/DashboardHeader";
 import type { Profile } from "@/lib/types";
@@ -62,9 +63,14 @@ on conflict (id) do update set role='admin', is_active=true;`}
     );
   }
 
+  // On the image-tools subdomain (img.vieetjk.com) the header shows a focused
+  // menu (just the compress tool) instead of the full album-management nav.
+  const host = headers().get("host")?.split(":")[0] ?? "";
+  const kind = process.env.NEXT_PUBLIC_IMG_HOST && host === process.env.NEXT_PUBLIC_IMG_HOST ? "img" : "app";
+
   return (
     <div className="min-h-screen">
-      <DashboardHeader profile={profile as Profile} />
+      <DashboardHeader profile={profile as Profile} kind={kind} />
       <main className="mx-auto max-w-6xl px-6 py-8 md:px-10">{children}</main>
     </div>
   );

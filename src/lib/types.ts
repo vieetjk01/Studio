@@ -10,6 +10,7 @@ export interface Profile {
   can_zip: boolean;
   can_notes: boolean;
   can_galleries: boolean;
+  compress_daily_limit: number | null;
   is_active: boolean;
   created_at: string;
 }

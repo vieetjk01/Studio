@@ -4,6 +4,7 @@
 
 export const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST || "";
 export const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST || "";
+export const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST || "";
 
 /** URL to a route on the app subdomain (album.vieetjk.com). */
 export function appUrl(path: string): string {
@@ -13,4 +14,9 @@ export function appUrl(path: string): string {
 /** URL to a route on the main marketing site (vieetjk.com). */
 export function mainUrl(path: string): string {
   return MAIN_HOST ? `https://${MAIN_HOST}${path}` : path;
+}
+
+/** URL to a route on the image-tools subdomain (img.vieetjk.com). */
+export function imgUrl(path: string): string {
+  return IMG_HOST ? `https://${IMG_HOST}${path}` : path;
 }

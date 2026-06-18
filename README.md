@@ -141,20 +141,32 @@ variables above in **Project Settings → Environment Variables**. Deploy.
 Serve the public site and the app on separate hosts from the **same** Vercel
 project:
 
-1. In **Settings → Domains**, add both `vieetjk.com` and `album.vieetjk.com`.
-2. Add two env vars and redeploy:
+1. In **Settings → Domains**, add `vieetjk.com`, `album.vieetjk.com` and
+   `img.vieetjk.com`.
+2. Add the env vars and redeploy:
    - `NEXT_PUBLIC_MAIN_HOST=vieetjk.com`
    - `NEXT_PUBLIC_APP_HOST=album.vieetjk.com`
+   - `NEXT_PUBLIC_IMG_HOST=img.vieetjk.com`
 
 Middleware then routes by host:
 
 - **vieetjk.com** → profile homepage, showcase albums, booking, contact, social.
   App routes are redirected to the app host.
 - **album.vieetjk.com** → login, dashboard, album management, and the customer
-  selection pages (`/a/[slug]`). `/` redirects to `/dashboard`.
+  selection pages (`/a/[slug]`). `/` redirects to `/dashboard`. The compress
+  tool is redirected to the image host.
+- **img.vieetjk.com** → the image-compress tool (`Nén ảnh`). `/` opens the tool;
+  it requires login, and every other path is sent to the app host. Add this
+  host to the Supabase **Redirect URLs** too (`https://img.vieetjk.com/auth/callback`).
 
-When the two vars are unset (local dev, `*.vercel.app`), the full app runs on a
-single host.
+When the host vars are unset (local dev, `*.vercel.app`), the full app runs on a
+single host and the compress tool stays at `/dashboard/compress`.
+
+> **Daily compress quota.** Free accounts may run the compressor **once per day**
+> (`profiles.compress_daily_limit`, default `1`; `null` = unlimited). Admins are
+> always unlimited and can raise/clear the per-account limit in
+> **Dashboard → Admin → “Nén/ngày”**. Usage is logged in `compress_usages`
+> (day boundary in Vietnam time). Re-run `supabase/schema.sql` to add these.
 
 ---
 
@@ -172,6 +184,7 @@ single host.
 | `/dashboard/create` | auth | 2-step create flow (Drive links → share link + QR) |
 | `/dashboard/albums/[id]` | owner/admin | Edit album, sources, photos, settings |
 | `/dashboard/albums/[id]/selections` | owner/admin | Customer selections + notes |
+| `/dashboard/compress` | auth | Compress images (Drive link or local files) + optional text/image watermark |
 | `/dashboard/admin` | admin | Manage photographers |
 | `/dashboard/settings` | admin | Studio profile/contact + booking leads |
 | `/a/[slug]` | public | Customer album (password → select → export/zip) |

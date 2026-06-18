@@ -51,6 +51,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         can_zip: false,
         can_notes: false,
         can_galleries: false,
+        compress_daily_limit: 1,
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -116,6 +117,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
               <th className="px-4 py-3">{t("canZip")}</th>
               <th className="px-4 py-3">{t("canNotes")}</th>
               <th className="px-4 py-3">Gallery</th>
+              <th className="px-4 py-3">Nén/ngày</th>
             </tr>
           </thead>
           <tbody>
@@ -178,6 +180,21 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     type="checkbox"
                     checked={p.can_galleries}
                     onChange={(e) => update(p, { can_galleries: e.target.checked })}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min={0}
+                    className="input w-20 px-2 py-1 text-xs"
+                    placeholder="∞"
+                    value={p.compress_daily_limit ?? ""}
+                    onChange={(e) =>
+                      update(p, {
+                        compress_daily_limit:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
                   />
                 </td>
               </tr>

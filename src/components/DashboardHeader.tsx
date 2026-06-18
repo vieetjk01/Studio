@@ -6,9 +6,16 @@ import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
+import { imgUrl } from "@/lib/hosts";
 import type { Profile } from "@/lib/types";
 
-export default function DashboardHeader({ profile }: { profile: Profile }) {
+export default function DashboardHeader({
+  profile,
+  kind = "app",
+}: {
+  profile: Profile;
+  kind?: "app" | "img";
+}) {
   const { t } = useLang();
   const router = useRouter();
   const pathname = usePathname();
@@ -34,16 +41,28 @@ export default function DashboardHeader({ profile }: { profile: Profile }) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-800 bg-ink-950/80 px-6 py-4 backdrop-blur md:px-10">
       <div className="flex items-center gap-8">
-        <Brand href="/dashboard" />
+        <Brand href={kind === "img" ? "/" : "/dashboard"} />
         <nav className="hidden items-center gap-6 md:flex">
-          {link("/dashboard", t("myAlbums"))}
-          {link("/dashboard/create", t("newAlbum"))}
-          {(profile.role === "admin" || profile.can_galleries) &&
-            link("/dashboard/galleries", t("galleries"))}
-          {link("/dashboard/filter", t("filterPhotos"))}
-          {profile.role !== "admin" && link("/dashboard/upgrade", t("upgrade"))}
-          {profile.role === "admin" && link("/dashboard/admin", t("admin"))}
-          {profile.role === "admin" && link("/dashboard/settings", t("settings"))}
+          {kind === "img" ? (
+            link("/dashboard/compress", t("compressPhotos"))
+          ) : (
+            <>
+              {link("/dashboard", t("myAlbums"))}
+              {link("/dashboard/create", t("newAlbum"))}
+              {(profile.role === "admin" || profile.can_galleries) &&
+                link("/dashboard/galleries", t("galleries"))}
+              {link("/dashboard/filter", t("filterPhotos"))}
+              <a
+                href={imgUrl("/dashboard/compress")}
+                className="text-sm text-accent-muted transition-colors hover:text-accent"
+              >
+                {t("compressPhotos")}
+              </a>
+              {profile.role !== "admin" && link("/dashboard/upgrade", t("upgrade"))}
+              {profile.role === "admin" && link("/dashboard/admin", t("admin"))}
+              {profile.role === "admin" && link("/dashboard/settings", t("settings"))}
+            </>
+          )}
         </nav>
       </div>
       <div className="flex items-center gap-4">
