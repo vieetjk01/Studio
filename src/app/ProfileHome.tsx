@@ -25,7 +25,6 @@ import {
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
-import { appUrl } from "@/lib/hosts";
 import { thumbnailUrl } from "@/lib/drive";
 import type { SiteSettings, BookingService } from "@/lib/types";
 
@@ -135,9 +134,6 @@ export default function ProfileHome({
           <button onClick={() => scrollTo(contactRef)} className="hidden text-sm font-medium sm:block" style={{ color: "var(--text2)" }}>
             Đặt lịch
           </button>
-          <a href={appUrl("/login")} className="btn-ghost px-4 py-2 text-[13.5px]">
-            {t("login")}
-          </a>
         </div>
       </header>
 
