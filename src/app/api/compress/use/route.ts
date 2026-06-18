@@ -76,7 +76,6 @@ function quota(limit: number | null, used: number) {
 
 function body(s: Status) {
   return {
-    ok: true,
     basic: quota(s.basicLimit, s.basicUsed),
     picker: quota(s.pickerLimit, s.pickerUsed),
   };
@@ -86,7 +85,7 @@ function body(s: Status) {
 export async function GET() {
   const s = await getStatus();
   if (!s) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  return NextResponse.json(body(s));
+  return NextResponse.json({ ok: true, ...body(s) });
 }
 
 /** Consume one compress use of the given kind (call right before compressing). */
@@ -110,5 +109,5 @@ export async function POST(req: Request) {
   // Reflect the just-consumed use in the returned counts.
   if (k === "picker") s.pickerUsed += 1;
   else s.basicUsed += 1;
-  return NextResponse.json({ ...body(s), kind: k });
+  return NextResponse.json({ ok: true, kind: k, ...body(s) });
 }
