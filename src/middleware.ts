@@ -75,6 +75,8 @@ export async function middleware(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        // Share the session cookie across vieetjk.com subdomains (album / img).
+        ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
         cookies: {
           getAll() {
             return request.cookies.getAll();

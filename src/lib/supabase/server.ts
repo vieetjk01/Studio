@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { COOKIE_DOMAIN } from "@/lib/hosts";
 
 /**
  * Supabase client bound to the current request's cookies (RLS-aware).
@@ -12,6 +13,8 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Share the session cookie across vieetjk.com subdomains (album / img).
+      ...(COOKIE_DOMAIN ? { cookieOptions: { domain: COOKIE_DOMAIN } } : {}),
       cookies: {
         getAll() {
           return cookieStore.getAll();
