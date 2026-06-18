@@ -12,9 +12,18 @@ import {
   Stamp,
   Minimize2,
   Save,
+  CloudUpload,
+  RefreshCw,
 } from "lucide-react";
 import { stripExtension } from "@/lib/drive";
 import { triggerDownload } from "@/lib/download";
+import { createClient } from "@/lib/supabase/client";
+import {
+  overwriteDriveFile,
+  createDriveFile,
+  getDriveParent,
+  DriveAuthError,
+} from "@/lib/drive-write";
 import {
   compressImage,
   loadImageFromBlob,
@@ -38,6 +47,7 @@ interface DoneItem {
   key: string;
   name: string;
   out: string;
+  driveId?: string;
   originalSize: number;
   newSize: number;
   blob: Blob;
@@ -104,6 +114,30 @@ export default function CompressPage() {
   }, []);
 
   const outOfQuota = !!quota && !quota.unlimited && (quota.remaining ?? 0) <= 0;
+
+  // Google Drive write-back (uses the Supabase session's provider_token).
+  const [driveToken, setDriveToken] = useState<string | null>(null);
+  const [writing, setWriting] = useState(false);
+  const [writeProgress, setWriteProgress] = useState<{ done: number; total: number } | null>(null);
+  const [writeMsg, setWriteMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    createClient()
+      .auth.getSession()
+      .then(({ data }) => setDriveToken(data.session?.provider_token ?? null))
+      .catch(() => {});
+  }, []);
+
+  async function connectDrive() {
+    await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        scopes: "https://www.googleapis.com/auth/drive",
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/compress`,
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
+  }
 
   async function loadDrive() {
     setLoadingDrive(true);
@@ -246,6 +280,7 @@ export default function CompressPage() {
           key: it.key,
           name: it.name,
           out: outName(it.name, format),
+          driveId: it.driveId,
           originalSize,
           newSize: r.blob.size,
           blob: r.blob,
@@ -290,6 +325,64 @@ export default function CompressPage() {
       setSavingMsg(`Đã lưu ${done}/${results.length} ảnh vào “${dir.name}”.`);
     } catch {
       setSavingMsg(null);
+    }
+  }
+
+  async function writeToDrive(mode: "overwrite" | "new") {
+    if (writing) return;
+    const driveResults = results.filter((r) => r.driveId);
+    if (driveResults.length === 0) {
+      setWriteMsg("Chỉ ghi lên Drive được khi nguồn ảnh là Google Drive.");
+      return;
+    }
+    if (!driveToken) {
+      setWriteMsg("Hãy bấm “Kết nối Google Drive” trước.");
+      return;
+    }
+    if (
+      mode === "overwrite" &&
+      !window.confirm(
+        `Ghi đè sẽ THAY THẾ vĩnh viễn ${driveResults.length} ảnh gốc trên Drive và KHÔNG thể hoàn tác. Tiếp tục?`
+      )
+    ) {
+      return;
+    }
+
+    setWriting(true);
+    setWriteMsg(null);
+    setWriteProgress({ done: 0, total: driveResults.length });
+    let ok = 0;
+    try {
+      for (let i = 0; i < driveResults.length; i++) {
+        const r = driveResults[i];
+        try {
+          if (mode === "overwrite") {
+            await overwriteDriveFile(driveToken, r.driveId!, r.blob);
+          } else {
+            const { parentId } = await getDriveParent(driveToken, r.driveId!);
+            if (!parentId) throw new Error("no_parent");
+            const ext = r.out.endsWith(".webp") ? "webp" : "jpg";
+            await createDriveFile(driveToken, parentId, `${stripExtension(r.name)}_nen.${ext}`, r.blob);
+          }
+          ok++;
+        } catch (e) {
+          if (e instanceof DriveAuthError) {
+            setDriveToken(null);
+            setWriteMsg("Phiên Google Drive đã hết hạn hoặc thiếu quyền. Hãy “Kết nối Google Drive” lại rồi thử lại.");
+            return;
+          }
+          // skip files that fail individually
+        }
+        setWriteProgress({ done: i + 1, total: driveResults.length });
+      }
+      setWriteMsg(
+        mode === "overwrite"
+          ? `Đã ghi đè ${ok}/${driveResults.length} ảnh lên Drive (giữ nguyên tên & link).`
+          : `Đã lưu ${ok}/${driveResults.length} bản nén mới vào Drive (đuôi _nen).`
+      );
+    } finally {
+      setWriting(false);
+      setWriteProgress(null);
     }
   }
 
@@ -513,6 +606,53 @@ export default function CompressPage() {
           </p>
         )}
         {savingMsg && <p className="mb-3 text-[13px]" style={{ color: "var(--gold)" }}>{savingMsg}</p>}
+
+        {/* Ghi kết quả ngược lên Google Drive (nguồn Drive) */}
+        {results.some((r) => r.driveId) && (
+          <div className="mb-4 rounded-xl p-4" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+            <h3 className="mb-2 flex items-center gap-2 text-[13px] font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
+              <CloudUpload size={15} /> Ghi lên Google Drive
+            </h3>
+            {!driveToken ? (
+              <>
+                <button onClick={connectDrive} className="btn-primary text-[13px]">
+                  <CloudUpload size={14} /> Kết nối Google Drive
+                </button>
+                <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
+                  Đăng nhập tài khoản Google <b>sở hữu</b> các ảnh để cấp quyền ghi. Khuyến nghị chọn định dạng <b>JPEG</b> khi ghi đè.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => writeToDrive("overwrite")}
+                    disabled={writing}
+                    className="btn-primary text-[13px] disabled:opacity-40"
+                    style={{ background: "#dc2626", color: "#fff" }}
+                  >
+                    <CloudUpload size={14} />
+                    {writing && writeProgress ? `Đang ghi… ${writeProgress.done}/${writeProgress.total}` : "Ghi đè bản gốc"}
+                  </button>
+                  <button
+                    onClick={() => writeToDrive("new")}
+                    disabled={writing}
+                    className="btn-ghost text-[13px] disabled:opacity-40"
+                  >
+                    <Save size={14} /> Lưu bản nén mới (giữ gốc)
+                  </button>
+                  <button onClick={connectDrive} className="text-[12px]" style={{ color: "var(--text3)" }}>
+                    <RefreshCw size={12} className="mr-1 inline" /> Kết nối lại
+                  </button>
+                </div>
+                <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
+                  <b style={{ color: "#fbbf24" }}>Ghi đè</b> thay thế vĩnh viễn ảnh gốc (không hoàn tác, giữ nguyên link). <b>Bản nén mới</b> tạo file đuôi <code>_nen</code> trong cùng thư mục.
+                </p>
+              </>
+            )}
+            {writeMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--gold)" }}>{writeMsg}</p>}
+          </div>
+        )}
 
         {results.length === 0 ? (
           <p className="py-10 text-center text-sm" style={{ color: "var(--text3)" }}>

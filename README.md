@@ -168,6 +168,18 @@ single host and the compress tool stays at `/dashboard/compress`.
 > **Dashboard → Admin → “Nén/ngày”**. Usage is logged in `compress_usages`
 > (day boundary in Vietnam time). Re-run `supabase/schema.sql` to add these.
 
+> **Write compressed images back to Drive.** From the compress tool, after
+> compressing Drive-sourced images, the user can **Kết nối Google Drive** and
+> either **overwrite the originals in place** (same file ID & link — irreversible)
+> or **save new `_nen` copies** in the same folder. Writes happen in the browser
+> with the signed-in user's Google `provider_token`; the token never reaches our
+> server. To enable it, add the **`https://www.googleapis.com/auth/drive`** scope
+> to the Google OAuth **consent screen** (Google Cloud Console) and add the
+> photographer's email under **Test users** (the scope is sensitive; an
+> unverified-app screen is expected for internal use). The signed-in Google
+> account must own / have edit rights on the files, and folders must still be
+> link-shared for the API-key listing step.
+
 ---
 
 ## 🗺 Routes
