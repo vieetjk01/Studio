@@ -768,7 +768,13 @@ export default function ToolPanel({
             <img
               src={showOriginal ? previewSrc.origUrl : preview.url}
               alt="preview"
-              style={{ width: `${zoom * 100}%`, display: "block", margin: "0 auto", imageRendering: zoom > 2 ? "pixelated" : "auto" }}
+              style={{
+                width: `${zoom * 100}%`,
+                maxWidth: "none", // override Tailwind preflight (img{max-width:100%}) so zoom can exceed the container
+                display: "block",
+                margin: "0 auto",
+                imageRendering: zoom > 2 ? "pixelated" : "auto",
+              }}
             />
           </div>
 
