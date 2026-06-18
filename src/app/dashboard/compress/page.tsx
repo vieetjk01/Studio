@@ -5,6 +5,21 @@ import { Minimize2, Stamp, FileImage } from "lucide-react";
 import { pickerConfigured, preloadGoogle, requestDriveToken } from "@/lib/google-picker";
 import ToolPanel, { type Tool, type QuotaState } from "./ToolPanel";
 
+function QuotaChip({ label, text, warn }: { label: string; text: string; warn: boolean }) {
+  return (
+    <span
+      className="rounded-full px-3 py-1"
+      style={{
+        background: warn ? "color-mix(in srgb,#f59e0b 16%,transparent)" : "var(--surface2)",
+        border: "1px solid var(--border)",
+        color: warn ? "#fbbf24" : "var(--text2)",
+      }}
+    >
+      {label}: <b style={{ color: warn ? "#fbbf24" : "var(--text)" }}>{text}</b>
+    </span>
+  );
+}
+
 export default function CompressPage() {
   const [tool, setTool] = useState<Tool>("compress");
   const [driveToken, setDriveToken] = useState<string | null>(null);
@@ -61,6 +76,22 @@ export default function CompressPage() {
           trình duyệt, ảnh không tải lên máy chủ.
         </p>
       </div>
+
+      {quota && (
+        <div className="mb-5 flex flex-wrap gap-2 text-[12.5px]">
+          <QuotaChip
+            label="Nén (máy tính / link Drive)"
+            text={quota.basic.unlimited ? "không giới hạn" : `${quota.basic.used}/${quota.basic.limit} hôm nay`}
+            warn={!quota.basic.unlimited && (quota.basic.remaining ?? 0) <= 0}
+          />
+          <QuotaChip
+            label="Nén lên Google Drive"
+            text={quota.picker.unlimited ? "không giới hạn" : `${quota.picker.used}/${quota.picker.limit} (dùng thử)`}
+            warn={!quota.picker.unlimited && (quota.picker.remaining ?? 0) <= 0}
+          />
+          <QuotaChip label="Gắn watermark · Đổi định dạng" text="không giới hạn" warn={false} />
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map(({ key, label, Icon }) => (

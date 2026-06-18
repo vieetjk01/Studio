@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link2,
   HardDrive,
@@ -13,6 +13,9 @@ import {
   Save,
   CloudUpload,
   Eye,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import { stripExtension } from "@/lib/drive";
 import { triggerDownload } from "@/lib/download";
@@ -137,11 +140,14 @@ export default function ToolPanel({
   const [quotaMsg, setQuotaMsg] = useState<string | null>(null);
   const [writeMsg, setWriteMsg] = useState<string | null>(null);
 
-  // Preview
+  // Preview (live)
+  const [previewSrc, setPreviewSrc] = useState<
+    { key: string; img: HTMLImageElement; origSize: number; label: string } | null
+  >(null);
   const [preview, setPreview] = useState<
     { url: string; origSize: number; newSize: number; label: string } | null
   >(null);
-  const [previewing, setPreviewing] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
   const isPicker = source === "picker";
   const activeQuota = tool === "compress" ? (isPicker ? quota?.picker : quota?.basic) : null;
@@ -253,7 +259,7 @@ export default function ToolPanel({
   }
   function optionsFor(): { quality: number; maxDim: number; format: OutputFormat; watermark: WatermarkOptions | null } {
     if (tool === "compress") return { quality: quality / 100, maxDim, format, watermark: null };
-    if (tool === "watermark") return { quality: 0.92, maxDim: 0, format, watermark: buildWatermark() };
+    if (tool === "watermark") return { quality: quality / 100, maxDim, format, watermark: buildWatermark() };
     return { quality: 0.95, maxDim: 0, format: targetFormat, watermark: null }; // convert
   }
   const outputFormat = tool === "convert" ? targetFormat : format;
@@ -271,35 +277,56 @@ export default function ToolPanel({
     throw new Error("no_source");
   }
 
-  // ── Preview (no quota, no Drive write) ───────────────────────
-  async function runPreview() {
-    if (items.length === 0 || previewing) return;
-    setPreviewing(true);
-    setDriveError(null);
-    if (tool === "watermark" && wmType === "image" && !wmImg) {
-      alert("Hãy chọn ảnh watermark trước.");
-      setPreviewing(false);
+  // ── Live preview (first image; no quota, no Drive write) ─────
+  // Load the source image once when the first item changes…
+  useEffect(() => {
+    const it = items[0];
+    if (!it) {
+      setPreviewSrc(null);
       return;
     }
-    try {
-      const it = items[0];
-      const opts = optionsFor();
-      const fetchW = opts.maxDim > 0 ? opts.maxDim : 5000;
-      const blob = await getBlob(it, fetchW);
-      const img = await loadImageFromBlob(blob);
-      const r = await compressImage(img, opts);
-      if (preview) URL.revokeObjectURL(preview.url);
-      setPreview({
-        url: URL.createObjectURL(r.blob),
-        origSize: blob.size,
-        newSize: r.blob.size,
-        label: stripExtension(it.name),
-      });
-    } catch (e: any) {
-      setDriveError(`Không xem trước được${e?.message ? ` (${e.message})` : ""}.`);
+    let cancelled = false;
+    (async () => {
+      try {
+        const blob = await getBlob(it, 5000);
+        const img = await loadImageFromBlob(blob);
+        if (!cancelled) setPreviewSrc({ key: it.key, img, origSize: blob.size, label: stripExtension(it.name) });
+      } catch {
+        if (!cancelled) setPreviewSrc(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items[0]?.key, source]);
+
+  // …and recompute the preview (debounced) whenever options change.
+  useEffect(() => {
+    if (!previewSrc) {
+      setPreview(null);
+      return;
     }
-    setPreviewing(false);
-  }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const r = await compressImage(previewSrc.img, optionsFor());
+        if (cancelled) return;
+        const url = URL.createObjectURL(r.blob);
+        setPreview((prev) => {
+          if (prev) URL.revokeObjectURL(prev.url);
+          return { url, origSize: previewSrc.origSize, newSize: r.blob.size, label: previewSrc.label };
+        });
+      } catch {
+        /* ignore */
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewSrc, quality, maxDim, format, targetFormat, tool, wmType, wmText, wmColor, wmPos, wmOpacity, wmTextScale, wmImageScale, wmImg]);
 
   // ── Main run ─────────────────────────────────────────────────
   async function writeOneToDrive(tok: string, r: DoneItem) {
@@ -342,7 +369,6 @@ export default function ToolPanel({
 
     setBusy(true);
     setResults([]);
-    setPreview(null);
     setProgress({ done: 0, total: items.length });
     const opts = optionsFor();
     const fetchW = opts.maxDim > 0 ? opts.maxDim : 5000;
@@ -624,34 +650,63 @@ export default function ToolPanel({
             </div>
             <label className="mt-3 block text-[13px]" style={{ color: "var(--text2)" }}>Độ mờ: <b style={{ color: "var(--text)" }}>{wmOpacity}%</b></label>
             <input type="range" min={5} max={100} value={wmOpacity} onChange={(e) => setWmOpacity(+e.target.value)} className="w-full accent-[var(--gold)]" />
+
+            <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <label className="mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>
+                Nén kèm — chất lượng: <b style={{ color: "var(--text)" }}>{quality}</b>
+              </label>
+              <input type="range" min={40} max={100} value={quality} onChange={(e) => setQuality(+e.target.value)} className="w-full accent-[var(--gold)]" />
+              <label className="mt-2 block text-[13px]" style={{ color: "var(--text2)" }}>Kích thước tối đa</label>
+              <select value={maxDim} onChange={(e) => setMaxDim(+e.target.value)} className="input">
+                <option value={0}>Giữ nguyên</option>
+                <option value={4000}>4000 px</option>
+                <option value={2560}>2560 px</option>
+                <option value={2048}>2048 px</option>
+                <option value={1920}>1920 px</option>
+                <option value={1280}>1280 px</option>
+              </select>
+            </div>
           </>
         )}
 
-        <div className="mt-4 flex items-center gap-3">
-          <button onClick={runPreview} disabled={items.length === 0 || previewing} className="btn-ghost text-[13px] disabled:opacity-40">
-            <Eye size={14} /> {previewing ? "Đang tạo…" : "Xem trước"}
-          </button>
-          {activeQuota && (
-            <span className="text-[12px]" style={{ color: outOfQuota ? "#fbbf24" : "var(--text3)" }}>
-              {activeQuota.unlimited
-                ? "Không giới hạn"
-                : isPicker
-                ? `Dùng thử Picker: ${activeQuota.used}/${activeQuota.limit}`
-                : `Hôm nay: ${activeQuota.used}/${activeQuota.limit} lượt`}
-            </span>
-          )}
-        </div>
+        {activeQuota && (
+          <p className="mt-4 text-[12px]" style={{ color: outOfQuota ? "#fbbf24" : "var(--text3)" }}>
+            {activeQuota.unlimited
+              ? "Không giới hạn"
+              : isPicker
+              ? `Dùng thử nén lên Drive: ${activeQuota.used}/${activeQuota.limit}`
+              : `Hôm nay đã dùng: ${activeQuota.used}/${activeQuota.limit} lượt`}
+          </p>
+        )}
       </div>
 
-      {/* Preview panel */}
+      {/* Live preview panel (first image) */}
       {preview && (
         <div className="card p-6 lg:col-span-2">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-            <Eye size={15} /> Xem trước — {preview.label}
-          </h3>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
+              <Eye size={15} /> Xem trước trực tiếp — {preview.label}
+            </h3>
+            <div className="ml-auto flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
+              <button onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Thu nhỏ"><ZoomOut size={15} /></button>
+              <span className="w-12 text-center">{Math.round(zoom * 100)}%</span>
+              <button onClick={() => setZoom((z) => Math.min(6, +(z + 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Phóng to"><ZoomIn size={15} /></button>
+              <button onClick={() => setZoom(1)} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Đặt lại"><RotateCcw size={14} /></button>
+            </div>
+          </div>
           <div className="grid items-start gap-4 md:grid-cols-[1fr_auto]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={preview.url} alt="preview" className="max-h-[420px] w-full rounded-lg object-contain" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }} />
+            <div
+              className="max-h-[60vh] overflow-auto rounded-lg"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}
+              onWheel={(e) => {
+                if (!e.ctrlKey) return;
+                e.preventDefault();
+                setZoom((z) => Math.min(6, Math.max(1, +(z + (e.deltaY < 0 ? 0.3 : -0.3)).toFixed(2))));
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview.url} alt="preview" style={{ width: `${zoom * 100}%`, display: "block", margin: "0 auto" }} />
+            </div>
             <div className="text-[13px]" style={{ color: "var(--text2)" }}>
               {tool === "convert" ? (
                 <p>Kết quả: <b style={{ color: "var(--text)" }}>{formatBytes(preview.newSize)}</b> (.{formatExt(outputFormat)})</p>
@@ -664,7 +719,7 @@ export default function ToolPanel({
                   )}
                 </>
               )}
-              <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>Đây chỉ là ảnh đầu tiên. Đổi tuỳ chọn rồi bấm “Xem trước” lại.</p>
+              <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>Cập nhật trực tiếp theo thông số. Ảnh đầu tiên trong danh sách. Giữ <b>Ctrl</b> + lăn chuột để zoom.</p>
             </div>
           </div>
         </div>
