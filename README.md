@@ -168,17 +168,24 @@ single host and the compress tool stays at `/dashboard/compress`.
 > **Dashboard → Admin → “Nén/ngày”**. Usage is logged in `compress_usages`
 > (day boundary in Vietnam time). Re-run `supabase/schema.sql` to add these.
 
-> **Write compressed images back to Drive.** From the compress tool, after
-> compressing Drive-sourced images, the user can **Kết nối Google Drive** and
-> either **overwrite the originals in place** (same file ID & link — irreversible)
-> or **save new `_nen` copies** in the same folder. Writes happen in the browser
-> with the signed-in user's Google `provider_token`; the token never reaches our
-> server. To enable it, add the **`https://www.googleapis.com/auth/drive`** scope
-> to the Google OAuth **consent screen** (Google Cloud Console) and add the
-> photographer's email under **Test users** (the scope is sensitive; an
-> unverified-app screen is expected for internal use). The signed-in Google
-> account must own / have edit rights on the files, and folders must still be
-> link-shared for the API-key listing step.
+> **Compress on a user's own Drive (Google Picker).** In the compress tool the
+> **“Chọn từ Google Drive”** button lets **any signed-in Google user** pick
+> images/folders from **their own Drive** (private folders included), compress
+> them, then **overwrite the originals in place** (same file ID & link —
+> irreversible) or **save new `_nen` copies** in the same folder. It uses the
+> **non-sensitive `drive.file` scope** via Google Identity Services + the Picker,
+> so **no Google verification and no “unverified app” screen** — works for
+> unlimited users. All Drive calls run in the browser with the user's own access
+> token; nothing touches our server.
+>
+> Setup (Google Cloud Console, same project as Drive): **enable the “Google
+> Picker API”**, create an **OAuth Web client** (add your site origins —
+> `https://img.vieetjk.com`, etc. — under *Authorized JavaScript origins*) and a
+> **browser API key**, set the **OAuth consent screen to “In production”** (only
+> the non-sensitive `drive.file` + sign-in scopes → no review needed). Then set
+> `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` and
+> `NEXT_PUBLIC_GOOGLE_APP_ID` (the project number). Leave them unset to hide the
+> picker and keep only the public-link (download-only) mode.
 
 ---
 

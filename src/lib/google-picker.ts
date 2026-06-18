@@ -1,0 +1,136 @@
+"use client";
+
+/**
+ * Google Picker + token helper (browser-only). Uses the NON-sensitive
+ * `drive.file` scope: the app only gets access to files/folders the user picks
+ * in the Picker (or that it creates). No Google verification needed, no
+ * "unverified app" screen, and it works for ANY signed-in Google user on their
+ * OWN Drive — including private folders.
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+export const GOOGLE_PICKER_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "";
+export const GOOGLE_APP_ID = process.env.NEXT_PUBLIC_GOOGLE_APP_ID || "";
+export const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+export const pickerConfigured = !!GOOGLE_CLIENT_ID && !!GOOGLE_PICKER_KEY;
+
+export interface PickedItem {
+  id: string;
+  name: string;
+  mimeType: string;
+  isFolder: boolean;
+}
+
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`load_failed:${src}`));
+    document.head.appendChild(s);
+  });
+}
+
+let ready = false;
+async function ensureGoogle(): Promise<void> {
+  if (ready) return;
+  await loadScript("https://accounts.google.com/gsi/client");
+  await loadScript("https://apis.google.com/js/api.js");
+  await new Promise<void>((resolve) => (window as any).gapi.load("picker", () => resolve()));
+  ready = true;
+}
+
+/**
+ * Request a Drive access token via Google Identity Services. `forceConsent`
+ * shows the account/consent chooser (use when the previous token expired).
+ */
+export async function requestDriveToken(forceConsent = false): Promise<string> {
+  await ensureGoogle();
+  return new Promise<string>((resolve, reject) => {
+    const client = (window as any).google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_FILE_SCOPE,
+      callback: (resp: any) =>
+        resp?.access_token ? resolve(resp.access_token) : reject(new Error("no_token")),
+      error_callback: (err: any) => reject(err ?? new Error("token_error")),
+    });
+    client.requestAccessToken({ prompt: forceConsent ? "consent" : "" });
+  });
+}
+
+/** Open the Picker (images + folders, multi-select). Resolves to picked items. */
+export async function openDrivePicker(token: string): Promise<PickedItem[]> {
+  await ensureGoogle();
+  const google = (window as any).google;
+  return new Promise<PickedItem[]>((resolve) => {
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setSelectFolderEnabled(true)
+      .setMimeTypes("image/jpeg,image/png,image/webp,image/gif,image/bmp,image/tiff,application/vnd.google-apps.folder");
+
+    const picker = new google.picker.PickerBuilder()
+      .setOAuthToken(token)
+      .setDeveloperKey(GOOGLE_PICKER_KEY)
+      .addView(view)
+      .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+      .setCallback((data: any) => {
+        if (data.action === google.picker.Action.PICKED) {
+          const docs = (data.docs ?? []) as any[];
+          resolve(
+            docs.map((d) => ({
+              id: d.id,
+              name: d.name,
+              mimeType: d.mimeType,
+              isFolder: d.mimeType === "application/vnd.google-apps.folder" || d.type === "folder",
+            }))
+          );
+        } else if (data.action === google.picker.Action.CANCEL) {
+          resolve([]);
+        }
+      });
+    if (GOOGLE_APP_ID) picker.setAppId(GOOGLE_APP_ID);
+    picker.build().setVisible(true);
+  });
+}
+
+/** List image files inside a folder the user granted via the Picker. */
+export async function listFolderImages(
+  token: string,
+  folderId: string
+): Promise<{ id: string; name: string }[]> {
+  const out: { id: string; name: string }[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+      fields: "nextPageToken, files(id, name)",
+      pageSize: "1000",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401 || res.status === 403) throw new Error("drive_unauthorized");
+    if (!res.ok) throw new Error(`drive_error_${res.status}`);
+    const data = await res.json();
+    out.push(...(data.files ?? []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return out;
+}
+
+/** Fetch a Drive file's bytes (the user granted access via the Picker). */
+export async function fetchDriveBytes(token: string, fileId: string): Promise<Blob> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (res.status === 401 || res.status === 403) throw new Error("drive_unauthorized");
+  if (!res.ok) throw new Error(`drive_error_${res.status}`);
+  return res.blob();
+}

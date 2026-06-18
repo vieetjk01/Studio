@@ -17,13 +17,19 @@ import {
 } from "lucide-react";
 import { stripExtension } from "@/lib/drive";
 import { triggerDownload } from "@/lib/download";
-import { createClient } from "@/lib/supabase/client";
 import {
   overwriteDriveFile,
   createDriveFile,
   getDriveParent,
   DriveAuthError,
 } from "@/lib/drive-write";
+import {
+  pickerConfigured,
+  requestDriveToken,
+  openDrivePicker,
+  listFolderImages,
+  fetchDriveBytes,
+} from "@/lib/google-picker";
 import {
   compressImage,
   loadImageFromBlob,
@@ -115,28 +121,55 @@ export default function CompressPage() {
 
   const outOfQuota = !!quota && !quota.unlimited && (quota.remaining ?? 0) <= 0;
 
-  // Google Drive write-back (uses the Supabase session's provider_token).
+  // Google Drive via the Picker (drive.file scope — per-picked-file access).
+  const [driveMode, setDriveMode] = useState<"link" | "picker">("link");
   const [driveToken, setDriveToken] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [writing, setWriting] = useState(false);
   const [writeProgress, setWriteProgress] = useState<{ done: number; total: number } | null>(null);
   const [writeMsg, setWriteMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    createClient()
-      .auth.getSession()
-      .then(({ data }) => setDriveToken(data.session?.provider_token ?? null))
-      .catch(() => {});
-  }, []);
+  async function ensureDriveToken(force = false): Promise<string> {
+    if (driveToken && !force) return driveToken;
+    const t = await requestDriveToken(force);
+    setDriveToken(t);
+    return t;
+  }
 
-  async function connectDrive() {
-    await createClient().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        scopes: "https://www.googleapis.com/auth/drive",
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/compress`,
-        queryParams: { access_type: "offline", prompt: "consent" },
-      },
-    });
+  async function pickFromDrive() {
+    if (picking) return;
+    setPicking(true);
+    setDriveError(null);
+    try {
+      const token = await ensureDriveToken();
+      const picked = await openDrivePicker(token);
+      if (picked.length === 0) {
+        setPicking(false);
+        return;
+      }
+      const files: SourceItem[] = [];
+      for (const p of picked) {
+        if (p.isFolder) {
+          const kids = await listFolderImages(token, p.id);
+          files.push(...kids.map((f) => ({ key: f.id, name: f.name, driveId: f.id })));
+        } else {
+          files.push({ key: p.id, name: p.name, driveId: p.id });
+        }
+      }
+      const seen = new Set<string>();
+      const uniq = files.filter((f) => (seen.has(f.key) ? false : (seen.add(f.key), true)));
+      setItems(uniq);
+      setDriveMode("picker");
+      setSrcLabel(`${uniq.length} ảnh từ Google Drive (đã cấp quyền ghi)`);
+      setResults([]);
+    } catch (e: any) {
+      setDriveError(
+        e?.message === "drive_unauthorized"
+          ? "Cần cấp lại quyền Google Drive."
+          : "Không mở được Google Drive. Kiểm tra cấu hình Google (Client ID / API key / Picker API)."
+      );
+    }
+    setPicking(false);
   }
 
   async function loadDrive() {
@@ -156,6 +189,7 @@ export default function CompressPage() {
         setItems(
           (data.files ?? []).map((f: any) => ({ key: f.id, name: f.name, driveId: f.id }))
         );
+        setDriveMode("link");
         setSrcLabel(`${(data.files ?? []).length} ảnh từ Drive`);
         setResults([]);
       }
@@ -260,8 +294,14 @@ export default function CompressPage() {
         let img: HTMLImageElement;
         let originalSize = 0;
         if (it.driveId) {
-          const res = await fetch(`/api/img?id=${encodeURIComponent(it.driveId)}&w=${fetchW}`);
-          const blob = await res.blob();
+          let blob: Blob;
+          if (driveMode === "picker") {
+            const token = await ensureDriveToken();
+            blob = await fetchDriveBytes(token, it.driveId);
+          } else {
+            const res = await fetch(`/api/img?id=${encodeURIComponent(it.driveId)}&w=${fetchW}`);
+            blob = await res.blob();
+          }
           originalSize = blob.size;
           img = await loadImageFromBlob(blob);
         } else if (it.file) {
@@ -332,11 +372,7 @@ export default function CompressPage() {
     if (writing) return;
     const driveResults = results.filter((r) => r.driveId);
     if (driveResults.length === 0) {
-      setWriteMsg("Chỉ ghi lên Drive được khi nguồn ảnh là Google Drive.");
-      return;
-    }
-    if (!driveToken) {
-      setWriteMsg("Hãy bấm “Kết nối Google Drive” trước.");
+      setWriteMsg("Chỉ ghi lên Drive được khi ảnh lấy từ Google Drive qua nút “Chọn từ Google Drive”.");
       return;
     }
     if (
@@ -348,6 +384,25 @@ export default function CompressPage() {
       return;
     }
 
+    let token: string;
+    try {
+      token = await ensureDriveToken();
+    } catch {
+      setWriteMsg("Cần cấp quyền Google Drive. Hãy bấm “Chọn từ Google Drive”.");
+      return;
+    }
+
+    async function writeOne(tok: string, r: DoneItem) {
+      if (mode === "overwrite") {
+        await overwriteDriveFile(tok, r.driveId!, r.blob);
+      } else {
+        const { parentId } = await getDriveParent(tok, r.driveId!);
+        if (!parentId) throw new Error("no_parent");
+        const ext = r.out.endsWith(".webp") ? "webp" : "jpg";
+        await createDriveFile(tok, parentId, `${stripExtension(r.name)}_nen.${ext}`, r.blob);
+      }
+    }
+
     setWriting(true);
     setWriteMsg(null);
     setWriteProgress({ done: 0, total: driveResults.length });
@@ -356,22 +411,21 @@ export default function CompressPage() {
       for (let i = 0; i < driveResults.length; i++) {
         const r = driveResults[i];
         try {
-          if (mode === "overwrite") {
-            await overwriteDriveFile(driveToken, r.driveId!, r.blob);
-          } else {
-            const { parentId } = await getDriveParent(driveToken, r.driveId!);
-            if (!parentId) throw new Error("no_parent");
-            const ext = r.out.endsWith(".webp") ? "webp" : "jpg";
-            await createDriveFile(driveToken, parentId, `${stripExtension(r.name)}_nen.${ext}`, r.blob);
-          }
+          await writeOne(token, r);
           ok++;
         } catch (e) {
           if (e instanceof DriveAuthError) {
-            setDriveToken(null);
-            setWriteMsg("Phiên Google Drive đã hết hạn hoặc thiếu quyền. Hãy “Kết nối Google Drive” lại rồi thử lại.");
-            return;
+            // Token expired — request a fresh one once and retry this file.
+            try {
+              token = await ensureDriveToken(true);
+              await writeOne(token, r);
+              ok++;
+            } catch {
+              setWriteMsg("Phiên Google Drive đã hết hạn. Hãy bấm “Chọn từ Google Drive” để cấp lại quyền rồi thử lại.");
+              return;
+            }
           }
-          // skip files that fail individually
+          // otherwise: skip this file
         }
         setWriteProgress({ done: i + 1, total: driveResults.length });
       }
@@ -442,6 +496,19 @@ export default function CompressPage() {
 
           {source === "drive" ? (
             <>
+              {pickerConfigured && (
+                <>
+                  <button onClick={pickFromDrive} disabled={picking} className="btn-primary w-full py-3 disabled:opacity-40">
+                    <CloudUpload size={16} /> {picking ? "Đang mở Drive…" : "Chọn từ Google Drive"}
+                  </button>
+                  <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
+                    Đăng nhập Google của bạn rồi chọn ảnh/thư mục — chạy được cả Drive <b>riêng tư</b>, và cho phép <b>ghi đè / lưu ngược</b> lên Drive sau khi nén.
+                  </p>
+                  <div className="my-3 flex items-center gap-3 text-[11px] uppercase tracking-wider" style={{ color: "var(--text3)" }}>
+                    <span className="h-px flex-1" style={{ background: "var(--border)" }} /> hoặc <span className="h-px flex-1" style={{ background: "var(--border)" }} />
+                  </div>
+                </>
+              )}
               <div className="flex gap-2.5">
                 <input
                   value={driveUrl}
@@ -453,6 +520,9 @@ export default function CompressPage() {
                   <Search size={15} /> {loadingDrive ? "Đang tải…" : "Tải ảnh"}
                 </button>
               </div>
+              <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
+                Dán link folder <b>công khai</b> để nén &amp; tải về (không ghi ngược lên Drive).
+              </p>
               {driveError && <p className="mt-3 text-sm text-red-400">{driveError}</p>}
             </>
           ) : (
@@ -607,22 +677,13 @@ export default function CompressPage() {
         )}
         {savingMsg && <p className="mb-3 text-[13px]" style={{ color: "var(--gold)" }}>{savingMsg}</p>}
 
-        {/* Ghi kết quả ngược lên Google Drive (nguồn Drive) */}
+        {/* Ghi kết quả ngược lên Google Drive */}
         {results.some((r) => r.driveId) && (
           <div className="mb-4 rounded-xl p-4" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
             <h3 className="mb-2 flex items-center gap-2 text-[13px] font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
               <CloudUpload size={15} /> Ghi lên Google Drive
             </h3>
-            {!driveToken ? (
-              <>
-                <button onClick={connectDrive} className="btn-primary text-[13px]">
-                  <CloudUpload size={14} /> Kết nối Google Drive
-                </button>
-                <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
-                  Đăng nhập tài khoản Google <b>sở hữu</b> các ảnh để cấp quyền ghi. Khuyến nghị chọn định dạng <b>JPEG</b> khi ghi đè.
-                </p>
-              </>
-            ) : (
+            {driveMode === "picker" ? (
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -641,14 +702,18 @@ export default function CompressPage() {
                   >
                     <Save size={14} /> Lưu bản nén mới (giữ gốc)
                   </button>
-                  <button onClick={connectDrive} className="text-[12px]" style={{ color: "var(--text3)" }}>
-                    <RefreshCw size={12} className="mr-1 inline" /> Kết nối lại
+                  <button onClick={() => ensureDriveToken(true).catch(() => {})} className="text-[12px]" style={{ color: "var(--text3)" }}>
+                    <RefreshCw size={12} className="mr-1 inline" /> Cấp lại quyền
                   </button>
                 </div>
                 <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
-                  <b style={{ color: "#fbbf24" }}>Ghi đè</b> thay thế vĩnh viễn ảnh gốc (không hoàn tác, giữ nguyên link). <b>Bản nén mới</b> tạo file đuôi <code>_nen</code> trong cùng thư mục.
+                  <b style={{ color: "#fbbf24" }}>Ghi đè</b> thay thế vĩnh viễn ảnh gốc (không hoàn tác, giữ nguyên tên &amp; link). <b>Bản nén mới</b> tạo file đuôi <code>_nen</code> trong cùng thư mục. Nên chọn định dạng <b>JPEG</b> khi ghi đè.
                 </p>
               </>
+            ) : (
+              <p className="text-[12.5px]" style={{ color: "var(--text3)" }}>
+                Để ghi ngược lên Drive, hãy lấy ảnh bằng nút <b>“Chọn từ Google Drive”</b> ở phần Nguồn ảnh (chế độ dán link chỉ để nén &amp; tải về).
+              </p>
             )}
             {writeMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--gold)" }}>{writeMsg}</p>}
           </div>
