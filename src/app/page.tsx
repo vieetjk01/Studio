@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { thumbnailUrl } from "@/lib/drive";
 import ProfileHome from "./ProfileHome";
 import type { SiteSettings } from "@/lib/types";
 
@@ -46,7 +47,7 @@ export default async function HomePage() {
       db.from("photos").select("id", { count: "exact", head: true }),
       db
         .from("albums")
-        .select("slug, title, cover_url, event_date, category")
+        .select("slug, title, cover_url, event_date, category, photos(drive_file_id)")
         .eq("is_gallery", true)
         .eq("status", "published")
         .eq("gallery_pinned", true)
@@ -65,7 +66,13 @@ export default async function HomePage() {
     photoCount = photoCountRes.count ?? 0;
 
     for (const g of galRes.data ?? []) {
-      const card = { slug: g.slug, title: g.title, cover_url: g.cover_url as string | null, event_date: g.event_date as string | null };
+      const ph = (g.photos as { drive_file_id: string }[] | null)?.[0]?.drive_file_id;
+      const card = {
+        slug: g.slug,
+        title: g.title,
+        cover_url: (g.cover_url as string | null) || (ph ? thumbnailUrl(ph, 800) : null),
+        event_date: g.event_date as string | null,
+      };
       if (g.category === "video") pinnedVideoGalleries.push(card);
       else pinnedPhotoGalleries.push(card);
     }
