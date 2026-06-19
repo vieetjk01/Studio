@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { planProfilePatch, type Plan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
+
+function expiryFor(cycle: "month" | "year"): string {
+  const d = new Date();
+  if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}
 
 /** A logged-in photographer requests an account upgrade. */
 export async function POST(req: Request) {
@@ -21,17 +29,44 @@ export async function POST(req: Request) {
     amount?: number;
   };
 
+  const validPlan = plan === "basic" || plan === "photographer" || plan === "studio" ? (plan as Plan) : null;
+  const validCycle = cycle === "year" ? "year" : "month";
   const code = discount_code?.trim().toUpperCase() || null;
   const db = createAdminClient();
+
+  // Server-side: is the code a valid 100% code applicable to this plan? -> auto-activate.
+  let activated = false;
+  if (code && validPlan) {
+    const { data: dc } = await db
+      .from("discount_codes")
+      .select("percent, plan, active, max_uses, used_count, expires_at")
+      .eq("code", code)
+      .maybeSingle();
+    const usable =
+      dc &&
+      dc.active &&
+      (!dc.expires_at || new Date(dc.expires_at).getTime() >= Date.now()) &&
+      (dc.max_uses == null || (dc.used_count ?? 0) < dc.max_uses) &&
+      (!dc.plan || dc.plan === validPlan);
+    if (usable && dc.percent >= 100) {
+      await db
+        .from("profiles")
+        .update({ ...planProfilePatch(validPlan), plan_cycle: validCycle, plan_expires_at: expiryFor(validCycle) })
+        .eq("id", user.id);
+      activated = true;
+    }
+  }
+
   const { error } = await db.from("upgrade_requests").insert({
     user_id: user.id,
     email: user.email,
     note: note?.trim() || null,
-    plan: plan === "basic" || plan === "photographer" || plan === "studio" ? plan : null,
-    cycle: cycle === "month" || cycle === "year" ? cycle : null,
+    plan: validPlan,
+    cycle: validCycle,
     discount_code: code,
     phone: phone?.trim() || null,
     amount: amount != null && Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : null,
+    handled: activated, // auto-activated requests are already done
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -40,5 +75,5 @@ export async function POST(req: Request) {
     const { data: dc } = await db.from("discount_codes").select("id, used_count").eq("code", code).maybeSingle();
     if (dc) await db.from("discount_codes").update({ used_count: (dc.used_count ?? 0) + 1 }).eq("id", dc.id);
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, activated });
 }

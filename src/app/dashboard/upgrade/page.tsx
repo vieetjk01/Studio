@@ -49,6 +49,15 @@ const COMPARE: { label: string; free: Cmp; basic: Cmp; photographer: Cmp; studio
   { label: "Quản lý lịch chụp / hợp đồng", free: false, basic: false, photographer: false, studio: "Đang xây dựng" },
 ];
 
+const COMING_SOON = [
+  "Website cá nhân riêng cho photographer",
+  "Trang album ảnh riêng theo thương hiệu",
+  "Đổi logo & tên miền cá nhân",
+  "Quản lý lịch chụp",
+  "Quản lý hợp đồng khách hàng",
+  "Quản lý photographer cho từng hợp đồng",
+];
+
 export default function UpgradePage() {
   const [currentPlan, setCurrentPlan] = useState<Plan>("free");
   const [prices, setPrices] = useState<Prices>(DEFAULT_PRICES);
@@ -58,6 +67,7 @@ export default function UpgradePage() {
   const [modalPlan, setModalPlan] = useState<Plan | null>(null); // plan whose confirm form is open
   const [sending, setSending] = useState<Plan | null>(null);
   const [sentPlan, setSentPlan] = useState<Plan | null>(null);
+  const [activated, setActivated] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Discount code
@@ -148,11 +158,16 @@ export default function UpgradePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plan, cycle, note, discount_code: usedCode, phone, amount }),
     });
+    const data = await res.json().catch(() => null);
     setSending(null);
     if (res.ok) {
       setSentPlan(plan);
       setModalPlan(null);
       setNote("");
+      if (data?.activated) {
+        setActivated(true);
+        setCurrentPlan(plan);
+      }
     } else {
       setError("Gửi yêu cầu thất bại, thử lại sau.");
     }
@@ -215,7 +230,7 @@ export default function UpgradePage() {
       </div>
       {codeMsg && <p className="mb-4 text-[13px]" style={{ color: appliedCode ? "var(--gold)" : "#f87171" }}>{codeMsg}</p>}
 
-      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ plan, icon: Icon, accent, promo }) => (
           <div key={plan} className="card flex flex-col p-7" style={accent ? { borderColor: "var(--gold)" } : undefined}>
             <div className="mb-4 flex items-center gap-2.5">
@@ -247,7 +262,7 @@ export default function UpgradePage() {
               ) : sentPlan === plan ? (
                 <div className="flex items-center gap-2.5 rounded-xl px-4 py-3" style={{ background: "color-mix(in srgb,#3fbf7f 14%,transparent)", border: "1px solid color-mix(in srgb,#3fbf7f 40%,transparent)" }}>
                   <Check size={17} style={{ color: "#5fd29a" }} />
-                  <span className="text-[13px]">Đã gửi yêu cầu! Quản trị viên sẽ liên hệ sớm.</span>
+                  <span className="text-[13px]">{activated ? "Đã kích hoạt gói! 🎉" : "Đã gửi yêu cầu! Quản trị viên sẽ liên hệ sớm."}</span>
                 </div>
               ) : (
                 <button onClick={() => { setError(null); setModalPlan(plan); }} className="btn-primary w-full rounded-xl py-3 text-[14px]">
@@ -285,8 +300,23 @@ export default function UpgradePage() {
         </table>
       </div>
 
+      {/* Coming soon */}
+      <div className="mt-8 card p-6">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
+          <Sparkles size={15} /> Tính năng sắp ra mắt
+        </h3>
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {COMING_SOON.map((f) => (
+            <div key={f} className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--text2)" }}>
+              <span className="rounded-full px-2 py-0.5 text-[10px] uppercase" style={{ background: "var(--surface2)", color: "var(--text3)" }}>Sắp có</span>
+              {f}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <p className="mt-6 text-center text-[12.5px]" style={{ color: "var(--text3)" }}>
-        Thanh toán & kích hoạt gói hiện được xử lý thủ công — gửi yêu cầu rồi quản trị viên sẽ liên hệ.
+        Thanh toán & kích hoạt gói hiện được xử lý thủ công — gửi yêu cầu rồi quản trị viên sẽ liên hệ. Mã giảm giá 100% sẽ kích hoạt gói ngay.
       </p>
 
       {/* Confirm modal — enter phone before sending */}

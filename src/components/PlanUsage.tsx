@@ -11,6 +11,7 @@ interface Usage {
   limit: number | null; // null = unlimited
   pro: boolean;
   plan: Plan;
+  expiresAt: string | null;
 }
 
 export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolean }) {
@@ -47,6 +48,7 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
         limit: isAdmin ? null : profile?.monthly_album_limit ?? null,
         pro: plan !== "free",
         plan,
+        expiresAt: plan === "free" ? null : profile?.plan_expires_at ?? null,
       });
     })();
   }, []);
@@ -71,6 +73,9 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
             ? `Đã tạo ${usage.used} album tháng này · không giới hạn`
             : `Đã tạo ${usage.used}/${usage.limit} album trong tháng này`}
         </span>
+        {usage.expiresAt && (
+          <span style={{ color: "var(--text3)" }}> · Hết hạn {new Date(usage.expiresAt).toLocaleDateString("vi-VN")}</span>
+        )}
       </div>
       {showUpgrade && !usage.pro && (
         <Link

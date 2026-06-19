@@ -260,6 +260,7 @@ export default function SettingsPanel({
               <select className="input" value={newCode.plan} onChange={(e) => setNewCode({ ...newCode, plan: e.target.value })}>
                 <option value="">Mọi gói</option>
                 <option value="basic">Basic</option>
+                <option value="photographer">Photographer</option>
                 <option value="studio">Studio</option>
               </select>
             </div>
