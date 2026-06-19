@@ -47,6 +47,7 @@ export default function UpgradePage() {
   const [cycle, setCycle] = useState<Cycle>("month");
   const [note, setNote] = useState("");
   const [phone, setPhone] = useState("");
+  const [modalPlan, setModalPlan] = useState<Plan | null>(null); // plan whose confirm form is open
   const [sending, setSending] = useState<Plan | null>(null);
   const [sentPlan, setSentPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +133,7 @@ export default function UpgradePage() {
     setSending(null);
     if (res.ok) {
       setSentPlan(plan);
+      setModalPlan(null);
       setNote("");
     } else {
       setError("Gửi yêu cầu thất bại, thử lại sau.");
@@ -229,8 +231,8 @@ export default function UpgradePage() {
                   <span className="text-[13px]">Đã gửi yêu cầu! Quản trị viên sẽ liên hệ sớm.</span>
                 </div>
               ) : (
-                <button onClick={() => request(plan)} disabled={sending === plan} className="btn-primary w-full rounded-xl py-3 text-[14px]">
-                  <Send size={15} /> {sending === plan ? "Đang gửi…" : `Đăng ký ${PLAN_LABEL[plan]}`}
+                <button onClick={() => { setError(null); setModalPlan(plan); }} className="btn-primary w-full rounded-xl py-3 text-[14px]">
+                  <Send size={15} /> {`Đăng ký ${PLAN_LABEL[plan]}`}
                 </button>
               )}
             </div>
@@ -262,24 +264,55 @@ export default function UpgradePage() {
         </table>
       </div>
 
-      <div className="mt-6 card p-5">
-        <label className="mb-2 block text-[13px]" style={{ color: "var(--text2)" }}>
-          Số điện thoại liên hệ <span style={{ color: "var(--gold)" }}>*</span>
-        </label>
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="VD: 0974374744"
-          inputMode="tel"
-          className="input mb-3"
-        />
-        <label className="mb-2 block text-[13px]" style={{ color: "var(--text2)" }}>Lời nhắn khi gửi yêu cầu (tuỳ chọn)</label>
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhu cầu của bạn, số lượng album dự kiến…" className="input min-h-[70px] resize-y" />
-        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-        <p className="mt-2 text-[12px]" style={{ color: "var(--text3)" }}>
-          Thanh toán & kích hoạt gói hiện được xử lý thủ công — gửi yêu cầu rồi quản trị viên sẽ liên hệ.
-        </p>
-      </div>
+      <p className="mt-6 text-center text-[12.5px]" style={{ color: "var(--text3)" }}>
+        Thanh toán & kích hoạt gói hiện được xử lý thủ công — gửi yêu cầu rồi quản trị viên sẽ liên hệ.
+      </p>
+
+      {/* Confirm modal — enter phone before sending */}
+      {modalPlan && modalPlan !== "free" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,.6)" }}
+          onClick={() => sending === null && setModalPlan(null)}
+        >
+          <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-serif text-2xl font-medium">Đăng ký gói {PLAN_LABEL[modalPlan]}</h3>
+            <p className="mt-1 text-[13px]" style={{ color: "var(--text2)" }}>
+              {cycle === "month" ? "Theo tháng" : "Theo năm"} ·{" "}
+              <b style={{ color: "var(--gold)" }}>
+                {formatVnd(Math.round(priceOf(modalPlan as "basic" | "studio") * (1 - discountFor(modalPlan) / 100)))}
+              </b>
+              {discountFor(modalPlan) > 0 && ` (-${discountFor(modalPlan)}%)`}
+              {appliedCode && (!appliedCode.plan || appliedCode.plan === modalPlan) && ` · mã ${appliedCode.code}`}
+            </p>
+
+            <label className="mt-4 mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>
+              Số điện thoại liên hệ <span style={{ color: "var(--gold)" }}>*</span>
+            </label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="VD: 0974374744"
+              inputMode="tel"
+              autoFocus
+              className="input"
+            />
+            <label className="mt-3 mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>Lời nhắn (tuỳ chọn)</label>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhu cầu của bạn, số lượng album dự kiến…" className="input min-h-[70px] resize-y" />
+
+            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+
+            <div className="mt-4 flex gap-2.5">
+              <button onClick={() => setModalPlan(null)} disabled={sending !== null} className="btn-ghost flex-1 py-2.5">
+                Huỷ
+              </button>
+              <button onClick={() => request(modalPlan)} disabled={sending !== null} className="btn-primary flex-1 py-2.5">
+                <Send size={15} /> {sending === modalPlan ? "Đang gửi…" : "Xác nhận gửi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
