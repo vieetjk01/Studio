@@ -525,6 +525,19 @@ drop policy if exists discount_codes_admin on public.discount_codes;
 create policy discount_codes_admin on public.discount_codes
   for all using (public.is_admin()) with check (public.is_admin());
 
+-- Per-account redemption log: each code can be used at most once per user.
+create table if not exists public.discount_redemptions (
+  id         uuid primary key default gen_random_uuid(),
+  code       text not null,
+  user_id    uuid references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (code, user_id)
+);
+alter table public.discount_redemptions enable row level security;
+drop policy if exists discount_redemptions_read on public.discount_redemptions;
+create policy discount_redemptions_read on public.discount_redemptions
+  for select using (user_id = auth.uid() or public.is_admin());
+
 create table if not exists public.compress_usages (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid references auth.users (id) on delete cascade,

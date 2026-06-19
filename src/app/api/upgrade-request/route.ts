@@ -34,9 +34,21 @@ export async function POST(req: Request) {
   const code = discount_code?.trim().toUpperCase() || null;
   const db = createAdminClient();
 
+  // Has this account already redeemed this code?
+  let alreadyRedeemed = false;
+  if (code) {
+    const { data: red } = await db
+      .from("discount_redemptions")
+      .select("id")
+      .eq("code", code)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    alreadyRedeemed = !!red;
+  }
+
   // Server-side: is the code a valid 100% code applicable to this plan? -> auto-activate.
   let activated = false;
-  if (code && validPlan) {
+  if (code && validPlan && !alreadyRedeemed) {
     const { data: dc } = await db
       .from("discount_codes")
       .select("percent, plan, cycle, active, max_uses, used_count, expires_at")
@@ -71,10 +83,13 @@ export async function POST(req: Request) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Count one use of the discount code (single-use codes become spent).
-  if (code) {
-    const { data: dc } = await db.from("discount_codes").select("id, used_count").eq("code", code).maybeSingle();
-    if (dc) await db.from("discount_codes").update({ used_count: (dc.used_count ?? 0) + 1 }).eq("id", dc.id);
+  // Record the per-account redemption + bump the global used count (once per account).
+  if (code && !alreadyRedeemed) {
+    const { error: redErr } = await db.from("discount_redemptions").insert({ code, user_id: user.id });
+    if (!redErr) {
+      const { data: dc } = await db.from("discount_codes").select("id, used_count").eq("code", code).maybeSingle();
+      if (dc) await db.from("discount_codes").update({ used_count: (dc.used_count ?? 0) + 1 }).eq("id", dc.id);
+    }
   }
   return NextResponse.json({ ok: true, activated });
 }

@@ -124,7 +124,15 @@ export default function UpgradePage() {
       );
     } else {
       setAppliedCode(null);
-      setCodeMsg("Mã không hợp lệ hoặc đã hết hiệu lực.");
+      setCodeMsg(
+        d?.reason === "already_used"
+          ? "Bạn đã sử dụng mã này rồi."
+          : d?.reason === "wrong_cycle"
+          ? "Mã chỉ áp dụng cho chu kỳ khác."
+          : d?.reason === "wrong_plan"
+          ? "Mã chỉ áp dụng cho gói khác."
+          : "Mã không hợp lệ hoặc đã hết hiệu lực."
+      );
     }
   }
 

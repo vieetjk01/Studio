@@ -24,6 +24,14 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (!data || !data.active) return NextResponse.json({ valid: false });
+  // Already redeemed by this account?
+  const { data: red } = await db
+    .from("discount_redemptions")
+    .select("id")
+    .eq("code", c)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (red) return NextResponse.json({ valid: false, reason: "already_used" });
   // Expired?
   if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
     return NextResponse.json({ valid: false, reason: "expired" });
