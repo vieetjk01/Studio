@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck } from "lucide-react";
+import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import ZaloButton from "@/components/ZaloButton";
@@ -61,6 +61,7 @@ export default async function StudioOverview() {
     location: string | null;
     event_date: string | null;
     event_time: string | null;
+    delivery_due: string | null;
     status: ContractStatus;
     shoot_type: keyof typeof SHOOT_TYPE_LABEL;
     contract_items: { qty: number; unit_price: number }[];
@@ -95,6 +96,11 @@ export default async function StudioOverview() {
     .filter((c) => c.status !== "cancelled")
     .flatMap((c) => (c.contract_crew || []).filter((cr) => cr.status === "pending").map((cr) => ({ c, cr })));
 
+  // Photo deliveries past their due date and not yet completed.
+  const lateDeliveries = list
+    .filter((c) => c.delivery_due && c.delivery_due < today && c.status !== "completed" && c.status !== "cancelled")
+    .sort((a, b) => (a.delivery_due || "").localeCompare(b.delivery_due || ""));
+
   const stats = [
     { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length) },
     { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
@@ -124,9 +130,27 @@ export default async function StudioOverview() {
         ))}
       </div>
 
-      {/* Reminders: outstanding debts + crew awaiting response */}
-      {(debts.length > 0 || pendingCrew.length > 0) && (
+      {/* Reminders: outstanding debts + crew awaiting response + late deliveries */}
+      {(debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0) && (
         <div className="mb-8 grid gap-6 lg:grid-cols-2">
+          {lateDeliveries.length > 0 && (
+            <div className="card p-6" style={{ borderColor: "#c77b7b55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c77b7b" }}>
+                <Clock size={18} /> Trễ hạn giao ảnh
+              </h2>
+              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{lateDeliveries.length} hợp đồng quá hạn giao</p>
+              <ul className="space-y-2">
+                {lateDeliveries.slice(0, 6).map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                      <p className="truncate text-sm font-medium">{c.title}</p>
+                      <span className="shrink-0 text-[11px]" style={{ color: "#c77b7b" }}>hạn {c.delivery_due}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {debts.length > 0 && (
             <div className="card p-6" style={{ borderColor: "#c7a76b55" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>

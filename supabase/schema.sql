@@ -735,6 +735,30 @@ alter table public.studio_contracts add column if not exists studio_signed_name 
 alter table public.studio_contracts add column if not exists studio_signature  text; -- PNG data URL
 alter table public.studio_contracts add column if not exists studio_signed_at  timestamptz;
 
+-- Photo-delivery deadline (for the late-delivery warning on the overview).
+alter table public.studio_contracts add column if not exists delivery_due date;
+
+-- Per-contract checklist (đặt cọc, chụp, chọn ảnh, retouch, in album, giao…).
+create table if not exists public.contract_tasks (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  label       text not null default '',
+  done        boolean not null default false,
+  position    integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists contract_tasks_contract_idx on public.contract_tasks (contract_id);
+alter table public.contract_tasks enable row level security;
+drop policy if exists contract_tasks_owner_all on public.contract_tasks;
+create policy contract_tasks_owner_all on public.contract_tasks
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
 -- Reusable contract templates (mẫu hợp đồng): a named set of line items + terms.
 create table if not exists public.contract_templates (
   id         uuid primary key default gen_random_uuid(),

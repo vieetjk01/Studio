@@ -34,6 +34,7 @@ import {
   type ContractCrew,
   type ContractEditRequest,
   type ContractPayment,
+  type ContractTask,
   type StudioCrew,
   type StudioEvent,
   type ShootType,
@@ -76,6 +77,7 @@ export default function ContractEditor({
   initialMilestones,
   studioName,
   conflictByPhone,
+  initialTasks,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -87,6 +89,7 @@ export default function ContractEditor({
   initialMilestones: StudioEvent[];
   studioName: string;
   conflictByPhone: Record<string, string>;
+  initialTasks: ContractTask[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -105,6 +108,7 @@ export default function ContractEditor({
     location: contract.location ?? "",
     note: contract.note ?? "",
     gallery_album_id: contract.gallery_album_id ?? "",
+    delivery_due: contract.delivery_due ?? "",
   });
   const set = (k: keyof typeof f, v: string | number) =>
     setF((p) => ({ ...p, [k]: v }) as typeof p);
@@ -127,6 +131,8 @@ export default function ContractEditor({
   const [requests, setRequests] = useState<ContractEditRequest[]>(initialRequests);
   const [payments, setPayments] = useState<ContractPayment[]>(initialPayments);
   const [milestones, setMilestones] = useState<StudioEvent[]>(initialMilestones);
+  const [tasks, setTasks] = useState<ContractTask[]>(initialTasks);
+  const [newTask, setNewTask] = useState("");
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
@@ -171,6 +177,7 @@ export default function ContractEditor({
         location: f.location.trim() || null,
         note: f.note.trim() || null,
         gallery_album_id: f.gallery_album_id || null,
+        delivery_due: f.delivery_due || null,
       })
       .eq("id", contract.id);
     setBusy(null);
@@ -358,6 +365,29 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     await supabase.from("studio_events").delete().eq("id", id);
     setMilestones((p) => p.filter((m) => m.id !== id));
   }
+
+  // ── Checklist ──────────────────────────────────────────────────
+  async function addTask() {
+    if (!newTask.trim()) return;
+    const { data } = await supabase
+      .from("contract_tasks")
+      .insert({ contract_id: contract.id, label: newTask.trim(), position: tasks.length })
+      .select("*")
+      .single();
+    if (data) {
+      setTasks((p) => [...p, data as ContractTask]);
+      setNewTask("");
+    }
+  }
+  async function toggleTask(t: ContractTask) {
+    setTasks((p) => p.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)));
+    await supabase.from("contract_tasks").update({ done: !t.done }).eq("id", t.id);
+  }
+  async function deleteTask(id: string) {
+    await supabase.from("contract_tasks").delete().eq("id", id);
+    setTasks((p) => p.filter((x) => x.id !== id));
+  }
+  const tasksDone = tasks.filter((t) => t.done).length;
 
   // ── Studio counter-signature ───────────────────────────────────
   async function saveStudioSignature() {
@@ -572,6 +602,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 </div>
               </div>
               <div>
+                <label className="label">Hạn giao ảnh</label>
+                <input type="date" className="input" value={f.delivery_due} onChange={(e) => set("delivery_due", e.target.value)} />
+              </div>
+              <div>
                 <label className="label">Gallery ảnh giao khách (gắn vào cổng khách)</label>
                 <select className="input" value={f.gallery_album_id} onChange={(e) => set("gallery_album_id", e.target.value)}>
                   <option value="">— Chưa gắn —</option>
@@ -716,6 +750,48 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <button onClick={addMilestone} disabled={busy === "milestone"} className="btn-ghost mt-3">
               <Plus size={15} /> {busy === "milestone" ? "Đang thêm…" : "Thêm mốc lịch"}
             </button>
+          </div>
+
+          {/* Checklist */}
+          <div className="card p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-serif text-lg font-medium">Checklist công việc</h2>
+              {tasks.length > 0 && (
+                <span className="text-xs" style={{ color: tasksDone === tasks.length ? "#7bb38a" : "var(--text3)" }}>
+                  {tasksDone}/{tasks.length} xong
+                </span>
+              )}
+            </div>
+            {tasks.length > 0 && (
+              <div className="mb-3 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
+                <div className="h-full rounded-full" style={{ width: `${(tasksDone / tasks.length) * 100}%`, background: "#7bb38a" }} />
+              </div>
+            )}
+            {tasks.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có việc nào. Vd: đặt cọc, chụp, chọn ảnh, retouch, in album, giao.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {tasks.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2.5">
+                    <button onClick={() => toggleTask(t)} className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md" style={{ border: "1px solid var(--border2)", background: t.done ? "#7bb38a" : "transparent" }}>
+                      {t.done && <Check size={13} color="#0c0c0c" />}
+                    </button>
+                    <span className="flex-1 text-sm" style={{ color: t.done ? "var(--text3)" : "var(--text)", textDecoration: t.done ? "line-through" : "none" }}>{t.label}</span>
+                    <button onClick={() => deleteTask(t.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-3 flex gap-2">
+              <input
+                className="input"
+                placeholder="Thêm việc…"
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addTask(); }}
+              />
+              <button onClick={addTask} className="btn-ghost shrink-0"><Plus size={15} /></button>
+            </div>
           </div>
 
           {/* Crew */}

@@ -211,8 +211,18 @@ export interface StudioContract {
   studio_signed_at: string | null;
   gallery_album_id: string | null;
   client_viewed_at: string | null;
+  delivery_due: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ContractTask {
+  id: string;
+  contract_id: string;
+  label: string;
+  done: boolean;
+  position: number;
+  created_at: string;
 }
 
 export interface ContractTemplate {
