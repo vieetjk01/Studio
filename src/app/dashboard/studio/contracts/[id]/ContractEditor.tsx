@@ -16,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl, mainUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
+import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
 import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
@@ -109,6 +110,7 @@ export default function ContractEditor({
     note: contract.note ?? "",
     gallery_album_id: contract.gallery_album_id ?? "",
     delivery_due: contract.delivery_due ?? "",
+    client_messenger: contract.client_messenger ?? "",
   });
   const set = (k: keyof typeof f, v: string | number) =>
     setF((p) => ({ ...p, [k]: v }) as typeof p);
@@ -178,6 +180,7 @@ export default function ContractEditor({
         note: f.note.trim() || null,
         gallery_album_id: f.gallery_album_id || null,
         delivery_due: f.delivery_due || null,
+        client_messenger: f.client_messenger.trim() || null,
       })
       .eq("id", contract.id);
     setBusy(null);
@@ -478,6 +481,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           label="Gửi khách qua Zalo"
           message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
         />
+        <MessengerButton
+          link={f.client_messenger}
+          label="Nhắn Messenger"
+          message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
+        />
         <EmailButton
           to={f.client_email}
           label="Gửi email"
@@ -568,6 +576,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <label className="label">Email khách</label>
                   <input className="input" value={f.client_email} onChange={(e) => set("client_email", e.target.value)} />
                 </div>
+              </div>
+              <div>
+                <label className="label">Link Facebook/Messenger của khách</label>
+                <input className="input" placeholder="m.me/… hoặc facebook.com/…" value={f.client_messenger} onChange={(e) => set("client_messenger", e.target.value)} />
+                <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Khách cũng có thể tự dán link này trong cổng khách.</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>

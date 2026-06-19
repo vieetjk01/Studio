@@ -738,6 +738,10 @@ alter table public.studio_contracts add column if not exists studio_signed_at  t
 -- Photo-delivery deadline (for the late-delivery warning on the overview).
 alter table public.studio_contracts add column if not exists delivery_due date;
 
+-- Client's Facebook/Messenger link (so the studio can message them via Messenger).
+-- The client can set this themselves from the portal, or the studio can enter it.
+alter table public.studio_contracts add column if not exists client_messenger text;
+
 -- Per-contract checklist (đặt cọc, chụp, chọn ảnh, retouch, in album, giao…).
 create table if not exists public.contract_tasks (
   id          uuid primary key default gen_random_uuid(),

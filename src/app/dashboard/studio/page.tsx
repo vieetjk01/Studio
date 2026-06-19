@@ -3,6 +3,7 @@ import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Cl
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import ZaloButton from "@/components/ZaloButton";
+import MessengerButton from "@/components/MessengerButton";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -58,6 +59,7 @@ export default async function StudioOverview() {
     title: string;
     client_name: string | null;
     client_phone: string | null;
+    client_messenger: string | null;
     location: string | null;
     event_date: string | null;
     event_time: string | null;
@@ -164,11 +166,18 @@ export default async function StudioOverview() {
                       <p className="truncate text-sm font-medium">{c.title}</p>
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>{c.client_name || "—"} · còn {vnd(due)}</p>
                     </Link>
-                    <ZaloButton
-                      phone={c.client_phone}
-                      label="Nhắc thu"
-                      message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
-                    />
+                    <div className="flex shrink-0 items-center gap-2">
+                      <ZaloButton
+                        phone={c.client_phone}
+                        label="Zalo"
+                        message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
+                      />
+                      <MessengerButton
+                        link={c.client_messenger}
+                        label="Messenger"
+                        message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -22,6 +22,7 @@ type Contract = {
   title: string;
   client_name: string | null;
   client_email: string | null;
+  client_messenger: string | null;
   shoot_type: ShootType;
   event_date: string | null;
   event_time: string | null;
@@ -61,6 +62,10 @@ export default function ContractView({ token }: { token: string }) {
   const [signature, setSignature] = useState("");
   const [signing, setSigning] = useState(false);
 
+  // messenger link
+  const [messenger, setMessenger] = useState("");
+  const [msgrSaved, setMsgrSaved] = useState(false);
+
   async function fetchContract(pw: string) {
     const res = await fetch(`/api/c/${token}`, {
       method: "POST",
@@ -78,6 +83,7 @@ export default function ContractView({ token }: { token: string }) {
     setPayments(j.payments ?? []);
     setMilestones(j.milestones ?? []);
     setGallery(j.gallery ?? null);
+    setMessenger(j.contract?.client_messenger ?? "");
     return { ok: true };
   }
 
@@ -111,6 +117,18 @@ export default function ContractView({ token }: { token: string }) {
       setSent(true);
       setEditMsg("");
       setTimeout(() => setSent(false), 4000);
+    }
+  }
+
+  async function saveMessenger() {
+    const res = await fetch(`/api/c/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "set_messenger", phone, link: messenger.trim() }),
+    });
+    if (res.ok) {
+      setMsgrSaved(true);
+      setTimeout(() => setMsgrSaved(false), 3000);
     }
   }
 
@@ -289,6 +307,25 @@ export default function ContractView({ token }: { token: string }) {
               </button>
             </>
           )}
+        </div>
+
+        {/* Messenger link */}
+        <div className="card mt-6 p-6">
+          <h2 className="mb-2 font-serif text-lg font-medium">Liên hệ qua Messenger</h2>
+          <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>
+            Dán link Facebook/Messenger của bạn để studio tiện liên hệ.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              className="input flex-1"
+              placeholder="m.me/… hoặc facebook.com/…"
+              value={messenger}
+              onChange={(e) => setMessenger(e.target.value)}
+            />
+            <button onClick={saveMessenger} className="btn-ghost shrink-0">
+              {msgrSaved ? <Check size={15} /> : null} {msgrSaved ? "Đã lưu" : "Lưu link"}
+            </button>
+          </div>
         </div>
 
         {/* Edit request */}
