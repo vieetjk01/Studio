@@ -49,10 +49,11 @@ export default function SettingsPanel({
 
   // Discount codes
   const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
-  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; uses: "1" | "many"; expires: string }>({
+  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; cycle: string; uses: "1" | "many"; expires: string }>({
     code: "",
     percent: 10,
     plan: "",
+    cycle: "",
     uses: "many",
     expires: "",
   });
@@ -75,6 +76,7 @@ export default function SettingsPanel({
         code,
         percent: newCode.percent,
         plan: newCode.plan || null,
+        cycle: newCode.cycle || null,
         max_uses: newCode.uses === "1" ? 1 : null,
         expires_at: newCode.expires || null,
       }),
@@ -82,7 +84,7 @@ export default function SettingsPanel({
     const data = await res.json();
     if (res.ok && data.code) {
       setCodes((c) => [data.code, ...c]);
-      setNewCode({ code: "", percent: 10, plan: "", uses: "many", expires: "" });
+      setNewCode({ code: "", percent: 10, plan: "", cycle: "", uses: "many", expires: "" });
     } else {
       setMsg(data.error?.includes("duplicate") ? "Mã đã tồn tại" : t("error"));
       setTimeout(() => setMsg(null), 2500);
@@ -255,13 +257,21 @@ export default function SettingsPanel({
               <label className="label">%</label>
               <input type="number" min={0} max={100} className="input" value={newCode.percent} onChange={(e) => setNewCode({ ...newCode, percent: Number(e.target.value) })} />
             </div>
-            <div className="w-24">
-              <label className="label">Áp dụng</label>
+            <div className="w-28">
+              <label className="label">Gói</label>
               <select className="input" value={newCode.plan} onChange={(e) => setNewCode({ ...newCode, plan: e.target.value })}>
                 <option value="">Mọi gói</option>
                 <option value="basic">Basic</option>
                 <option value="photographer">Photographer</option>
                 <option value="studio">Studio</option>
+              </select>
+            </div>
+            <div className="w-24">
+              <label className="label">Chu kỳ</label>
+              <select className="input" value={newCode.cycle} onChange={(e) => setNewCode({ ...newCode, cycle: e.target.value })}>
+                <option value="">Mọi kỳ</option>
+                <option value="month">Tháng</option>
+                <option value="year">Năm</option>
               </select>
             </div>
             <div className="w-28">
@@ -285,7 +295,10 @@ export default function SettingsPanel({
                 <div key={c.id} className="flex items-center gap-3 px-3 py-2 text-[13px]">
                   <span className="font-mono font-medium" style={{ color: "var(--text)" }}>{c.code}</span>
                   <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>
-                  <span style={{ color: "var(--text3)" }}>{c.plan ? c.plan : "mọi gói"}</span>
+                  <span style={{ color: "var(--text3)" }}>
+                    {c.plan ? c.plan : "mọi gói"}
+                    {c.cycle ? ` · ${c.cycle === "year" ? "năm" : "tháng"}` : ""}
+                  </span>
                   <span style={{ color: "var(--text3)" }}>
                     {c.max_uses == null ? `đã dùng ${c.used_count}` : `${c.used_count}/${c.max_uses}`}
                   </span>

@@ -518,6 +518,7 @@ create table if not exists public.discount_codes (
 alter table public.discount_codes add column if not exists max_uses integer;
 alter table public.discount_codes add column if not exists used_count integer not null default 0;
 alter table public.discount_codes add column if not exists expires_at timestamptz; -- null = no expiry
+alter table public.discount_codes add column if not exists cycle text;            -- null = any cycle, else 'month' | 'year'
 alter table public.discount_codes enable row level security;
 -- Only admins read/manage directly; customers validate a code via the API (service role).
 drop policy if exists discount_codes_admin on public.discount_codes;

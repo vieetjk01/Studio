@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   if (code && validPlan) {
     const { data: dc } = await db
       .from("discount_codes")
-      .select("percent, plan, active, max_uses, used_count, expires_at")
+      .select("percent, plan, cycle, active, max_uses, used_count, expires_at")
       .eq("code", code)
       .maybeSingle();
     const usable =
@@ -47,7 +47,8 @@ export async function POST(req: Request) {
       dc.active &&
       (!dc.expires_at || new Date(dc.expires_at).getTime() >= Date.now()) &&
       (dc.max_uses == null || (dc.used_count ?? 0) < dc.max_uses) &&
-      (!dc.plan || dc.plan === validPlan);
+      (!dc.plan || dc.plan === validPlan) &&
+      (!dc.cycle || dc.cycle === validCycle);
     if (usable && dc.percent >= 100) {
       await db
         .from("profiles")

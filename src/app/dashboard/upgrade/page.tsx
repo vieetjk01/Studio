@@ -72,7 +72,7 @@ export default function UpgradePage() {
 
   // Discount code
   const [codeInput, setCodeInput] = useState("");
-  const [appliedCode, setAppliedCode] = useState<{ code: string; percent: number; plan: string | null } | null>(null);
+  const [appliedCode, setAppliedCode] = useState<{ code: string; percent: number; plan: string | null; cycle: string | null } | null>(null);
   const [codeMsg, setCodeMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -114,12 +114,14 @@ export default function UpgradePage() {
     const res = await fetch("/api/discount/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: c }),
+      body: JSON.stringify({ code: c, cycle }),
     });
     const d = await res.json().catch(() => null);
     if (d?.valid) {
-      setAppliedCode({ code: d.code, percent: d.percent, plan: d.plan });
-      setCodeMsg(`Đã áp dụng mã ${d.code}: -${d.percent}%${d.plan ? ` (gói ${d.plan})` : ""}.`);
+      setAppliedCode({ code: d.code, percent: d.percent, plan: d.plan, cycle: d.cycle });
+      setCodeMsg(
+        `Đã áp dụng mã ${d.code}: -${d.percent}%${d.plan ? ` (gói ${d.plan})` : ""}${d.cycle ? ` (${d.cycle === "year" ? "theo năm" : "theo tháng"})` : ""}.`
+      );
     } else {
       setAppliedCode(null);
       setCodeMsg("Mã không hợp lệ hoặc đã hết hiệu lực.");
@@ -132,7 +134,11 @@ export default function UpgradePage() {
     if (plan === "basic") base = prices.basicDiscount;
     if (plan === "photographer") base = prices.photographerDiscount;
     if (plan === "studio") base = Math.max(prices.studioDiscount, cycle === "year" ? prices.studioPromo : 0);
-    const codePct = appliedCode && (!appliedCode.plan || appliedCode.plan === plan) ? appliedCode.percent : 0;
+    const codeApplies =
+      appliedCode &&
+      (!appliedCode.plan || appliedCode.plan === plan) &&
+      (!appliedCode.cycle || appliedCode.cycle === cycle);
+    const codePct = codeApplies ? appliedCode!.percent : 0;
     return Math.max(base, codePct);
   }
   function priceOf(plan: "basic" | "photographer" | "studio"): number {
@@ -151,7 +157,10 @@ export default function UpgradePage() {
     }
     setSending(plan);
     setError(null);
-    const usedCode = appliedCode && (!appliedCode.plan || appliedCode.plan === plan) ? appliedCode.code : null;
+    const usedCode =
+      appliedCode && (!appliedCode.plan || appliedCode.plan === plan) && (!appliedCode.cycle || appliedCode.cycle === cycle)
+        ? appliedCode.code
+        : null;
     const amount = plan === "free" ? null : finalPriceOf(plan);
     const res = await fetch("/api/upgrade-request", {
       method: "POST",
@@ -334,7 +343,7 @@ export default function UpgradePage() {
                 {formatVnd(finalPriceOf(modalPlan as "basic" | "photographer" | "studio"))}
               </b>
               {discountFor(modalPlan) > 0 && ` (-${discountFor(modalPlan)}%)`}
-              {appliedCode && (!appliedCode.plan || appliedCode.plan === modalPlan) && ` · mã ${appliedCode.code}`}
+              {appliedCode && (!appliedCode.plan || appliedCode.plan === modalPlan) && (!appliedCode.cycle || appliedCode.cycle === cycle) && ` · mã ${appliedCode.code}`}
             </p>
 
             <label className="mt-4 mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>

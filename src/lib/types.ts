@@ -108,6 +108,7 @@ export interface DiscountCode {
   max_uses: number | null;
   used_count: number;
   expires_at: string | null;
+  cycle: string | null;
   created_at: string;
 }
 
