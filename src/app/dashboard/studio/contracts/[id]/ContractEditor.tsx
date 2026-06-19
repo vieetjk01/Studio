@@ -73,6 +73,7 @@ export default function ContractEditor({
   galleries,
   initialMilestones,
   studioName,
+  conflictByPhone,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -83,7 +84,9 @@ export default function ContractEditor({
   galleries: { id: string; title: string; slug: string }[];
   initialMilestones: StudioEvent[];
   studioName: string;
+  conflictByPhone: Record<string, string>;
 }) {
+  const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
   const supabase = createClient();
 
@@ -737,6 +740,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                         <input type="number" className="input text-right sm:col-span-2" placeholder="Lương" value={c.salary} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, salary: Number(e.target.value) } : x)))} />
                       </div>
                       <input className="input mt-2" placeholder="Yêu cầu riêng gửi cho người này (vd: mang lens 35mm, có mặt 7:30)…" value={c.note} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, note: e.target.value } : x)))} />
+                      {c.phone && conflictFor(c.phone) && (
+                        <p className="mt-2 rounded-lg px-2.5 py-1.5 text-[11px]" style={{ background: "rgba(199,123,123,0.12)", color: "#d99" }}>
+                          ⚠ {conflictFor(c.phone)} (ngày {f.event_date})
+                        </p>
+                      )}
                       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <span className="text-[11px]" style={{ color: CREW_STATUS_TONE[st] }}>{CREW_STATUS_LABEL[st]}</span>

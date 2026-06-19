@@ -756,6 +756,25 @@ create table if not exists public.contract_template_items (
 );
 create index if not exists contract_template_items_tpl_idx on public.contract_template_items (template_id);
 
+-- Crew busy/unavailable days (keyed by phone — crew have no login). Crew add
+-- these via the public portal (service role); studios read them to avoid
+-- double-booking. Low-sensitivity scheduling info → readable by any studio.
+create table if not exists public.crew_unavailable (
+  id         uuid primary key default gen_random_uuid(),
+  phone      text not null,
+  date       date not null,
+  note       text,
+  created_at timestamptz not null default now(),
+  unique (phone, date)
+);
+create index if not exists crew_unavailable_phone_idx on public.crew_unavailable (phone, date);
+alter table public.crew_unavailable enable row level security;
+-- Authenticated studios may read (for conflict detection); writes go through the
+-- service role from the crew portal, so no insert/update/delete policy is needed.
+drop policy if exists crew_unavailable_read on public.crew_unavailable;
+create policy crew_unavailable_read on public.crew_unavailable
+  for select using (auth.role() = 'authenticated');
+
 alter table public.contract_templates      enable row level security;
 alter table public.contract_template_items enable row level security;
 

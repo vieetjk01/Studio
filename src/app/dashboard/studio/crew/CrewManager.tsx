@@ -9,11 +9,14 @@ import { CREW_ROLE_LABEL, type StudioCrew, type CrewRole } from "@/lib/types";
 export default function CrewManager({
   ownerId,
   initial,
+  stats,
 }: {
   ownerId: string;
   initial: StudioCrew[];
+  stats: Record<string, { total: number; accepted: number; declined: number }>;
 }) {
   const supabase = createClient();
+  const statFor = (phone: string) => stats[(phone || "").replace(/\D/g, "")] || null;
   const [list, setList] = useState<StudioCrew[]>(initial);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -118,6 +121,17 @@ export default function CrewManager({
                       <Phone size={12} /> {c.phone} · {CREW_ROLE_LABEL[c.role] ?? c.role}
                       {c.note ? ` · ${c.note}` : ""}
                     </p>
+                    {(() => {
+                      const s = statFor(c.phone);
+                      if (!s || s.total === 0) return null;
+                      const rate = Math.round((s.accepted / s.total) * 100);
+                      return (
+                        <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                          <span style={{ color: "#7bb38a" }}>{s.accepted} buổi đã nhận</span> · {s.total} lời mời · nhận {rate}%
+                          {s.declined ? ` · từ chối ${s.declined}` : ""}
+                        </p>
+                      );
+                    })()}
                   </div>
                   <button onClick={() => remove(c.id)} className="btn-ghost px-2.5 py-1.5 text-xs">
                     <Trash2 size={14} />

@@ -8,8 +8,10 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 /**
  * Public crew portal (no login). A photographer/cameraman enters their phone to
  * see every job they've been assigned across studios + accept/decline.
- *   POST { phone }                                   -> list assignments
+ *   POST { phone }                                   -> list assignments + busy days
  *   POST { action: "respond", id, phone, status }    -> accept | decline a job
+ *   POST { action: "busy_add", phone, date, note }   -> mark a day unavailable
+ *   POST { action: "busy_remove", id, phone }        -> clear a busy day
  */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
@@ -17,11 +19,28 @@ export async function POST(req: Request) {
     action?: string;
     id?: string;
     status?: string;
+    date?: string;
+    note?: string;
   };
   const phone = digits(body.phone);
   if (!phone) return NextResponse.json({ error: "no_phone" }, { status: 400 });
 
   const db = createAdminClient();
+
+  if (body.action === "busy_add") {
+    if (!body.date) return NextResponse.json({ error: "no_date" }, { status: 400 });
+    const { error } = await db
+      .from("crew_unavailable")
+      .upsert({ phone, date: body.date, note: body.note?.trim() || null }, { onConflict: "phone,date" });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "busy_remove") {
+    if (!body.id) return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    await db.from("crew_unavailable").delete().eq("id", body.id).eq("phone", phone);
+    return NextResponse.json({ ok: true });
+  }
 
   if (body.action === "respond") {
     if (!body.id || (body.status !== "accepted" && body.status !== "declined")) {
@@ -54,5 +73,11 @@ export async function POST(req: Request) {
 
   const mine = (rows ?? []).filter((r) => digits(r.phone) === phone);
 
-  return NextResponse.json({ assignments: mine });
+  const { data: busy } = await db
+    .from("crew_unavailable")
+    .select("id, date, note")
+    .eq("phone", phone)
+    .order("date");
+
+  return NextResponse.json({ assignments: mine, busy: busy ?? [] });
 }

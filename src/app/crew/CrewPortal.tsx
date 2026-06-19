@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, MapPin, Calendar, Check, X, Camera } from "lucide-react";
+import { Phone, MapPin, Calendar, Check, X, Camera, CalendarOff, Plus, Trash2 } from "lucide-react";
 import {
   vnd,
   SHOOT_TYPE_LABEL,
@@ -30,6 +30,8 @@ type Assignment = {
   } | null;
 };
 
+type BusyDay = { id: string; date: string; note: string | null };
+
 const STATUS_TONE: Record<string, string> = {
   pending: "var(--text3)",
   accepted: "#7bb38a",
@@ -39,6 +41,8 @@ const STATUS_TONE: Record<string, string> = {
 export default function CrewPortal() {
   const [phone, setPhone] = useState("");
   const [list, setList] = useState<Assignment[] | null>(null);
+  const [busyDays, setBusyDays] = useState<BusyDay[]>([]);
+  const [newBusy, setNewBusy] = useState({ date: "", note: "" });
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -52,8 +56,33 @@ export default function CrewPortal() {
       body: JSON.stringify({ phone }),
     });
     setLoading(false);
-    const j = await res.json().catch(() => ({ assignments: [] }));
+    const j = await res.json().catch(() => ({ assignments: [], busy: [] }));
     setList(j.assignments ?? []);
+    setBusyDays(j.busy ?? []);
+  }
+
+  async function addBusy() {
+    if (!newBusy.date) return;
+    setBusy("busy");
+    const res = await fetch("/api/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "busy_add", phone, date: newBusy.date, note: newBusy.note }),
+    });
+    setBusy(null);
+    if (res.ok) {
+      await load();
+      setNewBusy({ date: "", note: "" });
+    }
+  }
+
+  async function removeBusy(id: string) {
+    await fetch("/api/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "busy_remove", phone, id }),
+    });
+    setBusyDays((p) => p.filter((b) => b.id !== id));
   }
 
   async function respond(id: string, status: "accepted" | "declined") {
@@ -163,6 +192,33 @@ export default function CrewPortal() {
               </div>
             ))
           )}
+
+          {/* Busy days */}
+          <div className="card p-5">
+            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
+              <CalendarOff size={16} style={{ color: "#c7a76b" }} /> Ngày bận của tôi
+            </h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
+              Báo ngày bạn bận để studio không xếp lịch trùng.
+            </p>
+            {busyDays.length > 0 && (
+              <ul className="mb-3 space-y-2">
+                {busyDays.map((b) => (
+                  <li key={b.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm" style={{ background: "var(--surface2)" }}>
+                    <span>{b.date}{b.note ? ` · ${b.note}` : ""}</span>
+                    <button onClick={() => removeBusy(b.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <input type="date" className="input w-auto" value={newBusy.date} onChange={(e) => setNewBusy((p) => ({ ...p, date: e.target.value }))} />
+              <input className="input flex-1" placeholder="Ghi chú (tuỳ chọn)" value={newBusy.note} onChange={(e) => setNewBusy((p) => ({ ...p, note: e.target.value }))} />
+              <button onClick={addBusy} disabled={busy === "busy" || !newBusy.date} className="btn-ghost shrink-0">
+                <Plus size={15} /> Thêm
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

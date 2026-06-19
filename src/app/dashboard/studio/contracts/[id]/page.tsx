@@ -69,6 +69,31 @@ export default async function ContractPage({ params }: { params: { id: string } 
     .eq("contract_id", params.id)
     .order("event_date");
 
+  // Scheduling conflicts for the contract's date: crew already booked on another
+  // of this studio's contracts that day, or crew who marked the day as busy.
+  const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+  const conflictByPhone: Record<string, string> = {};
+  if (contract.event_date) {
+    const [{ data: bookings }, { data: unavail }] = await Promise.all([
+      supabase
+        .from("contract_crew")
+        .select("phone, contract:studio_contracts!inner(id, owner_id, event_date, title)")
+        .eq("contract.owner_id", profile.id)
+        .eq("contract.event_date", contract.event_date)
+        .not("phone", "is", null),
+      supabase.from("crew_unavailable").select("phone, note").eq("date", contract.event_date),
+    ]);
+    for (const r of (bookings ?? []) as Array<{ phone: string | null; contract: { id: string; title: string } | null }>) {
+      if (r.contract?.id === params.id) continue;
+      const p = digits(r.phone);
+      if (p) conflictByPhone[p] = `Trùng lịch: ${r.contract?.title || "HĐ khác"}`;
+    }
+    for (const r of (unavail ?? []) as Array<{ phone: string; note: string | null }>) {
+      const p = digits(r.phone);
+      if (p && !conflictByPhone[p]) conflictByPhone[p] = r.note ? `Đã báo bận: ${r.note}` : "Đã báo bận ngày này";
+    }
+  }
+
   return (
     <ContractEditor
       contract={contract as StudioContract}
@@ -80,6 +105,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       galleries={(galleries ?? []) as { id: string; title: string; slug: string }[]}
       initialMilestones={(milestones ?? []) as StudioEvent[]}
       studioName={profile.full_name || "Studio"}
+      conflictByPhone={conflictByPhone}
     />
   );
 }
