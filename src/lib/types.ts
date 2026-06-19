@@ -13,7 +13,7 @@ export interface Profile {
   compress_daily_limit: number | null;
   compress_picker_limit: number | null;
   can_watermark_pro: boolean;
-  plan: "free" | "basic" | "studio";
+  plan: "free" | "basic" | "photographer" | "studio";
   plan_cycle: string | null;
   plan_expires_at: string | null;
   is_active: boolean;
