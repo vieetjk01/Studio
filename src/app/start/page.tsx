@@ -7,6 +7,7 @@ import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import CreateAlbumFlow, { CreateHero } from "@/components/CreateAlbumFlow";
 import { createClient } from "@/lib/supabase/client";
+import { imgUrl } from "@/lib/hosts";
 
 const STEPS = [
   { Icon: Link2, title: "1 · Dán link Google Drive", desc: "Chia sẻ thư mục ở chế độ “Anyone with the link”, rồi dán vào — có thể thêm nhiều thư mục." },
@@ -45,6 +46,12 @@ export default function StartPage() {
           <button onClick={() => scrollTo(createRef)} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
             Tạo trang chọn
           </button>
+          <Link href="/dashboard/filter" className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
+            Lọc ảnh
+          </Link>
+          <a href={imgUrl("/dashboard/compress")} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
+            Nén ảnh
+          </a>
           <button onClick={() => scrollTo(guideRef)} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
             Hướng dẫn
           </button>
