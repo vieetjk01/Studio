@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import { planProfilePatch, type Plan } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
 export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
@@ -54,6 +55,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         compress_daily_limit: 2,
         compress_picker_limit: 1,
         can_watermark_pro: false,
+        plan: "free",
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -113,14 +115,13 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
           <thead>
             <tr className="border-b border-ink-800 text-left text-xs uppercase tracking-wide text-accent-muted">
               <th className="px-4 py-3">{t("email")}</th>
+              <th className="px-4 py-3">Gói</th>
               <th className="px-4 py-3">{t("role")}</th>
               <th className="px-4 py-3">{t("active")}</th>
               <th className="px-4 py-3">{t("monthlyLimit")}</th>
               <th className="px-4 py-3">{t("canZip")}</th>
               <th className="px-4 py-3">{t("canNotes")}</th>
               <th className="px-4 py-3">Gallery</th>
-              <th className="px-4 py-3">Nén/ngày</th>
-              <th className="px-4 py-3">Nén Drive</th>
               <th className="px-4 py-3">WM Pro</th>
             </tr>
           </thead>
@@ -130,6 +131,17 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                 <td className="px-4 py-3">
                   <div className="text-accent">{p.full_name}</div>
                   <div className="text-xs text-accent-muted">{p.email}</div>
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    className="input px-2 py-1 text-xs"
+                    value={p.plan}
+                    onChange={(e) => update(p, planProfilePatch(e.target.value as Plan))}
+                  >
+                    <option value="free">Miễn phí</option>
+                    <option value="basic">Basic</option>
+                    <option value="studio">Studio</option>
+                  </select>
                 </td>
                 <td className="px-4 py-3">
                   <select
@@ -184,36 +196,6 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     type="checkbox"
                     checked={p.can_galleries}
                     onChange={(e) => update(p, { can_galleries: e.target.checked })}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <input
-                    type="number"
-                    min={0}
-                    className="input w-20 px-2 py-1 text-xs"
-                    placeholder="∞"
-                    value={p.compress_daily_limit ?? ""}
-                    onChange={(e) =>
-                      update(p, {
-                        compress_daily_limit:
-                          e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <input
-                    type="number"
-                    min={0}
-                    className="input w-20 px-2 py-1 text-xs"
-                    placeholder="∞"
-                    value={p.compress_picker_limit ?? ""}
-                    onChange={(e) =>
-                      update(p, {
-                        compress_picker_limit:
-                          e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
                   />
                 </td>
                 <td className="px-4 py-3">

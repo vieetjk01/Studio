@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     compress_daily_limit?: number | null;
     compress_picker_limit?: number | null;
     can_watermark_pro?: boolean;
+    plan?: "free" | "basic" | "studio";
     full_name?: string;
   };
 
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     "compress_daily_limit",
     "compress_picker_limit",
     "can_watermark_pro",
+    "plan",
     "full_name",
   ] as const) {
     if (body[k] !== undefined) patch[k] = body[k];

@@ -137,6 +137,12 @@ export default function SettingsPanel({
           {field("contact_youtube", "YouTube", { placeholder: "youtube.com/@vieetjk" })}
           {field("contact_address", "Địa chỉ studio")}
           {field("contact_hours", "Giờ làm việc")}
+          <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            {field("basic_discount_percent", "Giảm giá gói Basic (%)", { placeholder: "0" })}
+            <p className="mt-1 text-[12px]" style={{ color: "var(--text3)" }}>
+              Áp dụng cho giá gói Basic trên trang Nâng cấp (0–100).
+            </p>
+          </div>
           <button onClick={save} disabled={saving} className="btn-primary w-full">
             <Save size={15} /> {saving ? t("saving") : t("save")}
           </button>
@@ -194,7 +200,14 @@ export default function SettingsPanel({
             {upgrades.map((u) => (
               <div key={u.id} className="flex flex-wrap items-center gap-4 p-4">
                 <div className="min-w-0">
-                  <div className="font-medium">{u.email ?? u.user_id}</div>
+                  <div className="flex items-center gap-2 font-medium">
+                    {u.email ?? u.user_id}
+                    {u.plan && (
+                      <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>
+                        {u.plan}{u.cycle ? ` · ${u.cycle === "year" ? "năm" : "tháng"}` : ""}
+                      </span>
+                    )}
+                  </div>
                   {u.note && (
                     <p className="text-xs" style={{ color: "var(--text2)" }} title={u.note}>
                       {u.note}

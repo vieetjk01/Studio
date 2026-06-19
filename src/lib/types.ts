@@ -13,6 +13,7 @@ export interface Profile {
   compress_daily_limit: number | null;
   compress_picker_limit: number | null;
   can_watermark_pro: boolean;
+  plan: "free" | "basic" | "studio";
   is_active: boolean;
   created_at: string;
 }
@@ -83,6 +84,7 @@ export interface SiteSettings {
   contact_address: string;
   contact_hours: string;
   featured_images: string[] | null;
+  basic_discount_percent: number;
   updated_at: string;
 }
 
@@ -104,6 +106,8 @@ export interface UpgradeRequest {
   user_id: string | null;
   email: string | null;
   note: string | null;
+  plan: string | null;
+  cycle: string | null;
   handled: boolean;
   created_at: string;
 }

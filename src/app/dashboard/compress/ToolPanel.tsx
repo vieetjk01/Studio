@@ -400,8 +400,8 @@ export default function ToolPanel({
         const lim = kind === "picker" ? data?.picker?.limit : data?.basic?.limit;
         setQuotaMsg(
           kind === "picker"
-            ? `Tài khoản miễn phí chỉ được dùng thử nén qua Google Drive ${lim ?? 1} lần. Vui lòng liên hệ nâng cấp.`
-            : `Tài khoản của bạn chỉ được nén ${lim ?? 2} lượt/ngày và hôm nay đã dùng hết. Quay lại ngày mai hoặc liên hệ nâng cấp.`
+            ? `Bạn đã dùng hết lượt nén qua Google Drive (${lim ?? 1}). Nâng cấp gói để dùng thêm.`
+            : `Bạn đã dùng hết lượt nén tháng này (${lim ?? 5}). Nâng cấp gói để nén không giới hạn.`
         );
         return;
       }
@@ -741,8 +741,8 @@ export default function ToolPanel({
             {activeQuota.unlimited
               ? "Không giới hạn"
               : isPicker
-              ? `Dùng thử nén lên Drive: ${activeQuota.used}/${activeQuota.limit}`
-              : `Hôm nay đã dùng: ${activeQuota.used}/${activeQuota.limit} lượt`}
+              ? `Nén lên Drive: ${activeQuota.used}/${activeQuota.limit}`
+              : `Nén tháng này: ${activeQuota.used}/${activeQuota.limit} lượt`}
           </p>
         )}
       </div>

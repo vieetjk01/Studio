@@ -85,13 +85,13 @@ export default function CompressPage() {
         <div className="mb-5 flex flex-wrap gap-2 text-[12.5px]">
           <QuotaChip
             label="Nén (máy tính / link Drive)"
-            text={quota.basic.unlimited ? "không giới hạn" : `${quota.basic.used}/${quota.basic.limit} hôm nay`}
+            text={quota.basic.unlimited ? "không giới hạn" : `${quota.basic.used}/${quota.basic.limit} tháng này`}
             warn={!quota.basic.unlimited && (quota.basic.remaining ?? 0) <= 0}
             active={tool === "compress"}
           />
           <QuotaChip
             label="Nén lên Google Drive"
-            text={quota.picker.unlimited ? "không giới hạn" : `${quota.picker.used}/${quota.picker.limit} (dùng thử)`}
+            text={quota.picker.unlimited ? "không giới hạn" : `${quota.picker.used}/${quota.picker.limit}`}
             warn={!quota.picker.unlimited && (quota.picker.remaining ?? 0) <= 0}
             active={tool === "compress"}
           />

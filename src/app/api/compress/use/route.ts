@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { limitsFor, type Plan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // Vietnam is UTC+7 (no DST)
 
-/** ISO timestamp for the start of "today" in Vietnam time. */
-function startOfTodayVN(): string {
+/** ISO timestamp for the start of the current month in Vietnam time. */
+function startOfMonthVN(): string {
   const vn = new Date(Date.now() + VN_OFFSET_MS);
-  const startUtcMs =
-    Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate()) - VN_OFFSET_MS;
+  const startUtcMs = Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), 1) - VN_OFFSET_MS;
   return new Date(startUtcMs).toISOString();
 }
 
@@ -19,11 +19,12 @@ type Kind = "basic" | "picker";
 interface Status {
   userId: string;
   isAdmin: boolean;
-  pro: boolean; // can use image-watermark + compression in the watermark tab
-  basicLimit: number | null; // per day; null = unlimited
-  basicUsed: number; // today
-  pickerLimit: number | null; // lifetime; null = unlimited
-  pickerUsed: number; // lifetime total
+  pro: boolean;
+  basicLimit: number | null;
+  basicUsed: number; // this month
+  pickerLimit: number | null;
+  pickerUsed: number; // this month or lifetime depending on plan
+  pickerWindow: "lifetime" | "month";
 }
 
 async function getStatus(): Promise<Status | null> {
@@ -35,34 +36,41 @@ async function getStatus(): Promise<Status | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, compress_daily_limit, compress_picker_limit, can_watermark_pro")
+    .select("role, plan")
     .eq("id", user.id)
     .maybeSingle();
 
   const isAdmin = profile?.role === "admin";
+  const plan = (profile?.plan ?? "free") as Plan;
+  const lim = limitsFor(plan, isAdmin);
+
   const db = createAdminClient();
+  const monthStart = startOfMonthVN();
 
   const { count: basicUsed } = await db
     .from("compress_usages")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("kind", "basic")
-    .gte("created_at", startOfTodayVN());
+    .gte("created_at", monthStart);
 
-  const { count: pickerUsed } = await db
+  let pickerQuery = db
     .from("compress_usages")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("kind", "picker");
+  if (lim.pickerWindow === "month") pickerQuery = pickerQuery.gte("created_at", monthStart);
+  const { count: pickerUsed } = await pickerQuery;
 
   return {
     userId: user.id,
     isAdmin,
-    pro: isAdmin || !!profile?.can_watermark_pro,
-    basicLimit: isAdmin ? null : profile?.compress_daily_limit ?? null,
+    pro: lim.watermarkPro,
+    basicLimit: lim.compressPerMonth,
     basicUsed: basicUsed ?? 0,
-    pickerLimit: isAdmin ? null : profile?.compress_picker_limit ?? null,
+    pickerLimit: lim.pickerLimit,
     pickerUsed: pickerUsed ?? 0,
+    pickerWindow: lim.pickerWindow,
   };
 }
 
@@ -80,7 +88,7 @@ function body(s: Status) {
   return {
     pro: s.pro,
     basic: quota(s.basicLimit, s.basicUsed),
-    picker: quota(s.pickerLimit, s.pickerUsed),
+    picker: { ...quota(s.pickerLimit, s.pickerUsed), window: s.pickerWindow },
   };
 }
 
@@ -109,7 +117,6 @@ export async function POST(req: Request) {
   const db = createAdminClient();
   await db.from("compress_usages").insert({ user_id: s.userId, kind: k });
 
-  // Reflect the just-consumed use in the returned counts.
   if (k === "picker") s.pickerUsed += 1;
   else s.basicUsed += 1;
   return NextResponse.json({ ok: true, kind: k, ...body(s) });

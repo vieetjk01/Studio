@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles, Crown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PLAN_LABEL, type Plan } from "@/lib/plans";
 
 interface Usage {
   used: number;
   limit: number | null; // null = unlimited
   pro: boolean;
+  plan: Plan;
 }
 
 export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolean }) {
@@ -24,7 +26,7 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, monthly_album_limit, can_zip, can_notes")
+        .select("role, monthly_album_limit, plan")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -37,14 +39,14 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
         .eq("user_id", user.id)
         .gte("created_at", start.toISOString());
 
-      const pro =
-        profile?.role === "admin" ||
-        (profile?.monthly_album_limit == null && !!profile?.can_zip && !!profile?.can_notes);
+      const isAdmin = profile?.role === "admin";
+      const plan = (isAdmin ? "studio" : (profile?.plan ?? "free")) as Plan;
 
       setUsage({
         used: count ?? 0,
-        limit: profile?.role === "admin" ? null : profile?.monthly_album_limit ?? null,
-        pro,
+        limit: isAdmin ? null : profile?.monthly_album_limit ?? null,
+        pro: plan !== "free",
+        plan,
       });
     })();
   }, []);
@@ -62,7 +64,7 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
         {usage.pro ? <Crown size={16} /> : <Sparkles size={16} />}
       </span>
       <div className="text-sm">
-        <span className="font-medium">{usage.pro ? "Gói Studio" : "Gói Miễn phí"}</span>
+        <span className="font-medium">Gói {PLAN_LABEL[usage.plan]}</span>
         <span style={{ color: "var(--text2)" }}>
           {" · "}
           {usage.limit == null

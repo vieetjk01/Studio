@@ -12,13 +12,19 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { note } = (await req.json().catch(() => ({}))) as { note?: string };
+  const { note, plan, cycle } = (await req.json().catch(() => ({}))) as {
+    note?: string;
+    plan?: string;
+    cycle?: string;
+  };
 
   const db = createAdminClient();
   const { error } = await db.from("upgrade_requests").insert({
     user_id: user.id,
     email: user.email,
     note: note?.trim() || null,
+    plan: plan === "basic" || plan === "studio" ? plan : null,
+    cycle: cycle === "month" || cycle === "year" ? cycle : null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

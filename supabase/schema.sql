@@ -456,6 +456,32 @@ alter table public.profiles add column if not exists compress_picker_limit integ
 -- tab): false for free accounts, admins always allowed.
 alter table public.profiles add column if not exists can_watermark_pro boolean not null default false;
 
+-- ============================================================================
+-- Subscription plan (free | basic | studio). The plan drives the monthly
+-- quotas in code; assigning a plan also syncs the legacy columns above.
+-- ============================================================================
+alter table public.profiles add column if not exists plan text not null default 'free'
+  check (plan in ('free', 'basic', 'studio'));
+
+-- Per-month "filter tool" usage log (free = 10/month).
+create table if not exists public.filter_usages (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists filter_usages_user_idx on public.filter_usages (user_id, created_at);
+alter table public.filter_usages enable row level security;
+drop policy if exists filter_usages_read on public.filter_usages;
+create policy filter_usages_read on public.filter_usages
+  for select using (user_id = auth.uid() or public.is_admin());
+
+-- Admin-configurable promo discount (%) applied to the Basic plan on the pricing page.
+alter table public.site_settings add column if not exists basic_discount_percent integer not null default 0;
+
+-- Desired plan / billing cycle on an upgrade request.
+alter table public.upgrade_requests add column if not exists plan text;
+alter table public.upgrade_requests add column if not exists cycle text;
+
 create table if not exists public.compress_usages (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid references auth.users (id) on delete cascade,

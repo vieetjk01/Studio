@@ -69,6 +69,13 @@ export default function FilterPage() {
   const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
 
+  // Monthly filter quota (free = 10/month). One "use" is counted per result set.
+  const [filterQuota, setFilterQuota] = useState<
+    { unlimited: boolean; limit: number | null; used: number; remaining: number | null } | null
+  >(null);
+  const [filterMsg, setFilterMsg] = useState<string | null>(null);
+  const consumedKeyRef = useRef<string>("");
+
   useEffect(() => {
     setFsSupported(typeof window !== "undefined" && "showDirectoryPicker" in window);
     supabase
@@ -77,6 +84,10 @@ export default function FilterPage() {
       .eq("is_gallery", false)
       .order("updated_at", { ascending: false })
       .then(({ data }) => setAlbums(data ?? []));
+    fetch("/api/filter/use")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setFilterQuota({ unlimited: d.unlimited, limit: d.limit, used: d.used, remaining: d.remaining }))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -188,12 +199,38 @@ export default function FilterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchedKey, photoSource]);
 
-  function copyMatched() {
+  // Count one filter use per result set (server-enforced monthly quota).
+  async function ensureFilterUse(): Promise<boolean> {
+    if (consumedKeyRef.current && consumedKeyRef.current === matchedKey) return true;
+    setFilterMsg(null);
+    try {
+      const res = await fetch("/api/filter/use", { method: "POST" });
+      const d = await res.json().catch(() => null);
+      if (d?.limit !== undefined) setFilterQuota({ unlimited: d.unlimited, limit: d.limit, used: d.used, remaining: d.remaining });
+      if (res.status === 401) {
+        setFilterMsg("Bạn cần đăng nhập để dùng công cụ lọc ảnh.");
+        return false;
+      }
+      if (!res.ok) {
+        setFilterMsg(`Tài khoản của bạn chỉ được lọc ${d?.limit ?? 10} lần/tháng và đã dùng hết. Nâng cấp để dùng không giới hạn.`);
+        return false;
+      }
+      consumedKeyRef.current = matchedKey;
+      return true;
+    } catch {
+      setFilterMsg("Không kiểm tra được hạn mức sử dụng.");
+      return false;
+    }
+  }
+
+  async function copyMatched() {
+    if (!(await ensureFilterUse())) return;
     navigator.clipboard.writeText(shown.map((f) => stripExtension(f.name)).join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   }
-  function exportMatched() {
+  async function exportMatched() {
+    if (!(await ensureFilterUse())) return;
     triggerDownload(
       new Blob([shown.map((f) => stripExtension(f.name)).join("\n")], { type: "text/plain;charset=utf-8" }),
       "loc-anh.txt"
@@ -201,6 +238,7 @@ export default function FilterPage() {
   }
   async function zipMatched() {
     if (shown.length === 0) return;
+    if (!(await ensureFilterUse())) return;
     setZipProgress(0);
     if (photoSource === "local") {
       const JSZip = (await import("jszip")).default;
@@ -224,6 +262,7 @@ export default function FilterPage() {
   // Copy matched files directly from source folder to destination folder.
   async function copyToDest() {
     if (!destDir || shown.length === 0) return;
+    if (!(await ensureFilterUse())) return;
     setCopying(true);
     setCopyMsg(null);
     let done = 0;
@@ -387,6 +426,17 @@ export default function FilterPage() {
             </button>
           </div>
         </div>
+
+        {filterQuota && !filterQuota.unlimited && (
+          <p className="mb-3 text-[12.5px]" style={{ color: (filterQuota.remaining ?? 0) <= 0 ? "#fbbf24" : "var(--text3)" }}>
+            Lọc ảnh tháng này: <b style={{ color: "var(--text)" }}>{filterQuota.used}/{filterQuota.limit}</b> lần
+          </p>
+        )}
+        {filterMsg && (
+          <p className="mb-3 rounded-lg px-3 py-2 text-[13px]" style={{ background: "color-mix(in srgb,#f59e0b 14%,transparent)", color: "#fbbf24" }}>
+            {filterMsg}
+          </p>
+        )}
 
         {shown.length === 0 ? (
           <p className="py-10 text-center text-sm" style={{ color: "var(--text3)" }}>
