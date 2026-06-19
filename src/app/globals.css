@@ -146,3 +146,17 @@ body {
 .font-serif {
   font-family: var(--font-cormorant), Georgia, serif;
 }
+
+/* Print: only the contract document (.print-doc) shows, on white A4. */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-doc {
+    display: block !important;
+    color: #111 !important;
+  }
+}

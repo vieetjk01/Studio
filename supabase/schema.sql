@@ -714,6 +714,62 @@ create policy studio_events_owner_all on public.studio_events
   for all using (owner_id = auth.uid() or public.is_admin())
   with check (owner_id = auth.uid() or public.is_admin());
 
+-- ── Studio: e-signature, payments, payroll, expenses ────────────────────────
+
+-- Client e-signature on a contract (signed via the public /c/[token] portal).
+alter table public.studio_contracts add column if not exists client_signed_name text;
+alter table public.studio_contracts add column if not exists client_signature  text; -- PNG data URL
+alter table public.studio_contracts add column if not exists client_signed_at  timestamptz;
+
+-- Crew payroll: mark a crew member's salary as paid.
+alter table public.contract_crew add column if not exists paid    boolean not null default false;
+alter table public.contract_crew add column if not exists paid_at timestamptz;
+
+-- Payments collected from the client (deposit / installments / final).
+create table if not exists public.contract_payments (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  amount      integer not null default 0,   -- VND
+  method      text,                          -- 'cash' | 'transfer' | ...
+  kind        text not null default 'installment'
+                check (kind in ('deposit', 'installment', 'final', 'other')),
+  note        text,
+  paid_at     date not null default current_date,
+  created_at  timestamptz not null default now()
+);
+create index if not exists contract_payments_contract_idx on public.contract_payments (contract_id);
+
+-- Misc studio expenses (chi phí khác ngoài lương) for the monthly report.
+create table if not exists public.studio_expenses (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  title      text not null default '',
+  amount     integer not null default 0,    -- VND
+  category   text,                           -- 'equipment' | 'rent' | 'marketing' | ...
+  note       text,
+  spent_at   date not null default current_date,
+  created_at timestamptz not null default now()
+);
+create index if not exists studio_expenses_owner_idx on public.studio_expenses (owner_id, spent_at);
+
+alter table public.contract_payments enable row level security;
+alter table public.studio_expenses   enable row level security;
+
+drop policy if exists contract_payments_owner_all on public.contract_payments;
+create policy contract_payments_owner_all on public.contract_payments
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
+drop policy if exists studio_expenses_owner_all on public.studio_expenses;
+create policy studio_expenses_owner_all on public.studio_expenses
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
 -- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,

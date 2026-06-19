@@ -4,12 +4,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import ZaloButton from "@/components/ZaloButton";
+import { shootReminderMessage } from "@/lib/zalo";
 import type { StudioEvent } from "@/lib/types";
 
 export type ContractMarker = {
   id: string;
   title: string;
   client_name: string | null;
+  client_phone: string | null;
+  location: string | null;
   event_date: string;
   event_time: string | null;
   status: string;
@@ -188,20 +192,32 @@ export default function CalendarView({
               <h2 className="mb-3 font-serif text-lg font-medium">{selected}</h2>
 
               {selContracts.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/dashboard/studio/contracts/${c.id}`}
-                  className="mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5"
-                  style={{ background: "var(--surface2)" }}
-                >
-                  <Camera size={15} style={{ color: "#c7a76b" }} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{c.title}</p>
-                    <p className="text-[11px]" style={{ color: "var(--text3)" }}>
-                      {c.client_name || "—"}{c.event_time ? ` · ${c.event_time}` : ""}
-                    </p>
-                  </div>
-                </Link>
+                <div key={c.id} className="mb-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                  <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-2">
+                    <Camera size={15} style={{ color: "#c7a76b" }} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{c.title}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+                        {c.client_name || "—"}{c.event_time ? ` · ${c.event_time}` : ""}
+                      </p>
+                    </div>
+                  </Link>
+                  {c.client_phone && (
+                    <div className="mt-2">
+                      <ZaloButton
+                        phone={c.client_phone}
+                        label="Nhắc khách qua Zalo"
+                        message={shootReminderMessage({
+                          name: c.client_name,
+                          title: c.title,
+                          date: c.event_date,
+                          time: c.event_time,
+                          location: c.location,
+                        })}
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
 
               {selEvents.map((e) => (

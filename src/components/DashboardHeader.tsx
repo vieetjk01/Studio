@@ -49,6 +49,8 @@ export default function DashboardHeader({
           { href: "/dashboard/studio", label: "Tổng quan" },
           { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
           { href: "/dashboard/studio/calendar", label: "Lịch" },
+          { href: "/dashboard/studio/payroll", label: "Bảng lương" },
+          { href: "/dashboard/studio/reports", label: "Thu chi" },
           { href: "/dashboard/studio/crew", label: "Sổ thợ" },
           { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
         ]

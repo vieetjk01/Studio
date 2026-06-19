@@ -54,7 +54,6 @@ export default async function StudioOverview() {
     event_date: string | null;
     status: ContractStatus;
     shoot_type: keyof typeof SHOOT_TYPE_LABEL;
-    deposit: number;
     contract_items: { qty: number; unit_price: number }[];
     contract_edit_requests: { status: string }[];
   }>;

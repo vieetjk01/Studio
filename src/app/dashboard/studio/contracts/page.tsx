@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import {
   contractTotal,
+  sumAmounts,
   vnd,
   CONTRACT_STATUS_LABEL,
   SHOOT_TYPE_LABEL,
@@ -41,7 +42,7 @@ export default async function ContractsList() {
   const supabase = createClient();
   const { data } = await supabase
     .from("studio_contracts")
-    .select("*, contract_items(qty, unit_price)")
+    .select("*, contract_items(qty, unit_price), contract_payments(amount)")
     .eq("owner_id", profile.id)
     .order("created_at", { ascending: false });
 
@@ -54,8 +55,8 @@ export default async function ContractsList() {
     event_date: string | null;
     status: ContractStatus;
     shoot_type: ShootType;
-    deposit: number;
     contract_items: { qty: number; unit_price: number }[];
+    contract_payments: { amount: number }[];
   }>;
 
   return (
@@ -81,6 +82,7 @@ export default async function ContractsList() {
         <div className="space-y-3">
           {list.map((c) => {
             const total = contractTotal(c.contract_items || []);
+            const collected = sumAmounts(c.contract_payments || []);
             return (
               <Link
                 key={c.id}
@@ -108,7 +110,7 @@ export default async function ContractsList() {
                 <div className="text-left sm:text-right">
                   <p className="font-serif text-lg font-medium">{vnd(total)}</p>
                   <p className="text-xs" style={{ color: "var(--text3)" }}>
-                    Cọc {vnd(c.deposit)} · Còn {vnd(total - c.deposit)}
+                    Đã thu {vnd(collected)} · Còn {vnd(total - collected)}
                   </p>
                 </div>
               </Link>

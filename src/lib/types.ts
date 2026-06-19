@@ -203,6 +203,9 @@ export interface StudioContract {
   deposit: number;
   note: string | null;
   client_token: string;
+  client_signed_name: string | null;
+  client_signature: string | null;
+  client_signed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -227,7 +230,33 @@ export interface ContractCrew {
   status: CrewStatus;
   note: string | null;
   responded_at: string | null;
+  paid: boolean;
+  paid_at: string | null;
   position: number;
+  created_at: string;
+}
+
+export type PaymentKind = "deposit" | "installment" | "final" | "other";
+
+export interface ContractPayment {
+  id: string;
+  contract_id: string;
+  amount: number;
+  method: string | null;
+  kind: PaymentKind;
+  note: string | null;
+  paid_at: string;
+  created_at: string;
+}
+
+export interface StudioExpense {
+  id: string;
+  owner_id: string;
+  title: string;
+  amount: number;
+  category: string | null;
+  note: string | null;
+  spent_at: string;
   created_at: string;
 }
 
@@ -290,6 +319,28 @@ export const CREW_STATUS_LABEL: Record<CrewStatus, string> = {
   accepted: "Đã nhận",
   declined: "Từ chối",
 };
+
+export const PAYMENT_KIND_LABEL: Record<PaymentKind, string> = {
+  deposit: "Đặt cọc",
+  installment: "Thanh toán đợt",
+  final: "Tất toán",
+  other: "Khác",
+};
+
+export const EXPENSE_CATEGORY_LABEL: Record<string, string> = {
+  equipment: "Thiết bị",
+  rent: "Thuê mặt bằng / studio",
+  props: "Đạo cụ / trang phục",
+  travel: "Di chuyển",
+  marketing: "Marketing",
+  outsource: "Thuê ngoài",
+  other: "Khác",
+};
+
+/** Sum of a list of payment amounts. */
+export function sumAmounts(rows: { amount: number }[]): number {
+  return rows.reduce((s, r) => s + (r.amount || 0), 0);
+}
 
 /** Total contract value = sum(qty × unit_price). */
 export function contractTotal(items: { qty: number; unit_price: number }[]): number {

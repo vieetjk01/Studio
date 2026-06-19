@@ -26,7 +26,7 @@ export default async function CalendarPage() {
     supabase.from("studio_events").select("*").eq("owner_id", profile.id).order("event_date"),
     supabase
       .from("studio_contracts")
-      .select("id, title, client_name, event_date, event_time, status")
+      .select("id, title, client_name, client_phone, location, event_date, event_time, status")
       .eq("owner_id", profile.id)
       .not("event_date", "is", null)
       .neq("status", "cancelled"),
