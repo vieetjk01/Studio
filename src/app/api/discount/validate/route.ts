@@ -19,11 +19,15 @@ export async function POST(req: Request) {
   const db = createAdminClient();
   const { data } = await db
     .from("discount_codes")
-    .select("code, percent, plan, active")
+    .select("code, percent, plan, active, max_uses, used_count")
     .eq("code", c)
     .maybeSingle();
 
   if (!data || !data.active) return NextResponse.json({ valid: false });
+  // Usage cap reached?
+  if (data.max_uses != null && (data.used_count ?? 0) >= data.max_uses) {
+    return NextResponse.json({ valid: false, reason: "used_up" });
+  }
   // Plan-restricted codes only apply to that plan.
   if (data.plan && plan && data.plan !== plan) {
     return NextResponse.json({ valid: false, reason: "wrong_plan", plan: data.plan });

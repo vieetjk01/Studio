@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { limitsFor, type Plan } from "@/lib/plans";
+import { limitsFor, effectivePlan, type Plan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +36,12 @@ async function getStatus(): Promise<Status | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, plan")
+    .select("role, plan, plan_expires_at")
     .eq("id", user.id)
     .maybeSingle();
 
   const isAdmin = profile?.role === "admin";
-  const plan = (profile?.plan ?? "free") as Plan;
+  const plan = effectivePlan(profile?.plan as Plan, profile?.plan_expires_at);
   const lim = limitsFor(plan, isAdmin);
 
   const db = createAdminClient();

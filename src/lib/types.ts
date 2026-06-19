@@ -14,6 +14,8 @@ export interface Profile {
   compress_picker_limit: number | null;
   can_watermark_pro: boolean;
   plan: "free" | "basic" | "studio";
+  plan_cycle: string | null;
+  plan_expires_at: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -100,6 +102,8 @@ export interface DiscountCode {
   percent: number;
   plan: string | null;
   active: boolean;
+  max_uses: number | null;
+  used_count: number;
   created_at: string;
 }
 

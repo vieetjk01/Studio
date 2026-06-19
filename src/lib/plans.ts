@@ -63,6 +63,13 @@ export function limitsFor(plan: Plan, isAdmin: boolean): PlanLimits {
   return isAdmin ? ADMIN_LIMITS : PLAN_LIMITS[plan];
 }
 
+/** A paid plan whose expiry has passed is treated as 'free'. */
+export function effectivePlan(plan: Plan | null | undefined, expiresAt: string | null | undefined): Plan {
+  const p = (plan ?? "free") as Plan;
+  if (p !== "free" && expiresAt && new Date(expiresAt).getTime() < Date.now()) return "free";
+  return p;
+}
+
 /** Columns synced onto profiles when a plan is assigned (legacy enforcement). */
 export function planProfilePatch(plan: Plan) {
   const l = PLAN_LIMITS[plan];

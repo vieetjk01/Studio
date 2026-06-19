@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     code?: string;
     percent?: number;
     plan?: string | null;
+    max_uses?: number | null;
   };
   const db = createAdminClient();
 
@@ -30,11 +31,12 @@ export async function POST(req: Request) {
   if (!code) return NextResponse.json({ error: "missing_code" }, { status: 400 });
   const percent = Math.max(0, Math.min(100, Math.round(Number(body.percent) || 0)));
   const plan = body.plan === "basic" || body.plan === "studio" ? body.plan : null;
+  const max_uses = body.max_uses == null ? null : Math.max(1, Math.round(Number(body.max_uses)));
 
   const { data, error } = await db
     .from("discount_codes")
-    .insert({ code, percent, plan, active: true })
-    .select("id, code, percent, plan, active, created_at")
+    .insert({ code, percent, plan, active: true, max_uses })
+    .select("id, code, percent, plan, active, max_uses, used_count, created_at")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, code: data });

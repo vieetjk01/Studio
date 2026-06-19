@@ -462,6 +462,9 @@ alter table public.profiles add column if not exists can_watermark_pro boolean n
 -- ============================================================================
 alter table public.profiles add column if not exists plan text not null default 'free'
   check (plan in ('free', 'basic', 'studio'));
+-- Billing cycle + auto-expiry. When the plan expires it is treated as 'free'.
+alter table public.profiles add column if not exists plan_cycle text;            -- 'month' | 'year' | null
+alter table public.profiles add column if not exists plan_expires_at timestamptz; -- null = no expiry (free / lifetime)
 
 -- Per-month "filter tool" usage log (free = 10/month).
 create table if not exists public.filter_usages (
@@ -501,8 +504,12 @@ create table if not exists public.discount_codes (
   percent    integer not null default 0,
   plan       text,            -- null = any paid plan, else 'basic' | 'studio'
   active     boolean not null default true,
+  max_uses   integer,         -- null = unlimited; 1 = single use
+  used_count integer not null default 0,
   created_at timestamptz not null default now()
 );
+alter table public.discount_codes add column if not exists max_uses integer;
+alter table public.discount_codes add column if not exists used_count integer not null default 0;
 alter table public.discount_codes enable row level security;
 -- Only admins read/manage directly; customers validate a code via the API (service role).
 drop policy if exists discount_codes_admin on public.discount_codes;

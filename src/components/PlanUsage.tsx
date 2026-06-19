@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles, Crown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { PLAN_LABEL, type Plan } from "@/lib/plans";
+import { PLAN_LABEL, effectivePlan, type Plan } from "@/lib/plans";
 
 interface Usage {
   used: number;
@@ -26,7 +26,7 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, monthly_album_limit, plan")
+        .select("role, monthly_album_limit, plan, plan_expires_at")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -40,7 +40,7 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
         .gte("created_at", start.toISOString());
 
       const isAdmin = profile?.role === "admin";
-      const plan = (isAdmin ? "studio" : (profile?.plan ?? "free")) as Plan;
+      const plan = isAdmin ? "studio" : effectivePlan(profile?.plan as Plan, profile?.plan_expires_at);
 
       setUsage({
         used: count ?? 0,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Trash2 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { planProfilePatch, type Plan } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
@@ -26,6 +26,36 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: p.id, ...patch }),
     });
+    if (!res.ok) flash(t("error"));
+  }
+
+  // Assign a plan with a billing cycle (sets auto-expiry server-side).
+  async function setPlan(p: Profile, plan: Plan, cycle: "month" | "year") {
+    let expires: string | null = null;
+    if (plan !== "free") {
+      const d = new Date();
+      if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
+      else d.setMonth(d.getMonth() + 1);
+      expires = d.toISOString();
+    }
+    const patch: Partial<Profile> = {
+      ...planProfilePatch(plan),
+      plan_cycle: plan === "free" ? null : cycle,
+      plan_expires_at: expires,
+    };
+    setRows((r) => r.map((x) => (x.id === p.id ? { ...x, ...patch } : x)));
+    const res = await fetch("/api/admin/photographers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: p.id, plan, cycle }),
+    });
+    if (!res.ok) flash(t("error"));
+  }
+
+  async function removeUser(p: Profile) {
+    if (!window.confirm(`Xoá tài khoản ${p.email}? Không thể hoàn tác.`)) return;
+    setRows((r) => r.filter((x) => x.id !== p.id));
+    const res = await fetch(`/api/admin/photographers?id=${p.id}`, { method: "DELETE" });
     if (!res.ok) flash(t("error"));
   }
 
@@ -56,6 +86,8 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         compress_picker_limit: 1,
         can_watermark_pro: false,
         plan: "free",
+        plan_cycle: null,
+        plan_expires_at: null,
         is_active: true,
         created_at: new Date().toISOString(),
       },
@@ -123,6 +155,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
               <th className="px-4 py-3">{t("canNotes")}</th>
               <th className="px-4 py-3">Gallery</th>
               <th className="px-4 py-3">WM Pro</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -135,13 +168,27 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                 <td className="px-4 py-3">
                   <select
                     className="input px-2 py-1 text-xs"
-                    value={p.plan}
-                    onChange={(e) => update(p, planProfilePatch(e.target.value as Plan))}
+                    value={p.plan === "free" ? "free" : `${p.plan}-${p.plan_cycle ?? "month"}`}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "free") setPlan(p, "free", "month");
+                      else {
+                        const [pl, cy] = v.split("-");
+                        setPlan(p, pl as Plan, cy as "month" | "year");
+                      }
+                    }}
                   >
                     <option value="free">Miễn phí</option>
-                    <option value="basic">Basic</option>
-                    <option value="studio">Studio</option>
+                    <option value="basic-month">Basic · tháng</option>
+                    <option value="basic-year">Basic · năm</option>
+                    <option value="studio-month">Studio · tháng</option>
+                    <option value="studio-year">Studio · năm</option>
                   </select>
+                  {p.plan !== "free" && p.plan_expires_at && (
+                    <div className="mt-1 text-[10px]" style={{ color: "var(--text3)" }}>
+                      HH: {new Date(p.plan_expires_at).toLocaleDateString()}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <select
@@ -204,6 +251,11 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     checked={p.can_watermark_pro}
                     onChange={(e) => update(p, { can_watermark_pro: e.target.checked })}
                   />
+                </td>
+                <td className="px-4 py-3">
+                  <button onClick={() => removeUser(p)} className="rounded-md p-1.5 text-red-400 hover:bg-red-500/10" title="Xoá tài khoản">
+                    <Trash2 size={15} />
+                  </button>
                 </td>
               </tr>
             ))}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/DashboardHeader";
+import { effectivePlan, planProfilePatch } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
 export default async function DashboardLayout({
@@ -16,11 +17,18 @@ export default async function DashboardLayout({
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Auto-downgrade an expired paid plan back to free (resets the synced limits).
+  if (profile && profile.role !== "admin" && effectivePlan(profile.plan, profile.plan_expires_at) === "free" && profile.plan !== "free") {
+    const patch = { ...planProfilePatch("free"), plan_cycle: null, plan_expires_at: null };
+    await supabase.from("profiles").update(patch).eq("id", user.id);
+    profile = { ...profile, ...patch };
+  }
 
   // Authenticated but no profile row (e.g. the account was created before
   // schema.sql ran, so the new-user trigger never created a profile).

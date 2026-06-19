@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Inbox, Crown, Tag, Trash2, Plus } from "lucide-react";
+import { Save, Inbox, Crown, Tag, Trash2, Plus, Shuffle, Check } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import type { SiteSettings, Booking, UpgradeRequest, DiscountCode } from "@/lib/types";
 
@@ -49,7 +49,19 @@ export default function SettingsPanel({
 
   // Discount codes
   const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
-  const [newCode, setNewCode] = useState({ code: "", percent: 10, plan: "" });
+  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; uses: "1" | "many" }>({
+    code: "",
+    percent: 10,
+    plan: "",
+    uses: "many",
+  });
+
+  function randomCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = "";
+    for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    setNewCode((n) => ({ ...n, code: s }));
+  }
 
   async function addCode() {
     const code = newCode.code.trim().toUpperCase();
@@ -57,14 +69,20 @@ export default function SettingsPanel({
     const res = await fetch("/api/admin/discount-codes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create", code, percent: newCode.percent, plan: newCode.plan || null }),
+      body: JSON.stringify({
+        action: "create",
+        code,
+        percent: newCode.percent,
+        plan: newCode.plan || null,
+        max_uses: newCode.uses === "1" ? 1 : null,
+      }),
     });
     const data = await res.json();
     if (res.ok && data.code) {
       setCodes((c) => [data.code, ...c]);
-      setNewCode({ code: "", percent: 10, plan: "" });
+      setNewCode({ code: "", percent: 10, plan: "", uses: "many" });
     } else {
-      setMsg(data.error === "duplicate key value violates unique constraint \"discount_codes_code_key\"" ? "Mã đã tồn tại" : t("error"));
+      setMsg(data.error?.includes("duplicate") ? "Mã đã tồn tại" : t("error"));
       setTimeout(() => setMsg(null), 2500);
     }
   }
@@ -74,6 +92,23 @@ export default function SettingsPanel({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", id }),
+    });
+  }
+
+  // Manage booking / upgrade requests.
+  const [bookingRows, setBookingRows] = useState<Booking[]>(bookings);
+  const [upgradeRows, setUpgradeRows] = useState<UpgradeRequest[]>(upgrades);
+
+  async function manageRequest(kind: "booking" | "upgrade", action: "handled" | "delete", id: string, handled?: boolean) {
+    if (kind === "booking") {
+      setBookingRows((r) => (action === "delete" ? r.filter((x) => x.id !== id) : r.map((x) => (x.id === id ? { ...x, handled: !!handled } : x))));
+    } else {
+      setUpgradeRows((r) => (action === "delete" ? r.filter((x) => x.id !== id) : r.map((x) => (x.id === id ? { ...x, handled: !!handled } : x))));
+    }
+    await fetch("/api/admin/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, action, id, handled }),
     });
   }
 
@@ -204,20 +239,30 @@ export default function SettingsPanel({
             <Tag size={15} /> Mã giảm giá
           </h2>
           <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1">
+            <div className="min-w-[120px] flex-1">
               <label className="label">Mã</label>
-              <input className="input" value={newCode.code} placeholder="VD: TET2026" onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
+              <div className="flex gap-1.5">
+                <input className="input" value={newCode.code} placeholder="VD: TET2026" onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
+                <button onClick={randomCode} type="button" className="btn-ghost whitespace-nowrap px-2.5" title="Tạo mã ngẫu nhiên"><Shuffle size={14} /></button>
+              </div>
             </div>
-            <div className="w-20">
+            <div className="w-16">
               <label className="label">%</label>
               <input type="number" min={0} max={100} className="input" value={newCode.percent} onChange={(e) => setNewCode({ ...newCode, percent: Number(e.target.value) })} />
             </div>
-            <div className="w-28">
+            <div className="w-24">
               <label className="label">Áp dụng</label>
               <select className="input" value={newCode.plan} onChange={(e) => setNewCode({ ...newCode, plan: e.target.value })}>
                 <option value="">Mọi gói</option>
                 <option value="basic">Basic</option>
                 <option value="studio">Studio</option>
+              </select>
+            </div>
+            <div className="w-28">
+              <label className="label">Lượt dùng</label>
+              <select className="input" value={newCode.uses} onChange={(e) => setNewCode({ ...newCode, uses: e.target.value as "1" | "many" })}>
+                <option value="many">Nhiều lần</option>
+                <option value="1">1 lần</option>
               </select>
             </div>
             <button onClick={addCode} className="btn-primary"><Plus size={15} /> Thêm</button>
@@ -231,6 +276,9 @@ export default function SettingsPanel({
                   <span className="font-mono font-medium" style={{ color: "var(--text)" }}>{c.code}</span>
                   <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>
                   <span style={{ color: "var(--text3)" }}>{c.plan ? c.plan : "mọi gói"}</span>
+                  <span style={{ color: "var(--text3)" }}>
+                    {c.max_uses == null ? `đã dùng ${c.used_count}` : `${c.used_count}/${c.max_uses}`}
+                  </span>
                   <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }} title="Xoá">
                     <Trash2 size={15} />
                   </button>
@@ -244,16 +292,16 @@ export default function SettingsPanel({
       {/* Bookings */}
       <div className="mt-8">
         <h2 className="mb-4 flex items-center gap-2 font-serif text-2xl font-medium">
-          <Inbox size={20} /> Yêu cầu đặt lịch ({bookings.length})
+          <Inbox size={20} /> Yêu cầu đặt lịch ({bookingRows.length})
         </h2>
-        {bookings.length === 0 ? (
+        {bookingRows.length === 0 ? (
           <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>
             Chưa có yêu cầu đặt lịch nào.
           </div>
         ) : (
           <div className="card divide-y" style={{ borderColor: "var(--border)" }}>
-            {bookings.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center gap-4 p-4" style={{ borderColor: "var(--border)" }}>
+            {bookingRows.map((b) => (
+              <div key={b.id} className="flex flex-wrap items-center gap-4 p-4" style={{ opacity: b.handled ? 0.55 : 1 }}>
                 <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 16%, transparent)", color: "var(--gold)" }}>
                   {SERVICE_LABEL[b.service] ?? b.service}
                 </span>
@@ -272,6 +320,17 @@ export default function SettingsPanel({
                 <span className="ml-auto text-xs" style={{ color: "var(--text3)" }}>
                   {new Date(b.created_at).toLocaleString()}
                 </span>
+                <button
+                  onClick={() => manageRequest("booking", "handled", b.id, !b.handled)}
+                  className="rounded-md p-1.5"
+                  style={{ color: b.handled ? "var(--gold)" : "var(--text3)" }}
+                  title={b.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã xử lý"}
+                >
+                  <Check size={16} />
+                </button>
+                <button onClick={() => manageRequest("booking", "delete", b.id)} className="rounded-md p-1.5 text-red-400" title="Xoá">
+                  <Trash2 size={15} />
+                </button>
               </div>
             ))}
           </div>
@@ -281,16 +340,16 @@ export default function SettingsPanel({
       {/* Upgrade requests */}
       <div className="mt-8">
         <h2 className="mb-4 flex items-center gap-2 font-serif text-2xl font-medium">
-          <Crown size={20} /> Yêu cầu nâng cấp ({upgrades.length})
+          <Crown size={20} /> Yêu cầu nâng cấp ({upgradeRows.length})
         </h2>
-        {upgrades.length === 0 ? (
+        {upgradeRows.length === 0 ? (
           <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>
             Chưa có yêu cầu nâng cấp nào.
           </div>
         ) : (
           <div className="card divide-y" style={{ borderColor: "var(--border)" }}>
-            {upgrades.map((u) => (
-              <div key={u.id} className="flex flex-wrap items-center gap-4 p-4">
+            {upgradeRows.map((u) => (
+              <div key={u.id} className="flex flex-wrap items-center gap-4 p-4" style={{ opacity: u.handled ? 0.55 : 1 }}>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 font-medium">
                     {u.email ?? u.user_id}
@@ -317,6 +376,17 @@ export default function SettingsPanel({
                 <span className="ml-auto text-xs" style={{ color: "var(--text3)" }}>
                   {new Date(u.created_at).toLocaleString()}
                 </span>
+                <button
+                  onClick={() => manageRequest("upgrade", "handled", u.id, !u.handled)}
+                  className="rounded-md p-1.5"
+                  style={{ color: u.handled ? "var(--gold)" : "var(--text3)" }}
+                  title={u.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã xử lý"}
+                >
+                  <Check size={16} />
+                </button>
+                <button onClick={() => manageRequest("upgrade", "delete", u.id)} className="rounded-md p-1.5 text-red-400" title="Xoá">
+                  <Trash2 size={15} />
+                </button>
               </div>
             ))}
           </div>
