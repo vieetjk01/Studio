@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   contact_address: "12 Nhà Thờ, Hoàn Kiếm, Hà Nội",
   contact_hours: "Thứ 2 – Chủ nhật · 8:00–20:00",
   featured_images: [],
+  basic_discount_percent: 0,
   updated_at: new Date().toISOString(),
 };
 
