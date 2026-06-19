@@ -9,12 +9,27 @@ const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
 // Image-tools subdomain (img.vieetjk.com) — home of the "Nén ảnh" compress tool.
 const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
+// Studio-management subdomain (studio.vieetjk.com).
+const STUDIO_HOST = process.env.NEXT_PUBLIC_STUDIO_HOST;
 const COMPRESS_PATH = "/dashboard/compress";
+const STUDIO_PATH = "/dashboard/studio";
 
 // Paths that are allowed to live on the image-tools host.
 function isImgPath(path: string) {
   return (
     path === COMPRESS_PATH ||
+    path.startsWith("/login") ||
+    path.startsWith("/auth")
+  );
+}
+
+// Paths allowed on the studio host: the studio dashboard, auth, and the public
+// client-contract (/c/) + crew (/crew) portals.
+function isStudioPath(path: string) {
+  return (
+    path.startsWith(STUDIO_PATH) ||
+    path.startsWith("/c/") ||
+    path.startsWith("/crew") ||
     path.startsWith("/login") ||
     path.startsWith("/auth")
   );
@@ -45,6 +60,10 @@ export async function middleware(request: NextRequest) {
       if (IMG_HOST && pathname.startsWith(COMPRESS_PATH)) {
         return NextResponse.redirect(new URL(pathname + search, `https://${IMG_HOST}`));
       }
+      // Studio management is centralised on the studio subdomain.
+      if (STUDIO_HOST && pathname.startsWith(STUDIO_PATH)) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${STUDIO_HOST}`));
+      }
       // App subdomain home = the public "create album" landing + guide.
       if (pathname === "/") {
         return NextResponse.rewrite(new URL("/start", request.url));
@@ -63,6 +82,16 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
       }
       if (!isImgPath(pathname)) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
+      }
+    }
+
+    // Studio subdomain: only the studio dashboard, auth + public portals.
+    if (STUDIO_HOST && host === STUDIO_HOST) {
+      if (pathname === "/") {
+        return NextResponse.redirect(new URL(STUDIO_PATH, request.url));
+      }
+      if (!isStudioPath(pathname)) {
         return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
       }
     }

@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+
+/**
+ * Public crew portal (no login). A photographer/cameraman enters their phone to
+ * see every job they've been assigned across studios + accept/decline.
+ *   POST { phone }                                   -> list assignments
+ *   POST { action: "respond", id, phone, status }    -> accept | decline a job
+ */
+export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as {
+    phone?: string;
+    action?: string;
+    id?: string;
+    status?: string;
+  };
+  const phone = digits(body.phone);
+  if (!phone) return NextResponse.json({ error: "no_phone" }, { status: 400 });
+
+  const db = createAdminClient();
+
+  if (body.action === "respond") {
+    if (!body.id || (body.status !== "accepted" && body.status !== "declined")) {
+      return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    }
+    // Verify the crew row belongs to this phone before updating.
+    const { data: row } = await db
+      .from("contract_crew")
+      .select("id, phone")
+      .eq("id", body.id)
+      .maybeSingle();
+    if (!row || digits(row.phone) !== phone) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+    const { error } = await db
+      .from("contract_crew")
+      .update({ status: body.status, responded_at: new Date().toISOString() })
+      .eq("id", body.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // List assignments. Match by exact phone first; fall back to digit-only match.
+  const { data: rows } = await db
+    .from("contract_crew")
+    .select(
+      "id, name, role, salary, status, note, phone, responded_at, contract:studio_contracts(title, client_name, shoot_type, event_date, event_time, location, status)"
+    )
+    .order("created_at", { ascending: false });
+
+  const mine = (rows ?? []).filter((r) => digits(r.phone) === phone);
+
+  return NextResponse.json({ assignments: mine });
+}

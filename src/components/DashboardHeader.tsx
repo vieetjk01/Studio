@@ -8,7 +8,8 @@ import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
-import { appUrl, imgUrl } from "@/lib/hosts";
+import { appUrl, imgUrl, studioUrl } from "@/lib/hosts";
+import { effectivePlan } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
 interface NavLink {
@@ -22,7 +23,7 @@ export default function DashboardHeader({
   kind = "app",
 }: {
   profile: Profile;
-  kind?: "app" | "img";
+  kind?: "app" | "img" | "studio";
 }) {
   const { t } = useLang();
   const router = useRouter();
@@ -36,9 +37,22 @@ export default function DashboardHeader({
     router.refresh();
   }
 
+  // Studio access: admins + accounts on an active Studio plan.
+  const hasStudio =
+    profile.role === "admin" ||
+    effectivePlan(profile.plan, profile.plan_expires_at) === "studio";
+
   // Build the link set for this host. Cross-host links use absolute URLs.
   const links: NavLink[] =
-    kind === "img"
+    kind === "studio"
+      ? [
+          { href: "/dashboard/studio", label: "Tổng quan" },
+          { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
+          { href: "/dashboard/studio/calendar", label: "Lịch" },
+          { href: "/dashboard/studio/crew", label: "Sổ thợ" },
+          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+        ]
+      : kind === "img"
       ? [
           { href: "/dashboard/compress", label: t("compressPhotos") },
           { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
@@ -52,6 +66,7 @@ export default function DashboardHeader({
             : []),
           { href: "/dashboard/filter", label: t("filterPhotos") },
           { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
+          ...(hasStudio ? [{ href: studioUrl("/dashboard/studio"), label: "Studio", external: true }] : []),
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),
           ...(profile.role === "admin"
             ? [
@@ -82,7 +97,7 @@ export default function DashboardHeader({
     <header className="sticky top-0 z-20 border-b border-ink-800 bg-ink-950/80 px-6 py-4 backdrop-blur md:px-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Brand href={kind === "img" ? "/" : "/dashboard"} />
+          <Brand href={kind === "img" ? "/" : kind === "studio" ? "/dashboard/studio" : "/dashboard"} />
           <nav className="hidden items-center gap-6 md:flex">
             {links.map((l) => renderLink(l))}
           </nav>

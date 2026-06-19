@@ -555,6 +555,166 @@ create policy compress_usages_read on public.compress_usages
   for select using (user_id = auth.uid() or public.is_admin());
 
 -- ============================================================================
+-- STUDIO MODULE (studio.vieetjk.com) — contracts, crew, salaries, schedule.
+-- Studio-plan accounts (and admins) manage contracts; clients view their own
+-- contract via an unguessable token (+ phone), crew see their jobs by phone.
+-- All public-facing reads/writes go through the service role in API routes,
+-- so RLS only needs to cover the owner (logged-in studio) + admin.
+-- ============================================================================
+
+-- Contracts -------------------------------------------------------------------
+create table if not exists public.studio_contracts (
+  id            uuid primary key default gen_random_uuid(),
+  owner_id      uuid not null references public.profiles (id) on delete cascade,
+  code          text,                       -- human reference, e.g. HD-2026-001
+  title         text not null default 'Hợp đồng',
+  client_name   text,
+  client_phone  text,                       -- also the client's view password
+  client_email  text,
+  shoot_type    text not null default 'photo'
+                  check (shoot_type in ('photo', 'video', 'both')),
+  event_date    date,
+  event_time    text,
+  location      text,
+  status        text not null default 'draft'
+                  check (status in ('draft', 'sent', 'approved', 'in_progress', 'completed', 'cancelled')),
+  deposit       integer not null default 0, -- tiền cọc (VND)
+  note          text,
+  client_token  text not null unique,       -- /c/[token]
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists studio_contracts_owner_idx on public.studio_contracts (owner_id);
+
+drop trigger if exists studio_contracts_set_updated_at on public.studio_contracts;
+create trigger studio_contracts_set_updated_at
+  before update on public.studio_contracts
+  for each row execute function public.set_updated_at();
+
+-- Contract line items (hạng mục tự nhập + đơn giá) ----------------------------
+create table if not exists public.contract_items (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  name        text not null default '',
+  qty         integer not null default 1,
+  unit_price  integer not null default 0,   -- VND
+  position    integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists contract_items_contract_idx on public.contract_items (contract_id);
+
+-- Crew assigned to a contract (photographer / cameraman) + salary -------------
+create table if not exists public.contract_crew (
+  id           uuid primary key default gen_random_uuid(),
+  contract_id  uuid not null references public.studio_contracts (id) on delete cascade,
+  name         text not null default '',
+  phone        text,                          -- crew identify themselves by phone
+  role         text not null default 'photographer'
+                 check (role in ('photographer', 'cameraman', 'assistant', 'editor', 'other')),
+  salary       integer not null default 0,    -- lương theo hợp đồng (VND)
+  status       text not null default 'pending'
+                 check (status in ('pending', 'accepted', 'declined')),
+  note         text,                          -- yêu cầu riêng gửi cho thợ này
+  responded_at timestamptz,
+  position     integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+create index if not exists contract_crew_contract_idx on public.contract_crew (contract_id);
+create index if not exists contract_crew_phone_idx on public.contract_crew (phone);
+
+-- Client requests to amend a contract -----------------------------------------
+create table if not exists public.contract_edit_requests (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  message     text not null,
+  status      text not null default 'open' check (status in ('open', 'resolved')),
+  created_at  timestamptz not null default now(),
+  resolved_at timestamptz
+);
+create index if not exists contract_edit_requests_contract_idx on public.contract_edit_requests (contract_id);
+
+-- Studio crew roster (sổ thợ, quản lý theo SĐT) -------------------------------
+create table if not exists public.studio_crew (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  name       text not null default '',
+  phone      text not null,
+  role       text not null default 'photographer',
+  note       text,
+  created_at timestamptz not null default now(),
+  unique (owner_id, phone)
+);
+create index if not exists studio_crew_owner_idx on public.studio_crew (owner_id);
+
+-- Calendar notes / reminders (lịch ghi chú hợp đồng) --------------------------
+create table if not exists public.studio_events (
+  id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references public.profiles (id) on delete cascade,
+  contract_id uuid references public.studio_contracts (id) on delete set null,
+  title       text not null default '',
+  event_date  date not null,
+  event_time  text,
+  note        text,
+  remind      boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+create index if not exists studio_events_owner_idx on public.studio_events (owner_id, event_date);
+
+-- RLS: owner (logged-in studio) + admin only. Public access is service-role.
+alter table public.studio_contracts      enable row level security;
+alter table public.contract_items        enable row level security;
+alter table public.contract_crew         enable row level security;
+alter table public.contract_edit_requests enable row level security;
+alter table public.studio_crew           enable row level security;
+alter table public.studio_events         enable row level security;
+
+drop policy if exists studio_contracts_owner_all on public.studio_contracts;
+create policy studio_contracts_owner_all on public.studio_contracts
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+-- Child tables: gated on owning the parent contract.
+drop policy if exists contract_items_owner_all on public.contract_items;
+create policy contract_items_owner_all on public.contract_items
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
+drop policy if exists contract_crew_owner_all on public.contract_crew;
+create policy contract_crew_owner_all on public.contract_crew
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
+drop policy if exists contract_edit_requests_owner_all on public.contract_edit_requests;
+create policy contract_edit_requests_owner_all on public.contract_edit_requests
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
+drop policy if exists studio_crew_owner_all on public.studio_crew;
+create policy studio_crew_owner_all on public.studio_crew
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+drop policy if exists studio_events_owner_all on public.studio_events;
+create policy studio_events_owner_all on public.studio_events
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,
 --     can_zip = true, can_notes = true, monthly_album_limit = null

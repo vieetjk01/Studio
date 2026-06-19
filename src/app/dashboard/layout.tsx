@@ -71,10 +71,15 @@ on conflict (id) do update set role='admin', is_active=true;`}
     );
   }
 
-  // On the image-tools subdomain (img.vieetjk.com) the header shows a focused
-  // menu (just the compress tool) instead of the full album-management nav.
+  // The header shows a focused menu per subdomain: just the compress tool on
+  // img.vieetjk.com, the studio-management nav on studio.vieetjk.com.
   const host = headers().get("host")?.split(":")[0] ?? "";
-  const kind = process.env.NEXT_PUBLIC_IMG_HOST && host === process.env.NEXT_PUBLIC_IMG_HOST ? "img" : "app";
+  const kind: "app" | "img" | "studio" =
+    process.env.NEXT_PUBLIC_IMG_HOST && host === process.env.NEXT_PUBLIC_IMG_HOST
+      ? "img"
+      : process.env.NEXT_PUBLIC_STUDIO_HOST && host === process.env.NEXT_PUBLIC_STUDIO_HOST
+      ? "studio"
+      : "app";
 
   return (
     <div className="min-h-screen">

@@ -173,3 +173,131 @@ export interface Selection {
   photographer_note: string | null;
   created_at: string;
 }
+
+// ── Studio module (studio.vieetjk.com) ──────────────────────────────────────
+
+export type ShootType = "photo" | "video" | "both";
+export type ContractStatus =
+  | "draft"
+  | "sent"
+  | "approved"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+export type CrewRole = "photographer" | "cameraman" | "assistant" | "editor" | "other";
+export type CrewStatus = "pending" | "accepted" | "declined";
+
+export interface StudioContract {
+  id: string;
+  owner_id: string;
+  code: string | null;
+  title: string;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  shoot_type: ShootType;
+  event_date: string | null;
+  event_time: string | null;
+  location: string | null;
+  status: ContractStatus;
+  deposit: number;
+  note: string | null;
+  client_token: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContractItem {
+  id: string;
+  contract_id: string;
+  name: string;
+  qty: number;
+  unit_price: number;
+  position: number;
+  created_at: string;
+}
+
+export interface ContractCrew {
+  id: string;
+  contract_id: string;
+  name: string;
+  phone: string | null;
+  role: CrewRole;
+  salary: number;
+  status: CrewStatus;
+  note: string | null;
+  responded_at: string | null;
+  position: number;
+  created_at: string;
+}
+
+export interface ContractEditRequest {
+  id: string;
+  contract_id: string;
+  message: string;
+  status: "open" | "resolved";
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface StudioCrew {
+  id: string;
+  owner_id: string;
+  name: string;
+  phone: string;
+  role: CrewRole;
+  note: string | null;
+  created_at: string;
+}
+
+export interface StudioEvent {
+  id: string;
+  owner_id: string;
+  contract_id: string | null;
+  title: string;
+  event_date: string;
+  event_time: string | null;
+  note: string | null;
+  remind: boolean;
+  created_at: string;
+}
+
+export const SHOOT_TYPE_LABEL: Record<ShootType, string> = {
+  photo: "Chụp ảnh",
+  video: "Quay phim",
+  both: "Chụp & Quay",
+};
+
+export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
+  draft: "Nháp",
+  sent: "Đã gửi khách",
+  approved: "Khách duyệt",
+  in_progress: "Đang thực hiện",
+  completed: "Hoàn thành",
+  cancelled: "Đã huỷ",
+};
+
+export const CREW_ROLE_LABEL: Record<CrewRole, string> = {
+  photographer: "Photographer",
+  cameraman: "Cameraman",
+  assistant: "Trợ lý",
+  editor: "Sửa ảnh / Dựng phim",
+  other: "Khác",
+};
+
+export const CREW_STATUS_LABEL: Record<CrewStatus, string> = {
+  pending: "Chờ phản hồi",
+  accepted: "Đã nhận",
+  declined: "Từ chối",
+};
+
+/** Total contract value = sum(qty × unit_price). */
+export function contractTotal(items: { qty: number; unit_price: number }[]): number {
+  return items.reduce((s, i) => s + (i.qty || 0) * (i.unit_price || 0), 0);
+}
+
+/** Format a VND amount in full with thousands separators (e.g. 1.500.000đ). */
+export function vnd(n: number | null | undefined): string {
+  const v = Math.round(n || 0);
+  return v.toLocaleString("vi-VN") + "đ";
+}

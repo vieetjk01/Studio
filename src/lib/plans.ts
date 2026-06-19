@@ -152,10 +152,11 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
   studio: [
     "Tất cả tính năng gói Photographer — không giới hạn",
     "Album & nén qua Drive không giới hạn",
-    "Quản lý lịch chụp (đang xây dựng)",
-    "Quản lý hợp đồng khách hàng (đang xây dựng)",
-    "Quản lý photographer cho từng hợp đồng (đang xây dựng)",
-    "Hỗ trợ riêng",
-    "Nhận mọi tính năng nâng cấp sau này",
+    "Trang quản lý studio riêng (studio.vieetjk.com)",
+    "Quản lý hợp đồng & báo giá hạng mục cho khách",
+    "Quản lý lịch chụp + nhắc lịch",
+    "Quản lý photographer / cameramen & lương theo hợp đồng",
+    "Khách xem hợp đồng online & yêu cầu chỉnh sửa",
+    "Hỗ trợ riêng · nhận mọi tính năng nâng cấp sau này",
   ],
 };
