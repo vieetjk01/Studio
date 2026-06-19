@@ -13,7 +13,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { studioUrl } from "@/lib/hosts";
+import { studioUrl, mainUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
@@ -67,6 +67,7 @@ export default function ContractEditor({
   initialRequests,
   initialPayments,
   roster,
+  galleries,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -74,6 +75,7 @@ export default function ContractEditor({
   initialRequests: ContractEditRequest[];
   initialPayments: ContractPayment[];
   roster: StudioCrew[];
+  galleries: { id: string; title: string; slug: string }[];
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -90,6 +92,7 @@ export default function ContractEditor({
     event_time: contract.event_time ?? "",
     location: contract.location ?? "",
     note: contract.note ?? "",
+    gallery_album_id: contract.gallery_album_id ?? "",
   });
   const set = (k: keyof typeof f, v: string | number) =>
     setF((p) => ({ ...p, [k]: v }) as typeof p);
@@ -129,7 +132,8 @@ export default function ContractEditor({
   const balance = total - collected;
   const payroll = crew.reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const paidPayroll = crew.filter((c) => c.paid).reduce((s, c) => s + (Number(c.salary) || 0), 0);
-  const shareUrl = studioUrl(`/c/${contract.client_token}`);
+  // Unified client portal lives on the main site (vieetjk.com/c/<token>).
+  const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
   // ── Save contract fields ───────────────────────────────────────
   async function saveContract() {
@@ -148,6 +152,7 @@ export default function ContractEditor({
         event_time: f.event_time.trim() || null,
         location: f.location.trim() || null,
         note: f.note.trim() || null,
+        gallery_album_id: f.gallery_album_id || null,
       })
       .eq("id", contract.id);
     setBusy(null);
@@ -328,9 +333,14 @@ export default function ContractEditor({
         <LinkIcon size={16} style={{ color: "var(--text3)" }} />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
-            Link cho khách xem &amp; ký hợp đồng (mật khẩu = SĐT khách)
+            Cổng khách: xem HĐ · lịch · ảnh · thanh toán (mật khẩu = SĐT khách)
           </p>
           <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{shareUrl}</p>
+          <p className="text-[11px]" style={{ color: contract.client_viewed_at ? "#7bb38a" : "var(--text3)" }}>
+            {contract.client_viewed_at
+              ? `Khách đã xem · ${new Date(contract.client_viewed_at).toLocaleString("vi-VN")}`
+              : "Khách chưa mở link"}
+          </p>
         </div>
         <ZaloButton
           phone={f.client_phone}
@@ -453,6 +463,20 @@ export default function ContractEditor({
                     ))}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="label">Gallery ảnh giao khách (gắn vào cổng khách)</label>
+                <select className="input" value={f.gallery_album_id} onChange={(e) => set("gallery_album_id", e.target.value)}>
+                  <option value="">— Chưa gắn —</option>
+                  {galleries.map((g) => (
+                    <option key={g.id} value={g.id}>{g.title}</option>
+                  ))}
+                </select>
+                {galleries.length === 0 && (
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                    Chưa có gallery nào. Tạo ở mục “Gallery khách” rồi quay lại gắn.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="label">Ghi chú / Điều khoản</label>

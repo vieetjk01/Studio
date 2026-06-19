@@ -725,6 +725,11 @@ alter table public.studio_contracts add column if not exists client_signed_at  t
 alter table public.contract_crew add column if not exists paid    boolean not null default false;
 alter table public.contract_crew add column if not exists paid_at timestamptz;
 
+-- Unified client portal: link a contract to a delivery gallery + track when the
+-- client first opened their portal link.
+alter table public.studio_contracts add column if not exists gallery_album_id uuid references public.albums (id) on delete set null;
+alter table public.studio_contracts add column if not exists client_viewed_at timestamptz;
+
 -- Payments collected from the client (deposit / installments / final).
 create table if not exists public.contract_payments (
   id          uuid primary key default gen_random_uuid(),

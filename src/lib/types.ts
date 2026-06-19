@@ -206,6 +206,8 @@ export interface StudioContract {
   client_signed_name: string | null;
   client_signature: string | null;
   client_signed_at: string | null;
+  gallery_album_id: string | null;
+  client_viewed_at: string | null;
   created_at: string;
   updated_at: string;
 }

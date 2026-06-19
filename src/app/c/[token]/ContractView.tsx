@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine } from "lucide-react";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
+import { mainUrl } from "@/lib/hosts";
 import {
   contractTotal,
   vnd,
@@ -33,6 +34,7 @@ type Contract = {
 };
 type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
+type Gallery = { slug: string; title: string };
 
 export default function ContractView({ token }: { token: string }) {
   const [phone, setPhone] = useState("");
@@ -40,6 +42,7 @@ export default function ContractView({ token }: { token: string }) {
   const [studioName, setStudioName] = useState("Studio");
   const [items, setItems] = useState<Item[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [gallery, setGallery] = useState<Gallery | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -67,6 +70,7 @@ export default function ContractView({ token }: { token: string }) {
     setStudioName(j.studio_name || "Studio");
     setItems(j.items ?? []);
     setPayments(j.payments ?? []);
+    setGallery(j.gallery ?? null);
     return { ok: true };
   }
 
@@ -168,6 +172,22 @@ export default function ContractView({ token }: { token: string }) {
             <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
           )}
         </div>
+
+        {gallery && (
+          <a
+            href={mainUrl(`/album/${gallery.slug}`)}
+            target="_blank"
+            rel="noreferrer"
+            className="card mt-6 flex items-center gap-3 p-5 transition-colors hover:bg-[var(--surface2)]"
+          >
+            <Images size={20} style={{ color: "var(--accent)" }} />
+            <div className="flex-1">
+              <p className="font-serif text-lg font-medium">Xem ảnh của bạn</p>
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{gallery.title} · mật khẩu là SĐT của bạn</p>
+            </div>
+            <span className="text-sm" style={{ color: "var(--accent)" }}>Mở →</span>
+          </a>
+        )}
 
         <div className="card mt-6 p-6">
           <h2 className="mb-4 font-serif text-lg font-medium">Hạng mục dịch vụ</h2>

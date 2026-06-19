@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, code, title, client_name, client_phone, client_email, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, updated_at, owner:profiles(full_name)"
+      "id, code, title, client_name, client_phone, client_email, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, gallery_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -70,16 +70,33 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ ok: true });
   }
 
+  // Record the first time the client opens their portal.
+  if (!contract.client_viewed_at) {
+    await db.from("studio_contracts").update({ client_viewed_at: new Date().toISOString() }).eq("id", contract.id);
+  }
+
   const [{ data: items }, { data: payments }] = await Promise.all([
     db.from("contract_items").select("id, name, qty, unit_price, position").eq("contract_id", contract.id).order("position"),
     db.from("contract_payments").select("id, amount, kind, paid_at").eq("contract_id", contract.id).order("paid_at", { ascending: false }),
   ]);
 
+  // Linked delivery gallery (so the portal can deep-link the client's photos).
+  let gallery: { slug: string; title: string } | null = null;
+  if (contract.gallery_album_id) {
+    const { data: g } = await db
+      .from("albums")
+      .select("slug, title, status, is_gallery")
+      .eq("id", contract.gallery_album_id)
+      .maybeSingle();
+    if (g && g.is_gallery && g.status === "published") gallery = { slug: g.slug, title: g.title };
+  }
+
   // Never expose internal crew/salary to the client.
   return NextResponse.json({
-    contract: { ...contract, client_phone: undefined, owner: undefined },
+    contract: { ...contract, client_phone: undefined, owner: undefined, gallery_album_id: undefined },
     studio_name: studioName,
     items: items ?? [],
     payments: payments ?? [],
+    gallery,
   });
 }

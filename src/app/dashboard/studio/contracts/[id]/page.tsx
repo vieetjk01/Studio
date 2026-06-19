@@ -39,7 +39,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
 
   if (!contract) notFound();
 
-  const [{ data: items }, { data: crew }, { data: requests }, { data: payments }, { data: roster }] =
+  const [{ data: items }, { data: crew }, { data: requests }, { data: payments }, { data: roster }, { data: galleries }] =
     await Promise.all([
       supabase.from("contract_items").select("*").eq("contract_id", params.id).order("position"),
       supabase.from("contract_crew").select("*").eq("contract_id", params.id).order("position"),
@@ -54,6 +54,12 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .eq("contract_id", params.id)
         .order("paid_at", { ascending: false }),
       supabase.from("studio_crew").select("*").eq("owner_id", profile.id).order("name"),
+      supabase
+        .from("albums")
+        .select("id, title, slug")
+        .eq("owner_id", profile.id)
+        .eq("is_gallery", true)
+        .order("created_at", { ascending: false }),
     ]);
 
   return (
@@ -64,6 +70,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       initialRequests={(requests ?? []) as ContractEditRequest[]}
       initialPayments={(payments ?? []) as ContractPayment[]}
       roster={(roster ?? []) as StudioCrew[]}
+      galleries={(galleries ?? []) as { id: string; title: string; slug: string }[]}
     />
   );
 }
