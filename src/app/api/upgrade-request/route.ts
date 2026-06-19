@@ -12,10 +12,11 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { note, plan, cycle } = (await req.json().catch(() => ({}))) as {
+  const { note, plan, cycle, discount_code } = (await req.json().catch(() => ({}))) as {
     note?: string;
     plan?: string;
     cycle?: string;
+    discount_code?: string;
   };
 
   const db = createAdminClient();
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     note: note?.trim() || null,
     plan: plan === "basic" || plan === "studio" ? plan : null,
     cycle: cycle === "month" || cycle === "year" ? cycle : null,
+    discount_code: discount_code?.trim() || null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

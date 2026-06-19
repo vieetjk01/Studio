@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Inbox, Crown } from "lucide-react";
+import { Save, Inbox, Crown, Tag, Trash2, Plus } from "lucide-react";
 import { useLang } from "@/lib/i18n";
-import type { SiteSettings, Booking, UpgradeRequest } from "@/lib/types";
+import type { SiteSettings, Booking, UpgradeRequest, DiscountCode } from "@/lib/types";
 
 const SERVICE_LABEL: Record<string, string> = {
   wedding: "Đám cưới",
@@ -34,16 +34,48 @@ export default function SettingsPanel({
   settings,
   bookings,
   upgrades,
+  codes: initialCodes,
 }: {
   settings: SiteSettings | null;
   bookings: Booking[];
   upgrades: UpgradeRequest[];
+  codes: DiscountCode[];
 }) {
   const { t } = useLang();
   const [form, setForm] = useState<Partial<SiteSettings>>(settings ?? EMPTY);
   const [featuredText, setFeaturedText] = useState((settings?.featured_images ?? []).join("\n"));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // Discount codes
+  const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
+  const [newCode, setNewCode] = useState({ code: "", percent: 10, plan: "" });
+
+  async function addCode() {
+    const code = newCode.code.trim().toUpperCase();
+    if (!code) return;
+    const res = await fetch("/api/admin/discount-codes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create", code, percent: newCode.percent, plan: newCode.plan || null }),
+    });
+    const data = await res.json();
+    if (res.ok && data.code) {
+      setCodes((c) => [data.code, ...c]);
+      setNewCode({ code: "", percent: 10, plan: "" });
+    } else {
+      setMsg(data.error === "duplicate key value violates unique constraint \"discount_codes_code_key\"" ? "Mã đã tồn tại" : t("error"));
+      setTimeout(() => setMsg(null), 2500);
+    }
+  }
+  async function deleteCode(id: string) {
+    setCodes((c) => c.filter((x) => x.id !== id));
+    await fetch("/api/admin/discount-codes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id }),
+    });
+  }
 
   function set<K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -137,15 +169,74 @@ export default function SettingsPanel({
           {field("contact_youtube", "YouTube", { placeholder: "youtube.com/@vieetjk" })}
           {field("contact_address", "Địa chỉ studio")}
           {field("contact_hours", "Giờ làm việc")}
-          <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            {field("basic_discount_percent", "Giảm giá gói Basic (%)", { placeholder: "0" })}
-            <p className="mt-1 text-[12px]" style={{ color: "var(--text3)" }}>
-              Áp dụng cho giá gói Basic trên trang Nâng cấp (0–100).
-            </p>
-          </div>
           <button onClick={save} disabled={saving} className="btn-primary w-full">
             <Save size={15} /> {saving ? t("saving") : t("save")}
           </button>
+        </div>
+      </div>
+
+      {/* Plans & pricing */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div className="card space-y-4 p-6">
+          <h2 className="text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
+            Gói &amp; giá (VND)
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            {field("price_basic_month", "Basic / tháng")}
+            {field("price_basic_year", "Basic / năm")}
+            {field("price_studio_month", "Studio / tháng")}
+            {field("price_studio_year", "Studio / năm")}
+            {field("basic_discount_percent", "Giảm giá Basic (%)")}
+            {field("studio_promo_percent", "Ưu đãi Studio/năm (%)")}
+          </div>
+          <p className="text-[12px]" style={{ color: "var(--text3)" }}>
+            Giá &amp; giảm giá hiển thị trên trang Nâng cấp. Nhập số tiền theo VND (vd 50000).
+          </p>
+          <button onClick={save} disabled={saving} className="btn-primary w-full">
+            <Save size={15} /> {saving ? t("saving") : "Lưu gói & giá"}
+          </button>
+        </div>
+
+        {/* Discount codes */}
+        <div className="card space-y-4 p-6">
+          <h2 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
+            <Tag size={15} /> Mã giảm giá
+          </h2>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1">
+              <label className="label">Mã</label>
+              <input className="input" value={newCode.code} placeholder="VD: TET2026" onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="w-20">
+              <label className="label">%</label>
+              <input type="number" min={0} max={100} className="input" value={newCode.percent} onChange={(e) => setNewCode({ ...newCode, percent: Number(e.target.value) })} />
+            </div>
+            <div className="w-28">
+              <label className="label">Áp dụng</label>
+              <select className="input" value={newCode.plan} onChange={(e) => setNewCode({ ...newCode, plan: e.target.value })}>
+                <option value="">Mọi gói</option>
+                <option value="basic">Basic</option>
+                <option value="studio">Studio</option>
+              </select>
+            </div>
+            <button onClick={addCode} className="btn-primary"><Plus size={15} /> Thêm</button>
+          </div>
+          {codes.length === 0 ? (
+            <p className="text-[13px]" style={{ color: "var(--text3)" }}>Chưa có mã giảm giá.</p>
+          ) : (
+            <div className="divide-y rounded-lg" style={{ border: "1px solid var(--border)", borderColor: "var(--border)" }}>
+              {codes.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 px-3 py-2 text-[13px]">
+                  <span className="font-mono font-medium" style={{ color: "var(--text)" }}>{c.code}</span>
+                  <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>
+                  <span style={{ color: "var(--text3)" }}>{c.plan ? c.plan : "mọi gói"}</span>
+                  <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }} title="Xoá">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -205,6 +296,11 @@ export default function SettingsPanel({
                     {u.plan && (
                       <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>
                         {u.plan}{u.cycle ? ` · ${u.cycle === "year" ? "năm" : "tháng"}` : ""}
+                      </span>
+                    )}
+                    {u.discount_code && (
+                      <span className="rounded px-2 py-0.5 font-mono text-[11px]" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
+                        {u.discount_code}
                       </span>
                     )}
                   </div>

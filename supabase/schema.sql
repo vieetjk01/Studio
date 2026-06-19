@@ -475,12 +475,35 @@ drop policy if exists filter_usages_read on public.filter_usages;
 create policy filter_usages_read on public.filter_usages
   for select using (user_id = auth.uid() or public.is_admin());
 
--- Admin-configurable promo discount (%) applied to the Basic plan on the pricing page.
+-- Admin-configurable plan prices (VND) + discounts shown on the pricing page.
 alter table public.site_settings add column if not exists basic_discount_percent integer not null default 0;
+alter table public.site_settings add column if not exists price_basic_month  integer not null default 50000;
+alter table public.site_settings add column if not exists price_basic_year   integer not null default 500000;
+alter table public.site_settings add column if not exists price_studio_month integer not null default 300000;
+alter table public.site_settings add column if not exists price_studio_year  integer not null default 3000000;
+alter table public.site_settings add column if not exists studio_promo_percent integer not null default 50;
 
--- Desired plan / billing cycle on an upgrade request.
+-- Desired plan / billing cycle / applied discount code on an upgrade request.
 alter table public.upgrade_requests add column if not exists plan text;
 alter table public.upgrade_requests add column if not exists cycle text;
+alter table public.upgrade_requests add column if not exists discount_code text;
+
+-- ============================================================================
+-- Discount codes (admin-created). Validated server-side; admins manage.
+-- ============================================================================
+create table if not exists public.discount_codes (
+  id         uuid primary key default gen_random_uuid(),
+  code       text not null unique,
+  percent    integer not null default 0,
+  plan       text,            -- null = any paid plan, else 'basic' | 'studio'
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.discount_codes enable row level security;
+-- Only admins read/manage directly; customers validate a code via the API (service role).
+drop policy if exists discount_codes_admin on public.discount_codes;
+create policy discount_codes_admin on public.discount_codes
+  for all using (public.is_admin()) with check (public.is_admin());
 
 create table if not exists public.compress_usages (
   id         uuid primary key default gen_random_uuid(),

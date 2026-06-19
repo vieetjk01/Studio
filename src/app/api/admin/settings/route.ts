@@ -34,8 +34,11 @@ export async function POST(req: Request) {
       patch[f] = f === "stat_years" ? Number(body[f]) || 0 : body[f] || null;
     }
   }
-  if (body.basic_discount_percent !== undefined) {
-    patch.basic_discount_percent = Math.max(0, Math.min(100, Number(body.basic_discount_percent) || 0));
+  for (const f of ["basic_discount_percent", "studio_promo_percent"] as const) {
+    if (body[f] !== undefined) patch[f] = Math.max(0, Math.min(100, Number(body[f]) || 0));
+  }
+  for (const f of ["price_basic_month", "price_basic_year", "price_studio_month", "price_studio_year"] as const) {
+    if (body[f] !== undefined) patch[f] = Math.max(0, Math.round(Number(body[f]) || 0));
   }
   if (Array.isArray(body.featured_images)) {
     patch.featured_images = (body.featured_images as string[]).map((s) => String(s).trim()).filter(Boolean);

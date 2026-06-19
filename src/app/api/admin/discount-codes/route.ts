@@ -1,0 +1,41 @@
+import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth-guards";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+/** Create or delete a discount code. Admin only. */
+export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const body = (await req.json().catch(() => ({}))) as {
+    action?: "create" | "delete";
+    id?: string;
+    code?: string;
+    percent?: number;
+    plan?: string | null;
+  };
+  const db = createAdminClient();
+
+  if (body.action === "delete") {
+    if (!body.id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
+    const { error } = await db.from("discount_codes").delete().eq("id", body.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // create
+  const code = (body.code ?? "").trim().toUpperCase();
+  if (!code) return NextResponse.json({ error: "missing_code" }, { status: 400 });
+  const percent = Math.max(0, Math.min(100, Math.round(Number(body.percent) || 0)));
+  const plan = body.plan === "basic" || body.plan === "studio" ? body.plan : null;
+
+  const { data, error } = await db
+    .from("discount_codes")
+    .insert({ code, percent, plan, active: true })
+    .select("id, code, percent, plan, active, created_at")
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, code: data });
+}

@@ -25,6 +25,11 @@ const DEFAULT_SETTINGS: SiteSettings = {
   contact_hours: "Thứ 2 – Chủ nhật · 8:00–20:00",
   featured_images: [],
   basic_discount_percent: 0,
+  price_basic_month: 50000,
+  price_basic_year: 500000,
+  price_studio_month: 300000,
+  price_studio_year: 3000000,
+  studio_promo_percent: 50,
   updated_at: new Date().toISOString(),
 };
 

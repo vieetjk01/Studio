@@ -85,7 +85,21 @@ export interface SiteSettings {
   contact_hours: string;
   featured_images: string[] | null;
   basic_discount_percent: number;
+  price_basic_month: number;
+  price_basic_year: number;
+  price_studio_month: number;
+  price_studio_year: number;
+  studio_promo_percent: number;
   updated_at: string;
+}
+
+export interface DiscountCode {
+  id: string;
+  code: string;
+  percent: number;
+  plan: string | null;
+  active: boolean;
+  created_at: string;
 }
 
 export type BookingService = "wedding" | "event" | "sports" | "other";
@@ -108,6 +122,7 @@ export interface UpgradeRequest {
   note: string | null;
   plan: string | null;
   cycle: string | null;
+  discount_code: string | null;
   handled: boolean;
   created_at: string;
 }
