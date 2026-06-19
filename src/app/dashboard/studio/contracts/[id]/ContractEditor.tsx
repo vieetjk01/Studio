@@ -16,6 +16,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl, mainUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
+import EmailButton from "@/components/EmailButton";
+import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
@@ -446,6 +448,12 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           label="Gửi khách qua Zalo"
           message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
         />
+        <EmailButton
+          to={f.client_email}
+          label="Gửi email"
+          subject={`Hợp đồng dịch vụ — ${f.title}`}
+          message={`Xin chào ${f.client_name || "anh/chị"},\n\nĐây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại:\n${shareUrl}\n(Mật khẩu mở là số điện thoại của anh/chị.)\n\nCảm ơn ạ!\n— ${studioName}`}
+        />
         <button
           onClick={() => {
             navigator.clipboard?.writeText(shareUrl);
@@ -676,17 +684,26 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
               Thêm các mốc (vd: chụp pre-wedding, ngày cưới, trao ảnh). Mốc cũng hiện trên Lịch &amp; cổng khách.
             </p>
+            {f.event_date && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                <span className="text-sm">Buổi chính · {f.event_date}{f.event_time ? ` · ${f.event_time}` : ""}</span>
+                <CalendarButtons compact event={{ date: f.event_date, time: f.event_time, title: f.title, location: f.location }} />
+              </div>
+            )}
             {milestones.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có mốc nào.</p>
             ) : (
               <ul className="space-y-2">
                 {milestones.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                  <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                     <div>
                       <p className="text-sm font-medium">{m.title}</p>
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</p>
                     </div>
-                    <button onClick={() => deleteMilestone(m.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    <div className="flex items-center gap-3">
+                      <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: f.location }} />
+                      <button onClick={() => deleteMilestone(m.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
+import CalendarButtons from "@/components/CalendarButtons";
 import { mainUrl } from "@/lib/hosts";
 import {
   contractTotal,
@@ -177,6 +178,11 @@ export default function ContractView({ token }: { token: string }) {
           {contract.location && (
             <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
           )}
+          {contract.event_date && (
+            <div className="pt-1">
+              <CalendarButtons compact event={{ date: contract.event_date, time: contract.event_time, title: contract.title, location: contract.location }} />
+            </div>
+          )}
         </div>
 
         {milestones.length > 0 && (
@@ -184,10 +190,11 @@ export default function ContractView({ token }: { token: string }) {
             <h2 className="mb-4 font-serif text-lg font-medium">Lịch trình</h2>
             <ul className="space-y-2">
               {milestones.map((m) => (
-                <li key={m.id} className="flex items-center gap-3 text-sm">
+                <li key={m.id} className="flex flex-wrap items-center gap-3 text-sm">
                   <Calendar size={15} style={{ color: "var(--text3)" }} />
                   <span className="flex-1">{m.title}</span>
                   <span style={{ color: "var(--text2)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</span>
+                  <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: contract.location }} />
                 </li>
               ))}
             </ul>
