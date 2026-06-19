@@ -91,8 +91,11 @@ export interface SiteSettings {
   price_basic_year: number;
   price_studio_month: number;
   price_studio_year: number;
+  price_photographer_month: number;
+  price_photographer_year: number;
   studio_promo_percent: number;
   studio_discount_percent: number;
+  photographer_discount_percent: number;
   updated_at: string;
 }
 
@@ -104,6 +107,7 @@ export interface DiscountCode {
   active: boolean;
   max_uses: number | null;
   used_count: number;
+  expires_at: string | null;
   created_at: string;
 }
 
@@ -129,6 +133,7 @@ export interface UpgradeRequest {
   cycle: string | null;
   discount_code: string | null;
   phone: string | null;
+  amount: number | null;
   handled: boolean;
   created_at: string;
 }

@@ -45,6 +45,9 @@ export default function CreateAlbumFlow() {
   const [watermark, setWatermark] = useState("Vieetjk Studio");
   const [allowNote, setAllowNote] = useState(true);
   const [allowDownload, setAllowDownload] = useState(true);
+  // Plan permissions — free accounts cannot enable download / notes.
+  const [canZip, setCanZip] = useState(true);
+  const [canNotes, setCanNotes] = useState(true);
 
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,6 +93,16 @@ export default function CreateAlbumFlow() {
         data: { user },
       } = await supabase.auth.getUser();
       setLoggedIn(!!user);
+
+      if (user) {
+        const { data: p } = await supabase.from("profiles").select("can_zip, can_notes").eq("id", user.id).maybeSingle();
+        if (p) {
+          setCanZip(!!p.can_zip);
+          setCanNotes(!!p.can_notes);
+          if (!p.can_zip) setAllowDownload(false);
+          if (!p.can_notes) setAllowNote(false);
+        }
+      }
 
       const pending = window.sessionStorage.getItem(PENDING_KEY);
       if (pending) {
@@ -290,11 +303,14 @@ export default function CreateAlbumFlow() {
         <label className="label mt-4">Watermark</label>
         <input value={watermark} onChange={(e) => setWatermark(e.target.value)} placeholder="Tên studio" className="input" />
 
-        <div className="mt-4 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-          <span className="flex-1 text-[13.5px]">Cho phép ghi chú trên ảnh</span>
+        <div className="mt-4 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: canNotes ? 1 : 0.55 }}>
+          <span className="flex-1 text-[13.5px]">
+            Cho phép ghi chú trên ảnh {!canNotes && <span style={{ color: "var(--text3)" }}>· nâng cấp để bật 🔒</span>}
+          </span>
           <button
-            onClick={() => setAllowNote((v) => !v)}
-            className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full transition-all"
+            onClick={() => canNotes && setAllowNote((v) => !v)}
+            disabled={!canNotes}
+            className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full transition-all disabled:cursor-not-allowed"
             style={allowNote ? { background: "var(--gold)" } : { background: "var(--surface)", border: "1px solid var(--border2)" }}
           >
             <span
@@ -304,11 +320,14 @@ export default function CreateAlbumFlow() {
           </button>
         </div>
 
-        <div className="mt-3 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-          <span className="flex-1 text-[13.5px]">Cho phép khách tải ảnh xuống</span>
+        <div className="mt-3 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: canZip ? 1 : 0.55 }}>
+          <span className="flex-1 text-[13.5px]">
+            Cho phép khách tải ảnh xuống {!canZip && <span style={{ color: "var(--text3)" }}>· nâng cấp để bật 🔒</span>}
+          </span>
           <button
-            onClick={() => setAllowDownload((v) => !v)}
-            className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full transition-all"
+            onClick={() => canZip && setAllowDownload((v) => !v)}
+            disabled={!canZip}
+            className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full transition-all disabled:cursor-not-allowed"
             style={allowDownload ? { background: "var(--gold)" } : { background: "var(--surface)", border: "1px solid var(--border2)" }}
           >
             <span className="absolute top-[3px] h-5 w-5 rounded-full transition-all" style={allowDownload ? { left: "23px", background: "#0a0a0c" } : { left: "3px", background: "var(--text2)" }} />

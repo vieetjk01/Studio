@@ -12,12 +12,13 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { note, plan, cycle, discount_code, phone } = (await req.json().catch(() => ({}))) as {
+  const { note, plan, cycle, discount_code, phone, amount } = (await req.json().catch(() => ({}))) as {
     note?: string;
     plan?: string;
     cycle?: string;
     discount_code?: string;
     phone?: string;
+    amount?: number;
   };
 
   const code = discount_code?.trim().toUpperCase() || null;
@@ -26,10 +27,11 @@ export async function POST(req: Request) {
     user_id: user.id,
     email: user.email,
     note: note?.trim() || null,
-    plan: plan === "basic" || plan === "studio" ? plan : null,
+    plan: plan === "basic" || plan === "photographer" || plan === "studio" ? plan : null,
     cycle: cycle === "month" || cycle === "year" ? cycle : null,
     discount_code: code,
     phone: phone?.trim() || null,
+    amount: amount != null && Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

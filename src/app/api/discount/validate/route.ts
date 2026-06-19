@@ -19,11 +19,15 @@ export async function POST(req: Request) {
   const db = createAdminClient();
   const { data } = await db
     .from("discount_codes")
-    .select("code, percent, plan, active, max_uses, used_count")
+    .select("code, percent, plan, active, max_uses, used_count, expires_at")
     .eq("code", c)
     .maybeSingle();
 
   if (!data || !data.active) return NextResponse.json({ valid: false });
+  // Expired?
+  if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+    return NextResponse.json({ valid: false, reason: "expired" });
+  }
   // Usage cap reached?
   if (data.max_uses != null && (data.used_count ?? 0) >= data.max_uses) {
     return NextResponse.json({ valid: false, reason: "used_up" });

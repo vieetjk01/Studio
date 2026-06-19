@@ -49,11 +49,12 @@ export default function SettingsPanel({
 
   // Discount codes
   const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
-  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; uses: "1" | "many" }>({
+  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; uses: "1" | "many"; expires: string }>({
     code: "",
     percent: 10,
     plan: "",
     uses: "many",
+    expires: "",
   });
 
   function randomCode() {
@@ -75,12 +76,13 @@ export default function SettingsPanel({
         percent: newCode.percent,
         plan: newCode.plan || null,
         max_uses: newCode.uses === "1" ? 1 : null,
+        expires_at: newCode.expires || null,
       }),
     });
     const data = await res.json();
     if (res.ok && data.code) {
       setCodes((c) => [data.code, ...c]);
-      setNewCode({ code: "", percent: 10, plan: "", uses: "many" });
+      setNewCode({ code: "", percent: 10, plan: "", uses: "many", expires: "" });
     } else {
       setMsg(data.error?.includes("duplicate") ? "Mã đã tồn tại" : t("error"));
       setTimeout(() => setMsg(null), 2500);
@@ -219,9 +221,12 @@ export default function SettingsPanel({
           <div className="grid grid-cols-2 gap-3">
             {field("price_basic_month", "Basic / tháng")}
             {field("price_basic_year", "Basic / năm")}
+            {field("price_photographer_month", "Photographer / tháng")}
+            {field("price_photographer_year", "Photographer / năm")}
             {field("price_studio_month", "Studio / tháng")}
             {field("price_studio_year", "Studio / năm")}
             {field("basic_discount_percent", "Giảm giá Basic (%)")}
+            {field("photographer_discount_percent", "Giảm giá Photographer (%)")}
             {field("studio_discount_percent", "Giảm giá Studio (%)")}
             {field("studio_promo_percent", "Ưu đãi Studio/năm (%)")}
           </div>
@@ -265,6 +270,10 @@ export default function SettingsPanel({
                 <option value="1">1 lần</option>
               </select>
             </div>
+            <div className="w-36">
+              <label className="label">Hạn dùng (tuỳ chọn)</label>
+              <input type="date" className="input" value={newCode.expires} onChange={(e) => setNewCode({ ...newCode, expires: e.target.value })} />
+            </div>
             <button onClick={addCode} className="btn-primary"><Plus size={15} /> Thêm</button>
           </div>
           {codes.length === 0 ? (
@@ -279,6 +288,11 @@ export default function SettingsPanel({
                   <span style={{ color: "var(--text3)" }}>
                     {c.max_uses == null ? `đã dùng ${c.used_count}` : `${c.used_count}/${c.max_uses}`}
                   </span>
+                  {c.expires_at && (
+                    <span style={{ color: new Date(c.expires_at).getTime() < Date.now() ? "#f87171" : "var(--text3)" }}>
+                      HH {new Date(c.expires_at).toLocaleDateString()}
+                    </span>
+                  )}
                   <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }} title="Xoá">
                     <Trash2 size={15} />
                   </button>
@@ -359,6 +373,11 @@ export default function SettingsPanel({
                     {u.plan && (
                       <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>
                         {u.plan}{u.cycle ? ` · ${u.cycle === "year" ? "năm" : "tháng"}` : ""}
+                      </span>
+                    )}
+                    {u.amount != null && (
+                      <span className="text-[12px] font-semibold" style={{ color: "var(--gold)" }}>
+                        {u.amount.toLocaleString("vi-VN")}đ
                       </span>
                     )}
                     {u.discount_code && (

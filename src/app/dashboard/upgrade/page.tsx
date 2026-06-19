@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X, Crown, Sparkles, Send, Zap, Tag } from "lucide-react";
+import { Check, X, Crown, Sparkles, Send, Zap, Tag, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
 import { PLAN_FEATURES, PLAN_PRICING, PLAN_LABEL, formatVnd, type Plan } from "@/lib/plans";
@@ -11,9 +11,12 @@ type Cycle = "month" | "year";
 interface Prices {
   basicMonth: number;
   basicYear: number;
+  photographerMonth: number;
+  photographerYear: number;
   studioMonth: number;
   studioYear: number;
   basicDiscount: number;
+  photographerDiscount: number;
   studioDiscount: number;
   studioPromo: number;
 }
@@ -21,24 +24,29 @@ interface Prices {
 const DEFAULT_PRICES: Prices = {
   basicMonth: PLAN_PRICING.basic.month,
   basicYear: PLAN_PRICING.basic.year,
+  photographerMonth: PLAN_PRICING.photographer.month,
+  photographerYear: PLAN_PRICING.photographer.year,
   studioMonth: PLAN_PRICING.studio.month,
   studioYear: PLAN_PRICING.studio.year,
   basicDiscount: 0,
+  photographerDiscount: 0,
   studioDiscount: 0,
   studioPromo: 50,
 };
 
 // Feature comparison rows. boolean -> ✓/✗ ; string -> text.
-const COMPARE: { label: string; free: string | boolean; basic: string | boolean; studio: string | boolean }[] = [
-  { label: "Album / tháng", free: "5", basic: "15", studio: "∞" },
-  { label: "Khách tải ảnh (ZIP)", free: false, basic: true, studio: true },
-  { label: "Ghi chú trên ảnh", free: false, basic: true, studio: true },
-  { label: "Watermark", free: "Chỉ chữ", basic: "Logo + nén", studio: "Logo + nén" },
-  { label: "Lọc ảnh", free: "10 / tháng", basic: "∞", studio: "∞" },
-  { label: "Nén ảnh (máy / link)", free: "5 / tháng", basic: "∞", studio: "∞" },
-  { label: "Nén qua Drive (Picker)", free: "1 lần", basic: "5 / tháng", studio: "∞" },
-  { label: "Gallery giao khách", free: false, basic: false, studio: true },
-  { label: "Tính năng nâng cấp sau", free: false, basic: false, studio: true },
+type Cmp = string | boolean;
+const COMPARE: { label: string; free: Cmp; basic: Cmp; photographer: Cmp; studio: Cmp }[] = [
+  { label: "Album / tháng", free: "5", basic: "15", photographer: "50", studio: "∞" },
+  { label: "Khách tải ảnh (ZIP)", free: false, basic: true, photographer: true, studio: true },
+  { label: "Ghi chú trên ảnh", free: false, basic: true, photographer: true, studio: true },
+  { label: "Watermark", free: "Chỉ chữ", basic: "Logo + nén", photographer: "Logo + nén", studio: "Logo + nén" },
+  { label: "Lọc ảnh", free: "10 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
+  { label: "Nén ảnh (máy / link)", free: "5 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
+  { label: "Nén qua Drive (Picker)", free: "1 lần", basic: "5 / tháng", photographer: "15 / tháng", studio: "∞" },
+  { label: "Gallery giao khách", free: false, basic: false, photographer: true, studio: true },
+  { label: "Website / tên miền riêng", free: false, basic: false, photographer: "Đang xây dựng", studio: "Đang xây dựng" },
+  { label: "Quản lý lịch chụp / hợp đồng", free: false, basic: false, photographer: false, studio: "Đang xây dựng" },
 ];
 
 export default function UpgradePage() {
@@ -69,16 +77,19 @@ export default function UpgradePage() {
       }
       const { data: s } = await supabase
         .from("site_settings")
-        .select("price_basic_month, price_basic_year, price_studio_month, price_studio_year, basic_discount_percent, studio_discount_percent, studio_promo_percent")
+        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent")
         .eq("id", 1)
         .maybeSingle();
       if (s) {
         setPrices({
           basicMonth: s.price_basic_month ?? DEFAULT_PRICES.basicMonth,
           basicYear: s.price_basic_year ?? DEFAULT_PRICES.basicYear,
+          photographerMonth: s.price_photographer_month ?? DEFAULT_PRICES.photographerMonth,
+          photographerYear: s.price_photographer_year ?? DEFAULT_PRICES.photographerYear,
           studioMonth: s.price_studio_month ?? DEFAULT_PRICES.studioMonth,
           studioYear: s.price_studio_year ?? DEFAULT_PRICES.studioYear,
           basicDiscount: s.basic_discount_percent ?? 0,
+          photographerDiscount: s.photographer_discount_percent ?? 0,
           studioDiscount: s.studio_discount_percent ?? 0,
           studioPromo: s.studio_promo_percent ?? 50,
         });
@@ -109,12 +120,18 @@ export default function UpgradePage() {
   function discountFor(plan: Plan): number {
     let base = 0;
     if (plan === "basic") base = prices.basicDiscount;
+    if (plan === "photographer") base = prices.photographerDiscount;
     if (plan === "studio") base = Math.max(prices.studioDiscount, cycle === "year" ? prices.studioPromo : 0);
     const codePct = appliedCode && (!appliedCode.plan || appliedCode.plan === plan) ? appliedCode.percent : 0;
     return Math.max(base, codePct);
   }
-  function priceOf(plan: "basic" | "studio"): number {
-    return plan === "basic" ? (cycle === "month" ? prices.basicMonth : prices.basicYear) : cycle === "month" ? prices.studioMonth : prices.studioYear;
+  function priceOf(plan: "basic" | "photographer" | "studio"): number {
+    if (plan === "basic") return cycle === "month" ? prices.basicMonth : prices.basicYear;
+    if (plan === "photographer") return cycle === "month" ? prices.photographerMonth : prices.photographerYear;
+    return cycle === "month" ? prices.studioMonth : prices.studioYear;
+  }
+  function finalPriceOf(plan: "basic" | "photographer" | "studio"): number {
+    return Math.round(priceOf(plan) * (1 - discountFor(plan) / 100));
   }
 
   async function request(plan: Plan) {
@@ -125,10 +142,11 @@ export default function UpgradePage() {
     setSending(plan);
     setError(null);
     const usedCode = appliedCode && (!appliedCode.plan || appliedCode.plan === plan) ? appliedCode.code : null;
+    const amount = plan === "free" ? null : finalPriceOf(plan);
     const res = await fetch("/api/upgrade-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan, cycle, note, discount_code: usedCode, phone }),
+      body: JSON.stringify({ plan, cycle, note, discount_code: usedCode, phone, amount }),
     });
     setSending(null);
     if (res.ok) {
@@ -140,7 +158,7 @@ export default function UpgradePage() {
     }
   }
 
-  function priceBlock(plan: "basic" | "studio") {
+  function priceBlock(plan: "basic" | "photographer" | "studio") {
     const full = priceOf(plan);
     const disc = discountFor(plan);
     const now = Math.round(full * (1 - disc / 100));
@@ -157,6 +175,7 @@ export default function UpgradePage() {
   const cards: { plan: Plan; icon: typeof Sparkles; accent: boolean; promo?: string }[] = [
     { plan: "free", icon: Sparkles, accent: false },
     { plan: "basic", icon: Zap, accent: true },
+    { plan: "photographer", icon: Camera, accent: true },
     { plan: "studio", icon: Crown, accent: true, promo: "Đăng ký trong thời gian này: ưu đãi 50%/năm vĩnh viễn + nhận mọi tính năng nâng cấp sau này." },
   ];
 
@@ -248,6 +267,7 @@ export default function UpgradePage() {
               <th className="px-4 py-3 text-left font-medium" style={{ color: "var(--text2)" }}>So sánh tính năng</th>
               <th className="px-4 py-3 text-center font-medium">Miễn phí</th>
               <th className="px-4 py-3 text-center font-medium">Basic</th>
+              <th className="px-4 py-3 text-center font-medium">Photographer</th>
               <th className="px-4 py-3 text-center font-medium" style={{ color: "var(--gold)" }}>Studio</th>
             </tr>
           </thead>
@@ -257,6 +277,7 @@ export default function UpgradePage() {
                 <td className="px-4 py-2.5" style={{ color: "var(--text2)" }}>{row.label}</td>
                 <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.free)}</div></td>
                 <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.basic)}</div></td>
+                <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.photographer)}</div></td>
                 <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.studio)}</div></td>
               </tr>
             ))}
@@ -280,7 +301,7 @@ export default function UpgradePage() {
             <p className="mt-1 text-[13px]" style={{ color: "var(--text2)" }}>
               {cycle === "month" ? "Theo tháng" : "Theo năm"} ·{" "}
               <b style={{ color: "var(--gold)" }}>
-                {formatVnd(Math.round(priceOf(modalPlan as "basic" | "studio") * (1 - discountFor(modalPlan) / 100)))}
+                {formatVnd(finalPriceOf(modalPlan as "basic" | "photographer" | "studio"))}
               </b>
               {discountFor(modalPlan) > 0 && ` (-${discountFor(modalPlan)}%)`}
               {appliedCode && (!appliedCode.plan || appliedCode.plan === modalPlan) && ` · mã ${appliedCode.code}`}

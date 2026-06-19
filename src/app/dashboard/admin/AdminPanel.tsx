@@ -181,6 +181,8 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     <option value="free">Miễn phí</option>
                     <option value="basic-month">Basic · tháng</option>
                     <option value="basic-year">Basic · năm</option>
+                    <option value="photographer-month">Photographer · tháng</option>
+                    <option value="photographer-year">Photographer · năm</option>
                     <option value="studio-month">Studio · tháng</option>
                     <option value="studio-year">Studio · năm</option>
                   </select>

@@ -6,7 +6,7 @@
  * can_watermark_pro) are synced from here so existing enforcement keeps working.
  */
 
-export type Plan = "free" | "basic" | "studio";
+export type Plan = "free" | "basic" | "photographer" | "studio";
 
 export interface PlanLimits {
   albumsPerMonth: number | null; // null = unlimited
@@ -41,6 +41,17 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     filterPerMonth: null,
     compressPerMonth: null,
     pickerLimit: 5,
+    pickerWindow: "month",
+  },
+  photographer: {
+    albumsPerMonth: 50,
+    canZip: true,
+    canNotes: true,
+    canGalleries: true,
+    watermarkPro: true,
+    filterPerMonth: null,
+    compressPerMonth: null,
+    pickerLimit: 15,
     pickerWindow: "month",
   },
   studio: {
@@ -88,14 +99,16 @@ export interface PlanPricing {
   year: number; // VND
 }
 
-export const PLAN_PRICING: Record<"basic" | "studio", PlanPricing> = {
+export const PLAN_PRICING: Record<"basic" | "photographer" | "studio", PlanPricing> = {
   basic: { month: 50_000, year: 500_000 },
+  photographer: { month: 100_000, year: 999_000 },
   studio: { month: 300_000, year: 3_000_000 },
 };
 
 export const PLAN_LABEL: Record<Plan, string> = {
   free: "Miễn phí",
   basic: "Basic",
+  photographer: "Photographer",
   studio: "Studio",
 };
 
@@ -126,12 +139,23 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
     "Nén ảnh (máy tính + link Drive): không giới hạn",
     "Nén qua Google Drive (Picker): 5 lần / tháng",
   ],
+  photographer: [
+    "50 album mỗi tháng",
+    "Đầy đủ tính năng gói Basic + full quyền khách hàng",
+    "Nén qua Google Drive (Picker): 15 lần / tháng",
+    "Website cá nhân riêng (đang xây dựng)",
+    "Trang album ảnh riêng (đang xây dựng)",
+    "Đổi logo website cá nhân (đang xây dựng)",
+    "Tên miền cá nhân (đang xây dựng)",
+    "Quản lý lịch chụp cá nhân (đang xây dựng)",
+  ],
   studio: [
-    "Album không giới hạn",
-    "Toàn bộ tính năng của Basic",
-    "Gallery giao khách",
-    "Nén qua Google Drive (Picker): không giới hạn",
-    "Ưu tiên hỗ trợ",
-    "Nhận các tính năng nâng cấp sau này",
+    "Tất cả tính năng gói Photographer — không giới hạn",
+    "Album & nén qua Drive không giới hạn",
+    "Quản lý lịch chụp (đang xây dựng)",
+    "Quản lý hợp đồng khách hàng (đang xây dựng)",
+    "Quản lý photographer cho từng hợp đồng (đang xây dựng)",
+    "Hỗ trợ riêng",
+    "Nhận mọi tính năng nâng cấp sau này",
   ],
 };

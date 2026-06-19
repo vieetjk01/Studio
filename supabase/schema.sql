@@ -460,8 +460,11 @@ alter table public.profiles add column if not exists can_watermark_pro boolean n
 -- Subscription plan (free | basic | studio). The plan drives the monthly
 -- quotas in code; assigning a plan also syncs the legacy columns above.
 -- ============================================================================
-alter table public.profiles add column if not exists plan text not null default 'free'
-  check (plan in ('free', 'basic', 'studio'));
+alter table public.profiles add column if not exists plan text not null default 'free';
+-- Allow the Photographer tier (recreate the check constraint).
+alter table public.profiles drop constraint if exists profiles_plan_check;
+alter table public.profiles add constraint profiles_plan_check
+  check (plan in ('free', 'basic', 'photographer', 'studio'));
 -- Billing cycle + auto-expiry. When the plan expires it is treated as 'free'.
 alter table public.profiles add column if not exists plan_cycle text;            -- 'month' | 'year' | null
 alter table public.profiles add column if not exists plan_expires_at timestamptz; -- null = no expiry (free / lifetime)
@@ -485,15 +488,19 @@ alter table public.site_settings add column if not exists price_basic_year   int
 alter table public.site_settings add column if not exists price_studio_month integer not null default 300000;
 alter table public.site_settings add column if not exists price_studio_year  integer not null default 3000000;
 alter table public.site_settings add column if not exists studio_promo_percent integer not null default 50;
+alter table public.site_settings add column if not exists price_photographer_month integer not null default 100000;
+alter table public.site_settings add column if not exists price_photographer_year  integer not null default 999000;
 -- Per-plan general discount (%) applied to both billing cycles.
-alter table public.site_settings add column if not exists basic_discount_percent  integer not null default 0;
-alter table public.site_settings add column if not exists studio_discount_percent integer not null default 0;
+alter table public.site_settings add column if not exists basic_discount_percent        integer not null default 0;
+alter table public.site_settings add column if not exists photographer_discount_percent  integer not null default 0;
+alter table public.site_settings add column if not exists studio_discount_percent        integer not null default 0;
 
 -- Desired plan / billing cycle / discount code / contact phone on an upgrade request.
 alter table public.upgrade_requests add column if not exists plan text;
 alter table public.upgrade_requests add column if not exists cycle text;
 alter table public.upgrade_requests add column if not exists discount_code text;
 alter table public.upgrade_requests add column if not exists phone text;
+alter table public.upgrade_requests add column if not exists amount integer; -- final price after discount (VND)
 
 -- ============================================================================
 -- Discount codes (admin-created). Validated server-side; admins manage.
@@ -510,6 +517,7 @@ create table if not exists public.discount_codes (
 );
 alter table public.discount_codes add column if not exists max_uses integer;
 alter table public.discount_codes add column if not exists used_count integer not null default 0;
+alter table public.discount_codes add column if not exists expires_at timestamptz; -- null = no expiry
 alter table public.discount_codes enable row level security;
 -- Only admins read/manage directly; customers validate a code via the API (service role).
 drop policy if exists discount_codes_admin on public.discount_codes;

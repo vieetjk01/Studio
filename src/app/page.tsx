@@ -29,8 +29,11 @@ const DEFAULT_SETTINGS: SiteSettings = {
   price_basic_year: 500000,
   price_studio_month: 300000,
   price_studio_year: 3000000,
+  price_photographer_month: 100000,
+  price_photographer_year: 999000,
   studio_promo_percent: 50,
   studio_discount_percent: 0,
+  photographer_discount_percent: 0,
   updated_at: new Date().toISOString(),
 };
 
