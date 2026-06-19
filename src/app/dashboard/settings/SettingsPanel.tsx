@@ -187,6 +187,7 @@ export default function SettingsPanel({
             {field("price_studio_month", "Studio / tháng")}
             {field("price_studio_year", "Studio / năm")}
             {field("basic_discount_percent", "Giảm giá Basic (%)")}
+            {field("studio_discount_percent", "Giảm giá Studio (%)")}
             {field("studio_promo_percent", "Ưu đãi Studio/năm (%)")}
           </div>
           <p className="text-[12px]" style={{ color: "var(--text3)" }}>
@@ -291,8 +292,11 @@ export default function SettingsPanel({
             {upgrades.map((u) => (
               <div key={u.id} className="flex flex-wrap items-center gap-4 p-4">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 font-medium">
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
                     {u.email ?? u.user_id}
+                    {u.phone && (
+                      <span className="text-[12px] font-normal" style={{ color: "var(--text2)" }}>📞 {u.phone}</span>
+                    )}
                     {u.plan && (
                       <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>
                         {u.plan}{u.cycle ? ` · ${u.cycle === "year" ? "năm" : "tháng"}` : ""}

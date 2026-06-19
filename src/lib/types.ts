@@ -90,6 +90,7 @@ export interface SiteSettings {
   price_studio_month: number;
   price_studio_year: number;
   studio_promo_percent: number;
+  studio_discount_percent: number;
   updated_at: string;
 }
 
@@ -123,6 +124,7 @@ export interface UpgradeRequest {
   plan: string | null;
   cycle: string | null;
   discount_code: string | null;
+  phone: string | null;
   handled: boolean;
   created_at: string;
 }

@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   price_studio_month: 300000,
   price_studio_year: 3000000,
   studio_promo_percent: 50,
+  studio_discount_percent: 0,
   updated_at: new Date().toISOString(),
 };
 

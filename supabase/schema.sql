@@ -482,11 +482,15 @@ alter table public.site_settings add column if not exists price_basic_year   int
 alter table public.site_settings add column if not exists price_studio_month integer not null default 300000;
 alter table public.site_settings add column if not exists price_studio_year  integer not null default 3000000;
 alter table public.site_settings add column if not exists studio_promo_percent integer not null default 50;
+-- Per-plan general discount (%) applied to both billing cycles.
+alter table public.site_settings add column if not exists basic_discount_percent  integer not null default 0;
+alter table public.site_settings add column if not exists studio_discount_percent integer not null default 0;
 
--- Desired plan / billing cycle / applied discount code on an upgrade request.
+-- Desired plan / billing cycle / discount code / contact phone on an upgrade request.
 alter table public.upgrade_requests add column if not exists plan text;
 alter table public.upgrade_requests add column if not exists cycle text;
 alter table public.upgrade_requests add column if not exists discount_code text;
+alter table public.upgrade_requests add column if not exists phone text;
 
 -- ============================================================================
 -- Discount codes (admin-created). Validated server-side; admins manage.

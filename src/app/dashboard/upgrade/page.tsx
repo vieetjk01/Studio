@@ -14,6 +14,7 @@ interface Prices {
   studioMonth: number;
   studioYear: number;
   basicDiscount: number;
+  studioDiscount: number;
   studioPromo: number;
 }
 
@@ -23,6 +24,7 @@ const DEFAULT_PRICES: Prices = {
   studioMonth: PLAN_PRICING.studio.month,
   studioYear: PLAN_PRICING.studio.year,
   basicDiscount: 0,
+  studioDiscount: 0,
   studioPromo: 50,
 };
 
@@ -44,6 +46,7 @@ export default function UpgradePage() {
   const [prices, setPrices] = useState<Prices>(DEFAULT_PRICES);
   const [cycle, setCycle] = useState<Cycle>("month");
   const [note, setNote] = useState("");
+  const [phone, setPhone] = useState("");
   const [sending, setSending] = useState<Plan | null>(null);
   const [sentPlan, setSentPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export default function UpgradePage() {
       }
       const { data: s } = await supabase
         .from("site_settings")
-        .select("price_basic_month, price_basic_year, price_studio_month, price_studio_year, basic_discount_percent, studio_promo_percent")
+        .select("price_basic_month, price_basic_year, price_studio_month, price_studio_year, basic_discount_percent, studio_discount_percent, studio_promo_percent")
         .eq("id", 1)
         .maybeSingle();
       if (s) {
@@ -75,6 +78,7 @@ export default function UpgradePage() {
           studioMonth: s.price_studio_month ?? DEFAULT_PRICES.studioMonth,
           studioYear: s.price_studio_year ?? DEFAULT_PRICES.studioYear,
           basicDiscount: s.basic_discount_percent ?? 0,
+          studioDiscount: s.studio_discount_percent ?? 0,
           studioPromo: s.studio_promo_percent ?? 50,
         });
       }
@@ -104,7 +108,7 @@ export default function UpgradePage() {
   function discountFor(plan: Plan): number {
     let base = 0;
     if (plan === "basic") base = prices.basicDiscount;
-    if (plan === "studio") base = cycle === "year" ? prices.studioPromo : 0;
+    if (plan === "studio") base = Math.max(prices.studioDiscount, cycle === "year" ? prices.studioPromo : 0);
     const codePct = appliedCode && (!appliedCode.plan || appliedCode.plan === plan) ? appliedCode.percent : 0;
     return Math.max(base, codePct);
   }
@@ -113,13 +117,17 @@ export default function UpgradePage() {
   }
 
   async function request(plan: Plan) {
+    if (!phone.trim()) {
+      setError("Vui lòng nhập số điện thoại liên hệ trước khi gửi yêu cầu.");
+      return;
+    }
     setSending(plan);
     setError(null);
     const usedCode = appliedCode && (!appliedCode.plan || appliedCode.plan === plan) ? appliedCode.code : null;
     const res = await fetch("/api/upgrade-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan, cycle, note, discount_code: usedCode }),
+      body: JSON.stringify({ plan, cycle, note, discount_code: usedCode, phone }),
     });
     setSending(null);
     if (res.ok) {
@@ -255,6 +263,16 @@ export default function UpgradePage() {
       </div>
 
       <div className="mt-6 card p-5">
+        <label className="mb-2 block text-[13px]" style={{ color: "var(--text2)" }}>
+          Số điện thoại liên hệ <span style={{ color: "var(--gold)" }}>*</span>
+        </label>
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="VD: 0974374744"
+          inputMode="tel"
+          className="input mb-3"
+        />
         <label className="mb-2 block text-[13px]" style={{ color: "var(--text2)" }}>Lời nhắn khi gửi yêu cầu (tuỳ chọn)</label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhu cầu của bạn, số lượng album dự kiến…" className="input min-h-[70px] resize-y" />
         {error && <p className="mt-2 text-sm text-red-400">{error}</p>}

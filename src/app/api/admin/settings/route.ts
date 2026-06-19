@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       patch[f] = f === "stat_years" ? Number(body[f]) || 0 : body[f] || null;
     }
   }
-  for (const f of ["basic_discount_percent", "studio_promo_percent"] as const) {
+  for (const f of ["basic_discount_percent", "studio_promo_percent", "studio_discount_percent"] as const) {
     if (body[f] !== undefined) patch[f] = Math.max(0, Math.min(100, Number(body[f]) || 0));
   }
   for (const f of ["price_basic_month", "price_basic_year", "price_studio_month", "price_studio_year"] as const) {
