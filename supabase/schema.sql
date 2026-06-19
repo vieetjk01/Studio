@@ -730,6 +730,50 @@ alter table public.contract_crew add column if not exists paid_at timestamptz;
 alter table public.studio_contracts add column if not exists gallery_album_id uuid references public.albums (id) on delete set null;
 alter table public.studio_contracts add column if not exists client_viewed_at timestamptz;
 
+-- Studio counter-signature (Bên A) shown on the contract PDF.
+alter table public.studio_contracts add column if not exists studio_signed_name text;
+alter table public.studio_contracts add column if not exists studio_signature  text; -- PNG data URL
+alter table public.studio_contracts add column if not exists studio_signed_at  timestamptz;
+
+-- Reusable contract templates (mẫu hợp đồng): a named set of line items + terms.
+create table if not exists public.contract_templates (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  name       text not null default 'Mẫu',
+  shoot_type text not null default 'photo' check (shoot_type in ('photo', 'video', 'both')),
+  note       text,
+  created_at timestamptz not null default now()
+);
+create index if not exists contract_templates_owner_idx on public.contract_templates (owner_id);
+
+create table if not exists public.contract_template_items (
+  id          uuid primary key default gen_random_uuid(),
+  template_id uuid not null references public.contract_templates (id) on delete cascade,
+  name        text not null default '',
+  qty         integer not null default 1,
+  unit_price  integer not null default 0,
+  position    integer not null default 0
+);
+create index if not exists contract_template_items_tpl_idx on public.contract_template_items (template_id);
+
+alter table public.contract_templates      enable row level security;
+alter table public.contract_template_items enable row level security;
+
+drop policy if exists contract_templates_owner_all on public.contract_templates;
+create policy contract_templates_owner_all on public.contract_templates
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+drop policy if exists contract_template_items_owner_all on public.contract_template_items;
+create policy contract_template_items_owner_all on public.contract_template_items
+  for all using (
+    exists (select 1 from public.contract_templates t
+            where t.id = template_id and (t.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.contract_templates t
+            where t.id = template_id and (t.owner_id = auth.uid() or public.is_admin()))
+  );
+
 -- Payments collected from the client (deposit / installments / final).
 create table if not exists public.contract_payments (
   id          uuid primary key default gen_random_uuid(),

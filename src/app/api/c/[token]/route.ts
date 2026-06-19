@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, code, title, client_name, client_phone, client_email, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, gallery_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
+      "id, code, title, client_name, client_phone, client_email, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -75,9 +75,10 @@ export async function POST(req: Request, { params }: { params: { token: string }
     await db.from("studio_contracts").update({ client_viewed_at: new Date().toISOString() }).eq("id", contract.id);
   }
 
-  const [{ data: items }, { data: payments }] = await Promise.all([
+  const [{ data: items }, { data: payments }, { data: milestones }] = await Promise.all([
     db.from("contract_items").select("id, name, qty, unit_price, position").eq("contract_id", contract.id).order("position"),
     db.from("contract_payments").select("id, amount, kind, paid_at").eq("contract_id", contract.id).order("paid_at", { ascending: false }),
+    db.from("studio_events").select("id, title, event_date, event_time").eq("contract_id", contract.id).order("event_date"),
   ]);
 
   // Linked delivery gallery (so the portal can deep-link the client's photos).
@@ -97,6 +98,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     studio_name: studioName,
     items: items ?? [],
     payments: payments ?? [],
+    milestones: milestones ?? [],
     gallery,
   });
 }

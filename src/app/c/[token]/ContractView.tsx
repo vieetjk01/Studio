@@ -30,10 +30,14 @@ type Contract = {
   client_signed_name: string | null;
   client_signature: string | null;
   client_signed_at: string | null;
+  studio_signed_name: string | null;
+  studio_signature: string | null;
+  studio_signed_at: string | null;
   updated_at: string;
 };
 type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
+type Milestone = { id: string; title: string; event_date: string; event_time: string | null };
 type Gallery = { slug: string; title: string };
 
 export default function ContractView({ token }: { token: string }) {
@@ -42,6 +46,7 @@ export default function ContractView({ token }: { token: string }) {
   const [studioName, setStudioName] = useState("Studio");
   const [items, setItems] = useState<Item[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -70,6 +75,7 @@ export default function ContractView({ token }: { token: string }) {
     setStudioName(j.studio_name || "Studio");
     setItems(j.items ?? []);
     setPayments(j.payments ?? []);
+    setMilestones(j.milestones ?? []);
     setGallery(j.gallery ?? null);
     return { ok: true };
   }
@@ -172,6 +178,21 @@ export default function ContractView({ token }: { token: string }) {
             <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
           )}
         </div>
+
+        {milestones.length > 0 && (
+          <div className="card mt-6 p-6">
+            <h2 className="mb-4 font-serif text-lg font-medium">Lịch trình</h2>
+            <ul className="space-y-2">
+              {milestones.map((m) => (
+                <li key={m.id} className="flex items-center gap-3 text-sm">
+                  <Calendar size={15} style={{ color: "var(--text3)" }} />
+                  <span className="flex-1">{m.title}</span>
+                  <span style={{ color: "var(--text2)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {gallery && (
           <a
@@ -293,6 +314,7 @@ export default function ContractView({ token }: { token: string }) {
         contract={contract}
         studioName={studioName}
         items={items}
+        milestones={milestones}
         total={total}
         collected={collected}
         balance={balance}
@@ -305,6 +327,7 @@ function PrintDoc({
   contract,
   studioName,
   items,
+  milestones,
   total,
   collected,
   balance,
@@ -312,6 +335,7 @@ function PrintDoc({
   contract: Contract;
   studioName: string;
   items: Item[];
+  milestones: Milestone[];
   total: number;
   collected: number;
   balance: number;
@@ -332,6 +356,22 @@ function PrintDoc({
           <tr><td style={{ padding: "3px 0" }}>Địa điểm:</td><td>{contract.location || "—"}</td></tr>
         </tbody>
       </table>
+
+      {milestones.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 15, margin: "16px 0 8px" }}>Lịch trình</h2>
+          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse", marginBottom: 8 }}>
+            <tbody>
+              {milestones.map((m) => (
+                <tr key={m.id} style={{ borderBottom: "1px solid #eee" }}>
+                  <td style={{ padding: "4px 0" }}>{m.title}</td>
+                  <td style={{ padding: "4px 0", textAlign: "right", width: 180 }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <h2 style={{ fontSize: 15, margin: "16px 0 8px" }}>1. Hạng mục dịch vụ</h2>
       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
@@ -375,8 +415,16 @@ function PrintDoc({
           <tr>
             <td style={{ width: "50%" }}>
               <b>BÊN A (STUDIO)</b>
-              <div style={{ height: 70 }} />
-              <div>{studioName}</div>
+              <div style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {contract.studio_signature && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={contract.studio_signature} alt="" style={{ height: 64 }} />
+                )}
+              </div>
+              <div>{contract.studio_signed_name || studioName}</div>
+              {contract.studio_signed_at && (
+                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {new Date(contract.studio_signed_at).toLocaleDateString("vi-VN")}</div>
+              )}
             </td>
             <td style={{ width: "50%" }}>
               <b>BÊN B (KHÁCH HÀNG)</b>

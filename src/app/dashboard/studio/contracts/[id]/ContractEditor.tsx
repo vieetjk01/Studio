@@ -11,10 +11,12 @@ import {
   Check,
   Link as LinkIcon,
   PenLine,
+  CalendarClock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl, mainUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
+import SignaturePad from "@/components/SignaturePad";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -31,6 +33,7 @@ import {
   type ContractEditRequest,
   type ContractPayment,
   type StudioCrew,
+  type StudioEvent,
   type ShootType,
   type ContractStatus,
   type CrewRole,
@@ -68,6 +71,7 @@ export default function ContractEditor({
   initialPayments,
   roster,
   galleries,
+  initialMilestones,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -76,6 +80,7 @@ export default function ContractEditor({
   initialPayments: ContractPayment[];
   roster: StudioCrew[];
   galleries: { id: string; title: string; slug: string }[];
+  initialMilestones: StudioEvent[];
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -114,9 +119,15 @@ export default function ContractEditor({
   );
   const [requests, setRequests] = useState<ContractEditRequest[]>(initialRequests);
   const [payments, setPayments] = useState<ContractPayment[]>(initialPayments);
+  const [milestones, setMilestones] = useState<StudioEvent[]>(initialMilestones);
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
+  // new milestone form
+  const [ms, setMs] = useState({ title: "", event_date: "", event_time: "" });
+  // studio signature
+  const [studioSignName, setStudioSignName] = useState(contract.studio_signed_name ?? "");
+  const [studioSignature, setStudioSignature] = useState("");
 
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -276,6 +287,61 @@ export default function ContractEditor({
   async function deletePayment(id: string) {
     await supabase.from("contract_payments").delete().eq("id", id);
     setPayments((p) => p.filter((x) => x.id !== id));
+  }
+
+  // ── Milestones (shared with the studio calendar via studio_events) ─────
+  async function addMilestone() {
+    if (!ms.event_date) {
+      toast("Chọn ngày cho mốc lịch.");
+      return;
+    }
+    setBusy("milestone");
+    const { data, error } = await supabase
+      .from("studio_events")
+      .insert({
+        owner_id: contract.owner_id,
+        contract_id: contract.id,
+        title: ms.title.trim() || "Mốc lịch",
+        event_date: ms.event_date,
+        event_time: ms.event_time.trim() || null,
+        remind: true,
+      })
+      .select("*")
+      .single();
+    setBusy(null);
+    if (error) {
+      toast(`Lỗi: ${error.message}`);
+      return;
+    }
+    if (data) {
+      setMilestones((p) => [...p, data as StudioEvent].sort((a, b) => a.event_date.localeCompare(b.event_date)));
+      setMs({ title: "", event_date: "", event_time: "" });
+    }
+  }
+
+  async function deleteMilestone(id: string) {
+    await supabase.from("studio_events").delete().eq("id", id);
+    setMilestones((p) => p.filter((m) => m.id !== id));
+  }
+
+  // ── Studio counter-signature ───────────────────────────────────
+  async function saveStudioSignature() {
+    if (!studioSignName.trim()) {
+      toast("Nhập tên người ký (Bên A).");
+      return;
+    }
+    setBusy("sign");
+    const { error } = await supabase
+      .from("studio_contracts")
+      .update({
+        studio_signed_name: studioSignName.trim(),
+        ...(studioSignature ? { studio_signature: studioSignature } : {}),
+        studio_signed_at: new Date().toISOString(),
+      })
+      .eq("id", contract.id);
+    setBusy(null);
+    toast(error ? `Lỗi: ${error.message}` : "Đã lưu chữ ký Bên A.");
+    if (!error) router.refresh();
   }
 
   // ── Edit requests ──────────────────────────────────────────────
@@ -566,6 +632,39 @@ export default function ContractEditor({
             </button>
           </div>
 
+          {/* Milestones / schedule */}
+          <div className="card p-6">
+            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
+              <CalendarClock size={18} /> Lịch &amp; mốc thời gian
+            </h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
+              Thêm các mốc (vd: chụp pre-wedding, ngày cưới, trao ảnh). Mốc cũng hiện trên Lịch &amp; cổng khách.
+            </p>
+            {milestones.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có mốc nào.</p>
+            ) : (
+              <ul className="space-y-2">
+                {milestones.map((m) => (
+                  <li key={m.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                    <div>
+                      <p className="text-sm font-medium">{m.title}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</p>
+                    </div>
+                    <button onClick={() => deleteMilestone(m.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
+              <input className="input sm:col-span-6" placeholder="Tên mốc (vd: Ngày cưới)" value={ms.title} onChange={(e) => setMs((p) => ({ ...p, title: e.target.value }))} />
+              <input type="date" className="input sm:col-span-4" value={ms.event_date} onChange={(e) => setMs((p) => ({ ...p, event_date: e.target.value }))} />
+              <input className="input sm:col-span-2" placeholder="08:00" value={ms.event_time} onChange={(e) => setMs((p) => ({ ...p, event_time: e.target.value }))} />
+            </div>
+            <button onClick={addMilestone} disabled={busy === "milestone"} className="btn-ghost mt-3">
+              <Plus size={15} /> {busy === "milestone" ? "Đang thêm…" : "Thêm mốc lịch"}
+            </button>
+          </div>
+
           {/* Crew */}
           <div className="card p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -645,6 +744,35 @@ export default function ContractEditor({
             <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
               Thợ tự nhập SĐT tại {studioUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
             </p>
+          </div>
+
+          {/* Studio counter-signature (Bên A) */}
+          <div className="card p-6">
+            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
+              <PenLine size={18} /> Chữ ký Bên A (Studio)
+            </h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
+              Ký xác nhận của studio — hiển thị trên bản PDF hợp đồng.
+            </p>
+            {contract.studio_signed_at && (
+              <div className="mb-4 flex items-center gap-4 rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+                {contract.studio_signature && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={contract.studio_signature} alt="Chữ ký" className="h-14 rounded bg-white p-1" />
+                )}
+                <div className="text-xs" style={{ color: "var(--text3)" }}>
+                  {contract.studio_signed_name} · {new Date(contract.studio_signed_at).toLocaleString("vi-VN")}
+                </div>
+              </div>
+            )}
+            <input className="input" placeholder="Tên người ký (đại diện studio)" value={studioSignName} onChange={(e) => setStudioSignName(e.target.value)} />
+            <div className="mt-3">
+              <label className="label">Chữ ký {contract.studio_signed_at ? "(ký lại nếu muốn thay)" : ""}</label>
+              <SignaturePad onChange={setStudioSignature} />
+            </div>
+            <button onClick={saveStudioSignature} disabled={busy === "sign"} className="btn-primary mt-3">
+              <PenLine size={15} /> {busy === "sign" ? "Đang lưu…" : "Lưu chữ ký Bên A"}
+            </button>
           </div>
         </div>
 

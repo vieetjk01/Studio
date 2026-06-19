@@ -206,10 +206,31 @@ export interface StudioContract {
   client_signed_name: string | null;
   client_signature: string | null;
   client_signed_at: string | null;
+  studio_signed_name: string | null;
+  studio_signature: string | null;
+  studio_signed_at: string | null;
   gallery_album_id: string | null;
   client_viewed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ContractTemplate {
+  id: string;
+  owner_id: string;
+  name: string;
+  shoot_type: ShootType;
+  note: string | null;
+  created_at: string;
+}
+
+export interface ContractTemplateItem {
+  id: string;
+  template_id: string;
+  name: string;
+  qty: number;
+  unit_price: number;
+  position: number;
 }
 
 export interface ContractItem {

@@ -8,6 +8,7 @@ import type {
   ContractEditRequest,
   ContractPayment,
   StudioCrew,
+  StudioEvent,
 } from "@/lib/types";
 import ContractEditor from "./ContractEditor";
 
@@ -62,6 +63,12 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .order("created_at", { ascending: false }),
     ]);
 
+  const { data: milestones } = await supabase
+    .from("studio_events")
+    .select("*")
+    .eq("contract_id", params.id)
+    .order("event_date");
+
   return (
     <ContractEditor
       contract={contract as StudioContract}
@@ -71,6 +78,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       initialPayments={(payments ?? []) as ContractPayment[]}
       roster={(roster ?? []) as StudioCrew[]}
       galleries={(galleries ?? []) as { id: string; title: string; slug: string }[]}
+      initialMilestones={(milestones ?? []) as StudioEvent[]}
     />
   );
 }
