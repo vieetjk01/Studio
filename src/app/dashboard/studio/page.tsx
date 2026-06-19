@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { Plus, FileText, CalendarDays, Users, AlertCircle } from "lucide-react";
+import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
+import ZaloButton from "@/components/ZaloButton";
+import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
+  sumAmounts,
   vnd,
   CONTRACT_STATUS_LABEL,
   SHOOT_TYPE_LABEL,
+  CREW_ROLE_LABEL,
   type ContractStatus,
+  type CrewRole,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -43,19 +48,25 @@ export default async function StudioOverview() {
   const supabase = createClient();
   const { data: contracts } = await supabase
     .from("studio_contracts")
-    .select("*, contract_items(qty, unit_price), contract_edit_requests(status)")
+    .select("*, contract_items(qty, unit_price), contract_edit_requests(status), contract_payments(amount), contract_crew(id, name, phone, role, status)")
     .eq("owner_id", profile.id)
     .order("event_date", { ascending: true, nullsFirst: false });
 
+  type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
   const list = (contracts ?? []) as Array<{
     id: string;
     title: string;
     client_name: string | null;
+    client_phone: string | null;
+    location: string | null;
     event_date: string | null;
+    event_time: string | null;
     status: ContractStatus;
     shoot_type: keyof typeof SHOOT_TYPE_LABEL;
     contract_items: { qty: number; unit_price: number }[];
     contract_edit_requests: { status: string }[];
+    contract_payments: { amount: number }[];
+    contract_crew: CrewLite[];
   }>;
 
   const today = new Date().toISOString().slice(0, 10);
@@ -70,6 +81,19 @@ export default async function StudioOverview() {
     (s, c) => s + (c.contract_edit_requests || []).filter((r) => r.status === "open").length,
     0
   );
+
+  // Outstanding debts: active contracts where collected < total.
+  const debts = list
+    .filter((c) => c.status !== "cancelled")
+    .map((c) => ({ c, due: contractTotal(c.contract_items || []) - sumAmounts(c.contract_payments || []) }))
+    .filter((d) => d.due > 0)
+    .sort((a, b) => (a.c.event_date || "9999").localeCompare(b.c.event_date || "9999"));
+  const totalDue = debts.reduce((s, d) => s + d.due, 0);
+
+  // Crew who haven't responded yet (pending) on non-cancelled contracts.
+  const pendingCrew = list
+    .filter((c) => c.status !== "cancelled")
+    .flatMap((c) => (c.contract_crew || []).filter((cr) => cr.status === "pending").map((cr) => ({ c, cr })));
 
   const stats = [
     { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length) },
@@ -99,6 +123,59 @@ export default async function StudioOverview() {
           </div>
         ))}
       </div>
+
+      {/* Reminders: outstanding debts + crew awaiting response */}
+      {(debts.length > 0 || pendingCrew.length > 0) && (
+        <div className="mb-8 grid gap-6 lg:grid-cols-2">
+          {debts.length > 0 && (
+            <div className="card p-6" style={{ borderColor: "#c7a76b55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>
+                <Wallet size={18} /> Công nợ cần thu
+              </h2>
+              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Tổng còn phải thu: <b style={{ color: "var(--text)" }}>{vnd(totalDue)}</b></p>
+              <ul className="space-y-2">
+                {debts.slice(0, 6).map(({ c, due }) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{c.title}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{c.client_name || "—"} · còn {vnd(due)}</p>
+                    </Link>
+                    <ZaloButton
+                      phone={c.client_phone}
+                      label="Nhắc thu"
+                      message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {pendingCrew.length > 0 && (
+            <div className="card p-6" style={{ borderColor: "#6ba3c755" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#6ba3c7" }}>
+                <UserCheck size={18} /> Thợ chưa phản hồi
+              </h2>
+              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{pendingCrew.length} lời mời đang chờ nhận/từ chối</p>
+              <ul className="space-y-2">
+                {pendingCrew.slice(0, 6).map(({ c, cr }) => (
+                  <li key={cr.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{cr.name || cr.phone || "—"}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{CREW_ROLE_LABEL[cr.role]} · {c.title}</p>
+                    </Link>
+                    <ZaloButton
+                      phone={cr.phone}
+                      label="Nhắc"
+                      message={shootReminderMessage({ name: cr.name, title: c.title, date: c.event_date, time: c.event_time, location: c.location, role: CREW_ROLE_LABEL[cr.role] })}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upcoming */}

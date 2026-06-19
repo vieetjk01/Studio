@@ -72,6 +72,7 @@ export default function ContractEditor({
   roster,
   galleries,
   initialMilestones,
+  studioName,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -81,6 +82,7 @@ export default function ContractEditor({
   roster: StudioCrew[];
   galleries: { id: string; title: string; slug: string }[];
   initialMilestones: StudioEvent[];
+  studioName: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -287,6 +289,34 @@ export default function ContractEditor({
   async function deletePayment(id: string) {
     await supabase.from("contract_payments").delete().eq("id", id);
     setPayments((p) => p.filter((x) => x.id !== id));
+  }
+
+  // Open a printable receipt (phiếu thu) for one payment in a new window.
+  function printReceipt(p: ContractPayment) {
+    const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
+    const collectedNow = sumAmounts(payments);
+    const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Phiếu thu</title>
+<style>body{font-family:Georgia,serif;color:#111;max-width:560px;margin:24px auto;padding:0 24px}
+h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+.tot{border-top:1px solid #333;margin-top:8px;padding-top:8px;font-weight:700}.sign{margin-top:48px;text-align:center;font-size:13px}</style></head>
+<body onload="window.print()">
+<h1>PHIẾU THU</h1>
+<p style="text-align:center" class="muted">Số: ${esc(p.id.slice(0, 8).toUpperCase())} · ${p.paid_at}</p>
+<div class="row"><span>Studio (bên thu):</span><b>${esc(studioName)}</b></div>
+<div class="row"><span>Khách hàng:</span><b>${esc(f.client_name || "—")}</b></div>
+<div class="row"><span>Hợp đồng:</span><span>${esc(f.title)}${f.code ? " · " + esc(f.code) : ""}</span></div>
+<div class="row"><span>Nội dung:</span><span>${esc(PAYMENT_KIND_LABEL[p.kind])}${p.method ? " · " + esc(p.method) : ""}</span></div>
+<div class="row tot"><span>Số tiền thu</span><span>${vnd(p.amount)}</span></div>
+<div class="row"><span class="muted">Tổng giá trị HĐ</span><span class="muted">${vnd(total)}</span></div>
+<div class="row"><span class="muted">Đã thu luỹ kế</span><span class="muted">${vnd(collectedNow)}</span></div>
+<div class="row"><span class="muted">Còn lại</span><span class="muted">${vnd(total - collectedNow)}</span></div>
+<div class="sign"><b>NGƯỜI THU</b><div style="height:60px"></div><div>${esc(studioName)}</div></div>
+</body></html>`;
+    const w = window.open("", "_blank", "width=640,height=720");
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+    }
   }
 
   // ── Milestones (shared with the studio calendar via studio_events) ─────
@@ -611,7 +641,10 @@ export default function ContractEditor({
                         {p.paid_at}{p.method ? ` · ${p.method}` : ""}{p.note ? ` · ${p.note}` : ""}
                       </p>
                     </div>
-                    <button onClick={() => deletePayment(p.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => printReceipt(p)} className="text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
+                      <button onClick={() => deletePayment(p.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    </div>
                   </li>
                 ))}
               </ul>

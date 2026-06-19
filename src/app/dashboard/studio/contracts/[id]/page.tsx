@@ -79,6 +79,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       roster={(roster ?? []) as StudioCrew[]}
       galleries={(galleries ?? []) as { id: string; title: string; slug: string }[]}
       initialMilestones={(milestones ?? []) as StudioEvent[]}
+      studioName={profile.full_name || "Studio"}
     />
   );
 }

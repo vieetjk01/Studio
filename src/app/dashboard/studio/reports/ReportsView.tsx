@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wallet, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { vnd, EXPENSE_CATEGORY_LABEL, type StudioExpense, type PaymentKind } from "@/lib/types";
+import { vnd, EXPENSE_CATEGORY_LABEL, PAYMENT_KIND_LABEL, type StudioExpense, type PaymentKind } from "@/lib/types";
 
 export type PaymentRow = {
   id: string;
@@ -53,6 +53,42 @@ export default function ReportsView({
   const otherOut = monthExpenses.reduce((s, p) => s + (p.amount || 0), 0);
   const profit = income - salaryOut - otherOut;
 
+  // 12-month series (ending at the current real month) for the chart.
+  const series = useMemo(() => {
+    const out: { ym: string; label: string; income: number; expense: number; profit: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const inc = payments.filter((p) => (p.paid_at || "").startsWith(key)).reduce((s, p) => s + (p.amount || 0), 0);
+      const exp =
+        salaries.filter((s2) => (s2.paid_at || "").startsWith(key)).reduce((s, p) => s + (p.salary || 0), 0) +
+        expenses.filter((e) => (e.spent_at || "").startsWith(key)).reduce((s, p) => s + (p.amount || 0), 0);
+      out.push({ ym: key, label: `${d.getMonth() + 1}`, income: inc, expense: exp, profit: inc - exp });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payments, salaries, expenses]);
+  const chartMax = Math.max(1, ...series.map((s) => Math.max(s.income, s.expense)));
+
+  function exportCsv() {
+    const rows: string[][] = [["Loại", "Ngày", "Nội dung", "Số tiền (VND)"]];
+    for (const p of monthPayments) rows.push(["Thu", p.paid_at, `${PAYMENT_KIND_LABEL[p.kind]} · ${p.contract?.title || ""}`, String(p.amount)]);
+    for (const s of monthSalaries) rows.push(["Chi lương", s.paid_at || "", `${s.name} · ${s.contract?.title || ""}`, String(s.salary)]);
+    for (const e of monthExpenses) rows.push(["Chi khác", e.spent_at, `${e.title} · ${EXPENSE_CATEGORY_LABEL[e.category || "other"] || e.category || ""}`, String(e.amount)]);
+    rows.push([]);
+    rows.push(["", "", "Doanh thu", String(income)]);
+    rows.push(["", "", "Tổng chi", String(salaryOut + otherOut)]);
+    rows.push(["", "", "Lợi nhuận", String(profit)]);
+    const csv = "﻿" + rows.map((r) => r.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `thu-chi-${ym}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function move(d: number) {
     setCursor((c) => {
       const m = c.month + d;
@@ -96,6 +132,7 @@ export default function ReportsView({
           <h1 className="font-serif text-3xl font-medium">Thu chi &amp; doanh thu</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={exportCsv} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> CSV</button>
           <button onClick={() => move(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>
           <span className="min-w-[120px] text-center font-medium">{MONTHS[cursor.month]} {cursor.year}</span>
           <button onClick={() => move(1)} className="btn-ghost p-2"><ChevronRight size={16} /></button>
@@ -123,6 +160,26 @@ export default function ReportsView({
           <Wallet size={18} style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }} />
           <p className="mt-3 font-serif text-2xl font-medium" style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }}>{vnd(profit)}</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Lợi nhuận</p>
+        </div>
+      </div>
+
+      {/* 12-month chart */}
+      <div className="card mb-6 p-6">
+        <h2 className="mb-4 font-serif text-lg font-medium">Doanh thu 12 tháng</h2>
+        <div className="flex items-end gap-1.5" style={{ height: 160 }}>
+          {series.map((s) => (
+            <div key={s.ym} className="flex flex-1 flex-col items-center justify-end gap-1" title={`Tháng ${s.label}: thu ${vnd(s.income)} · chi ${vnd(s.expense)}`}>
+              <div className="flex w-full items-end justify-center gap-0.5" style={{ height: 130 }}>
+                <div style={{ width: "42%", height: `${(s.income / chartMax) * 100}%`, background: "#7bb38a", borderRadius: "3px 3px 0 0", minHeight: s.income ? 2 : 0 }} />
+                <div style={{ width: "42%", height: `${(s.expense / chartMax) * 100}%`, background: "#c77b7b", borderRadius: "3px 3px 0 0", minHeight: s.expense ? 2 : 0 }} />
+              </div>
+              <span className="text-[10px]" style={{ color: s.ym === ym ? "var(--accent)" : "var(--text3)" }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#7bb38a" }} /> Thu</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#c77b7b" }} /> Chi</span>
         </div>
       </div>
 
