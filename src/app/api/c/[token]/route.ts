@@ -58,13 +58,16 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   const who = contract.client_name || "Khách";
+  // Captured non-null refs so the nested notify() closure keeps the narrowing.
+  const cOwnerId = contract.owner_id as string;
+  const cId = contract.id as string;
   const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
   // Record an in-app notification; when `mail` is set, also email the owner.
   async function notify(kind: string, message: string, mail = false) {
-    await db.from("studio_notifications").insert({ owner_id: contract.owner_id, contract_id: contract.id, kind, message });
+    await db.from("studio_notifications").insert({ owner_id: cOwnerId, contract_id: cId, kind, message });
     if (mail && ownerObj?.email) {
       const host = process.env.NEXT_PUBLIC_STUDIO_HOST;
-      const link = host ? `https://${host}/dashboard/studio/contracts/${contract.id}` : "";
+      const link = host ? `https://${host}/dashboard/studio/contracts/${cId}` : "";
       await sendEmail({
         to: ownerObj.email,
         subject: `Studio: ${message}`,
