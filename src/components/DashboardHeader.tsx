@@ -59,6 +59,7 @@ export default function DashboardHeader({
           { href: "/dashboard/studio/reports", label: "Thu chi" },
           { href: "/dashboard/studio/crew", label: "Sổ thợ" },
           { href: "/dashboard/studio/equipment", label: "Thiết bị" },
+          { href: "/dashboard/studio/messages", label: "Mẫu tin" },
           { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
         ]
       : kind === "img"
@@ -107,7 +108,7 @@ export default function DashboardHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Brand href={kind === "img" ? "/" : kind === "studio" ? "/dashboard/studio" : "/dashboard"} />
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-x-5 gap-y-1.5 md:flex md:flex-wrap">
             {links.map((l) => renderLink(l))}
           </nav>
         </div>

@@ -313,6 +313,14 @@ export interface ContractPayment {
   created_at: string;
 }
 
+export interface MessageTemplate {
+  id: string;
+  owner_id: string;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
 export interface StudioBooking {
   id: string;
   owner_id: string;

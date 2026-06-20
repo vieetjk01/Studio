@@ -752,6 +752,21 @@ alter table public.studio_contracts add column if not exists source text; -- fac
 alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
 create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
 
+-- Saved message templates (mẫu tin nhắn) for quick copy into Zalo/Messenger/email.
+create table if not exists public.message_templates (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  title      text not null default '',
+  body       text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists message_templates_owner_idx on public.message_templates (owner_id);
+alter table public.message_templates enable row level security;
+drop policy if exists message_templates_owner_all on public.message_templates;
+create policy message_templates_owner_all on public.message_templates
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
 -- Online booking: a public per-studio link where prospective clients request a
 -- date. Each studio gets a booking_token; requests land in studio_bookings.
 alter table public.profiles add column if not exists booking_token text unique;

@@ -1,0 +1,90 @@
+"use client";
+
+import { useState } from "react";
+import { Plus, Trash2, Copy, Check } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { MessageTemplate } from "@/lib/types";
+
+export default function MessagesManager({
+  ownerId,
+  initial,
+}: {
+  ownerId: string;
+  initial: MessageTemplate[];
+}) {
+  const supabase = createClient();
+  const [list, setList] = useState<MessageTemplate[]>(initial);
+  const [f, setF] = useState({ title: "", body: "" });
+  const [busy, setBusy] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function add() {
+    if (!f.body.trim()) return;
+    setBusy(true);
+    const { data, error } = await supabase
+      .from("message_templates")
+      .insert({ owner_id: ownerId, title: f.title.trim() || "Mẫu", body: f.body.trim() })
+      .select("*")
+      .single();
+    setBusy(false);
+    if (!error && data) {
+      setList((p) => [data as MessageTemplate, ...p]);
+      setF({ title: "", body: "" });
+    }
+  }
+
+  async function remove(id: string) {
+    await supabase.from("message_templates").delete().eq("id", id);
+    setList((p) => p.filter((m) => m.id !== id));
+  }
+
+  function copy(m: MessageTemplate) {
+    navigator.clipboard?.writeText(m.body);
+    setCopiedId(m.id);
+    setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  return (
+    <div className="animate-[vkFade_.5s_ease_both]">
+      <div className="mb-8">
+        <p className="eyebrow mb-1.5">Quản lý studio</p>
+        <h1 className="font-serif text-3xl font-medium">Mẫu tin nhắn</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Lưu sẵn lời nhắn (nhắc lịch, xin đánh giá, nhắc công nợ…) để chép nhanh gửi Zalo/Messenger/email.</p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="card h-fit p-6">
+          <h2 className="mb-4 font-serif text-lg font-medium">Thêm mẫu</h2>
+          <div className="space-y-3">
+            <div><label className="label">Tiêu đề</label><input className="input" value={f.title} onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))} /></div>
+            <div><label className="label">Nội dung</label><textarea className="input min-h-[120px]" value={f.body} onChange={(e) => setF((p) => ({ ...p, body: e.target.value }))} /></div>
+            <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang lưu…" : "Lưu mẫu"}</button>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          {list.length === 0 ? (
+            <div className="card flex items-center justify-center py-16 text-sm" style={{ color: "var(--text3)" }}>Chưa có mẫu nào.</div>
+          ) : (
+            <div className="space-y-2">
+              {list.map((m) => (
+                <div key={m.id} className="card p-4">
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="font-medium">{m.title}</p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => copy(m)} className="btn-ghost px-2.5 py-1.5 text-xs">
+                        {copiedId === m.id ? <Check size={14} /> : <Copy size={14} />} {copiedId === m.id ? "Đã chép" : "Chép"}
+                      </button>
+                      <button onClick={() => remove(m.id)} className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm" style={{ color: "var(--text2)" }}>{m.body}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
