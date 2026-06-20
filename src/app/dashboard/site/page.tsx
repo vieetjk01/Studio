@@ -32,12 +32,16 @@ export default async function SiteBuilderPage() {
     const { data: created } = await supabase.from("sites").insert({ owner_id: user.id }).select("*").single();
     site = created;
   }
-  const { data: blocks } = await supabase.from("site_blocks").select("*").eq("site_id", (site as Site).id).order("position");
+  const [{ data: blocks }, { data: albums }] = await Promise.all([
+    supabase.from("site_blocks").select("*").eq("site_id", (site as Site).id).order("position"),
+    supabase.from("albums").select("id, slug, title, cover_url").eq("owner_id", user.id).eq("status", "published").order("created_at", { ascending: false }).limit(48),
+  ]);
 
   return (
     <SiteManager
       site={site as Site}
       initialBlocks={(blocks ?? []) as SiteBlock[]}
+      albums={(albums ?? []) as { id: string; slug: string; title: string; cover_url: string | null }[]}
       plan={plan}
       isAdmin={profile?.role === "admin"}
       mainHost={process.env.NEXT_PUBLIC_MAIN_HOST || ""}

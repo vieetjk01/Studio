@@ -13,7 +13,9 @@ import {
 } from "@/lib/types";
 import { SITE_TEMPLATES } from "@/lib/site-templates";
 
-const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "video", "social", "faq", "contact"];
+const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "services", "stats", "video", "social", "faq", "contact"];
+
+type AlbumLite = { id: string; slug: string; title: string; cover_url: string | null };
 
 // Which config fields each block type exposes in the editor.
 const BLOCK_FIELDS: Record<SiteBlockType, { key: string; label: string; area?: boolean }[]> = {
@@ -50,17 +52,27 @@ const BLOCK_FIELDS: Record<SiteBlockType, { key: string; label: string; area?: b
     { key: "heading", label: "Tiêu đề" },
     { key: "items", label: "Mỗi dòng: Câu hỏi | Câu trả lời", area: true },
   ],
+  services: [
+    { key: "heading", label: "Tiêu đề" },
+    { key: "items", label: "Mỗi dòng: Tên dịch vụ | Mô tả", area: true },
+  ],
+  stats: [
+    { key: "heading", label: "Tiêu đề (tuỳ chọn)" },
+    { key: "items", label: "Mỗi dòng: Con số | Nhãn (vd: 8 năm | Kinh nghiệm)", area: true },
+  ],
 };
 
 export default function SiteManager({
   site,
   initialBlocks,
+  albums,
   plan,
   isAdmin,
   mainHost,
 }: {
   site: Site;
   initialBlocks: SiteBlock[];
+  albums: AlbumLite[];
   plan: string;
   isAdmin: boolean;
   mainHost: string;
@@ -119,8 +131,18 @@ export default function SiteManager({
     if (data) setBlocks((p) => [...p, data as SiteBlock]);
   }
 
-  function setConfig(id: string, key: string, value: string) {
+  function setConfig(id: string, key: string, value: unknown) {
     setBlocks((p) => p.map((b) => (b.id === id ? { ...b, config: { ...b.config, [key]: value } } : b)));
+  }
+  function toggleAlbum(blockId: string, albumId: string) {
+    setBlocks((p) =>
+      p.map((b) => {
+        if (b.id !== blockId) return b;
+        const cur = Array.isArray(b.config.album_ids) ? (b.config.album_ids as string[]) : [];
+        const next = cur.includes(albumId) ? cur.filter((x) => x !== albumId) : [...cur, albumId];
+        return { ...b, config: { ...b.config, album_ids: next } };
+      })
+    );
   }
 
   async function saveBlock(b: SiteBlock) {
@@ -274,20 +296,57 @@ export default function SiteManager({
                     <button onClick={() => removeBlock(b.id)} className="btn-ghost px-2 py-1"><Trash2 size={14} /></button>
                   </div>
                 </div>
-                {(b.type === "gallery" || b.type === "pricing" || b.type === "testimonials") && (
+                {(b.type === "pricing" || b.type === "testimonials") && (
                   <p className="mb-2 text-[11px]" style={{ color: "var(--text3)" }}>
-                    {b.type === "gallery" ? "Tự lấy các album đã xuất bản của bạn." : b.type === "pricing" ? "Tự lấy bảng giá đang bật." : "Tự lấy đánh giá đã duyệt."}
+                    {b.type === "pricing" ? "Tự lấy bảng giá đang bật." : "Tự lấy đánh giá đã duyệt."}
                   </p>
                 )}
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {BLOCK_FIELDS[b.type].map((f) =>
-                    f.area ? (
-                      <textarea key={f.key} className="input min-h-[70px] sm:col-span-2" placeholder={f.label} value={String(b.config[f.key] ?? "")} onChange={(e) => setConfig(b.id, f.key, e.target.value)} />
-                    ) : (
-                      <input key={f.key} className="input" placeholder={f.label} value={String(b.config[f.key] ?? "")} onChange={(e) => setConfig(b.id, f.key, e.target.value)} />
-                    )
-                  )}
+                  {BLOCK_FIELDS[b.type].map((f) => {
+                    const isImage = f.key === "image";
+                    if (f.area) {
+                      return <textarea key={f.key} className="input min-h-[70px] sm:col-span-2" placeholder={f.label} value={String(b.config[f.key] ?? "")} onChange={(e) => setConfig(b.id, f.key, e.target.value)} />;
+                    }
+                    return (
+                      <div key={f.key} className={isImage ? "sm:col-span-2" : ""}>
+                        <input className="input" placeholder={f.label} value={String(b.config[f.key] ?? "")} onChange={(e) => setConfig(b.id, f.key, e.target.value)} />
+                        {isImage && albums.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            <span className="text-[11px]" style={{ color: "var(--text3)" }}>hoặc chọn từ album:</span>
+                            {albums.filter((a) => a.cover_url).slice(0, 12).map((a) => (
+                              <button key={a.id} type="button" onClick={() => setConfig(b.id, "image", a.cover_url)} title={a.title} className="h-8 w-10 overflow-hidden rounded" style={{ border: b.config.image === a.cover_url ? "2px solid var(--accent)" : "1px solid var(--border)" }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={a.cover_url as string} alt={a.title} className="h-full w-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {/* Gallery: pick which albums to feature */}
+                {b.type === "gallery" && (
+                  <div className="mt-2">
+                    <p className="mb-1.5 text-[11px]" style={{ color: "var(--text3)" }}>Chọn album để hiện (bỏ trống = hiện tất cả album đã xuất bản):</p>
+                    {albums.length === 0 ? (
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>Chưa có album đã xuất bản nào.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {albums.map((a) => {
+                          const picked = Array.isArray(b.config.album_ids) && (b.config.album_ids as string[]).includes(a.id);
+                          return (
+                            <button key={a.id} type="button" onClick={() => toggleAlbum(b.id, a.id)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px solid var(--border2)", background: picked ? "var(--surface)" : "transparent", color: picked ? "var(--accent)" : "var(--text2)" }}>
+                              {picked ? "✓ " : ""}{a.title}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <button onClick={() => saveBlock(b)} className="btn-ghost mt-2 px-3 py-1.5 text-xs"><Check size={13} /> Lưu khối</button>
               </div>
             ))}

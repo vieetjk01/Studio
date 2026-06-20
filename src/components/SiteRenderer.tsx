@@ -113,11 +113,13 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
       );
     }
     case "gallery": {
-      if (albums.length === 0) return null;
+      const ids = Array.isArray(c.album_ids) ? (c.album_ids as string[]) : [];
+      const picked = ids.length ? ids.map((id) => albums.find((a) => a.id === id)).filter(Boolean) as typeof albums : albums;
+      if (picked.length === 0) return null;
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Bộ sưu tập")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
-            {albums.map((a) => (
+            {picked.map((a) => (
               <a key={a.id} href={mainUrl(`/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
                 <div style={{ aspectRatio: "4/3", borderRadius: 12, overflow: "hidden", background: "rgba(255,255,255,.06)" }}>
                   {a.cover_url && <img src={a.cover_url} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
@@ -220,6 +222,43 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
               <div key={i} style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,.12)", padding: 18 }}>
                 <p style={{ fontWeight: 600 }}>{it.q}</p>
                 {it.a && <p style={{ marginTop: 6, opacity: 0.85, lineHeight: 1.6 }}>{it.a}</p>}
+              </div>
+            ))}
+          </div>
+        </Section>
+      );
+    }
+    case "services": {
+      const items = lines(c.items)
+        .map((line) => { const [title, ...d] = line.split("|"); return { title: title.trim(), desc: d.join("|").trim() }; })
+        .filter((x) => x.title);
+      if (items.length === 0) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading, "Dịch vụ")}>
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+            {items.map((it, i) => (
+              <div key={i} style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,.12)", padding: 20 }}>
+                <span style={{ color: "var(--s-accent)", fontFamily: fontVar, fontSize: 22 }}>{String(i + 1).padStart(2, "0")}</span>
+                <p style={{ fontFamily: fontVar, fontSize: 19, marginTop: 4 }}>{it.title}</p>
+                {it.desc && <p style={{ marginTop: 6, opacity: 0.85, lineHeight: 1.6, fontSize: 14 }}>{it.desc}</p>}
+              </div>
+            ))}
+          </div>
+        </Section>
+      );
+    }
+    case "stats": {
+      const items = lines(c.items)
+        .map((line) => { const [value, ...l] = line.split("|"); return { value: value.trim(), label: l.join("|").trim() }; })
+        .filter((x) => x.value);
+      if (items.length === 0) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading)}>
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: `repeat(${Math.min(items.length, 4)},1fr)`, textAlign: "center" }}>
+            {items.map((it, i) => (
+              <div key={i}>
+                <p style={{ fontFamily: fontVar, fontSize: "clamp(28px,5vw,48px)", color: "var(--s-accent)" }}>{it.value}</p>
+                {it.label && <p style={{ opacity: 0.8, fontSize: 14 }}>{it.label}</p>}
               </div>
             ))}
           </div>

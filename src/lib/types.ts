@@ -583,7 +583,9 @@ export type SiteBlockType =
   | "contact"
   | "video"
   | "social"
-  | "faq";
+  | "faq"
+  | "services"
+  | "stats";
 
 export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
   hero: "Ảnh bìa / Giới thiệu",
@@ -595,6 +597,8 @@ export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
   video: "Video",
   social: "Mạng xã hội",
   faq: "Câu hỏi thường gặp",
+  services: "Dịch vụ / Quy trình",
+  stats: "Con số nổi bật",
 };
 
 export interface SiteBlock {
