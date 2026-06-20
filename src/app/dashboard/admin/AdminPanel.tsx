@@ -88,6 +88,8 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         plan: "free",
         plan_cycle: null,
         plan_expires_at: null,
+        studio_owner_id: null,
+        studio_role: null,
         is_active: true,
         created_at: new Date().toISOString(),
       },
