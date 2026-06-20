@@ -24,6 +24,7 @@ import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
+import ClauseInserter from "@/components/ClauseInserter";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -942,6 +943,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <div>
                 <label className="label">Ghi chú / Điều khoản</label>
                 <textarea className="input min-h-[80px]" value={f.note} onChange={(e) => set("note", e.target.value)} />
+                <ClauseInserter onInsert={(t) => set("note", f.note.trim() ? `${f.note.trim()}\n\n${t}` : t)} />
               </div>
               <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary">
                 {busy === "contract" ? "Đang lưu…" : "Lưu thông tin"}

@@ -11,6 +11,7 @@ import {
   type ContractTemplate,
   type ContractTemplateItem,
 } from "@/lib/types";
+import ClauseInserter from "@/components/ClauseInserter";
 
 export type TemplateWithItems = ContractTemplate & { contract_template_items: ContractTemplateItem[] };
 type ItemRow = { name: string; qty: number; unit_price: number };
@@ -201,6 +202,7 @@ export default function TemplatesManager({
               <div className="mt-4">
                 <label className="label">Điều khoản / ghi chú mặc định</label>
                 <textarea className="input min-h-[90px]" value={note} onChange={(e) => setNote(e.target.value)} />
+                <ClauseInserter onInsert={(t) => setNote((n) => (n.trim() ? `${n.trim()}\n\n${t}` : t))} />
               </div>
 
               <div className="mt-4 flex gap-2">
