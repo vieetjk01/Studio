@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X, Home } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X, Home, GripVertical } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
@@ -31,6 +31,7 @@ export default function PricingManager({
   const [editId, setEditId] = useState<string | null>(null);
   const [edit, setEdit] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [note, setNote] = useState({ name: "", description: "" });
+  const [dragId, setDragId] = useState<string | null>(null);
 
   function startEdit(it: PricelistItem) {
     setEditId(it.id);
@@ -50,9 +51,30 @@ export default function PricingManager({
   }
 
   const visible = list.filter((it) => (it.list_key || "cuoi") === activeList);
-  const pkgs = visible.filter((it) => it.price > 0);
-  const notes = visible.filter((it) => it.price === 0);
+  const pkgs = visible.filter((it) => it.price > 0).sort((a, b) => a.position - b.position);
+  const notes = visible.filter((it) => it.price === 0).sort((a, b) => a.position - b.position);
   const listUrl = shareUrl ? `${shareUrl}?list=${activeList}` : "";
+
+  // Drag-to-reorder packages within the active list. Reorders the package cards
+  // and reassigns the same set of position slots so notes/other lists stay put.
+  async function reorderPkg(targetId: string) {
+    const src = dragId;
+    setDragId(null);
+    if (!src || src === targetId) return;
+    const from = pkgs.findIndex((p) => p.id === src);
+    const to = pkgs.findIndex((p) => p.id === targetId);
+    if (from < 0 || to < 0) return;
+    const reordered = [...pkgs];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    const slots = pkgs.map((p) => p.position).sort((a, b) => a - b);
+    const updates = reordered
+      .map((p, i) => ({ id: p.id, position: slots[i] }))
+      .filter((u) => pkgs.find((p) => p.id === u.id)?.position !== u.position);
+    if (updates.length === 0) return;
+    setList((prev) => prev.map((x) => { const u = updates.find((y) => y.id === x.id); return u ? { ...x, position: u.position } : x; }));
+    await Promise.all(updates.map((u) => supabase.from("studio_pricelist").update({ position: u.position }).eq("id", u.id)));
+  }
 
   async function seedActive() {
     const rows: SeedItem[] = activeList === "dinh-hon" ? ENGAGEMENT_SEED : WEDDING_SEED;
@@ -193,6 +215,7 @@ export default function PricingManager({
             <>
               <div className="space-y-2">
                 <h2 className="font-serif text-lg font-medium">Các gói dịch vụ</h2>
+                {pkgs.length > 1 && <p className="text-xs" style={{ color: "var(--text3)" }}>Kéo thả <GripVertical size={12} className="inline" /> để đổi vị trí các gói.</p>}
                 {pkgs.length === 0 && <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có gói nào.</p>}
                 {pkgs.map((it) =>
                   editId === it.id ? (
@@ -212,8 +235,18 @@ export default function PricingManager({
                       </div>
                     </div>
                   ) : (
-                    <div key={it.id} className="card flex items-start justify-between gap-3 p-4" style={{ opacity: it.active ? 1 : 0.5 }}>
-                      <div>
+                    <div
+                      key={it.id}
+                      draggable
+                      onDragStart={() => setDragId(it.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => reorderPkg(it.id)}
+                      onDragEnd={() => setDragId(null)}
+                      className="card flex items-start gap-3 p-4"
+                      style={{ opacity: dragId === it.id ? 0.4 : it.active ? 1 : 0.5, cursor: "grab" }}
+                    >
+                      <GripVertical size={16} className="mt-0.5 shrink-0" style={{ color: "var(--text3)" }} />
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium">
                           {it.name} {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
                         </p>
