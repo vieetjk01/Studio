@@ -1144,7 +1144,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
           {/* Per-contract expenses */}
           <div className="card p-6">
-            <h2 className="mb-1 font-serif text-lg font-medium">Chi phí hợp đồng</h2>
+            <h2 className="mb-1 font-serif text-lg font-medium">Chi phí phát sinh</h2>
             <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
               Chi phí riêng cho buổi này (di chuyển, đạo cụ, thuê ngoài…) — để tính lãi/lỗ thực &amp; vào báo cáo thu chi.
             </p>
@@ -1455,7 +1455,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(productCost)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt style={{ color: "var(--text2)" }}>Chi phí khác</dt>
+                <dt style={{ color: "var(--text2)" }}>Chi phí phát sinh</dt>
                 <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(expenseTotal)}</dd>
               </div>
               <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>

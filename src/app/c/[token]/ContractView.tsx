@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star } from "lucide-react";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, Phone, Mail, ListChecks, Package } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
-import { VietQR, type BankInfo } from "@/components/VietQR";
+import VietQRButton, { type BankInfo } from "@/components/VietQR";
 import { mainUrl } from "@/lib/hosts";
 import {
   contractTotal,
@@ -13,6 +13,7 @@ import {
   SHOOT_TYPE_LABEL,
   CONTRACT_STATUS_LABEL,
   PAYMENT_KIND_LABEL,
+  PRODUCT_STATUS_LABEL,
   type ShootType,
   type ContractStatus,
   type PaymentKind,
@@ -22,6 +23,7 @@ type Contract = {
   code: string | null;
   title: string;
   client_name: string | null;
+  client_phone: string | null;
   client_email: string | null;
   client_messenger: string | null;
   shoot_type: ShootType;
@@ -47,6 +49,10 @@ type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
 type Milestone = { id: string; title: string; event_date: string; event_time: string | null };
 type QuoteOption = { id: string; name: string; price: number; description: string | null };
+type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean };
+type ExpenseRow = { id: string; title: string; amount: number; category: string | null; spent_at: string };
+type TaskRow = { id: string; label: string; done: boolean };
+type ProductRow = { id: string; name: string; qty: number; status: string };
 type Gallery = { slug: string; title: string };
 
 type Lang = "vi" | "en";
@@ -104,6 +110,10 @@ export default function ContractView({ token }: { token: string }) {
   const [selection, setSelection] = useState<Gallery | null>(null);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
+  const [plan, setPlan] = useState<PlanRow[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [bank, setBank] = useState<BankInfo>({ bin: null, account: null, holder: null, name: null });
   const [paidReported, setPaidReported] = useState(false);
   const [qr, setQr] = useState("");
@@ -167,6 +177,10 @@ export default function ContractView({ token }: { token: string }) {
     setSelection(j.selection ?? null);
     setQuoteOptions(j.quote_options ?? []);
     setChosenQuote(j.contract?.chosen_quote_option_id ?? null);
+    setPlan(j.plan ?? []);
+    setExpenses(j.expenses ?? []);
+    setTasks(j.tasks ?? []);
+    setProducts(j.products ?? []);
     if (j.bank) setBank(j.bank as BankInfo);
     setMessenger(j.contract?.client_messenger ?? "");
     setBrief({
@@ -326,6 +340,12 @@ export default function ContractView({ token }: { token: string }) {
           {contract.client_name && (
             <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> {t("client")}: <b>{contract.client_name}</b></div>
           )}
+          {contract.client_phone && (
+            <div className="flex items-center gap-2"><Phone size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "SĐT" : "Phone"}: <b>{contract.client_phone}</b></div>
+          )}
+          {contract.client_email && (
+            <div className="flex items-center gap-2"><Mail size={15} style={{ color: "var(--text3)" }} /> Email: <b>{contract.client_email}</b></div>
+          )}
           {(contract.event_date || contract.event_time) && (
             <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} />{contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
           )}
@@ -445,11 +465,23 @@ export default function ContractView({ token }: { token: string }) {
               ))}
             </ul>
           )}
-          {balance > 0 && bank.bin && bank.account && (
+          {balance > 0 && (
             <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-              <p className="mb-3 text-center text-sm font-medium">{lang === "vi" ? "Quét mã để thanh toán phần còn lại" : "Scan to pay the balance"}</p>
-              <VietQR bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} />
-              <div className="mt-4 text-center">
+              <p className="mb-3 text-sm font-medium">{lang === "vi" ? "Thanh toán / chuyển khoản" : "Payment"}</p>
+              {bank.bin && bank.account ? (
+                <div className="flex flex-wrap gap-2">
+                  {plan.filter((p) => !p.paid && p.amount > 0).length > 0 ? (
+                    plan.filter((p) => !p.paid && p.amount > 0).map((p) => (
+                      <VietQRButton key={p.id} bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${p.label} · ${vnd(p.amount)}`} />
+                    ))
+                  ) : (
+                    <VietQRButton bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${lang === "vi" ? "Thanh toán" : "Pay"} · ${vnd(balance)}`} />
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
+              )}
+              <div className="mt-3">
                 {paidReported ? (
                   <p className="text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã gửi thông báo, studio sẽ đối soát." : "Sent — the studio will reconcile."}</p>
                 ) : (
@@ -461,6 +493,56 @@ export default function ContractView({ token }: { token: string }) {
             </div>
           )}
         </div>
+
+        {/* Surcharges / extra costs */}
+        {expenses.length > 0 && (
+          <div className="card mt-6 p-6">
+            <h2 className="mb-4 font-serif text-lg font-medium">{lang === "vi" ? "Chi phí phát sinh" : "Extra costs"}</h2>
+            <ul className="space-y-2 text-sm">
+              {expenses.map((e) => (
+                <li key={e.id} className="flex items-center justify-between">
+                  <span>{e.title}<span style={{ color: "var(--text3)" }}>{e.spent_at ? ` · ${e.spent_at}` : ""}</span></span>
+                  <span className="font-medium">{vnd(e.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Attached products */}
+        {products.length > 0 && (
+          <div className="card mt-6 p-6">
+            <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-medium"><Package size={17} /> {lang === "vi" ? "Sản phẩm đính kèm" : "Products"}</h2>
+            <ul className="space-y-2 text-sm">
+              {products.map((p) => (
+                <li key={p.id} className="flex items-center justify-between">
+                  <span>{p.name}{p.qty > 1 ? ` ×${p.qty}` : ""}</span>
+                  <span className="text-xs" style={{ color: "var(--text3)" }}>{PRODUCT_STATUS_LABEL[p.status as keyof typeof PRODUCT_STATUS_LABEL] || p.status}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Progress checklist (read-only) */}
+        {tasks.length > 0 && (
+          <div className="card mt-6 p-6">
+            <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-medium">
+              <ListChecks size={17} /> {lang === "vi" ? "Tiến độ công việc" : "Progress"}
+              <span className="ml-auto text-xs font-normal" style={{ color: "var(--text3)" }}>{tasks.filter((x) => x.done).length}/{tasks.length}</span>
+            </h2>
+            <ul className="space-y-2">
+              {tasks.map((tk) => (
+                <li key={tk.id} className="flex items-center gap-2.5 text-sm">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md" style={{ border: "1px solid var(--border2)", background: tk.done ? "#7bb38a" : "transparent" }}>
+                    {tk.done && <Check size={13} color="#0c0c0c" />}
+                  </span>
+                  <span style={{ color: tk.done ? "var(--text3)" : "var(--text)", textDecoration: tk.done ? "line-through" : "none" }}>{tk.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {contract.note && (
           <div className="card mt-6 p-6">

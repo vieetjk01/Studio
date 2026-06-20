@@ -172,11 +172,15 @@ export async function POST(req: Request, { params }: { params: { token: string }
     await db.from("studio_contracts").update({ client_viewed_at: new Date().toISOString() }).eq("id", contract.id);
   }
 
-  const [{ data: items }, { data: payments }, { data: milestones }, { data: quoteOptions }] = await Promise.all([
+  const [{ data: items }, { data: payments }, { data: milestones }, { data: quoteOptions }, { data: plan }, { data: expenses }, { data: tasks }, { data: products }] = await Promise.all([
     db.from("contract_items").select("id, name, qty, unit_price, position").eq("contract_id", contract.id).order("position"),
     db.from("contract_payments").select("id, amount, kind, paid_at").eq("contract_id", contract.id).order("paid_at", { ascending: false }),
     db.from("studio_events").select("id, title, event_date, event_time").eq("contract_id", contract.id).order("event_date"),
     db.from("contract_quote_options").select("id, name, price, description, position").eq("contract_id", contract.id).order("position"),
+    db.from("contract_payment_plan").select("id, label, amount, due_date, paid").eq("contract_id", contract.id).order("position"),
+    db.from("studio_expenses").select("id, title, amount, category, spent_at").eq("contract_id", contract.id).order("spent_at", { ascending: false }),
+    db.from("contract_tasks").select("id, label, done, position").eq("contract_id", contract.id).order("position"),
+    db.from("contract_products").select("id, name, qty, status, position").eq("contract_id", contract.id).order("position"),
   ]);
 
   // Linked delivery gallery (so the portal can deep-link the client's photos).
@@ -201,15 +205,19 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (s && s.status === "published") selection = { slug: s.slug, title: s.title };
   }
 
-  // Never expose internal crew/salary to the client.
+  // Never expose internal crew/salary to the client (gallery/selection ids hidden).
   return NextResponse.json({
-    contract: { ...contract, client_phone: undefined, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
+    contract: { ...contract, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
     studio_name: studioName,
     bank,
     items: items ?? [],
     payments: payments ?? [],
     milestones: milestones ?? [],
     quote_options: quoteOptions ?? [],
+    plan: plan ?? [],
+    expenses: expenses ?? [],
+    tasks: tasks ?? [],
+    products: products ?? [],
     gallery,
     selection,
   });
