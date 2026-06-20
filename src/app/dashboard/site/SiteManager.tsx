@@ -15,6 +15,18 @@ import { SITE_TEMPLATES } from "@/lib/site-templates";
 
 const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "services", "stats", "team", "quote", "cta", "logos", "video", "social", "faq", "map", "contact"];
 
+// One-click colour schemes for people who don't want to fiddle with hex codes.
+const PALETTES: { name: string; mode: "light" | "dark"; bg: string; text: string; accent: string }[] = [
+  { name: "Champagne", mode: "dark", bg: "#0c0c0d", text: "#ececec", accent: "#c7a76b" },
+  { name: "Đen trắng", mode: "dark", bg: "#0b0b0b", text: "#eaeaea", accent: "#eaeaea" },
+  { name: "Xanh đêm", mode: "dark", bg: "#0a0d14", text: "#e8ecf4", accent: "#6f8fd0" },
+  { name: "Xanh rêu", mode: "dark", bg: "#0e1311", text: "#e7efe9", accent: "#83b08f" },
+  { name: "Kem sáng", mode: "light", bg: "#faf7f2", text: "#1f1a14", accent: "#b07a36" },
+  { name: "Trắng tối giản", mode: "light", bg: "#ffffff", text: "#161616", accent: "#111111" },
+  { name: "Hồng pastel", mode: "light", bg: "#fdf6f4", text: "#2a1f1f", accent: "#c08585" },
+  { name: "Be ấm", mode: "light", bg: "#f4efe7", text: "#241d15", accent: "#9c6b3f" },
+];
+
 type AlbumLite = { id: string; slug: string; title: string; cover_url: string | null };
 
 // Which config fields each block type exposes in the editor.
@@ -309,7 +321,28 @@ export default function SiteManager({
 
           {/* Step 2: look & feel */}
           <div className="card p-5">
-            <h2 className="mb-3 font-serif text-lg font-medium">2. Giao diện</h2>
+            <h2 className="mb-1 font-serif text-lg font-medium">2. Giao diện</h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Không cần rành thiết kế — chọn một <b>bảng màu có sẵn</b> bên dưới.</p>
+            <div className="mb-4 grid grid-cols-4 gap-2">
+              {PALETTES.map((p) => {
+                const active = (theme.bg || "").toLowerCase() === p.bg && (theme.accent || "").toLowerCase() === p.accent;
+                return (
+                  <button
+                    key={p.name}
+                    onClick={() => setTheme((t) => ({ ...t, mode: p.mode, bg: p.bg, text: p.text, accent: p.accent }))}
+                    title={p.name}
+                    className="overflow-hidden rounded-lg text-left"
+                    style={{ border: active ? "2px solid var(--accent)" : "1px solid var(--border)" }}
+                  >
+                    <div className="flex h-8 items-center justify-center" style={{ background: p.bg }}>
+                      <span className="h-3.5 w-3.5 rounded-full" style={{ background: p.accent, border: `1px solid ${p.text}33` }} />
+                    </div>
+                    <div className="truncate px-1 py-0.5 text-[9px]" style={{ color: "var(--text3)" }}>{p.name}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <label className="label mb-1.5 block">Hoặc tự chỉnh</label>
             <div className="grid grid-cols-2 gap-2">
               {(["light", "dark"] as const).map((m) => (
                 <button key={m} onClick={() => setMode(m)} className="rounded-xl px-3 py-2.5 text-sm font-medium" style={{ border: "1px solid var(--border2)", background: mode === m ? "var(--surface2)" : "transparent", color: mode === m ? "var(--accent)" : "var(--text2)" }}>
