@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw, Maximize2, Minimize2 } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
@@ -86,7 +86,6 @@ export default function SiteManager({
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
-  const [wide, setWide] = useState(true);
   const refreshPreview = () => setPreviewKey((k) => k + 1);
   const mode = theme.mode || "dark";
   function setMode(m: "light" | "dark") {
@@ -202,30 +201,24 @@ export default function SiteManager({
   }
 
   return (
-    <div className="animate-[vkFade_.5s_ease_both]" style={wide ? { width: "100vw", marginLeft: "calc(50% - 50vw)", paddingLeft: 24, paddingRight: 24 } : undefined}>
+    <div className="animate-[vkFade_.5s_ease_both]" style={{ width: "100vw", marginLeft: "calc(50% - 50vw)", paddingLeft: 16, paddingRight: 16 }}>
       {msg && (
         <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>{msg}</div>
       )}
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow mb-1.5">Trang web riêng</p>
-          <h1 className="font-serif text-3xl font-medium">Trang giới thiệu của bạn</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Chọn 1 mẫu, đổi nội dung — xem kết quả ngay bên phải. Không cần biết thiết kế.</p>
-        </div>
-        <button onClick={() => setWide((w) => !w)} className="btn-ghost px-3 py-2 text-xs">
-          {wide ? <><Minimize2 size={14} /> Thu gọn</> : <><Maximize2 size={14} /> Toàn màn hình</>}
-        </button>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Trang giới thiệu của bạn</h1>
+        <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Chọn mẫu, đổi nội dung — xem kết quả ngay bên phải.</p>
       </div>
 
-      <div className={wide ? "grid gap-6 lg:grid-cols-[1fr_minmax(460px,46vw)]" : "grid gap-6 lg:grid-cols-[1fr_minmax(340px,440px)]"}>
+      <div className="grid gap-5 lg:grid-cols-[minmax(280px,1fr)_3fr]">
         {/* LEFT — controls */}
         <div className="order-2 space-y-6 lg:order-1">
           {/* Step 1: pick a template */}
           <div className="card p-5">
             <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu (1 chạm)</h2>
             <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Bấm một mẫu để áp dụng ngay; nội dung &amp; ảnh chỉ là mẫu, bạn đổi lại sau.</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2">
               {SITE_TEMPLATES.map((tp) => (
                 <button key={tp.key} onClick={() => applyTemplate(tp.key)} className="overflow-hidden rounded-xl text-left transition-transform hover:scale-[1.02]" style={{ border: "1px solid var(--border)" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -285,6 +278,13 @@ export default function SiteManager({
                     <option value="small">Nhỏ</option>
                     <option value="medium">Vừa</option>
                     <option value="large">Lớn</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Bề rộng trang</label>
+                  <select className="input" value={theme.contentWidth || "compact"} onChange={(e) => setTheme((t) => ({ ...t, contentWidth: e.target.value as "full" | "compact" }))}>
+                    <option value="compact">Thu gọn</option>
+                    <option value="full">Toàn màn hình</option>
                   </select>
                 </div>
                 <div>
@@ -360,12 +360,18 @@ export default function SiteManager({
                     <button onClick={() => removeBlock(b.id)} className="btn-ghost px-2 py-1"><Trash2 size={14} /></button>
                   </div>
                 </div>
+                {b.type !== "hero" && (
+                  <select className="input mb-2 py-1 text-xs" value={String(b.config.width || "full")} onChange={(e) => setConfig(b.id, "width", e.target.value)}>
+                    <option value="full">Khối toàn phần</option>
+                    <option value="half">Khối một nửa (xếp ngang)</option>
+                  </select>
+                )}
                 {(b.type === "pricing" || b.type === "testimonials") && (
                   <p className="mb-2 text-[11px]" style={{ color: "var(--text3)" }}>
                     {b.type === "pricing" ? "Tự lấy bảng giá đang bật." : "Tự lấy đánh giá đã duyệt."}
                   </p>
                 )}
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2">
                   {BLOCK_FIELDS[b.type].map((f) => {
                     const isImage = f.key === "image";
                     if (f.area) {
@@ -451,7 +457,7 @@ export default function SiteManager({
                 </div>
               </div>
               <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
-                <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: wide ? "86vh" : "78vh", border: 0, background: "#fff" }} />
+                <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: "86vh", border: 0, background: "#fff" }} />
               </div>
               {liveUrl && published && (
                 <a href={liveUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-center text-xs text-accent hover:underline">Trang thật: {liveUrl}</a>

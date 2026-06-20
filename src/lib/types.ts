@@ -565,6 +565,7 @@ export type SiteTheme = {
   radius?: "rounded" | "sharp";     // corner style
   navPosition?: "top" | "left" | "right"; // menu placement
   heroSize?: "small" | "medium" | "large"; // cover height
+  contentWidth?: "full" | "compact";       // published page width
 };
 export type SiteSeo = { title?: string; description?: string; og_image?: string };
 

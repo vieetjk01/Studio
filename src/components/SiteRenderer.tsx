@@ -38,6 +38,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     "--s-border": dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
     "--s-radius": t.radius === "sharp" ? "0px" : "14px",
+    "--s-maxw": t.contentWidth === "full" ? "1360px" : "1040px",
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
@@ -62,11 +63,16 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
         </div>
       </div>
     ) : (
-      blocks.map((b) => (
-        <div id={`sec-${b.id}`} key={b.id}>
-          <Block block={b} data={data} fontVar={fontVar} demo={demo} />
-        </div>
-      ))
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
+        {blocks.map((b) => {
+          const half = b.config?.width === "half" && b.type !== "hero";
+          return (
+            <div id={`sec-${b.id}`} key={b.id} style={{ flex: half ? "1 1 420px" : "1 1 100%", minWidth: 0 }}>
+              <Block block={b} data={data} fontVar={fontVar} demo={demo} />
+            </div>
+          );
+        })}
+      </div>
     );
 
   const footer = (
@@ -143,7 +149,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
 
 function Section({ children, fontVar, heading }: { children: React.ReactNode; fontVar: string; heading?: string }) {
   return (
-    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "56px 24px" }}>
+    <section style={{ maxWidth: "var(--s-maxw)", margin: "0 auto", padding: "56px 24px" }}>
       {heading && <h2 style={{ fontFamily: fontVar, fontSize: 30, marginBottom: 24 }}>{heading}</h2>}
       {children}
     </section>
