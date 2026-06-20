@@ -32,10 +32,12 @@ export default async function ClientsPage() {
   }
 
   const supabase = createClient();
-  const { data } = await supabase
+  let cq = supabase
     .from("studio_contracts")
     .select("client_name, client_phone, event_date, source, status, contract_items(qty, unit_price), contract_payments(amount)")
     .eq("owner_id", profile.id);
+  if (profile.actingRole === "staff") cq = cq.eq("assigned_to", profile.actingUserId);
+  const { data } = await cq;
 
   const rows = (data ?? []) as unknown as Row[];
 

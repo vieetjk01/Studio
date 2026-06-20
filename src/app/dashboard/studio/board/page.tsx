@@ -19,11 +19,12 @@ export default async function BoardPage() {
   }
 
   const supabase = createClient();
-  const { data } = await supabase
+  let q = supabase
     .from("studio_contracts")
     .select("id, title, client_name, status, event_date, delivery_due, contract_items(qty, unit_price), contract_tasks(done)")
-    .eq("owner_id", profile.id)
-    .order("event_date", { ascending: true, nullsFirst: false });
+    .eq("owner_id", profile.id);
+  if (profile.actingRole === "staff") q = q.eq("assigned_to", profile.actingUserId);
+  const { data } = await q.order("event_date", { ascending: true, nullsFirst: false });
 
   return <BoardView initial={(data ?? []) as unknown as BoardCard[]} />;
 }

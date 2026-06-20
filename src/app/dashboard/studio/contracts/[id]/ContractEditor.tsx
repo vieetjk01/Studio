@@ -98,6 +98,8 @@ export default function ContractEditor({
   equipConflict,
   initialProducts,
   initialQuoteOptions,
+  staffList,
+  canAssign,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -118,6 +120,8 @@ export default function ContractEditor({
   equipConflict: Record<string, string>;
   initialProducts: ContractProduct[];
   initialQuoteOptions: ContractQuoteOption[];
+  staffList: { id: string; full_name: string | null; email: string }[];
+  canAssign: boolean;
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -140,6 +144,7 @@ export default function ContractEditor({
     client_messenger: contract.client_messenger ?? "",
     selection_album_id: contract.selection_album_id ?? "",
     source: contract.source ?? "",
+    assigned_to: contract.assigned_to ?? "",
   });
   const set = (k: keyof typeof f, v: string | number) =>
     setF((p) => ({ ...p, [k]: v }) as typeof p);
@@ -224,6 +229,7 @@ export default function ContractEditor({
         client_messenger: f.client_messenger.trim() || null,
         selection_album_id: f.selection_album_id || null,
         source: f.source || null,
+        ...(canAssign ? { assigned_to: f.assigned_to || null } : {}),
       })
       .eq("id", contract.id);
     setBusy(null);
@@ -851,6 +857,18 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <label className="label">Hạn giao ảnh</label>
                 <input type="date" className="input" value={f.delivery_due} onChange={(e) => set("delivery_due", e.target.value)} />
               </div>
+              {canAssign && staffList.length > 0 && (
+                <div>
+                  <label className="label">Giao cho nhân viên</label>
+                  <select className="input" value={f.assigned_to} onChange={(e) => set("assigned_to", e.target.value)}>
+                    <option value="">— Chưa giao —</option>
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>{s.full_name || s.email}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Nhân viên (vai trò Nhân viên) chỉ thấy hợp đồng được giao cho mình.</p>
+                </div>
+              )}
               <div>
                 <label className="label">Gallery ảnh giao khách (gắn vào cổng khách)</label>
                 <select className="input" value={f.gallery_album_id} onChange={(e) => set("gallery_album_id", e.target.value)}>

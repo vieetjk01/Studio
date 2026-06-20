@@ -21,11 +21,12 @@ export default async function ContractsList() {
   }
 
   const supabase = createClient();
-  const { data } = await supabase
+  let q = supabase
     .from("studio_contracts")
     .select("*, contract_items(qty, unit_price), contract_payments(amount)")
-    .eq("owner_id", profile.id)
-    .order("created_at", { ascending: false });
+    .eq("owner_id", profile.id);
+  if (profile.actingRole === "staff") q = q.eq("assigned_to", profile.actingUserId);
+  const { data } = await q.order("created_at", { ascending: false });
 
   return <ContractsListView list={(data ?? []) as unknown as ContractRow[]} />;
 }

@@ -47,11 +47,12 @@ export default async function StudioOverview() {
   if (!profile) return <NotStudio />;
 
   const supabase = createClient();
-  const { data: contracts } = await supabase
+  let cq = supabase
     .from("studio_contracts")
     .select("*, contract_items(qty, unit_price), contract_edit_requests(status), contract_payments(amount), contract_crew(id, name, phone, role, status)")
-    .eq("owner_id", profile.id)
-    .order("event_date", { ascending: true, nullsFirst: false });
+    .eq("owner_id", profile.id);
+  if (profile.actingRole === "staff") cq = cq.eq("assigned_to", profile.actingUserId);
+  const { data: contracts } = await cq.order("event_date", { ascending: true, nullsFirst: false });
 
   type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
   const list = (contracts ?? []) as Array<{

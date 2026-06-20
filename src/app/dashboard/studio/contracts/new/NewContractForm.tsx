@@ -17,9 +17,11 @@ export type TemplateOption = {
 
 export default function NewContractForm({
   ownerId,
+  assignTo,
   templates,
 }: {
   ownerId: string;
+  assignTo: string | null;
   templates: TemplateOption[];
 }) {
   const router = useRouter();
@@ -58,6 +60,7 @@ export default function NewContractForm({
         event_date: eventDate || null,
         note: tpl?.note || null,
         client_token: token,
+        ...(assignTo ? { assigned_to: assignTo } : {}),
       })
       .select("id")
       .single();

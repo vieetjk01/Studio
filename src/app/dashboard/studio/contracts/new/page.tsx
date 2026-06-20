@@ -26,5 +26,6 @@ export default async function NewContractPage() {
     .eq("owner_id", profile.id)
     .order("created_at", { ascending: false });
 
-  return <NewContractForm ownerId={profile.id} templates={(templates ?? []) as unknown as TemplateOption[]} />;
+  const assignTo = profile.actingRole === "staff" ? (profile.actingUserId as string) : null;
+  return <NewContractForm ownerId={profile.id} assignTo={assignTo} templates={(templates ?? []) as unknown as TemplateOption[]} />;
 }

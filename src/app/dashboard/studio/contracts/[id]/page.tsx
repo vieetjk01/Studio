@@ -47,6 +47,15 @@ export default async function ContractPage({ params }: { params: { id: string } 
 
   if (!contract) notFound();
 
+  // Staff role: may only open contracts assigned to them.
+  if (profile.actingRole === "staff" && contract.assigned_to !== profile.actingUserId) notFound();
+  const canAssign = profile.actingRole !== "staff";
+
+  // Staff list for the "giao cho nhân viên" selector (managers/owner only).
+  const { data: staffList } = canAssign
+    ? await supabase.from("profiles").select("id, full_name, email").eq("studio_owner_id", profile.id).order("full_name")
+    : { data: [] as { id: string; full_name: string | null; email: string }[] };
+
   const [{ data: items }, { data: crew }, { data: requests }, { data: payments }, { data: roster }, { data: galleries }, { data: selectionAlbums }] =
     await Promise.all([
       supabase.from("contract_items").select("*").eq("contract_id", params.id).order("position"),
@@ -148,6 +157,8 @@ export default async function ContractPage({ params }: { params: { id: string } 
       equipConflict={equipConflict}
       initialProducts={(products ?? []) as ContractProduct[]}
       initialQuoteOptions={(quoteOptions ?? []) as ContractQuoteOption[]}
+      staffList={(staffList ?? []) as { id: string; full_name: string | null; email: string }[]}
+      canAssign={canAssign}
     />
   );
 }

@@ -24,10 +24,10 @@ export default async function CalendarPage() {
   const supabase = createClient();
   const [{ data: events }, { data: contracts }] = await Promise.all([
     supabase.from("studio_events").select("*").eq("owner_id", profile.id).order("event_date"),
-    supabase
-      .from("studio_contracts")
-      .select("id, title, client_name, client_phone, location, event_date, event_time, status")
-      .eq("owner_id", profile.id)
+    (profile.actingRole === "staff"
+      ? supabase.from("studio_contracts").select("id, title, client_name, client_phone, location, event_date, event_time, status").eq("owner_id", profile.id).eq("assigned_to", profile.actingUserId)
+      : supabase.from("studio_contracts").select("id, title, client_name, client_phone, location, event_date, event_time, status").eq("owner_id", profile.id)
+    )
       .not("event_date", "is", null)
       .neq("status", "cancelled"),
   ]);
