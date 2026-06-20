@@ -14,6 +14,20 @@ const img = (seed: string, w = 1600, h = 900) => `https://picsum.photos/seed/${s
 /** One-click starter templates: theme (colours + layout) + blocks with sample content. */
 export const SITE_TEMPLATES: SiteTemplate[] = [
   {
+    key: "home",
+    name: "Như trang chủ",
+    thumb: img("vk-home", 600, 380),
+    theme: { mode: "dark", accent: "#c7a76b", bg: "#0b0b0d", text: "#ececec", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded", navPosition: "top", heroSize: "medium", contentWidth: "compact" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Nhiếp ảnh gia cưới & chân dung · Studio", image: img("vk-home-hero") } },
+      { type: "stats", config: { items: "8 năm | Kinh nghiệm\n300+ | Album\n100% | Khách hài lòng" } },
+      { type: "gallery", config: { heading: "Bộ sưu tập nổi bật" } },
+      { type: "pricing", config: { heading: "Bảng giá dịch vụ" } },
+      { type: "testimonials", config: { heading: "Khách hàng nói gì" } },
+      { type: "contact", config: { heading: "Liên hệ & đặt lịch" } },
+    ],
+  },
+  {
     key: "classic",
     name: "Cổ điển",
     thumb: img("vk-classic", 600, 380),

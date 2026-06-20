@@ -83,6 +83,7 @@ export default function SiteManager({
   const [theme, setTheme] = useState<SiteTheme>(site.theme || {});
   const [blocks, setBlocks] = useState<SiteBlock[]>(initialBlocks);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [paletteType, setPaletteType] = useState<SiteBlockType | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
@@ -150,6 +151,21 @@ export default function SiteManager({
       .select("*")
       .single();
     if (data) { setBlocks((p) => [...p, data as SiteBlock]); refreshPreview(); }
+  }
+
+  // Insert a new block at a given index (drag a palette chip into the list).
+  async function addBlockAt(type: SiteBlockType, index: number) {
+    const { data } = await supabase
+      .from("site_blocks")
+      .insert({ site_id: site.id, type, position: index, config: {} })
+      .select("*")
+      .single();
+    if (!data) return;
+    const next = [...blocks];
+    next.splice(Math.max(0, Math.min(index, next.length)), 0, data as SiteBlock);
+    setBlocks(next);
+    await Promise.all(next.map((b, i) => supabase.from("site_blocks").update({ position: i }).eq("id", b.id)));
+    refreshPreview();
   }
 
   function setConfig(id: string, key: string, value: unknown) {
@@ -365,26 +381,39 @@ export default function SiteManager({
           {/* Step 3: content blocks */}
           <div className="card p-5">
             <h2 className="mb-1 font-serif text-lg font-medium">3. Nội dung</h2>
-            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Kéo thả <GripVertical size={12} className="inline" /> để đổi thứ tự. Bấm để thêm khối:</p>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}><b>Kéo</b> khối thả vào danh sách dưới (hoặc bấm để thêm). Kéo <GripVertical size={12} className="inline" /> để đổi thứ tự.</p>
             <div className="mb-4 flex flex-wrap gap-1.5">
               {BLOCK_TYPES.map((tp) => (
-                <button key={tp} onClick={() => addBlock(tp)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text2)" }}>
+                <button
+                  key={tp}
+                  draggable
+                  onDragStart={() => setPaletteType(tp)}
+                  onDragEnd={() => setPaletteType(null)}
+                  onClick={() => addBlock(tp)}
+                  className="cursor-grab rounded-full px-2.5 py-1 text-xs active:cursor-grabbing"
+                  style={{ border: "1px dashed var(--border2)", color: "var(--text2)" }}
+                >
                   <Plus size={12} className="inline" /> {SITE_BLOCK_LABEL[tp]}
                 </button>
               ))}
             </div>
 
-        {blocks.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có khối nào. Bấm thêm khối ở trên (vd: Ảnh bìa → Bộ sưu tập → Bảng giá → Liên hệ).</p>
-        ) : (
-          <div className="space-y-3">
-            {blocks.map((b) => (
+        <div
+          onDragOver={(e) => { if (paletteType) e.preventDefault(); }}
+          onDrop={() => { if (paletteType) { addBlockAt(paletteType, blocks.length); setPaletteType(null); } }}
+          className="space-y-3 rounded-xl"
+          style={{ minHeight: 70, padding: paletteType ? 6 : 0, outline: paletteType ? "2px dashed var(--accent)" : "none", outlineOffset: 2 }}
+        >
+          {blocks.length === 0 && (
+            <p className="rounded-xl border border-dashed p-4 text-center text-sm" style={{ borderColor: "var(--border2)", color: "var(--text3)" }}>Kéo khối thả vào đây, hoặc bấm nút khối ở trên (vd: Ảnh bìa → Bộ sưu tập → Bảng giá → Liên hệ).</p>
+          )}
+            {blocks.map((b, idx) => (
               <div
                 key={b.id}
                 draggable
                 onDragStart={() => setDragId(b.id)}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={() => reorder(b.id)}
+                onDrop={(e) => { e.stopPropagation(); if (paletteType) { addBlockAt(paletteType, idx); setPaletteType(null); } else { reorder(b.id); } }}
                 onDragEnd={() => setDragId(null)}
                 className="rounded-xl p-4"
                 style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: dragId === b.id ? 0.4 : b.visible ? 1 : 0.55 }}
@@ -459,7 +488,6 @@ export default function SiteManager({
               </div>
             ))}
           </div>
-        )}
           </div>
 
           {!studioPro && (
