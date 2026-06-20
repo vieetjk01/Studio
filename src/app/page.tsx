@@ -45,7 +45,7 @@ export default async function HomePage() {
   let pinnedPhotoGalleries: GalleryCard[] = [];
   let pinnedVideoGalleries: GalleryCard[] = [];
   let feedback: { id: string; client_name: string | null; rating: number | null; content: string }[] = [];
-  type PriceRow = { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
+  type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
   let pricelist: PriceRow[] = [];
   let pricelistUrl = "";
 
@@ -103,7 +103,7 @@ export default async function HomePage() {
     if (adminProfile) {
       const { data: pl } = await db
         .from("studio_pricelist")
-        .select("id, name, price, unit, category, description")
+        .select("id, list_key, name, price, unit, category, description")
         .eq("owner_id", adminProfile.id)
         .eq("active", true)
         .order("position");

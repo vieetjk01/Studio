@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { mainUrl } from "@/lib/hosts";
+import { ALL_SEED } from "@/lib/pricelist-seeds";
 import type { PricelistItem } from "@/lib/types";
 import PricingManager from "./PricingManager";
 
@@ -28,11 +29,19 @@ export default async function PricingPage() {
     await supabase.from("profiles").update({ booking_token: token }).eq("id", profile.id);
   }
 
-  const { data } = await supabase
+  let { data } = await supabase
     .from("studio_pricelist")
     .select("*")
     .eq("owner_id", profile.id)
     .order("position");
+
+  // First visit: auto-fill the wedding + engagement lists from the studio's cards.
+  if ((!data || data.length === 0) && profile.actingRole !== "staff") {
+    await supabase.from("studio_pricelist").insert(
+      ALL_SEED.map((s, i) => ({ ...s, owner_id: profile.id, position: i }))
+    );
+    ({ data } = await supabase.from("studio_pricelist").select("*").eq("owner_id", profile.id).order("position"));
+  }
 
   return (
     <PricingManager

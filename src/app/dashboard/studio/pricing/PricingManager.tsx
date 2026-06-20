@@ -3,28 +3,8 @@
 import { useState } from "react";
 import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
 import { vnd, type PricelistItem } from "@/lib/types";
-
-// Mẫu bảng giá cưới (tham khảo) — studio chỉnh sửa sau.
-const WEDDING_SEED: { name: string; price: number; unit: string; category: string; description: string }[] = [
-  { category: "Gói chụp cơ bản", name: "Truyền thống", price: 2500000, unit: "/ gói", description: "Giao toàn bộ file gốc\nChỉnh sửa 100 file" },
-  { category: "Gói chụp cơ bản", name: "Phóng sự x1", price: 4000000, unit: "/ gói", description: "1 thợ chụp nhà gái\nGiao toàn bộ file gốc\n150–200 hình chỉnh sửa" },
-  { category: "Gói chụp cơ bản", name: "Phóng sự x2", price: 6000000, unit: "/ gói", description: "1 thợ nhà gái, 1 thợ nhà trai\nGiao toàn bộ file gốc\nChỉnh sửa 300–400 hình" },
-  { category: "Gói quay phóng sự", name: "Gói quay cơ bản", price: 4000000, unit: "/ gói", description: "1 thợ quay (Sáng → trưa)\nGiao toàn bộ file\nVideo chỉnh sửa 3–5 phút" },
-  { category: "Gói quay phóng sự", name: "Gói quay Plus", price: 7500000, unit: "/ gói", description: "2 thợ quay nhà gái & nhà trai (Sáng → trưa)\n1 flycam (nếu khu vực cho phép bay)\nVideo chỉnh sửa 5–7 phút (có thể yêu cầu)" },
-  { category: "Gói quay phóng sự", name: "Gói Combo", price: 13500000, unit: "/ gói", description: "2 thợ chụp, 2 thợ quay, 1 flycam (Sáng → trưa)\nGiao toàn bộ file gốc\nChỉnh sửa 300–400 hình\nVideo 5–7 phút (theo yêu cầu)\nTặng Album 150 ảnh" },
-  { category: "Phát sinh thêm", name: "Chi phí phát sinh", price: 0, unit: "", description: "In album: trợ giá 500k/album 100 hình, in thêm 8.000đ/hình\nĐãi trước 1 ngày: +1.000.000đ\nPhát sinh tiệc tối: +500.000đ cho gói chụp\nChưa gồm phí đi lại nếu ở xa / ngoại tỉnh" },
-  { category: "Lưu ý", name: "Điều khoản", price: 0, unit: "", description: "Cọc trước 20% hợp đồng sau khi chốt gói\nThanh toán toàn bộ sau khi giao file gốc\nFile gốc được lưu trữ trong 30 ngày kể từ ngày giao" },
-];
-
-const ENGAGEMENT_SEED: { name: string; price: number; unit: string; category: string; description: string }[] = [
-  { category: "Đính hôn · Gói chụp", name: "Truyền thống", price: 1800000, unit: "/ gói", description: "Giao toàn bộ file gốc\nChỉnh sửa 50 file" },
-  { category: "Đính hôn · Gói chụp", name: "Phóng sự x1", price: 2500000, unit: "/ gói", description: "1 thợ chụp nhà gái\nGiao toàn bộ file gốc\n100 hình chỉnh sửa" },
-  { category: "Đính hôn · Gói chụp", name: "Phóng sự x2", price: 5000000, unit: "/ gói", description: "1 thợ nhà gái, 1 thợ nhà trai\nGiao toàn bộ file gốc\nChỉnh sửa 200 hình" },
-  { category: "Đính hôn · Gói quay", name: "Gói quay cơ bản", price: 3500000, unit: "/ gói", description: "1 thợ quay (Sáng → trưa)\nGiao toàn bộ file\nVideo chỉnh sửa 3–5 phút" },
-  { category: "Đính hôn · Gói quay", name: "Gói quay Plus", price: 7500000, unit: "/ gói", description: "2 thợ quay nhà gái & nhà trai (Sáng → trưa)\n1 flycam (nếu khu vực cho phép bay)\nVideo chỉnh sửa 5–7 phút (có thể yêu cầu)" },
-  { category: "Đính hôn · Gói quay", name: "Gói Combo", price: 11500000, unit: "/ gói", description: "2 thợ chụp, 2 thợ quay, 1 flycam (Sáng → trưa)\nGiao toàn bộ file gốc\nChỉnh sửa 300–400 hình\nVideo 5–7 phút (theo yêu cầu)\nTặng Album 100 ảnh" },
-];
 
 type Contact = { pl_phone: string; pl_facebook: string; pl_bank_holder: string; pl_bank_account: string; pl_bank_name: string };
 
@@ -36,18 +16,23 @@ export default function PricingManager({
 }: {
   ownerId: string;
   initial: PricelistItem[];
-  shareUrl: string;
+  shareUrl: string; // base /gia/<token>
   contact: Contact;
 }) {
   const supabase = createClient();
   const [list, setList] = useState<PricelistItem[]>(initial);
+  const [activeList, setActiveList] = useState(PRICE_LISTS[0].key);
   const [f, setF] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [c, setC] = useState<Contact>(contact);
   const [savedContact, setSavedContact] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  async function seed(rows: typeof WEDDING_SEED) {
+  const visible = list.filter((it) => (it.list_key || "cuoi") === activeList);
+  const listUrl = shareUrl ? `${shareUrl}?list=${activeList}` : "";
+
+  async function seedActive() {
+    const rows: SeedItem[] = activeList === "dinh-hon" ? ENGAGEMENT_SEED : WEDDING_SEED;
     setBusy(true);
     const payload = rows.map((s, i) => ({ ...s, owner_id: ownerId, position: list.length + i }));
     const { data, error } = await supabase.from("studio_pricelist").insert(payload).select("*");
@@ -68,6 +53,7 @@ export default function PricingManager({
       .from("studio_pricelist")
       .insert({
         owner_id: ownerId,
+        list_key: activeList,
         name: f.name.trim(),
         price: Math.max(0, Math.round(Number(f.price) || 0)),
         unit: f.unit.trim() || null,
@@ -98,29 +84,38 @@ export default function PricingManager({
       <div className="mb-6">
         <p className="eyebrow mb-1.5">Quản lý studio</p>
         <h1 className="font-serif text-3xl font-medium">Bảng giá</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Soạn bảng giá dịch vụ rồi gửi link cho khách xem.</p>
+        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Mỗi loại có 1 bảng giá &amp; link riêng để gửi khách.</p>
       </div>
 
-      {shareUrl && (
+      {/* List tabs */}
+      <div className="mb-6 flex gap-2">
+        {PRICE_LISTS.map((l) => (
+          <button
+            key={l.key}
+            onClick={() => setActiveList(l.key)}
+            className="rounded-full px-4 py-2 text-sm font-medium"
+            style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)" }}
+          >
+            Bảng giá {l.label}
+          </button>
+        ))}
+      </div>
+
+      {listUrl && (
         <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
           <LinkIcon size={16} style={{ color: "var(--text3)" }} />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá gửi khách</p>
-            <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{shareUrl}</p>
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {PRICE_LISTS.find((l) => l.key === activeList)?.label} gửi khách</p>
+            <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{listUrl}</p>
           </div>
-          <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">Xem thử</a>
-          <button onClick={() => { navigator.clipboard?.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="btn-ghost px-3 py-2 text-xs">
+          <a href={listUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">Xem thử</a>
+          <button onClick={() => { navigator.clipboard?.writeText(listUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="btn-ghost px-3 py-2 text-xs">
             {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Đã chép" : "Chép link"}
           </button>
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button onClick={() => seed(WEDDING_SEED)} disabled={busy} className="btn-ghost px-3 py-2 text-xs"><Sparkles size={14} /> Thêm mẫu cưới</button>
-        <button onClick={() => seed(ENGAGEMENT_SEED)} disabled={busy} className="btn-ghost px-3 py-2 text-xs"><Sparkles size={14} /> Thêm mẫu đính hôn</button>
-      </div>
-
-      {/* Contact + bank shown on the public price list */}
+      {/* Contact + bank (shared across both lists) */}
       <div className="card mb-6 p-6">
         <h2 className="mb-4 font-serif text-lg font-medium">Liên hệ &amp; chuyển khoản (hiện trên bảng giá)</h2>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -140,26 +135,23 @@ export default function PricingManager({
             <div><label className="label">Tên dịch vụ</label><input className="input" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="label">Giá</label><input type="number" className="input" value={f.price || ""} onChange={(e) => setF((p) => ({ ...p, price: Number(e.target.value) }))} /></div>
-              <div><label className="label">Đơn vị</label><input className="input" placeholder="/ buổi" value={f.unit} onChange={(e) => setF((p) => ({ ...p, unit: e.target.value }))} /></div>
+              <div><label className="label">Đơn vị</label><input className="input" placeholder="/ gói" value={f.unit} onChange={(e) => setF((p) => ({ ...p, unit: e.target.value }))} /></div>
             </div>
-            <div><label className="label">Nhóm</label><input className="input" placeholder="Cưới / Sự kiện…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
-            <div><label className="label">Mô tả</label><textarea className="input min-h-[70px]" value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} /></div>
+            <div><label className="label">Nhóm</label><input className="input" placeholder="Gói chụp / Gói quay…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
+            <div><label className="label">Mô tả (mỗi dòng 1 ý)</label><textarea className="input min-h-[70px]" value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} /></div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang thêm…" : "Thêm vào bảng giá"}</button>
           </div>
         </div>
 
         <div className="lg:col-span-2">
-          {list.length === 0 ? (
+          {visible.length === 0 ? (
             <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
-              <p>Chưa có mục nào trong bảng giá.</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <button onClick={() => seed(WEDDING_SEED)} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá cưới</button>
-                <button onClick={() => seed(ENGAGEMENT_SEED)} disabled={busy} className="btn-ghost"><Sparkles size={15} /> Mẫu giá đính hôn</button>
-              </div>
+              <p>Bảng giá {PRICE_LISTS.find((l) => l.key === activeList)?.label} đang trống.</p>
+              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {PRICE_LISTS.find((l) => l.key === activeList)?.label}</button>
             </div>
           ) : (
             <div className="space-y-2">
-              {list.map((it) => (
+              {visible.map((it) => (
                 <div key={it.id} className="card flex items-start justify-between gap-3 p-4" style={{ opacity: it.active ? 1 : 0.5 }}>
                   <div>
                     <p className="font-medium">

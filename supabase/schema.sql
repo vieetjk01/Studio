@@ -835,6 +835,7 @@ create policy studio_packages_owner_all on public.studio_packages
 create table if not exists public.studio_pricelist (
   id          uuid primary key default gen_random_uuid(),
   owner_id    uuid not null references public.profiles (id) on delete cascade,
+  list_key    text not null default 'cuoi',  -- 'cuoi' | 'dinh-hon' | custom
   name        text not null default '',
   price       integer not null default 0,
   unit        text,            -- e.g. "/ buổi", "/ giờ"
@@ -844,7 +845,8 @@ create table if not exists public.studio_pricelist (
   position    integer not null default 0,
   created_at  timestamptz not null default now()
 );
-create index if not exists studio_pricelist_owner_idx on public.studio_pricelist (owner_id, position);
+alter table public.studio_pricelist add column if not exists list_key text not null default 'cuoi';
+create index if not exists studio_pricelist_owner_idx on public.studio_pricelist (owner_id, list_key, position);
 alter table public.studio_pricelist enable row level security;
 drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;
 create policy studio_pricelist_owner_all on public.studio_pricelist

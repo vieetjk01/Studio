@@ -326,6 +326,7 @@ export interface ContractPayment {
 export interface PricelistItem {
   id: string;
   owner_id: string;
+  list_key: string;
   name: string;
   price: number;
   unit: string | null;

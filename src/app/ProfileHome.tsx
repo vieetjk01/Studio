@@ -26,9 +26,10 @@ import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
+import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import { vnd, type SiteSettings, type BookingService } from "@/lib/types";
 
-type PriceRow = { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
+type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
 
 
 const SERVICES: {
@@ -79,14 +80,11 @@ export default function ProfileHome({
   const contactRef = useRef<HTMLDivElement>(null);
   const [openPrice, setOpenPrice] = useState<string | null>(null);
 
-  // Condensed price list grouped by category (priced rows only).
-  const priceGroups: { name: string; items: PriceRow[] }[] = [];
-  for (const it of pricelist.filter((p) => p.price > 0)) {
-    const cat = it.category?.trim() || "Dịch vụ";
-    let g = priceGroups.find((x) => x.name === cat);
-    if (!g) { g = { name: cat, items: [] }; priceGroups.push(g); }
-    g.items.push(it);
-  }
+  // Condensed price list grouped by list (Cưới / Đính hôn), priced rows only.
+  const priced = pricelist.filter((p) => p.price > 0);
+  const priceLists = PRICE_LISTS
+    .map((l) => ({ ...l, items: priced.filter((p) => (p.list_key || "cuoi") === l.key) }))
+    .filter((l) => l.items.length > 0);
 
   const [booking, setBooking] = useState({
     service: "wedding" as BookingService,
@@ -266,24 +264,25 @@ export default function ProfileHome({
         </section>
       )}
 
-      {/* Price list (condensed, click to expand details) */}
-      {priceGroups.length > 0 && (
+      {/* Price list (condensed, grouped by list, click to expand details) */}
+      {priceLists.length > 0 && (
         <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="eyebrow mb-1.5">Bảng giá</p>
-              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
-            </div>
-            {pricelistUrl && (
-              <Link href={pricelistUrl} className="text-sm" style={{ color: "var(--accent)" }}>Xem bảng giá đầy đủ →</Link>
-            )}
+          <div className="mb-5">
+            <p className="eyebrow mb-1.5">Bảng giá</p>
+            <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {priceGroups.map((g) => (
-              <div key={g.name}>
-                <h3 className="mb-2 font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{g.name}</h3>
+
+          <div className="space-y-8">
+            {priceLists.map((l) => (
+              <div key={l.key}>
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                  <h3 className="font-serif text-xl font-medium" style={{ color: "var(--accent)" }}>Bảng giá {l.label}</h3>
+                  {pricelistUrl && (
+                    <Link href={`${pricelistUrl}?list=${l.key}`} className="text-sm" style={{ color: "var(--accent)" }}>Xem đầy đủ →</Link>
+                  )}
+                </div>
                 <div className="card divide-y overflow-hidden" style={{ borderColor: "var(--border)" }}>
-                  {g.items.map((it) => {
+                  {l.items.map((it) => {
                     const open = openPrice === it.id;
                     return (
                       <div key={it.id} style={{ borderColor: "var(--border)" }}>
@@ -291,7 +290,10 @@ export default function ProfileHome({
                           onClick={() => setOpenPrice(open ? null : it.id)}
                           className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-[var(--surface2)]"
                         >
-                          <span className="font-medium">{it.name}</span>
+                          <span className="font-medium">
+                            {it.name}
+                            {it.category && <span className="ml-2 text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
+                          </span>
                           <span className="flex items-center gap-2">
                             <span className="font-serif text-lg font-medium">{vnd(it.price)}{it.unit ? <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span> : null}</span>
                             {it.description && <ArrowRight size={14} className="transition-transform" style={{ color: "var(--text3)", transform: open ? "rotate(90deg)" : "none" }} />}
@@ -307,11 +309,6 @@ export default function ProfileHome({
               </div>
             ))}
           </div>
-          {pricelistUrl && (
-            <div className="mt-6 text-center">
-              <Link href={pricelistUrl} className="btn-ghost">Xem chi tiết &amp; đặt lịch</Link>
-            </div>
-          )}
         </section>
       )}
 

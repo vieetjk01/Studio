@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import { vnd, type PricelistItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ function bullets(desc: string | null) {
   return (desc || "").split("\n").map((s) => s.trim()).filter(Boolean);
 }
 
-export default async function PublicPricelist({ params }: { params: { token: string } }) {
+export default async function PublicPricelist({ params, searchParams }: { params: { token: string }; searchParams?: { list?: string } }) {
   const db = createAdminClient();
   const { data: owner } = await db
     .from("profiles")
@@ -45,7 +46,14 @@ export default async function PublicPricelist({ params }: { params: { token: str
     .eq("owner_id", owner.id)
     .eq("active", true)
     .order("position");
-  const items = (data ?? []) as PricelistItem[];
+  const allItems = (data ?? []) as PricelistItem[];
+
+  // Which lists have content; pick the selected one (?list=) or the first.
+  const available = PRICE_LISTS.filter((l) => allItems.some((i) => (i.list_key || "cuoi") === l.key));
+  const lists = available.length ? available : PRICE_LISTS.slice(0, 1);
+  const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
+  const selectedList = PRICE_LISTS.find((l) => l.key === selected);
+  const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
 
   // Group by category, preserve order, classify package vs note (all price 0).
   const groups: { name: string; items: PricelistItem[] }[] = [];
@@ -64,10 +72,26 @@ export default async function PublicPricelist({ params }: { params: { token: str
         {/* Header */}
         <div className="flex flex-col gap-6 border-b pb-8 md:flex-row md:items-start md:justify-between" style={{ borderColor: C.line }}>
           <div>
-            <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-semibold uppercase leading-none tracking-wide" style={{ color: C.greenDeep }}>
-              Bảng giá dịch vụ
+            <h1 className="font-serif text-[clamp(28px,5vw,48px)] font-semibold uppercase leading-none tracking-wide" style={{ color: C.greenDeep }}>
+              {selectedList?.title || "Bảng giá dịch vụ"}
             </h1>
             <p className="mt-2 font-serif text-2xl italic" style={{ color: C.green }}>{o.full_name || "Studio"}</p>
+            {lists.length > 1 && (
+              <div className="mt-4 flex gap-2">
+                {lists.map((l) => (
+                  <a
+                    key={l.key}
+                    href={`/gia/${params.token}?list=${l.key}`}
+                    className="rounded-full px-4 py-1.5 text-sm font-medium"
+                    style={l.key === selected
+                      ? { background: C.greenDeep, color: C.panel }
+                      : { border: `1px solid ${C.line}`, color: C.green }}
+                  >
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           <div className="shrink-0 text-sm md:text-right">
             {(o.pl_phone || o.pl_facebook) && (
