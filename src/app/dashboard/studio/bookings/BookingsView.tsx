@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Link as LinkIcon, Copy, Check, Phone, FilePlus, Archive } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
+import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
+import { fullClauseText } from "@/lib/contract-clauses";
 import { vnd, type StudioBooking } from "@/lib/types";
 
 export default function BookingsView({
@@ -31,15 +33,18 @@ export default function BookingsView({
   async function toContract(b: StudioBooking) {
     setBusy(b.id);
     const ct = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "");
+    const code = await nextContractCode(supabase, ownerId);
+    const note = [b.note, fullClauseText()].filter(Boolean).join("\n\n");
     const { data, error } = await supabase
       .from("studio_contracts")
       .insert({
         owner_id: ownerId,
+        code,
         title: b.service ? `${b.service} — ${b.name}` : `Hợp đồng — ${b.name}`,
         client_name: b.name,
         client_phone: b.phone,
         event_date: b.preferred_date,
-        note: b.note,
+        note,
         client_token: ct,
       })
       .select("id")
@@ -59,6 +64,10 @@ export default function BookingsView({
         position: 0,
       });
     }
+    // Default post-production checklist.
+    await supabase.from("contract_tasks").insert(
+      DEFAULT_TASKS.map((label, position) => ({ contract_id: data.id, label, position }))
+    );
     await supabase.from("studio_bookings").update({ status: "handled" }).eq("id", b.id);
     router.push(`/dashboard/studio/contracts/${data.id}`);
   }

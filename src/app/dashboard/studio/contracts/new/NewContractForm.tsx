@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { SHOOT_TYPE_LABEL, type ShootType } from "@/lib/types";
+import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
+import { fullClauseText } from "@/lib/contract-clauses";
 
 export type TemplateOption = {
   id: string;
@@ -31,6 +33,8 @@ export default function NewContractForm({
   const [shootType, setShootType] = useState<ShootType>("photo");
   const [eventDate, setEventDate] = useState("");
   const [depositPct, setDepositPct] = useState(30);
+  const [includeClauses, setIncludeClauses] = useState(true);
+  const [addChecklist, setAddChecklist] = useState(true);
   const [templateId, setTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -43,6 +47,10 @@ export default function NewContractForm({
 
   async function create() {
     setErr(null);
+    if (!clientPhone.trim()) {
+      setErr("Cần SĐT khách — đây là mật khẩu để khách mở cổng hợp đồng.");
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
     const token =
@@ -50,16 +58,19 @@ export default function NewContractForm({
         ? crypto.randomUUID().replace(/-/g, "")
         : Math.random().toString(36).slice(2) + Date.now().toString(36);
     const tpl = templates.find((x) => x.id === templateId);
+    const code = await nextContractCode(supabase, ownerId);
+    const note = tpl?.note || (includeClauses ? fullClauseText() : null);
     const { data, error } = await supabase
       .from("studio_contracts")
       .insert({
         owner_id: ownerId,
+        code,
         title: title.trim() || "Hợp đồng",
         client_name: clientName.trim() || null,
         client_phone: clientPhone.trim() || null,
         shoot_type: shootType,
         event_date: eventDate || null,
-        note: tpl?.note || null,
+        note,
         client_token: token,
         ...(assignTo ? { assigned_to: assignTo } : {}),
       })
@@ -86,6 +97,12 @@ export default function NewContractForm({
         amount: Math.round((tplTotal * depositPct) / 100),
         position: 0,
       });
+    }
+    // Default post-production checklist.
+    if (addChecklist) {
+      await supabase.from("contract_tasks").insert(
+        DEFAULT_TASKS.map((label, position) => ({ contract_id: data.id, label, position }))
+      );
     }
     setSaving(false);
     router.push(`/dashboard/studio/contracts/${data.id}`);
@@ -150,6 +167,17 @@ export default function NewContractForm({
           <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
             Khi dùng mẫu, tự tạo sẵn đợt &ldquo;Cọc {depositPct}%&rdquo; trong mục Thanh toán. Đặt 0 để bỏ qua.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+            <input type="checkbox" checked={includeClauses} onChange={(e) => setIncludeClauses(e.target.checked)} />
+            Kèm điều khoản mẫu (nếu không chọn mẫu HĐ có sẵn điều khoản)
+          </label>
+          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+            <input type="checkbox" checked={addChecklist} onChange={(e) => setAddChecklist(e.target.checked)} />
+            Thêm checklist hậu kỳ mặc định ({DEFAULT_TASKS.join(" → ")})
+          </label>
         </div>
 
         {err && <p className="text-sm text-red-400">{err}</p>}
