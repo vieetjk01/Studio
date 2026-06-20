@@ -572,7 +572,7 @@ create table if not exists public.studio_contracts (
   client_phone  text,                       -- also the client's view password
   client_email  text,
   shoot_type    text not null default 'photo'
-                  check (shoot_type in ('photo', 'video', 'both')),
+                  check (shoot_type in ('photo', 'video', 'both', 'psc', 'makeup', 'rental', 'prewedding', 'wedding', 'other')),
   event_date    date,
   event_time    text,
   location      text,
@@ -883,6 +883,14 @@ alter table public.profiles add column if not exists pl_bank_name    text;
 alter table public.profiles add column if not exists pl_bank_bin     text;  -- VietQR (NAPAS) bank code, for payment QR generation
 alter table public.profiles add column if not exists auto_client_emails boolean not null default false;  -- opt-in: auto-email clients (shoot reminder, review request)
 
+-- Widen the shoot_type check to the fuller service list (idempotent).
+alter table public.studio_contracts drop constraint if exists studio_contracts_shoot_type_check;
+alter table public.studio_contracts add constraint studio_contracts_shoot_type_check
+  check (shoot_type in ('photo', 'video', 'both', 'psc', 'makeup', 'rental', 'prewedding', 'wedding', 'other'));
+alter table public.contract_templates drop constraint if exists contract_templates_shoot_type_check;
+alter table public.contract_templates add constraint contract_templates_shoot_type_check
+  check (shoot_type in ('photo', 'video', 'both', 'psc', 'makeup', 'rental', 'prewedding', 'wedding', 'other'));
+
 create table if not exists public.studio_bookings (
   id             uuid primary key default gen_random_uuid(),
   owner_id       uuid not null references public.profiles (id) on delete cascade,
@@ -1013,7 +1021,7 @@ create table if not exists public.contract_templates (
   id         uuid primary key default gen_random_uuid(),
   owner_id   uuid not null references public.profiles (id) on delete cascade,
   name       text not null default 'Mẫu',
-  shoot_type text not null default 'photo' check (shoot_type in ('photo', 'video', 'both')),
+  shoot_type text not null default 'photo' check (shoot_type in ('photo', 'video', 'both', 'psc', 'makeup', 'rental', 'prewedding', 'wedding', 'other')),
   note       text,
   created_at timestamptz not null default now()
 );

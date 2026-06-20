@@ -7,6 +7,7 @@ import {
   contractTotal,
   vnd,
   SHOOT_TYPE_LABEL,
+  SHOOT_TYPES,
   type ShootType,
   type ContractTemplate,
   type ContractTemplateItem,
@@ -166,7 +167,7 @@ export default function TemplatesManager({
                 <div>
                   <label className="label">Loại dịch vụ</label>
                   <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
-                    {(Object.keys(SHOOT_TYPE_LABEL) as ShootType[]).map((k) => (
+                    {SHOOT_TYPES.map((k) => (
                       <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
                     ))}
                   </select>

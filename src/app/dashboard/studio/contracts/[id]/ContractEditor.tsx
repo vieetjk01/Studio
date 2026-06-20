@@ -25,12 +25,14 @@ import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
 import ClauseInserter from "@/components/ClauseInserter";
+import { PRESET_ITEMS, PRESET_TASKS } from "@/lib/contract-code";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
   vnd,
   sumAmounts,
   SHOOT_TYPE_LABEL,
+  SHOOT_TYPES,
   CONTRACT_STATUS_LABEL,
   CREW_ROLE_LABEL,
   CREW_STATUS_LABEL,
@@ -104,6 +106,7 @@ export default function ContractEditor({
   canAssign,
   bank,
   sameDayContracts,
+  pricelist,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -128,6 +131,7 @@ export default function ContractEditor({
   canAssign: boolean;
   bank: BankInfo;
   sameDayContracts: { id: string; title: string; client_name: string | null }[];
+  pricelist: { name: string; price: number; unit: string | null }[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -395,17 +399,20 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
   }
 
   // ── Checklist ──────────────────────────────────────────────────
-  async function addTask() {
-    if (!newTask.trim()) return;
+  async function addTaskLabel(label: string) {
+    const v = label.trim();
+    if (!v) return;
     const { data } = await supabase
       .from("contract_tasks")
-      .insert({ contract_id: contract.id, label: newTask.trim(), position: tasks.length })
+      .insert({ contract_id: contract.id, label: v, position: tasks.length })
       .select("*")
       .single();
-    if (data) {
-      setTasks((p) => [...p, data as ContractTask]);
-      setNewTask("");
-    }
+    if (data) setTasks((p) => [...p, data as ContractTask]);
+  }
+  async function addTask() {
+    if (!newTask.trim()) return;
+    await addTaskLabel(newTask);
+    setNewTask("");
   }
   async function toggleTask(t: ContractTask) {
     setTasks((p) => p.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)));
@@ -859,7 +866,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <div>
                   <label className="label">Loại dịch vụ</label>
                   <select className="input" value={f.shoot_type} onChange={(e) => set("shoot_type", e.target.value)}>
-                    {(Object.keys(SHOOT_TYPE_LABEL) as ShootType[]).map((k) => (
+                    {SHOOT_TYPES.map((k) => (
                       <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
                     ))}
                   </select>
@@ -959,6 +966,23 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <Plus size={14} /> Thêm hạng mục
               </button>
             </div>
+            {(pricelist.length > 0 || PRESET_ITEMS.length > 0) && (
+              <div className="mb-4">
+                <p className="mb-1.5 text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Thêm nhanh</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {pricelist.map((p, i) => (
+                    <button key={`pl${i}`} type="button" onClick={() => setItems((prev) => [...prev, { name: p.name, qty: 1, unit_price: p.price }])} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px solid var(--border2)", color: "var(--text2)" }}>
+                      + {p.name} · {vnd(p.price)}
+                    </button>
+                  ))}
+                  {PRESET_ITEMS.map((name) => (
+                    <button key={name} type="button" onClick={() => setItems((prev) => [...prev, { name, qty: 1, unit_price: 0 }])} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text3)" }}>
+                      + {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {items.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có hạng mục. Bấm “Thêm hạng mục”.</p>
             ) : (
@@ -1215,6 +1239,13 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 onKeyDown={(e) => { if (e.key === "Enter") addTask(); }}
               />
               <button onClick={addTask} className="btn-ghost shrink-0"><Plus size={15} /></button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {PRESET_TASKS.filter((label) => !tasks.some((t) => t.label === label)).map((label) => (
+                <button key={label} type="button" onClick={() => addTaskLabel(label)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text3)" }}>
+                  + {label}
+                </button>
+              ))}
             </div>
           </div>
 

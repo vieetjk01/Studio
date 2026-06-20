@@ -136,6 +136,15 @@ export default async function ContractPage({ params }: { params: { id: string } 
     }
   }
 
+  // Active price-list packages, to quick-add as contract items.
+  const { data: pricelistRows } = await supabase
+    .from("studio_pricelist")
+    .select("name, price, unit")
+    .eq("owner_id", profile.id)
+    .eq("active", true)
+    .gt("price", 0)
+    .order("position");
+
   // Same-day scheduling: other non-cancelled contracts on this contract's date.
   let sameDayContracts: { id: string; title: string; client_name: string | null }[] = [];
   if (contract.event_date) {
@@ -159,6 +168,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
         name: (profile.pl_bank_name as string | null) ?? null,
       }}
       sameDayContracts={sameDayContracts}
+      pricelist={(pricelistRows ?? []) as { name: string; price: number; unit: string | null }[]}
       initialItems={(items ?? []) as ContractItem[]}
       initialCrew={(crew ?? []) as ContractCrew[]}
       initialRequests={(requests ?? []) as ContractEditRequest[]}

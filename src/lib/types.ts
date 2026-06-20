@@ -178,7 +178,16 @@ export interface Selection {
 
 // ── Studio module (studio.vieetjk.com) ──────────────────────────────────────
 
-export type ShootType = "photo" | "video" | "both";
+export type ShootType =
+  | "photo"
+  | "video"
+  | "psc"
+  | "makeup"
+  | "rental"
+  | "prewedding"
+  | "wedding"
+  | "other"
+  | "both"; // legacy
 export type ContractStatus =
   | "draft"
   | "sent"
@@ -479,8 +488,26 @@ export interface StudioEvent {
 export const SHOOT_TYPE_LABEL: Record<ShootType, string> = {
   photo: "Chụp ảnh",
   video: "Quay phim",
-  both: "Chụp & Quay",
+  psc: "Quay chụp PSC",
+  makeup: "Trang điểm",
+  rental: "Thuê đồ",
+  prewedding: "Chụp prewedding",
+  wedding: "Trọn gói ngày cưới",
+  other: "Khác",
+  both: "Chụp & Quay", // legacy value, still rendered for old contracts
 };
+
+/** Service types offered in dropdowns (excludes the legacy "both"). */
+export const SHOOT_TYPES: ShootType[] = [
+  "photo",
+  "video",
+  "psc",
+  "makeup",
+  "rental",
+  "prewedding",
+  "wedding",
+  "other",
+];
 
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   draft: "Nháp",

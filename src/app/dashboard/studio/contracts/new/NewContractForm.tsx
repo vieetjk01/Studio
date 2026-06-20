@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { SHOOT_TYPE_LABEL, type ShootType } from "@/lib/types";
+import { SHOOT_TYPE_LABEL, SHOOT_TYPES, type ShootType } from "@/lib/types";
 import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
 import { fullClauseText } from "@/lib/contract-clauses";
 
@@ -151,7 +151,7 @@ export default function NewContractForm({
           <div>
             <label className="label">Loại dịch vụ</label>
             <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
-              {(Object.keys(SHOOT_TYPE_LABEL) as ShootType[]).map((k) => (
+              {SHOOT_TYPES.map((k) => (
                 <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
               ))}
             </select>
