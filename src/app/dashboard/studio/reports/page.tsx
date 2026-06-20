@@ -18,6 +18,16 @@ export default async function ReportsPage() {
       </div>
     );
   }
+  if (profile.actingRole === "staff") {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <div className="card p-8">
+          <h1 className="font-serif text-2xl font-medium">Không có quyền</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Mục tài chính chỉ dành cho quản lý / kế toán.</p>
+        </div>
+      </div>
+    );
+  }
 
   const supabase = createClient();
   const [{ data: payments }, { data: salaries }, { data: expenses }] = await Promise.all([

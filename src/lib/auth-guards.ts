@@ -21,8 +21,12 @@ export async function requireAdmin() {
 }
 
 /**
- * Returns the current profile if it may use the studio module (admin, or an
- * active Studio plan), else null. Used to gate studio.vieetjk.com pages/APIs.
+ * Returns the studio context for the current user, or null if they may not use
+ * the studio module. For a STAFF login the returned profile is the OWNER's
+ * profile (so every page scopes to the studio's data), with extra fields:
+ *   actingRole  : 'owner' | 'admin' | 'manager' | 'staff' | 'accountant'
+ *   actingUserId: the logged-in user's own id
+ *   isStaff     : true when logged in as a staff sub-account
  */
 export async function requireStudio() {
   const supabase = createClient();
@@ -31,15 +35,20 @@ export async function requireStudio() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const { data: me } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  if (!me || !me.is_active) return null;
 
-  if (!profile || !profile.is_active) return null;
-  const ok =
-    profile.role === "admin" ||
-    effectivePlan(profile.plan, profile.plan_expires_at) === "studio";
-  return ok ? profile : null;
+  // Staff sub-account: act on the owner's studio.
+  if (me.studio_owner_id) {
+    const { data: owner } = await supabase.from("profiles").select("*").eq("id", me.studio_owner_id).single();
+    if (!owner || !owner.is_active) return null;
+    const ownerOk = owner.role === "admin" || effectivePlan(owner.plan, owner.plan_expires_at) === "studio";
+    if (!ownerOk) return null;
+    return { ...owner, actingRole: me.studio_role || "staff", actingUserId: me.id, isStaff: true };
+  }
+
+  // Studio owner or admin.
+  const ok = me.role === "admin" || effectivePlan(me.plan, me.plan_expires_at) === "studio";
+  if (!ok) return null;
+  return { ...me, actingRole: me.role === "admin" ? "admin" : "owner", actingUserId: me.id, isStaff: false };
 }

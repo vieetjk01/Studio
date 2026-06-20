@@ -17,6 +17,16 @@ export default async function PayrollPage() {
       </div>
     );
   }
+  if (profile.actingRole === "staff") {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <div className="card p-8">
+          <h1 className="font-serif text-2xl font-medium">Không có quyền</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Mục lương chỉ dành cho quản lý / kế toán.</p>
+        </div>
+      </div>
+    );
+  }
 
   const supabase = createClient();
   const { data } = await supabase

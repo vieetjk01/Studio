@@ -43,10 +43,18 @@ export default function DashboardHeader({
     router.refresh();
   }
 
-  // Studio access: admins + accounts on an active Studio plan.
+  // Studio access: admins, accounts on an active Studio plan, or staff members.
   const hasStudio =
     profile.role === "admin" ||
-    effectivePlan(profile.plan, profile.plan_expires_at) === "studio";
+    effectivePlan(profile.plan, profile.plan_expires_at) === "studio" ||
+    !!profile.studio_owner_id;
+
+  // Effective studio role of the logged-in user (for menu gating).
+  const studioRole = profile.studio_owner_id
+    ? profile.studio_role || "staff"
+    : profile.role === "admin"
+    ? "admin"
+    : "owner";
 
   // Studio nav grouped into dropdowns to keep the bar tidy.
   const studioNav: (NavLink | NavGroup)[] = [
@@ -83,10 +91,21 @@ export default function DashboardHeader({
         { href: "/dashboard/studio/ranking", label: "Xếp hạng" },
         { href: "/dashboard/studio/equipment", label: "Thiết bị" },
         { href: "/dashboard/studio/messages", label: "Mẫu tin" },
+        ...(studioRole === "owner" || studioRole === "admin"
+          ? [{ href: "/dashboard/studio/staff", label: "Nhân viên" }]
+          : []),
       ],
     },
     { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
   ];
+
+  // Role-based visibility: accountant → overview + finance only; staff → hide finance.
+  const studioVisible = studioNav.filter((item) => {
+    const label = item.label;
+    if (studioRole === "accountant") return label === "Tổng quan" || label === "Tài chính";
+    if (studioRole === "staff") return label !== "Tài chính";
+    return true;
+  });
 
   // Build the link set for this host. Cross-host links use absolute URLs.
   const links: NavLink[] =
@@ -163,7 +182,7 @@ export default function DashboardHeader({
           <Brand href={kind === "img" ? "/" : kind === "studio" ? "/dashboard/studio" : "/dashboard"} />
           <nav className="hidden items-center gap-x-5 gap-y-1.5 md:flex md:flex-wrap">
             {kind === "studio"
-              ? studioNav.map((item) => (isGroup(item) ? renderGroup(item) : renderLink(item)))
+              ? studioVisible.map((item) => (isGroup(item) ? renderGroup(item) : renderLink(item)))
               : links.map((l) => renderLink(l))}
           </nav>
         </div>
@@ -196,7 +215,7 @@ export default function DashboardHeader({
       {menuOpen && (
         <nav className="mt-3 grid gap-1 border-t border-ink-800 pt-3 md:hidden">
           {kind === "studio"
-            ? studioNav.map((item) =>
+            ? studioVisible.map((item) =>
                 isGroup(item) ? (
                   <div key={item.label} className="py-1.5">
                     <p className="mb-1 text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>{item.label}</p>

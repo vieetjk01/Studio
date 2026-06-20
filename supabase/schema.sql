@@ -1075,6 +1075,75 @@ create policy studio_expenses_owner_all on public.studio_expenses
   with check (owner_id = auth.uid() or public.is_admin());
 
 -- ============================================================================
+-- MULTI-ACCOUNT / STAFF PERMISSIONS
+-- A studio owner (studio plan) can create staff sub-accounts. Staff rows have
+-- studio_owner_id = the owner's profile id + a studio_role. Staff act on the
+-- OWNER's data, so RLS allows any member of the studio.
+-- ============================================================================
+alter table public.profiles add column if not exists studio_owner_id uuid references public.profiles (id) on delete cascade;
+alter table public.profiles add column if not exists studio_role text; -- manager | staff | accountant
+alter table public.studio_contracts add column if not exists assigned_to uuid references public.profiles (id) on delete set null;
+create index if not exists profiles_studio_owner_idx on public.profiles (studio_owner_id);
+
+-- True if the current user is the owner, a member of that studio, or an admin.
+create or replace function public.is_studio_member(target uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select
+    target = auth.uid()
+    or exists (select 1 from public.profiles where id = auth.uid() and studio_owner_id = target)
+    or public.is_admin();
+$$;
+
+-- Owner-scoped tables: any studio member may access.
+drop policy if exists studio_contracts_owner_all on public.studio_contracts;
+create policy studio_contracts_owner_all on public.studio_contracts
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_crew_owner_all on public.studio_crew;
+create policy studio_crew_owner_all on public.studio_crew
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_events_owner_all on public.studio_events;
+create policy studio_events_owner_all on public.studio_events
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_expenses_owner_all on public.studio_expenses;
+create policy studio_expenses_owner_all on public.studio_expenses
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_equipment_owner_all on public.studio_equipment;
+create policy studio_equipment_owner_all on public.studio_equipment
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_bookings_owner_all on public.studio_bookings;
+create policy studio_bookings_owner_all on public.studio_bookings
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_notifications_owner_all on public.studio_notifications;
+create policy studio_notifications_owner_all on public.studio_notifications
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists contract_templates_owner_all on public.contract_templates;
+create policy contract_templates_owner_all on public.contract_templates
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists message_templates_owner_all on public.message_templates;
+create policy message_templates_owner_all on public.message_templates
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_packages_owner_all on public.studio_packages;
+create policy studio_packages_owner_all on public.studio_packages
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+
+-- Contract-child tables: gated via the parent contract's owner.
+do $$
+declare t text;
+begin
+  foreach t in array array['contract_items','contract_crew','contract_edit_requests','contract_payments','contract_payment_plan','contract_tasks','contract_equipment','contract_products','contract_quote_options']
+  loop
+    execute format('drop policy if exists %1$s_owner_all on public.%1$s', t);
+    execute format($f$create policy %1$s_owner_all on public.%1$s for all using (exists (select 1 from public.studio_contracts c where c.id = contract_id and public.is_studio_member(c.owner_id))) with check (exists (select 1 from public.studio_contracts c where c.id = contract_id and public.is_studio_member(c.owner_id)))$f$, t);
+  end loop;
+end $$;
+
+-- Template items: gated via parent template owner.
+drop policy if exists contract_template_items_owner_all on public.contract_template_items;
+create policy contract_template_items_owner_all on public.contract_template_items
+  for all using (exists (select 1 from public.contract_templates t where t.id = template_id and public.is_studio_member(t.owner_id)))
+  with check (exists (select 1 from public.contract_templates t where t.id = template_id and public.is_studio_member(t.owner_id)));
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,
 --     can_zip = true, can_notes = true, monthly_album_limit = null
