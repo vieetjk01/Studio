@@ -2,9 +2,24 @@
 
 import { useState } from "react";
 import { CalendarCheck, Check } from "lucide-react";
+import { vnd } from "@/lib/types";
 
-export default function BookingForm({ token, studioName }: { token: string; studioName: string }) {
+export type PkgOption = { name: string; price: number };
+
+export default function BookingForm({
+  token,
+  studioName,
+  packages = [],
+  presetPackage = "",
+}: {
+  token: string;
+  studioName: string;
+  packages?: PkgOption[];
+  presetPackage?: string;
+}) {
   const [f, setF] = useState({ name: "", phone: "", service: "", preferred_date: "", note: "" });
+  // Preselect the package coming from the homepage link, if it matches.
+  const [pkg, setPkg] = useState(() => (packages.some((p) => p.name === presetPackage) ? presetPackage : ""));
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -17,11 +32,12 @@ export default function BookingForm({ token, studioName }: { token: string; stud
       setErr("Vui lòng nhập tên và số điện thoại.");
       return;
     }
+    const chosen = packages.find((p) => p.name === pkg);
     setBusy(true);
     const res = await fetch(`/api/book/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(f),
+      body: JSON.stringify({ ...f, package_name: chosen?.name || null, package_price: chosen?.price ?? null }),
     });
     setBusy(false);
     if (res.ok) setSent(true);
@@ -61,6 +77,17 @@ export default function BookingForm({ token, studioName }: { token: string; stud
           <label className="label">Số điện thoại *</label>
           <input className="input" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
         </div>
+        {packages.length > 0 && (
+          <div>
+            <label className="label">Chọn gói</label>
+            <select className="input" value={pkg} onChange={(e) => setPkg(e.target.value)}>
+              <option value="">— Chưa chọn / tư vấn thêm —</option>
+              {packages.map((p) => (
+                <option key={p.name} value={p.name}>{p.name} — {vnd(p.price)}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="label">Loại dịch vụ</label>
           <input className="input" placeholder="VD: chụp cưới, sự kiện…" value={f.service} onChange={(e) => set("service", e.target.value)} />

@@ -66,6 +66,7 @@ export default function ProfileHome({
   feedback = [],
   pricelist = [],
   pricelistUrl = "",
+  bookingToken = "",
 }: {
   settings: SiteSettings;
   featuredImages?: string[];
@@ -75,10 +76,10 @@ export default function ProfileHome({
   feedback?: { id: string; client_name: string | null; rating: number | null; content: string }[];
   pricelist?: PriceRow[];
   pricelistUrl?: string;
+  bookingToken?: string;
 }) {
   const { t } = useLang();
   const contactRef = useRef<HTMLDivElement>(null);
-  const [openPrice, setOpenPrice] = useState<string | null>(null);
 
   // Condensed price list grouped by list (Cưới / Đính hôn), priced rows only.
   const priced = pricelist.filter((p) => p.price > 0);
@@ -281,28 +282,28 @@ export default function ProfileHome({
                     <Link href={`${pricelistUrl}?list=${l.key}`} className="text-sm" style={{ color: "var(--accent)" }}>Xem đầy đủ →</Link>
                   )}
                 </div>
-                <div className="card divide-y overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {l.items.map((it) => {
-                    const open = openPrice === it.id;
+                    const pkgName = `${l.label} · ${it.name}`;
+                    const href = bookingToken ? `/book/${bookingToken}?pkg=${encodeURIComponent(pkgName)}` : (pricelistUrl ? `${pricelistUrl}?list=${l.key}` : "#");
                     return (
-                      <div key={it.id} style={{ borderColor: "var(--border)" }}>
-                        <button
-                          onClick={() => setOpenPrice(open ? null : it.id)}
-                          className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-[var(--surface2)]"
-                        >
-                          <span className="font-medium">
-                            {it.name}
-                            {it.category && <span className="ml-2 text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <span className="font-serif text-lg font-medium">{vnd(it.price)}{it.unit ? <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span> : null}</span>
-                            {it.description && <ArrowRight size={14} className="transition-transform" style={{ color: "var(--text3)", transform: open ? "rotate(90deg)" : "none" }} />}
-                          </span>
-                        </button>
-                        {open && it.description && (
-                          <p className="whitespace-pre-line px-4 pb-4 text-sm" style={{ color: "var(--text2)" }}>{it.description}</p>
+                      <Link
+                        key={it.id}
+                        href={href}
+                        className="card group flex flex-col p-5 transition-colors hover:bg-[var(--surface2)]"
+                      >
+                        {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>{it.category}</span>}
+                        <span className="mt-0.5 font-serif text-lg font-medium">{it.name}</span>
+                        <span className="mt-1 font-serif text-2xl font-medium" style={{ color: "var(--accent)" }}>
+                          {vnd(it.price)}{it.unit ? <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span> : null}
+                        </span>
+                        {it.description && (
+                          <span className="mt-2 line-clamp-3 whitespace-pre-line text-xs" style={{ color: "var(--text2)" }}>{it.description}</span>
                         )}
-                      </div>
+                        <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium" style={{ color: "var(--accent)" }}>
+                          Chọn gói &amp; đặt lịch <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                      </Link>
                     );
                   })}
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
 import { vnd, type PricelistItem } from "@/lib/types";
@@ -27,6 +27,25 @@ export default function PricingManager({
   const [savedContact, setSavedContact] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
+
+  function startEdit(it: PricelistItem) {
+    setEditId(it.id);
+    setEdit({ name: it.name, price: it.price, unit: it.unit || "", category: it.category || "", description: it.description || "" });
+  }
+  async function saveEdit(id: string) {
+    const patch = {
+      name: edit.name.trim() || "(chưa đặt tên)",
+      price: Math.max(0, Math.round(Number(edit.price) || 0)),
+      unit: edit.unit.trim() || null,
+      category: edit.category.trim() || null,
+      description: edit.description.trim() || null,
+    };
+    await supabase.from("studio_pricelist").update(patch).eq("id", id);
+    setList((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setEditId(null);
+  }
 
   const visible = list.filter((it) => (it.list_key || "cuoi") === activeList);
   const listUrl = shareUrl ? `${shareUrl}?list=${activeList}` : "";
@@ -151,25 +170,44 @@ export default function PricingManager({
             </div>
           ) : (
             <div className="space-y-2">
-              {visible.map((it) => (
-                <div key={it.id} className="card flex items-start justify-between gap-3 p-4" style={{ opacity: it.active ? 1 : 0.5 }}>
-                  <div>
-                    <p className="font-medium">
-                      {it.name} {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
-                    </p>
-                    {it.price > 0 && (
-                      <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(it.price)}<span className="text-xs" style={{ color: "var(--text3)" }}>{it.unit ? ` ${it.unit}` : ""}</span></p>
-                    )}
-                    {it.description && <p className="whitespace-pre-line text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
+              {visible.map((it) =>
+                editId === it.id ? (
+                  <div key={it.id} className="card space-y-2 p-4">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <input className="input" placeholder="Tên" value={edit.name} onChange={(e) => setEdit((p) => ({ ...p, name: e.target.value }))} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" className="input" placeholder="Giá" value={edit.price || ""} onChange={(e) => setEdit((p) => ({ ...p, price: Number(e.target.value) }))} />
+                        <input className="input" placeholder="Đơn vị" value={edit.unit} onChange={(e) => setEdit((p) => ({ ...p, unit: e.target.value }))} />
+                      </div>
+                    </div>
+                    <input className="input" placeholder="Nhóm" value={edit.category} onChange={(e) => setEdit((p) => ({ ...p, category: e.target.value }))} />
+                    <textarea className="input min-h-[70px]" placeholder="Mô tả (mỗi dòng 1 ý)" value={edit.description} onChange={(e) => setEdit((p) => ({ ...p, description: e.target.value }))} />
+                    <div className="flex gap-2">
+                      <button onClick={() => saveEdit(it.id)} className="btn-primary px-3 py-1.5 text-xs"><Check size={14} /> Lưu</button>
+                      <button onClick={() => setEditId(null)} className="btn-ghost px-3 py-1.5 text-xs"><X size={14} /> Huỷ</button>
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button onClick={() => toggleActive(it)} className="btn-ghost px-2.5 py-1.5 text-xs" title={it.active ? "Đang hiện" : "Đang ẩn"}>
-                      {it.active ? <Eye size={14} /> : <EyeOff size={14} />}
-                    </button>
-                    <button onClick={() => remove(it.id)} className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
+                ) : (
+                  <div key={it.id} className="card flex items-start justify-between gap-3 p-4" style={{ opacity: it.active ? 1 : 0.5 }}>
+                    <div>
+                      <p className="font-medium">
+                        {it.name} {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
+                      </p>
+                      {it.price > 0 && (
+                        <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(it.price)}<span className="text-xs" style={{ color: "var(--text3)" }}>{it.unit ? ` ${it.unit}` : ""}</span></p>
+                      )}
+                      {it.description && <p className="whitespace-pre-line text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button onClick={() => startEdit(it)} className="btn-ghost px-2.5 py-1.5 text-xs" title="Sửa"><Pencil size={14} /></button>
+                      <button onClick={() => toggleActive(it)} className="btn-ghost px-2.5 py-1.5 text-xs" title={it.active ? "Đang hiện" : "Đang ẩn"}>
+                        {it.active ? <Eye size={14} /> : <EyeOff size={14} />}
+                      </button>
+                      <button onClick={() => remove(it.id)} className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           )}
         </div>

@@ -48,6 +48,7 @@ export default async function HomePage() {
   type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
   let pricelist: PriceRow[] = [];
   let pricelistUrl = "";
+  let bookingToken = "";
 
   // The homepage must never 500 just because Supabase isn't configured/seeded
   // yet — degrade gracefully to defaults if anything goes wrong.
@@ -108,7 +109,10 @@ export default async function HomePage() {
         .eq("active", true)
         .order("position");
       pricelist = (pl ?? []) as PriceRow[];
-      if (adminProfile.booking_token) pricelistUrl = `/gia/${adminProfile.booking_token}`;
+      if (adminProfile.booking_token) {
+        bookingToken = adminProfile.booking_token as string;
+        pricelistUrl = `/gia/${bookingToken}`;
+      }
     }
   } catch (e) {
     console.error("[home] failed to load data, using defaults:", e);
@@ -124,6 +128,7 @@ export default async function HomePage() {
       feedback={feedback}
       pricelist={pricelist}
       pricelistUrl={pricelistUrl}
+      bookingToken={bookingToken}
     />
   );
 }

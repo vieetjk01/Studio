@@ -367,6 +367,8 @@ export interface StudioBooking {
   service: string | null;
   preferred_date: string | null;
   note: string | null;
+  package_name: string | null;
+  package_price: number | null;
   status: "new" | "handled" | "archived";
   created_at: string;
 }

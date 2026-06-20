@@ -1,13 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import BookingForm from "./BookingForm";
+import { PRICE_LISTS } from "@/lib/pricelist-seeds";
+import BookingForm, { type PkgOption } from "./BookingForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function BookingPage({ params }: { params: { token: string } }) {
+export default async function BookingPage({ params, searchParams }: { params: { token: string }; searchParams?: { pkg?: string } }) {
   const db = createAdminClient();
   const { data: owner } = await db
     .from("profiles")
-    .select("full_name")
+    .select("id, full_name")
     .eq("booking_token", params.token)
     .maybeSingle();
 
@@ -22,5 +23,26 @@ export default async function BookingPage({ params }: { params: { token: string 
     );
   }
 
-  return <BookingForm token={params.token} studioName={owner.full_name || "Studio"} />;
+  const { data: pl } = await db
+    .from("studio_pricelist")
+    .select("id, list_key, name, price, category")
+    .eq("owner_id", owner.id)
+    .eq("active", true)
+    .gt("price", 0)
+    .order("position");
+
+  const label = (k: string) => PRICE_LISTS.find((l) => l.key === k)?.label || "";
+  const packages: PkgOption[] = (pl ?? []).map((p) => ({
+    name: `${label(p.list_key as string) ? label(p.list_key as string) + " · " : ""}${p.name}`,
+    price: (p.price as number) || 0,
+  }));
+
+  return (
+    <BookingForm
+      token={params.token}
+      studioName={owner.full_name || "Studio"}
+      packages={packages}
+      presetPackage={searchParams?.pkg || ""}
+    />
+  );
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Link as LinkIcon, Copy, Check, Phone, FilePlus, Archive } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
-import type { StudioBooking } from "@/lib/types";
+import { vnd, type StudioBooking } from "@/lib/types";
 
 export default function BookingsView({
   ownerId,
@@ -48,6 +48,16 @@ export default function BookingsView({
       setBusy(null);
       alert("Không tạo được hợp đồng: " + (error?.message || ""));
       return;
+    }
+    // Pre-fill the contract with the package the client chose.
+    if (b.package_name) {
+      await supabase.from("contract_items").insert({
+        contract_id: data.id,
+        name: b.package_name,
+        qty: 1,
+        unit_price: b.package_price || 0,
+        position: 0,
+      });
     }
     await supabase.from("studio_bookings").update({ status: "handled" }).eq("id", b.id);
     router.push(`/dashboard/studio/contracts/${data.id}`);
@@ -92,6 +102,11 @@ export default function BookingsView({
                     {b.service ? ` · ${b.service}` : ""}
                     {b.preferred_date ? ` · ${b.preferred_date}` : ""}
                   </p>
+                  {b.package_name && (
+                    <p className="mt-0.5 text-xs" style={{ color: "var(--accent)" }}>
+                      Gói: {b.package_name}{b.package_price ? ` · ${vnd(b.package_price)}` : ""}
+                    </p>
+                  )}
                   {b.note && <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>{b.note}</p>}
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>{new Date(b.created_at).toLocaleString("vi-VN")}</p>
                 </div>

@@ -11,6 +11,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
     service?: string;
     preferred_date?: string;
     note?: string;
+    package_name?: string;
+    package_price?: number;
   };
   if (!body.name?.trim() || !body.phone?.trim()) {
     return NextResponse.json({ error: "missing" }, { status: 400 });
@@ -24,6 +26,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     .maybeSingle();
   if (!owner) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+  const pkgName = body.package_name?.trim() || null;
   const { error } = await db.from("studio_bookings").insert({
     owner_id: owner.id,
     name: body.name.trim(),
@@ -31,6 +34,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
     service: body.service?.trim() || null,
     preferred_date: body.preferred_date || null,
     note: body.note?.trim() || null,
+    package_name: pkgName,
+    package_price: body.package_price != null && Number.isFinite(body.package_price) ? Math.max(0, Math.round(body.package_price)) : null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -38,7 +43,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     owner_id: owner.id,
     contract_id: null,
     kind: "info",
-    message: `Yêu cầu đặt lịch mới từ ${body.name.trim()}${body.preferred_date ? ` · ${body.preferred_date}` : ""}`,
+    message: `Yêu cầu đặt lịch mới từ ${body.name.trim()}${pkgName ? ` · ${pkgName}` : ""}${body.preferred_date ? ` · ${body.preferred_date}` : ""}`,
   });
 
   return NextResponse.json({ ok: true });
