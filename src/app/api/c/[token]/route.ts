@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
+      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -41,6 +41,10 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ error: "wrong_phone" }, { status: 401 });
   }
 
+  const who = contract.client_name || "Khách";
+  const notify = (kind: string, message: string) =>
+    db.from("studio_notifications").insert({ owner_id: contract.owner_id, contract_id: contract.id, kind, message });
+
   if (body.action === "edit_request") {
     const message = body.message?.trim();
     if (!message) return NextResponse.json({ error: "empty" }, { status: 400 });
@@ -48,6 +52,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       .from("contract_edit_requests")
       .insert({ contract_id: contract.id, message });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await notify("edit_request", `${who} yêu cầu chỉnh sửa HĐ “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
 
@@ -63,6 +68,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       approved: true,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await notify("review", `${who} đã đánh giá ${rating ? `${rating}★` : ""} HĐ “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
 
@@ -91,6 +97,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       })
       .eq("id", contract.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await notify("signed", `${name} đã ký hợp đồng “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
 

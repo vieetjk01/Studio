@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import NotificationBell from "@/components/NotificationBell";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { appUrl, imgUrl, studioUrl } from "@/lib/hosts";
@@ -109,6 +110,7 @@ export default function DashboardHeader({
           </nav>
         </div>
         <div className="flex items-center gap-3 md:gap-4">
+          {kind === "studio" && <NotificationBell />}
           <span className="hidden text-xs text-accent-muted sm:inline">
             {profile.full_name || profile.email}
             {profile.role === "admin" && (
