@@ -211,9 +211,9 @@ export default function SiteManager({
         <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Chọn mẫu, đổi nội dung — xem kết quả ngay bên phải.</p>
       </div>
 
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-        {/* LEFT — controls (≈1/4) */}
-        <div className="space-y-6 lg:w-1/4 lg:min-w-[280px] lg:shrink-0">
+      <div className="flex flex-col gap-5 lg:h-[calc(100vh-170px)] lg:flex-row lg:items-stretch lg:overflow-hidden">
+        {/* LEFT — controls (≈1/4), scrolls on its own */}
+        <div className="space-y-6 lg:w-1/4 lg:min-w-[280px] lg:shrink-0 lg:h-full lg:overflow-y-auto lg:pr-2">
           {/* Step 1: pick a template */}
           <div className="card p-5">
             <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu (1 chạm)</h2>
@@ -445,24 +445,22 @@ export default function SiteManager({
           </div>
         </div>
 
-        {/* RIGHT — live preview (≈3/4) */}
-        <div className="lg:min-w-0 lg:flex-1">
-          <div className="lg:sticky lg:top-20">
-            <div className="card p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 px-1 font-serif text-base font-medium"><Eye size={15} /> Xem trực tiếp</h2>
-                <div className="flex gap-1.5">
-                  <button onClick={refreshPreview} className="btn-ghost px-2.5 py-1 text-xs"><RefreshCw size={13} /> Làm mới</button>
-                  <a href="/site-preview" target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1 text-xs" title="Mở tab mới"><ExternalLink size={13} /></a>
-                </div>
+        {/* RIGHT — live preview (≈3/4), fixed; the site scrolls inside the iframe */}
+        <div className="lg:h-full lg:min-w-0 lg:flex-1">
+          <div className="card flex flex-col p-3 lg:h-full">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 px-1 font-serif text-base font-medium"><Eye size={15} /> Xem trực tiếp</h2>
+              <div className="flex gap-1.5">
+                <button onClick={refreshPreview} className="btn-ghost px-2.5 py-1 text-xs"><RefreshCw size={13} /> Làm mới</button>
+                <a href="/site-preview" target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1 text-xs" title="Mở tab mới"><ExternalLink size={13} /></a>
               </div>
-              <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
-                <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: "86vh", border: 0, background: "#fff" }} />
-              </div>
-              {liveUrl && published && (
-                <a href={liveUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-center text-xs text-accent hover:underline">Trang thật: {liveUrl}</a>
-              )}
             </div>
+            <div className="overflow-hidden rounded-xl lg:flex-1" style={{ border: "1px solid var(--border)" }}>
+              <iframe key={previewKey} src="/site-preview" title="Xem trước" className="h-[82vh] w-full lg:h-full" style={{ border: 0, background: "#fff" }} />
+            </div>
+            {liveUrl && published && (
+              <a href={liveUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-center text-xs text-accent hover:underline">Trang thật: {liveUrl}</a>
+            )}
           </div>
         </div>
       </div>
