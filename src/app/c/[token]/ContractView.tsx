@@ -42,6 +42,42 @@ type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string 
 type Milestone = { id: string; title: string; event_date: string; event_time: string | null };
 type Gallery = { slug: string; title: string };
 
+type Lang = "vi" | "en";
+const TR = {
+  vi: {
+    portalTitle: "Hợp đồng của bạn", gatePrompt: "Nhập số điện thoại đã đăng ký để xem hợp đồng.",
+    phone: "Số điện thoại", view: "Xem hợp đồng", opening: "Đang mở…", pdf: "Tải PDF / In",
+    wrongPhone: "Số điện thoại không khớp. Vui lòng kiểm tra lại.", notFound: "Không tìm thấy hợp đồng.", genericErr: "Có lỗi xảy ra.",
+    client: "Khách hàng", schedule: "Lịch trình", pickPhotos: "Chọn ảnh của bạn", pickPhotosSub: "đánh dấu những tấm ưng ý",
+    viewPhotos: "Xem ảnh của bạn", viewPhotosSub: "mật khẩu là SĐT của bạn", open: "Mở →",
+    items: "Hạng mục dịch vụ", noItems: "Chưa có hạng mục.", totalVal: "Tổng giá trị", paid: "Đã thanh toán", remaining: "Còn lại",
+    terms: "Ghi chú / Điều khoản", signTitle: "Xác nhận & ký hợp đồng", signedOn: "Bạn đã ký ngày",
+    signAgree: "Ký xác nhận đồng ý với nội dung hợp đồng trên.", signerName: "Họ tên người ký", signature: "Chữ ký",
+    sign: "Đồng ý & ký", signing: "Đang ký…", review: "Đánh giá studio", reviewThanks: "Cảm ơn bạn đã đánh giá!",
+    reviewPrompt: "Bạn hài lòng với dịch vụ chứ? Để lại cảm nhận giúp studio nhé.", reviewPh: "Cảm nhận của bạn…", sendReview: "Gửi đánh giá",
+    messenger: "Liên hệ qua Messenger", messengerPrompt: "Dán link Facebook/Messenger của bạn để studio tiện liên hệ.", saveLink: "Lưu link", saved: "Đã lưu",
+    editReq: "Yêu cầu chỉnh sửa", editPrompt: "Nếu có điểm chưa phù hợp, hãy gửi yêu cầu cho studio trước khi ký.",
+    editSent: "Đã gửi yêu cầu. Studio sẽ liên hệ với bạn.", editPh: "Nội dung muốn chỉnh sửa…", send: "Gửi yêu cầu", sending: "Đang gửi…",
+    updated: "Cập nhật", needName: "Nhập họ tên người ký.",
+  },
+  en: {
+    portalTitle: "Your contract", gatePrompt: "Enter your registered phone number to view the contract.",
+    phone: "Phone number", view: "View contract", opening: "Opening…", pdf: "Save PDF / Print",
+    wrongPhone: "Phone number doesn't match. Please check again.", notFound: "Contract not found.", genericErr: "Something went wrong.",
+    client: "Client", schedule: "Schedule", pickPhotos: "Pick your photos", pickPhotosSub: "mark your favourites",
+    viewPhotos: "View your photos", viewPhotosSub: "password is your phone number", open: "Open →",
+    items: "Service items", noItems: "No items yet.", totalVal: "Total value", paid: "Paid", remaining: "Remaining",
+    terms: "Notes / Terms", signTitle: "Confirm & sign contract", signedOn: "You signed on",
+    signAgree: "Sign to agree with the contract above.", signerName: "Signer's full name", signature: "Signature",
+    sign: "Agree & sign", signing: "Signing…", review: "Rate the studio", reviewThanks: "Thank you for your review!",
+    reviewPrompt: "Happy with the service? Leave your feedback for the studio.", reviewPh: "Your feedback…", sendReview: "Send review",
+    messenger: "Contact via Messenger", messengerPrompt: "Paste your Facebook/Messenger link so the studio can reach you.", saveLink: "Save link", saved: "Saved",
+    editReq: "Request changes", editPrompt: "If something isn't right, send a request to the studio before signing.",
+    editSent: "Request sent. The studio will contact you.", editPh: "What you'd like to change…", send: "Send request", sending: "Sending…",
+    updated: "Updated", needName: "Enter the signer's name.",
+  },
+} as const;
+
 export default function ContractView({ token }: { token: string }) {
   const [phone, setPhone] = useState("");
   const [contract, setContract] = useState<Contract | null>(null);
@@ -52,6 +88,8 @@ export default function ContractView({ token }: { token: string }) {
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [selection, setSelection] = useState<Gallery | null>(null);
   const [qr, setQr] = useState("");
+  const [lang, setLang] = useState<Lang>("vi");
+  const t = (k: keyof typeof TR.vi) => TR[lang][k];
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -115,13 +153,7 @@ export default function ContractView({ token }: { token: string }) {
     const r = await fetchContract(phone);
     setLoading(false);
     if (!r.ok) {
-      setErr(
-        r.error === "wrong_phone"
-          ? "Số điện thoại không khớp. Vui lòng kiểm tra lại."
-          : r.error === "not_found"
-          ? "Không tìm thấy hợp đồng."
-          : "Có lỗi xảy ra."
-      );
+      setErr(r.error === "wrong_phone" ? t("wrongPhone") : r.error === "not_found" ? t("notFound") : t("genericErr"));
     }
   }
 
@@ -168,7 +200,7 @@ export default function ContractView({ token }: { token: string }) {
 
   async function sign() {
     if (!signName.trim()) {
-      setErr("Nhập họ tên người ký.");
+      setErr(t("needName"));
       return;
     }
     setSigning(true);
@@ -185,15 +217,18 @@ export default function ContractView({ token }: { token: string }) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6">
         <form onSubmit={unlock} className="card w-full max-w-sm p-8 text-center">
+          <div className="mb-2 flex justify-end">
+            <button type="button" onClick={() => setLang(lang === "vi" ? "en" : "vi")} className="text-xs" style={{ color: "var(--text3)" }}>
+              {lang === "vi" ? "EN" : "VI"}
+            </button>
+          </div>
           <Lock size={22} className="mx-auto" style={{ color: "var(--text3)" }} />
-          <h1 className="mt-4 font-serif text-2xl font-medium">Hợp đồng của bạn</h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-            Nhập số điện thoại đã đăng ký để xem hợp đồng.
-          </p>
-          <input className="input mt-5 text-center" placeholder="Số điện thoại" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <h1 className="mt-4 font-serif text-2xl font-medium">{t("portalTitle")}</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>{t("gatePrompt")}</p>
+          <input className="input mt-5 text-center" placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} />
           {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
           <button type="submit" disabled={loading} className="btn-primary mt-4 w-full">
-            {loading ? "Đang mở…" : "Xem hợp đồng"}
+            {loading ? t("opening") : t("view")}
           </button>
         </form>
       </div>
@@ -210,10 +245,15 @@ export default function ContractView({ token }: { token: string }) {
       {/* On-screen view (hidden when printing) */}
       <div className="no-print mx-auto max-w-2xl px-6 py-10">
         <div className="mb-4 flex items-center justify-between">
-          <p className="eyebrow">{contract.code || "Hợp đồng dịch vụ"}</p>
-          <button onClick={() => window.print()} className="btn-ghost px-3 py-1.5 text-xs">
-            <Printer size={14} /> Tải PDF / In
-          </button>
+          <p className="eyebrow">{contract.code || (lang === "vi" ? "Hợp đồng dịch vụ" : "Service contract")}</p>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setLang(lang === "vi" ? "en" : "vi")} className="text-xs" style={{ color: "var(--text3)" }}>
+              {lang === "vi" ? "EN" : "VI"}
+            </button>
+            <button onClick={() => window.print()} className="btn-ghost px-3 py-1.5 text-xs">
+              <Printer size={14} /> {t("pdf")}
+            </button>
+          </div>
         </div>
         <h1 className="font-serif text-3xl font-medium">{contract.title}</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
@@ -222,7 +262,7 @@ export default function ContractView({ token }: { token: string }) {
 
         <div className="card mt-6 space-y-3 p-6 text-sm">
           {contract.client_name && (
-            <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> Khách hàng: <b>{contract.client_name}</b></div>
+            <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> {t("client")}: <b>{contract.client_name}</b></div>
           )}
           {(contract.event_date || contract.event_time) && (
             <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} />{contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
@@ -239,7 +279,7 @@ export default function ContractView({ token }: { token: string }) {
 
         {milestones.length > 0 && (
           <div className="card mt-6 p-6">
-            <h2 className="mb-4 font-serif text-lg font-medium">Lịch trình</h2>
+            <h2 className="mb-4 font-serif text-lg font-medium">{t("schedule")}</h2>
             <ul className="space-y-2">
               {milestones.map((m) => (
                 <li key={m.id} className="flex flex-wrap items-center gap-3 text-sm">
@@ -262,10 +302,10 @@ export default function ContractView({ token }: { token: string }) {
           >
             <ImagePlus size={20} style={{ color: "var(--accent)" }} />
             <div className="flex-1">
-              <p className="font-serif text-lg font-medium">Chọn ảnh của bạn</p>
-              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · đánh dấu những tấm ưng ý</p>
+              <p className="font-serif text-lg font-medium">{t("pickPhotos")}</p>
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · {t("pickPhotosSub")}</p>
             </div>
-            <span className="text-sm" style={{ color: "var(--accent)" }}>Mở →</span>
+            <span className="text-sm" style={{ color: "var(--accent)" }}>{t("open")}</span>
           </a>
         )}
 
@@ -278,17 +318,17 @@ export default function ContractView({ token }: { token: string }) {
           >
             <Images size={20} style={{ color: "var(--accent)" }} />
             <div className="flex-1">
-              <p className="font-serif text-lg font-medium">Xem ảnh của bạn</p>
-              <p className="text-xs" style={{ color: "var(--text3)" }}>{gallery.title} · mật khẩu là SĐT của bạn</p>
+              <p className="font-serif text-lg font-medium">{t("viewPhotos")}</p>
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{gallery.title} · {t("viewPhotosSub")}</p>
             </div>
-            <span className="text-sm" style={{ color: "var(--accent)" }}>Mở →</span>
+            <span className="text-sm" style={{ color: "var(--accent)" }}>{t("open")}</span>
           </a>
         )}
 
         <div className="card mt-6 p-6">
-          <h2 className="mb-4 font-serif text-lg font-medium">Hạng mục dịch vụ</h2>
+          <h2 className="mb-4 font-serif text-lg font-medium">{t("items")}</h2>
           {items.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có hạng mục.</p>
+            <p className="text-sm" style={{ color: "var(--text3)" }}>{t("noItems")}</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
@@ -303,9 +343,9 @@ export default function ContractView({ token }: { token: string }) {
             </table>
           )}
           <dl className="mt-4 space-y-2 border-t pt-4 text-sm" style={{ borderColor: "var(--border)" }}>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>Tổng giá trị</dt><dd className="font-serif text-lg font-medium">{vnd(total)}</dd></div>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>Đã thanh toán</dt><dd style={{ color: "#7bb38a" }}>{vnd(collected)}</dd></div>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>Còn lại</dt><dd className="font-medium">{vnd(balance)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("totalVal")}</dt><dd className="font-serif text-lg font-medium">{vnd(total)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("paid")}</dt><dd style={{ color: "#7bb38a" }}>{vnd(collected)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-medium">{vnd(balance)}</dd></div>
           </dl>
           {payments.length > 0 && (
             <ul className="mt-3 space-y-1 text-xs" style={{ color: "var(--text3)" }}>
@@ -321,7 +361,7 @@ export default function ContractView({ token }: { token: string }) {
 
         {contract.note && (
           <div className="card mt-6 p-6">
-            <h2 className="mb-2 font-serif text-lg font-medium">Ghi chú / Điều khoản</h2>
+            <h2 className="mb-2 font-serif text-lg font-medium">{t("terms")}</h2>
             <p className="whitespace-pre-wrap text-sm" style={{ color: "var(--text2)" }}>{contract.note}</p>
           </div>
         )}
@@ -329,12 +369,12 @@ export default function ContractView({ token }: { token: string }) {
         {/* Signing */}
         <div className="card mt-6 p-6">
           <h2 className="mb-2 flex items-center gap-2 font-serif text-lg font-medium">
-            <PenLine size={17} /> Xác nhận &amp; ký hợp đồng
+            <PenLine size={17} /> {t("signTitle")}
           </h2>
           {signed ? (
             <div>
               <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
-                <Check size={15} /> Bạn đã ký ngày {new Date(contract.client_signed_at!).toLocaleString("vi-VN")}.
+                <Check size={15} /> {t("signedOn")} {new Date(contract.client_signed_at!).toLocaleString("vi-VN")}.
               </p>
               {contract.client_signature && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -343,17 +383,15 @@ export default function ContractView({ token }: { token: string }) {
             </div>
           ) : (
             <>
-              <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>
-                Ký xác nhận đồng ý với nội dung hợp đồng trên.
-              </p>
-              <input className="input" placeholder="Họ tên người ký" value={signName} onChange={(e) => setSignName(e.target.value)} />
+              <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>{t("signAgree")}</p>
+              <input className="input" placeholder={t("signerName")} value={signName} onChange={(e) => setSignName(e.target.value)} />
               <div className="mt-3">
-                <label className="label">Chữ ký</label>
+                <label className="label">{t("signature")}</label>
                 <SignaturePad onChange={setSignature} />
               </div>
               {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
               <button onClick={sign} disabled={signing} className="btn-primary mt-3">
-                <PenLine size={15} /> {signing ? "Đang ký…" : "Đồng ý & ký"}
+                <PenLine size={15} /> {signing ? t("signing") : t("sign")}
               </button>
             </>
           )}
@@ -361,16 +399,14 @@ export default function ContractView({ token }: { token: string }) {
 
         {/* Review */}
         <div className="card mt-6 p-6">
-          <h2 className="mb-2 font-serif text-lg font-medium">Đánh giá studio</h2>
+          <h2 className="mb-2 font-serif text-lg font-medium">{t("review")}</h2>
           {reviewSent ? (
             <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
-              <Check size={15} /> Cảm ơn bạn đã đánh giá!
+              <Check size={15} /> {t("reviewThanks")}
             </p>
           ) : (
             <>
-              <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>
-                Bạn hài lòng với dịch vụ chứ? Để lại cảm nhận giúp studio nhé.
-              </p>
+              <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>{t("reviewPrompt")}</p>
               <div className="mb-3 flex gap-1">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button key={n} onClick={() => setRating(n)} aria-label={`${n} sao`}>
@@ -378,9 +414,9 @@ export default function ContractView({ token }: { token: string }) {
                   </button>
                 ))}
               </div>
-              <textarea className="input min-h-[80px]" placeholder="Cảm nhận của bạn…" value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
+              <textarea className="input min-h-[80px]" placeholder={t("reviewPh")} value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
               <button onClick={sendReview} disabled={!rating && !reviewText.trim()} className="btn-primary mt-3">
-                <Star size={15} /> Gửi đánh giá
+                <Star size={15} /> {t("sendReview")}
               </button>
             </>
           )}
@@ -388,10 +424,8 @@ export default function ContractView({ token }: { token: string }) {
 
         {/* Messenger link */}
         <div className="card mt-6 p-6">
-          <h2 className="mb-2 font-serif text-lg font-medium">Liên hệ qua Messenger</h2>
-          <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>
-            Dán link Facebook/Messenger của bạn để studio tiện liên hệ.
-          </p>
+          <h2 className="mb-2 font-serif text-lg font-medium">{t("messenger")}</h2>
+          <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>{t("messengerPrompt")}</p>
           <div className="flex flex-wrap gap-2">
             <input
               className="input flex-1"
@@ -400,33 +434,31 @@ export default function ContractView({ token }: { token: string }) {
               onChange={(e) => setMessenger(e.target.value)}
             />
             <button onClick={saveMessenger} className="btn-ghost shrink-0">
-              {msgrSaved ? <Check size={15} /> : null} {msgrSaved ? "Đã lưu" : "Lưu link"}
+              {msgrSaved ? <Check size={15} /> : null} {msgrSaved ? t("saved") : t("saveLink")}
             </button>
           </div>
         </div>
 
         {/* Edit request */}
         <div className="card mt-6 p-6">
-          <h2 className="mb-2 font-serif text-lg font-medium">Yêu cầu chỉnh sửa</h2>
-          <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>
-            Nếu có điểm chưa phù hợp, hãy gửi yêu cầu cho studio trước khi ký.
-          </p>
+          <h2 className="mb-2 font-serif text-lg font-medium">{t("editReq")}</h2>
+          <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>{t("editPrompt")}</p>
           {sent ? (
             <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
-              <Check size={15} /> Đã gửi yêu cầu. Studio sẽ liên hệ với bạn.
+              <Check size={15} /> {t("editSent")}
             </p>
           ) : (
             <>
-              <textarea className="input min-h-[90px]" placeholder="Nội dung muốn chỉnh sửa…" value={editMsg} onChange={(e) => setEditMsg(e.target.value)} />
+              <textarea className="input min-h-[90px]" placeholder={t("editPh")} value={editMsg} onChange={(e) => setEditMsg(e.target.value)} />
               <button onClick={sendEdit} disabled={sending || !editMsg.trim()} className="btn-primary mt-3">
-                <Send size={15} /> {sending ? "Đang gửi…" : "Gửi yêu cầu"}
+                <Send size={15} /> {sending ? t("sending") : t("send")}
               </button>
             </>
           )}
         </div>
 
         <p className="mt-8 text-center text-xs" style={{ color: "var(--text3)" }}>
-          Cập nhật: {new Date(contract.updated_at).toLocaleString("vi-VN")}
+          {t("updated")}: {new Date(contract.updated_at).toLocaleString("vi-VN")}
         </p>
       </div>
 
