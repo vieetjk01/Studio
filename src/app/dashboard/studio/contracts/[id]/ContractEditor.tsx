@@ -12,6 +12,7 @@ import {
   Link as LinkIcon,
   PenLine,
   CalendarClock,
+  Star,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl, mainUrl } from "@/lib/hosts";
@@ -75,6 +76,7 @@ export default function ContractEditor({
   initialPayments,
   roster,
   galleries,
+  selectionAlbums,
   initialMilestones,
   studioName,
   conflictByPhone,
@@ -87,6 +89,7 @@ export default function ContractEditor({
   initialPayments: ContractPayment[];
   roster: StudioCrew[];
   galleries: { id: string; title: string; slug: string }[];
+  selectionAlbums: { id: string; title: string; slug: string }[];
   initialMilestones: StudioEvent[];
   studioName: string;
   conflictByPhone: Record<string, string>;
@@ -111,6 +114,7 @@ export default function ContractEditor({
     gallery_album_id: contract.gallery_album_id ?? "",
     delivery_due: contract.delivery_due ?? "",
     client_messenger: contract.client_messenger ?? "",
+    selection_album_id: contract.selection_album_id ?? "",
   });
   const set = (k: keyof typeof f, v: string | number) =>
     setF((p) => ({ ...p, [k]: v }) as typeof p);
@@ -181,6 +185,7 @@ export default function ContractEditor({
         gallery_album_id: f.gallery_album_id || null,
         delivery_due: f.delivery_due || null,
         client_messenger: f.client_messenger.trim() || null,
+        selection_album_id: f.selection_album_id || null,
       })
       .eq("id", contract.id);
     setBusy(null);
@@ -504,6 +509,24 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </button>
       </div>
 
+      {/* Ask for a review */}
+      <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
+        <Star size={16} style={{ color: "#c7a76b" }} />
+        <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--text2)" }}>
+          Xin khách đánh giá sau khi giao ảnh (gửi kèm link cổng → mục “Đánh giá studio”).
+        </p>
+        {(() => {
+          const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
+          return (
+            <>
+              <ZaloButton phone={f.client_phone} label="Zalo" message={reviewMsg} />
+              <MessengerButton link={f.client_messenger} label="Messenger" message={reviewMsg} />
+              <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
+            </>
+          );
+        })()}
+      </div>
+
       {/* Signature banner */}
       {contract.client_signed_at && (
         <div className="card mb-6 flex flex-wrap items-center gap-4 p-5" style={{ borderColor: "#7bb38a55" }}>
@@ -629,6 +652,20 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 {galleries.length === 0 && (
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
                     Chưa có gallery nào. Tạo ở mục “Gallery khách” rồi quay lại gắn.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="label">Album chọn ảnh (khách chọn ảnh trong cổng)</label>
+                <select className="input" value={f.selection_album_id} onChange={(e) => set("selection_album_id", e.target.value)}>
+                  <option value="">— Chưa gắn —</option>
+                  {selectionAlbums.map((a) => (
+                    <option key={a.id} value={a.id}>{a.title}</option>
+                  ))}
+                </select>
+                {selectionAlbums.length === 0 && (
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                    Chưa có album chọn ảnh. Tạo album ở “Tạo album” rồi quay lại gắn.
                   </p>
                 )}
               </div>

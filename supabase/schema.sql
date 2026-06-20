@@ -742,6 +742,10 @@ alter table public.studio_contracts add column if not exists delivery_due date;
 -- The client can set this themselves from the portal, or the studio can enter it.
 alter table public.studio_contracts add column if not exists client_messenger text;
 
+-- Link a contract to a photo-selection album (/a/[slug]) so the client can pick
+-- their photos straight from the unified portal.
+alter table public.studio_contracts add column if not exists selection_album_id uuid references public.albums (id) on delete set null;
+
 -- Per-contract checklist (đặt cọc, chụp, chọn ảnh, retouch, in album, giao…).
 create table if not exists public.contract_tasks (
   id          uuid primary key default gen_random_uuid(),

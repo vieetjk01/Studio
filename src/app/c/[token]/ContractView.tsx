@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images } from "lucide-react";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import { mainUrl } from "@/lib/hosts";
@@ -50,6 +50,7 @@ export default function ContractView({ token }: { token: string }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
+  const [selection, setSelection] = useState<Gallery | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -65,6 +66,11 @@ export default function ContractView({ token }: { token: string }) {
   // messenger link
   const [messenger, setMessenger] = useState("");
   const [msgrSaved, setMsgrSaved] = useState(false);
+
+  // review
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewSent, setReviewSent] = useState(false);
 
   async function fetchContract(pw: string) {
     const res = await fetch(`/api/c/${token}`, {
@@ -83,6 +89,7 @@ export default function ContractView({ token }: { token: string }) {
     setPayments(j.payments ?? []);
     setMilestones(j.milestones ?? []);
     setGallery(j.gallery ?? null);
+    setSelection(j.selection ?? null);
     setMessenger(j.contract?.client_messenger ?? "");
     return { ok: true };
   }
@@ -129,6 +136,19 @@ export default function ContractView({ token }: { token: string }) {
     if (res.ok) {
       setMsgrSaved(true);
       setTimeout(() => setMsgrSaved(false), 3000);
+    }
+  }
+
+  async function sendReview() {
+    if (!rating && !reviewText.trim()) return;
+    const res = await fetch(`/api/c/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "review", phone, rating, message: reviewText.trim() }),
+    });
+    if (res.ok) {
+      setReviewSent(true);
+      setReviewText("");
     }
   }
 
@@ -219,6 +239,22 @@ export default function ContractView({ token }: { token: string }) {
           </div>
         )}
 
+        {selection && (
+          <a
+            href={mainUrl(`/a/${selection.slug}`)}
+            target="_blank"
+            rel="noreferrer"
+            className="card mt-6 flex items-center gap-3 p-5 transition-colors hover:bg-[var(--surface2)]"
+          >
+            <ImagePlus size={20} style={{ color: "var(--accent)" }} />
+            <div className="flex-1">
+              <p className="font-serif text-lg font-medium">Chọn ảnh của bạn</p>
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · đánh dấu những tấm ưng ý</p>
+            </div>
+            <span className="text-sm" style={{ color: "var(--accent)" }}>Mở →</span>
+          </a>
+        )}
+
         {gallery && (
           <a
             href={mainUrl(`/album/${gallery.slug}`)}
@@ -304,6 +340,33 @@ export default function ContractView({ token }: { token: string }) {
               {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
               <button onClick={sign} disabled={signing} className="btn-primary mt-3">
                 <PenLine size={15} /> {signing ? "Đang ký…" : "Đồng ý & ký"}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Review */}
+        <div className="card mt-6 p-6">
+          <h2 className="mb-2 font-serif text-lg font-medium">Đánh giá studio</h2>
+          {reviewSent ? (
+            <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
+              <Check size={15} /> Cảm ơn bạn đã đánh giá!
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>
+                Bạn hài lòng với dịch vụ chứ? Để lại cảm nhận giúp studio nhé.
+              </p>
+              <div className="mb-3 flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} onClick={() => setRating(n)} aria-label={`${n} sao`}>
+                    <Star size={26} style={{ color: n <= rating ? "#e0b85c" : "var(--text3)" }} fill={n <= rating ? "#e0b85c" : "none"} />
+                  </button>
+                ))}
+              </div>
+              <textarea className="input min-h-[80px]" placeholder="Cảm nhận của bạn…" value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
+              <button onClick={sendReview} disabled={!rating && !reviewText.trim()} className="btn-primary mt-3">
+                <Star size={15} /> Gửi đánh giá
               </button>
             </>
           )}

@@ -19,13 +19,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
     name?: string;
     signature?: string;
     link?: string;
+    rating?: number;
   };
   const db = createAdminClient();
 
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
+      "id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -46,6 +47,21 @@ export async function POST(req: Request, { params }: { params: { token: string }
     const { error } = await db
       .from("contract_edit_requests")
       .insert({ contract_id: contract.id, message });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "review") {
+    const content = body.message?.trim();
+    const rating = Math.max(1, Math.min(5, Math.round(Number(body.rating) || 0)));
+    if (!content && !rating) return NextResponse.json({ error: "empty" }, { status: 400 });
+    const { error } = await db.from("feedback").insert({
+      album_id: contract.gallery_album_id || contract.selection_album_id || null,
+      client_name: contract.client_name,
+      rating: rating || null,
+      content: content || "",
+      approved: true,
+    });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
@@ -100,13 +116,25 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (g && g.is_gallery && g.status === "published") gallery = { slug: g.slug, title: g.title };
   }
 
+  // Linked selection album (client picks their photos at /a/[slug]).
+  let selection: { slug: string; title: string } | null = null;
+  if (contract.selection_album_id) {
+    const { data: s } = await db
+      .from("albums")
+      .select("slug, title, status")
+      .eq("id", contract.selection_album_id)
+      .maybeSingle();
+    if (s && s.status === "published") selection = { slug: s.slug, title: s.title };
+  }
+
   // Never expose internal crew/salary to the client.
   return NextResponse.json({
-    contract: { ...contract, client_phone: undefined, owner: undefined, gallery_album_id: undefined },
+    contract: { ...contract, client_phone: undefined, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
     studio_name: studioName,
     items: items ?? [],
     payments: payments ?? [],
     milestones: milestones ?? [],
     gallery,
+    selection,
   });
 }
