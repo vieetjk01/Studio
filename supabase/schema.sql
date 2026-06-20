@@ -846,6 +846,7 @@ create table if not exists public.studio_pricelist (
   created_at  timestamptz not null default now()
 );
 alter table public.studio_pricelist add column if not exists list_key text not null default 'cuoi';
+alter table public.studio_pricelist add column if not exists show_on_home boolean not null default true;
 create index if not exists studio_pricelist_owner_idx on public.studio_pricelist (owner_id, list_key, position);
 alter table public.studio_pricelist enable row level security;
 drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;

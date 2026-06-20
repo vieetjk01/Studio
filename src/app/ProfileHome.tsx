@@ -30,7 +30,7 @@ import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import PackageCompare from "@/components/PackageCompare";
 import type { SiteSettings, BookingService } from "@/lib/types";
 
-type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
+type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null; show_on_home?: boolean };
 
 
 const SERVICES: {

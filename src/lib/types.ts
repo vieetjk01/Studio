@@ -333,6 +333,7 @@ export interface PricelistItem {
   category: string | null;
   description: string | null;
   active: boolean;
+  show_on_home: boolean;
   position: number;
   created_at: string;
 }
