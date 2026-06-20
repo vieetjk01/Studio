@@ -24,7 +24,7 @@ function embedUrl(raw: string): string | null {
   return null;
 }
 
-export default function SiteRenderer({ data }: { data: SiteData }) {
+export default function SiteRenderer({ data, demo = false }: { data: SiteData; demo?: boolean }) {
   const { site, blocks, owner } = data;
   const t = site.theme || {};
   const name = owner?.full_name || site.subdomain || "Studio";
@@ -76,7 +76,7 @@ export default function SiteRenderer({ data }: { data: SiteData }) {
           </div>
         </div>
       ) : (
-        blocks.map((b) => <Block key={b.id} block={b} data={data} fontVar={fontVar} />)
+        blocks.map((b) => <Block key={b.id} block={b} data={data} fontVar={fontVar} demo={demo} />)
       )}
 
       <footer style={{ borderTop: "1px solid var(--s-border)", padding: "28px 24px", textAlign: "center", fontSize: 13, opacity: 0.55 }}>
@@ -101,7 +101,7 @@ function Section({ children, fontVar, heading }: { children: React.ReactNode; fo
   );
 }
 
-function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fontVar: string }) {
+function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data: SiteData; fontVar: string; demo?: boolean }) {
   const c = block.config || {};
   const t = data.site.theme || {};
   const { owner, albums, pricelist, feedback } = data;
@@ -153,21 +153,31 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
     case "gallery": {
       const ids = Array.isArray(c.album_ids) ? (c.album_ids as string[]) : [];
       const picked = ids.length ? ids.map((id) => albums.find((a) => a.id === id)).filter(Boolean) as typeof albums : albums;
-      if (picked.length === 0) return null;
+      if (picked.length === 0 && !demo) return null;
       const cols = Number(t.galleryCols) || 0;
       const minW = cols === 2 ? 320 : cols === 3 ? 230 : cols === 4 ? 175 : 240;
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Bộ sưu tập")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: `repeat(auto-fill,minmax(${minW}px,1fr))` }}>
-            {picked.map((a) => (
-              <a key={a.id} href={mainUrl(`/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
-                <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
-                  {a.cover_url && <img src={a.cover_url} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                </div>
-                <p style={{ marginTop: 8, fontSize: 14 }}>{a.title}</p>
-              </a>
-            ))}
+            {picked.length > 0
+              ? picked.map((a) => (
+                  <a key={a.id} href={mainUrl(`/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
+                    <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
+                      {a.cover_url && <img src={a.cover_url} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                    </div>
+                    <p style={{ marginTop: 8, fontSize: 14 }}>{a.title}</p>
+                  </a>
+                ))
+              : Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i}>
+                    <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
+                      <img src={`https://picsum.photos/seed/vk-demo${i}/600/450`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                    <p style={{ marginTop: 8, fontSize: 14, opacity: 0.7 }}>Album mẫu {i + 1}</p>
+                  </div>
+                ))}
           </div>
+          {picked.length === 0 && demo && <p style={{ marginTop: 10, fontSize: 12, opacity: 0.55 }}>(Ảnh mẫu — sẽ thay bằng album của bạn khi xuất bản)</p>}
         </Section>
       );
     }

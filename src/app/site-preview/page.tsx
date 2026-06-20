@@ -24,5 +24,5 @@ export default async function SitePreviewPage() {
 
   const db = createAdminClient();
   const data = await loadSiteBundle(db, site as Site, true);
-  return <SiteRenderer data={data} />;
+  return <SiteRenderer data={data} demo />;
 }

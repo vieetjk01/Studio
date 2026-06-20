@@ -87,6 +87,10 @@ export default function SiteManager({
   const [busy, setBusy] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const refreshPreview = () => setPreviewKey((k) => k + 1);
+  const mode = theme.mode || "dark";
+  function setMode(m: "light" | "dark") {
+    setTheme((t) => ({ ...t, mode: m, bg: m === "light" ? "#ffffff" : "#0c0c0d", text: m === "light" ? "#161616" : "#ececec" }));
+  }
 
   const studioPro = plan === "studio" || isAdmin;
   const liveUrl = subdomain && mainHost ? `https://${subdomain}.${mainHost}` : "";
@@ -202,150 +206,113 @@ export default function SiteManager({
         <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>{msg}</div>
       )}
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow mb-1.5">Trang web riêng</p>
-          <h1 className="font-serif text-3xl font-medium">Trang giới thiệu của bạn</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Tạo trang portfolio riêng trên tên miền phụ, kéo nội dung từ album & bảng giá sẵn có.</p>
-        </div>
-        <div className="flex gap-2">
-          <a href="/site-preview" target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><ExternalLink size={14} /> Mở tab mới</a>
-          {liveUrl && published && (
-            <a href={liveUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><ExternalLink size={14} /> Xem trang thật</a>
-          )}
-        </div>
+      <div className="mb-6">
+        <p className="eyebrow mb-1.5">Trang web riêng</p>
+        <h1 className="font-serif text-3xl font-medium">Trang giới thiệu của bạn</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Chọn 1 mẫu, đổi nội dung — xem kết quả ngay bên phải. Không cần biết thiết kế.</p>
       </div>
 
-      {/* Live preview */}
-      <div className="card mb-6 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-serif text-lg font-medium"><Eye size={16} /> Xem trước</h2>
-          <button onClick={refreshPreview} className="btn-ghost px-3 py-1.5 text-xs"><RefreshCw size={13} /> Làm mới</button>
-        </div>
-        <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
-          <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: "70vh", border: 0, background: "#fff" }} />
-        </div>
-        <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>Khung xem trước cập nhật sau khi bạn bấm “Lưu” từng phần (hoặc bấm “Làm mới”).</p>
-      </div>
-
-      {/* Site settings */}
-      <div className="card mb-6 p-6">
-        <h2 className="mb-4 font-serif text-lg font-medium">Cài đặt trang</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">Tên miền phụ</label>
-            <div className="flex items-center gap-2">
-              <input className="input" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
-              <span className="shrink-0 text-sm" style={{ color: "var(--text3)" }}>.{mainHost || "vieetjk.com"}</span>
-            </div>
-          </div>
-          <div>
-            <label className="label">Màu nhấn</label>
-            <input type="color" className="input h-[42px] p-1" value={theme.accent || "#c7a76b"} onChange={(e) => setTheme((t) => ({ ...t, accent: e.target.value }))} />
-          </div>
-          <div>
-            <label className="label">Màu nền</label>
-            <input type="color" className="input h-[42px] p-1" value={theme.bg || "#0c0c0d"} onChange={(e) => setTheme((t) => ({ ...t, bg: e.target.value }))} />
-          </div>
-          <div>
-            <label className="label">Phông chữ</label>
-            <select className="input" value={theme.font || "serif"} onChange={(e) => setTheme((t) => ({ ...t, font: e.target.value as "serif" | "sans" }))}>
-              <option value="serif">Cổ điển (serif)</option>
-              <option value="sans">Hiện đại (sans)</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Giao diện</label>
-            <select
-              className="input"
-              value={theme.mode || "dark"}
-              onChange={(e) => {
-                const mode = e.target.value as "light" | "dark";
-                setTheme((t) => ({ ...t, mode, bg: mode === "light" ? "#ffffff" : "#0c0c0d", text: mode === "light" ? "#161616" : "#ececec" }));
-              }}
-            >
-              <option value="dark">Tối</option>
-              <option value="light">Sáng</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Canh chữ Hero</label>
-            <select className="input" value={theme.heroAlign || "center"} onChange={(e) => setTheme((t) => ({ ...t, heroAlign: e.target.value as "center" | "left" }))}>
-              <option value="center">Giữa</option>
-              <option value="left">Trái</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Số cột ảnh</label>
-            <select className="input" value={String(theme.galleryCols || 3)} onChange={(e) => setTheme((t) => ({ ...t, galleryCols: Number(e.target.value) }))}>
-              <option value="2">2 cột</option>
-              <option value="3">3 cột</option>
-              <option value="4">4 cột</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Góc bo</label>
-            <select className="input" value={theme.radius || "rounded"} onChange={(e) => setTheme((t) => ({ ...t, radius: e.target.value as "rounded" | "sharp" }))}>
-              <option value="rounded">Bo tròn</option>
-              <option value="sharp">Vuông</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Logo */}
-        <div className="mt-4">
-          <label className="label">Logo (URL)</label>
-          <input className="input" placeholder="https://…/logo.png" value={theme.logo || ""} onChange={(e) => setTheme((t) => ({ ...t, logo: e.target.value }))} />
-          {albums.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px]" style={{ color: "var(--text3)" }}>hoặc chọn từ album:</span>
-              {albums.filter((a) => a.cover_url).slice(0, 10).map((a) => (
-                <button key={a.id} type="button" onClick={() => setTheme((t) => ({ ...t, logo: a.cover_url || "" }))} title={a.title} className="h-8 w-10 overflow-hidden rounded" style={{ border: theme.logo === a.cover_url ? "2px solid var(--accent)" : "1px solid var(--border)" }}>
+      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(340px,440px)]">
+        {/* LEFT — controls */}
+        <div className="order-2 space-y-6 lg:order-1">
+          {/* Step 1: pick a template */}
+          <div className="card p-5">
+            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu (1 chạm)</h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Bấm một mẫu để áp dụng ngay; nội dung &amp; ảnh chỉ là mẫu, bạn đổi lại sau.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {SITE_TEMPLATES.map((tp) => (
+                <button key={tp.key} onClick={() => applyTemplate(tp.key)} className="overflow-hidden rounded-xl text-left transition-transform hover:scale-[1.02]" style={{ border: "1px solid var(--border)" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.cover_url as string} alt={a.title} className="h-full w-full object-cover" />
+                  <img src={tp.thumb} alt={tp.name} className="aspect-[3/2] w-full object-cover" />
+                  <div className="flex items-center justify-between gap-1 p-2">
+                    <span className="text-xs font-medium">{tp.name}</span>
+                    <span className="rounded-full px-1.5 py-0.5 text-[9px]" style={{ background: "var(--surface2)", color: "var(--text3)" }}>{tp.theme.mode === "light" ? "Sáng" : "Tối"}</span>
+                  </div>
                 </button>
               ))}
-              {theme.logo && <button type="button" onClick={() => setTheme((t) => ({ ...t, logo: "" }))} className="text-[11px]" style={{ color: "var(--text3)" }}>bỏ logo</button>}
             </div>
-          )}
-        </div>
+          </div>
 
-        <label className="mt-4 flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
-          <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
-          Xuất bản trang (cho phép mọi người truy cập)
-        </label>
-        <button onClick={saveSite} disabled={busy} className="btn-primary mt-4"><Check size={15} /> {busy ? "Đang lưu…" : "Lưu cài đặt"}</button>
-        {!studioPro && (
-          <p className="mt-3 flex items-center gap-1.5 text-[11px]" style={{ color: "var(--text3)" }}>
-            <Globe size={12} /> Tên miền riêng (vd: studio-cua-ban.com) dành cho gói Studio — sẽ mở ở giai đoạn sau.
-          </p>
-        )}
-      </div>
+          {/* Step 2: look & feel */}
+          <div className="card p-5">
+            <h2 className="mb-3 font-serif text-lg font-medium">2. Giao diện</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {(["light", "dark"] as const).map((m) => (
+                <button key={m} onClick={() => setMode(m)} className="rounded-xl px-3 py-2.5 text-sm font-medium" style={{ border: "1px solid var(--border2)", background: mode === m ? "var(--surface2)" : "transparent", color: mode === m ? "var(--accent)" : "var(--text2)" }}>
+                  {m === "light" ? "☀ Sáng" : "🌙 Tối"}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <label className="label mb-0">Màu nhấn</label>
+              <input type="color" className="input h-9 w-16 p-1" value={theme.accent || "#c7a76b"} onChange={(e) => setTheme((t) => ({ ...t, accent: e.target.value }))} />
+            </div>
+            <div className="mt-3">
+              <label className="label">Logo (tuỳ chọn)</label>
+              <input className="input" placeholder="Dán link logo, hoặc chọn ảnh bên dưới" value={theme.logo || ""} onChange={(e) => setTheme((t) => ({ ...t, logo: e.target.value }))} />
+              {albums.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {albums.filter((a) => a.cover_url).slice(0, 8).map((a) => (
+                    <button key={a.id} type="button" onClick={() => setTheme((t) => ({ ...t, logo: a.cover_url || "" }))} title={a.title} className="h-8 w-10 overflow-hidden rounded" style={{ border: theme.logo === a.cover_url ? "2px solid var(--accent)" : "1px solid var(--border)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.cover_url as string} alt={a.title} className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                  {theme.logo && <button type="button" onClick={() => setTheme((t) => ({ ...t, logo: "" }))} className="text-[11px]" style={{ color: "var(--text3)" }}>bỏ logo</button>}
+                </div>
+              )}
+            </div>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs" style={{ color: "var(--text3)" }}>Tuỳ chỉnh nâng cao</summary>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">Phông chữ</label>
+                  <select className="input" value={theme.font || "serif"} onChange={(e) => setTheme((t) => ({ ...t, font: e.target.value as "serif" | "sans" }))}>
+                    <option value="serif">Cổ điển</option>
+                    <option value="sans">Hiện đại</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Canh chữ Hero</label>
+                  <select className="input" value={theme.heroAlign || "center"} onChange={(e) => setTheme((t) => ({ ...t, heroAlign: e.target.value as "center" | "left" }))}>
+                    <option value="center">Giữa</option>
+                    <option value="left">Trái</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Số cột ảnh</label>
+                  <select className="input" value={String(theme.galleryCols || 3)} onChange={(e) => setTheme((t) => ({ ...t, galleryCols: Number(e.target.value) }))}>
+                    <option value="2">2 cột</option>
+                    <option value="3">3 cột</option>
+                    <option value="4">4 cột</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Góc bo</label>
+                  <select className="input" value={theme.radius || "rounded"} onChange={(e) => setTheme((t) => ({ ...t, radius: e.target.value as "rounded" | "sharp" }))}>
+                    <option value="rounded">Bo tròn</option>
+                    <option value="sharp">Vuông</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Màu nền</label>
+                  <input type="color" className="input h-9 p-1" value={theme.bg || "#0c0c0d"} onChange={(e) => setTheme((t) => ({ ...t, bg: e.target.value }))} />
+                </div>
+              </div>
+            </details>
+          </div>
 
-      {/* Templates */}
-      <div className="card mb-6 p-6">
-        <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> Mẫu có sẵn</h2>
-        <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Áp dụng nhanh một bố cục + màu sắc, rồi chỉnh lại tuỳ ý.</p>
-        <div className="flex flex-wrap gap-2">
-          {SITE_TEMPLATES.map((tp) => (
-            <button key={tp.key} onClick={() => applyTemplate(tp.key)} className="rounded-full px-3 py-1.5 text-xs" style={{ border: "1px solid var(--border2)", color: "var(--text2)" }}>
-              {tp.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Blocks */}
-      <div className="card p-6">
-        <h2 className="mb-1 font-serif text-lg font-medium">Nội dung trang</h2>
-        <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Kéo thả <GripVertical size={12} className="inline" /> để đổi thứ tự khối. Bấm để thêm khối:</p>
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {BLOCK_TYPES.map((tp) => (
-            <button key={tp} onClick={() => addBlock(tp)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text2)" }}>
-              <Plus size={12} className="inline" /> {SITE_BLOCK_LABEL[tp]}
-            </button>
-          ))}
-        </div>
+          {/* Step 3: content blocks */}
+          <div className="card p-5">
+            <h2 className="mb-1 font-serif text-lg font-medium">3. Nội dung</h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Kéo thả <GripVertical size={12} className="inline" /> để đổi thứ tự. Bấm để thêm khối:</p>
+            <div className="mb-4 flex flex-wrap gap-1.5">
+              {BLOCK_TYPES.map((tp) => (
+                <button key={tp} onClick={() => addBlock(tp)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text2)" }}>
+                  <Plus size={12} className="inline" /> {SITE_BLOCK_LABEL[tp]}
+                </button>
+              ))}
+            </div>
 
         {blocks.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có khối nào. Bấm thêm khối ở trên (vd: Ảnh bìa → Bộ sưu tập → Bảng giá → Liên hệ).</p>
@@ -427,6 +394,49 @@ export default function SiteManager({
             ))}
           </div>
         )}
+          </div>
+
+          {/* Step 4: domain + publish */}
+          <div className="card p-5">
+            <h2 className="mb-3 font-serif text-lg font-medium">4. Tên miền &amp; xuất bản</h2>
+            <label className="label">Tên miền phụ</label>
+            <div className="flex items-center gap-2">
+              <input className="input" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
+              <span className="shrink-0 text-sm" style={{ color: "var(--text3)" }}>.{mainHost || "vieetjk.com"}</span>
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+              Xuất bản (cho mọi người xem)
+            </label>
+            <button onClick={saveSite} disabled={busy} className="btn-primary mt-4 w-full"><Check size={15} /> {busy ? "Đang lưu…" : "Lưu & cập nhật trang"}</button>
+            {!studioPro && (
+              <p className="mt-3 flex items-center gap-1.5 text-[11px]" style={{ color: "var(--text3)" }}>
+                <Globe size={12} /> Tên miền riêng (vd: studio-cua-ban.com) dành cho gói Studio — giai đoạn sau.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT — live preview */}
+        <div className="order-1 lg:order-2">
+          <div className="lg:sticky lg:top-20">
+            <div className="card p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 px-1 font-serif text-base font-medium"><Eye size={15} /> Xem trực tiếp</h2>
+                <div className="flex gap-1.5">
+                  <button onClick={refreshPreview} className="btn-ghost px-2.5 py-1 text-xs"><RefreshCw size={13} /> Làm mới</button>
+                  <a href="/site-preview" target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1 text-xs" title="Mở tab mới"><ExternalLink size={13} /></a>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
+                <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: "78vh", border: 0, background: "#fff" }} />
+              </div>
+              {liveUrl && published && (
+                <a href={liveUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-center text-xs text-accent hover:underline">Trang thật: {liveUrl}</a>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
