@@ -49,6 +49,7 @@ export default function DashboardHeader({
           { href: "/dashboard/studio", label: "Tổng quan" },
           { href: "/dashboard/studio/board", label: "Bảng" },
           { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
+          { href: "/dashboard/studio/clients", label: "Khách hàng" },
           { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
           { href: "/dashboard/studio/calendar", label: "Lịch" },
           { href: "/dashboard/studio/team", label: "Lịch đội" },

@@ -746,6 +746,32 @@ alter table public.studio_contracts add column if not exists client_messenger te
 -- their photos straight from the unified portal.
 alter table public.studio_contracts add column if not exists selection_album_id uuid references public.albums (id) on delete set null;
 
+-- Lead source (nguồn khách) for the CRM + per-contract direct expenses.
+alter table public.studio_contracts add column if not exists source text; -- facebook | referral | google | walk_in | returning | other
+-- Reuse studio_expenses for per-contract costs too (null contract_id = general).
+alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
+create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
+
+-- ============================================================================
+-- Studio notifications (chuông): events worth the studio's attention. Inserted
+-- both by the owner's own client (RLS) and the service role (client/crew portals).
+-- ============================================================================
+create table if not exists public.studio_notifications (
+  id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references public.profiles (id) on delete cascade,
+  contract_id uuid references public.studio_contracts (id) on delete cascade,
+  kind        text not null default 'info',  -- signed | edit_request | crew_accepted | crew_declined | review | payment
+  message     text not null default '',
+  read        boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+create index if not exists studio_notifications_owner_idx on public.studio_notifications (owner_id, read, created_at);
+alter table public.studio_notifications enable row level security;
+drop policy if exists studio_notifications_owner_all on public.studio_notifications;
+create policy studio_notifications_owner_all on public.studio_notifications
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
 -- Per-contract checklist (đặt cọc, chụp, chọn ảnh, retouch, in album, giao…).
 create table if not exists public.contract_tasks (
   id          uuid primary key default gen_random_uuid(),

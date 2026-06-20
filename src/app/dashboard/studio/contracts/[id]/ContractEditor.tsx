@@ -31,6 +31,7 @@ import {
   CREW_ROLE_LABEL,
   CREW_STATUS_LABEL,
   PAYMENT_KIND_LABEL,
+  LEAD_SOURCE_LABEL,
   type StudioContract,
   type ContractItem,
   type ContractCrew,
@@ -115,6 +116,7 @@ export default function ContractEditor({
     delivery_due: contract.delivery_due ?? "",
     client_messenger: contract.client_messenger ?? "",
     selection_album_id: contract.selection_album_id ?? "",
+    source: contract.source ?? "",
   });
   const set = (k: keyof typeof f, v: string | number) =>
     setF((p) => ({ ...p, [k]: v }) as typeof p);
@@ -186,6 +188,7 @@ export default function ContractEditor({
         delivery_due: f.delivery_due || null,
         client_messenger: f.client_messenger.trim() || null,
         selection_album_id: f.selection_album_id || null,
+        source: f.source || null,
       })
       .eq("id", contract.id);
     setBusy(null);
@@ -623,7 +626,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <input className="input" placeholder="08:00" value={f.event_time} onChange={(e) => set("event_time", e.target.value)} />
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="label">Địa điểm</label>
                   <input className="input" value={f.location} onChange={(e) => set("location", e.target.value)} />
@@ -633,6 +636,15 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <select className="input" value={f.status} onChange={(e) => set("status", e.target.value)}>
                     {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((k) => (
                       <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Nguồn khách</label>
+                  <select className="input" value={f.source} onChange={(e) => set("source", e.target.value)}>
+                    <option value="">— Chưa rõ —</option>
+                    {Object.keys(LEAD_SOURCE_LABEL).map((k) => (
+                      <option key={k} value={k}>{LEAD_SOURCE_LABEL[k]}</option>
                     ))}
                   </select>
                 </div>

@@ -214,8 +214,37 @@ export interface StudioContract {
   delivery_due: string | null;
   client_messenger: string | null;
   selection_album_id: string | null;
+  source: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export const LEAD_SOURCE_LABEL: Record<string, string> = {
+  facebook: "Facebook",
+  referral: "Giới thiệu",
+  google: "Google / Tìm kiếm",
+  walk_in: "Khách vãng lai",
+  returning: "Khách cũ",
+  other: "Khác",
+};
+
+export type NotificationKind =
+  | "signed"
+  | "edit_request"
+  | "crew_accepted"
+  | "crew_declined"
+  | "review"
+  | "payment"
+  | "info";
+
+export interface StudioNotification {
+  id: string;
+  owner_id: string;
+  contract_id: string | null;
+  kind: NotificationKind;
+  message: string;
+  read: boolean;
+  created_at: string;
 }
 
 export interface ContractTask {
@@ -287,6 +316,7 @@ export interface ContractPayment {
 export interface StudioExpense {
   id: string;
   owner_id: string;
+  contract_id: string | null;
   title: string;
   amount: number;
   category: string | null;
