@@ -12,13 +12,14 @@ export type BankInfo = {
 };
 
 function qrUrl(bank: BankInfo, amount: number, addInfo: string): string | null {
-  if (!bank.bin || !bank.account || amount <= 0) return null;
+  if (!bank.bin || !bank.account) return null;
   const acc = (bank.account || "").replace(/\s/g, "");
   const params = new URLSearchParams();
-  params.set("amount", String(Math.round(amount)));
+  if (amount > 0) params.set("amount", String(Math.round(amount)));
   if (addInfo) params.set("addInfo", addInfo);
   if (bank.holder) params.set("accountName", bank.holder);
-  return `https://img.vietqr.io/image/${bank.bin}-${acc}-compact2.png?${params.toString()}`;
+  const qs = params.toString();
+  return `https://img.vietqr.io/image/${bank.bin}-${acc}-compact2.png${qs ? `?${qs}` : ""}`;
 }
 
 /** Inline VietQR card — QR image + amount + copyable account/content. */
@@ -45,7 +46,7 @@ export function VietQR({ bank, amount, addInfo }: { bank: BankInfo; amount: numb
     <div className="flex flex-col items-center gap-2 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt="VietQR" width={220} height={220} style={{ width: 220, height: "auto", borderRadius: 12, background: "#fff" }} />
-      <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(amount)}</p>
+      {amount > 0 && <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(amount)}</p>}
       {bank.holder && <p className="text-sm">{bank.holder}</p>}
       <button onClick={() => copy(acc, "acc")} className="inline-flex items-center gap-1 text-xs" style={{ color: "var(--text2)" }}>
         {copied === "acc" ? <Check size={12} /> : <Copy size={12} />} {acc}{bank.name ? ` · ${bank.name}` : ""}

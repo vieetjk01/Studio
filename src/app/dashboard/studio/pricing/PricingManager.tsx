@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
 import { BANKS } from "@/lib/banks";
+import { VietQR } from "@/components/VietQR";
 import { vnd, type PricelistItem } from "@/lib/types";
 
 type Contact = { pl_phone: string; pl_facebook: string; pl_bank_holder: string; pl_bank_account: string; pl_bank_name: string; pl_bank_bin: string };
@@ -204,6 +205,19 @@ export default function PricingManager({
           </div>
         </div>
         <button onClick={saveContact} className="btn-primary mt-4">{savedContact ? <Check size={15} /> : null} {savedContact ? "Đã lưu" : "Lưu liên hệ"}</button>
+
+        {/* QR preview — confirms the bank config works; this is the studio's open QR. */}
+        <div className="mt-6 border-t pt-6" style={{ borderColor: "var(--border)" }}>
+          <h3 className="mb-3 text-sm font-medium">Mã QR chuyển khoản (xem trước)</h3>
+          {c.pl_bank_bin && c.pl_bank_account ? (
+            <>
+              <VietQR bank={{ bin: c.pl_bank_bin, account: c.pl_bank_account, holder: c.pl_bank_holder, name: c.pl_bank_name }} amount={0} addInfo="" />
+              <p className="mt-2 text-center text-[11px]" style={{ color: "var(--text3)" }}>Mã mở (khách tự nhập số tiền). Trong hợp đồng / công nợ, QR sẽ tự điền sẵn số tiền.</p>
+            </>
+          ) : (
+            <p className="text-xs" style={{ color: "var(--text3)" }}>Chọn <b>Ngân hàng</b> + nhập <b>Số tài khoản</b> rồi bấm <b>Lưu liên hệ</b> để xem mã QR.</p>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
