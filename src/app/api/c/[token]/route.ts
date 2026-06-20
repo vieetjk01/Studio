@@ -28,15 +28,27 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, chosen_quote_option_id, chosen_quote_at, updated_at, owner:profiles(full_name)"
+      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, chosen_quote_option_id, chosen_quote_at, updated_at, owner:profiles(full_name, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
 
   if (!contract) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const studioName =
-    (contract.owner as { full_name?: string } | null)?.full_name || "Studio";
+  const ownerObj = contract.owner as {
+    full_name?: string;
+    pl_bank_holder?: string | null;
+    pl_bank_account?: string | null;
+    pl_bank_name?: string | null;
+    pl_bank_bin?: string | null;
+  } | null;
+  const studioName = ownerObj?.full_name || "Studio";
+  const bank = {
+    bin: ownerObj?.pl_bank_bin ?? null,
+    account: ownerObj?.pl_bank_account ?? null,
+    holder: ownerObj?.pl_bank_holder ?? null,
+    name: ownerObj?.pl_bank_name ?? null,
+  };
 
   // Phone gate: if the studio set a client phone, it must match.
   if (contract.client_phone && digits(body.phone) !== digits(contract.client_phone)) {
@@ -171,6 +183,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   return NextResponse.json({
     contract: { ...contract, client_phone: undefined, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
     studio_name: studioName,
+    bank,
     items: items ?? [],
     payments: payments ?? [],
     milestones: milestones ?? [],

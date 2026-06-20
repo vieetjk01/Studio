@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
+import { VietQR, type BankInfo } from "@/components/VietQR";
 import { mainUrl } from "@/lib/hosts";
 import {
   contractTotal,
@@ -103,6 +104,7 @@ export default function ContractView({ token }: { token: string }) {
   const [selection, setSelection] = useState<Gallery | null>(null);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
+  const [bank, setBank] = useState<BankInfo>({ bin: null, account: null, holder: null, name: null });
   const [qr, setQr] = useState("");
   const [lang, setLang] = useState<Lang>("vi");
   const t = (k: keyof typeof TR.vi) => TR[lang][k];
@@ -164,6 +166,7 @@ export default function ContractView({ token }: { token: string }) {
     setSelection(j.selection ?? null);
     setQuoteOptions(j.quote_options ?? []);
     setChosenQuote(j.contract?.chosen_quote_option_id ?? null);
+    if (j.bank) setBank(j.bank as BankInfo);
     setMessenger(j.contract?.client_messenger ?? "");
     setBrief({
       concept: j.contract?.brief_concept ?? "",
@@ -431,6 +434,12 @@ export default function ContractView({ token }: { token: string }) {
                 </li>
               ))}
             </ul>
+          )}
+          {balance > 0 && bank.bin && bank.account && (
+            <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+              <p className="mb-3 text-center text-sm font-medium">{lang === "vi" ? "Quét mã để thanh toán phần còn lại" : "Scan to pay the balance"}</p>
+              <VietQR bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} />
+            </div>
           )}
         </div>
 
