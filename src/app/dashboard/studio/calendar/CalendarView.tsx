@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ZaloButton from "@/components/ZaloButton";
 import { shootReminderMessage } from "@/lib/zalo";
@@ -33,11 +33,14 @@ export default function CalendarView({
   ownerId,
   initialEvents,
   contracts,
+  feedUrl,
 }: {
   ownerId: string;
   initialEvents: StudioEvent[];
   contracts: ContractMarker[];
+  feedUrl: string;
 }) {
+  const [feedCopied, setFeedCopied] = useState(false);
   const supabase = createClient();
   const todayStr = new Date().toISOString().slice(0, 10);
   const [y, mIdx] = todayStr.split("-").map(Number);
@@ -126,10 +129,31 @@ export default function CalendarView({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-8">
+      <div className="mb-6">
         <p className="eyebrow mb-1.5">Quản lý studio</p>
         <h1 className="font-serif text-3xl font-medium">Lịch chụp &amp; ghi chú</h1>
       </div>
+
+      {feedUrl && (
+        <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
+          <CalendarDays size={16} style={{ color: "var(--text3)" }} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
+              Đồng bộ Google Calendar (link đăng ký — tự cập nhật buổi chụp &amp; mốc lịch)
+            </p>
+            <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{feedUrl}</p>
+            <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+              Google Calendar → Cài đặt → Thêm lịch → <b>Từ URL</b> → dán link trên.
+            </p>
+          </div>
+          <button
+            onClick={() => { navigator.clipboard?.writeText(feedUrl); setFeedCopied(true); setTimeout(() => setFeedCopied(false), 1500); }}
+            className="btn-ghost px-3 py-2 text-xs"
+          >
+            {feedCopied ? "Đã chép" : "Chép link"}
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Calendar */}

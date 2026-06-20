@@ -1,0 +1,65 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+const pad = (n: number) => String(n).padStart(2, "0");
+function stamp(d: Date) {
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+}
+const ymd = (s: string) => s.replace(/-/g, "");
+const esc = (s: string) => (s || "").replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+
+function vevent(uid: string, date: string, time: string | null, summary: string, location: string | null, desc: string | null, now: Date) {
+  const lines = ["BEGIN:VEVENT", `UID:${uid}@vieetjk`, `DTSTAMP:${stamp(now)}`];
+  const mt = (time || "").match(/(\d{1,2}):(\d{2})/);
+  if (mt) {
+    const start = `${ymd(date)}T${pad(+mt[1])}${pad(+mt[2])}00`;
+    // +2h end (floating local time)
+    const endH = (+mt[1] + 2) % 24;
+    lines.push(`DTSTART:${start}`, `DTEND:${ymd(date)}T${pad(endH)}${pad(+mt[2])}00`);
+  } else {
+    const d = new Date(date + "T00:00:00");
+    const next = new Date(d.getTime() + 86400000).toISOString().slice(0, 10);
+    lines.push(`DTSTART;VALUE=DATE:${ymd(date)}`, `DTEND;VALUE=DATE:${ymd(next)}`);
+  }
+  lines.push(`SUMMARY:${esc(summary)}`);
+  if (location) lines.push(`LOCATION:${esc(location)}`);
+  if (desc) lines.push(`DESCRIPTION:${esc(desc)}`);
+  lines.push("END:VEVENT");
+  return lines.join("\r\n");
+}
+
+/** Read-only iCalendar feed of a studio's shoots + schedule notes. */
+export async function GET(_req: Request, { params }: { params: { token: string } }) {
+  const db = createAdminClient();
+  const { data: owner } = await db.from("profiles").select("id, full_name").eq("calendar_token", params.token).maybeSingle();
+  if (!owner) return new Response("Not found", { status: 404 });
+
+  const [{ data: contracts }, { data: events }] = await Promise.all([
+    db.from("studio_contracts").select("id, title, client_name, event_date, event_time, location, status").eq("owner_id", owner.id).not("event_date", "is", null).neq("status", "cancelled"),
+    db.from("studio_events").select("id, title, event_date, event_time, note").eq("owner_id", owner.id),
+  ]);
+
+  const now = new Date();
+  const body: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Vieetjk//Studio//VI",
+    "CALSCALE:GREGORIAN",
+    `X-WR-CALNAME:${esc((owner.full_name || "Studio") + " — Lịch chụp")}`,
+  ];
+  for (const c of (contracts ?? []) as Array<{ id: string; title: string; client_name: string | null; event_date: string; event_time: string | null; location: string | null }>) {
+    body.push(vevent(`c-${c.id}`, c.event_date, c.event_time, c.title + (c.client_name ? ` · ${c.client_name}` : ""), c.location, null, now));
+  }
+  for (const e of (events ?? []) as Array<{ id: string; title: string; event_date: string; event_time: string | null; note: string | null }>) {
+    body.push(vevent(`e-${e.id}`, e.event_date, e.event_time, e.title, null, e.note, now));
+  }
+  body.push("END:VCALENDAR");
+
+  return new Response(body.join("\r\n"), {
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    },
+  });
+}
