@@ -57,6 +57,7 @@ export default function DashboardHeader({
           { href: "/dashboard/studio/payroll", label: "Bảng lương" },
           { href: "/dashboard/studio/reports", label: "Thu chi" },
           { href: "/dashboard/studio/crew", label: "Sổ thợ" },
+          { href: "/dashboard/studio/equipment", label: "Thiết bị" },
           { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
         ]
       : kind === "img"

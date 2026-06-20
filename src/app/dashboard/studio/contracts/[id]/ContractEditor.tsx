@@ -42,6 +42,8 @@ import {
   type StudioCrew,
   type StudioEvent,
   type StudioExpense,
+  type StudioEquipment,
+  type ContractEquipment,
   type ShootType,
   type ContractStatus,
   type CrewRole,
@@ -86,6 +88,9 @@ export default function ContractEditor({
   initialTasks,
   initialExpenses,
   initialPlan,
+  equipmentRoster,
+  initialEquipment,
+  equipConflict,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -101,6 +106,9 @@ export default function ContractEditor({
   initialTasks: ContractTask[];
   initialExpenses: StudioExpense[];
   initialPlan: ContractPaymentPlan[];
+  equipmentRoster: StudioEquipment[];
+  initialEquipment: ContractEquipment[];
+  equipConflict: Record<string, string>;
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -151,6 +159,8 @@ export default function ContractEditor({
   const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today() });
   const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
+  const [equipment, setEquipment] = useState<ContractEquipment[]>(initialEquipment);
+  const [equipName, setEquipName] = useState("");
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
@@ -459,6 +469,24 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     setPlan((p) => p.filter((x) => x.id !== id));
   }
   const todayStr = today();
+
+  // ── Equipment ──────────────────────────────────────────────────
+  async function addEquipment(name: string, equipmentId: string | null) {
+    if (!name.trim()) return;
+    const { data } = await supabase
+      .from("contract_equipment")
+      .insert({ contract_id: contract.id, equipment_id: equipmentId, name: name.trim() })
+      .select("*")
+      .single();
+    if (data) {
+      setEquipment((p) => [...p, data as ContractEquipment]);
+      setEquipName("");
+    }
+  }
+  async function deleteEquipment(id: string) {
+    await supabase.from("contract_equipment").delete().eq("id", id);
+    setEquipment((p) => p.filter((e) => e.id !== id));
+  }
 
   // ── Studio counter-signature ───────────────────────────────────
   async function saveStudioSignature() {
@@ -1068,6 +1096,44 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
               Thợ tự nhập SĐT tại {studioUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
             </p>
+          </div>
+
+          {/* Equipment */}
+          <div className="card p-6">
+            <h2 className="mb-1 font-serif text-lg font-medium">Thiết bị</h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Gán máy/lens cho buổi này — cảnh báo nếu trùng buổi khác cùng ngày.</p>
+            {equipmentRoster.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <span className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Chọn nhanh:</span>
+                {equipmentRoster.map((eq) => (
+                  <button key={eq.id} onClick={() => addEquipment(eq.name, eq.id)} className="rounded-full px-2.5 py-1 text-xs" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                    + {eq.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {equipment.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa gán thiết bị nào.</p>
+            ) : (
+              <ul className="space-y-2">
+                {equipment.map((eq) => {
+                  const conflict = eq.equipment_id ? equipConflict[eq.equipment_id] : null;
+                  return (
+                    <li key={eq.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                      <div>
+                        <p className="text-sm font-medium">{eq.name}</p>
+                        {conflict && <p className="text-[11px]" style={{ color: "#d99" }}>⚠ {conflict} (ngày {f.event_date})</p>}
+                      </div>
+                      <button onClick={() => deleteEquipment(eq.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="mt-3 flex gap-2">
+              <input className="input" placeholder="Hoặc nhập thiết bị tự do…" value={equipName} onChange={(e) => setEquipName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addEquipment(equipName, null); }} />
+              <button onClick={() => addEquipment(equipName, null)} className="btn-ghost shrink-0"><Plus size={15} /></button>
+            </div>
           </div>
 
           {/* Studio counter-signature (Bên A) */}

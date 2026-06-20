@@ -752,6 +752,42 @@ alter table public.studio_contracts add column if not exists source text; -- fac
 alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
 create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
 
+-- Equipment roster (sổ thiết bị) + per-contract assignment (tránh trùng máy/lens).
+create table if not exists public.studio_equipment (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  name       text not null default '',
+  category   text,
+  note       text,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists studio_equipment_owner_idx on public.studio_equipment (owner_id);
+alter table public.studio_equipment enable row level security;
+drop policy if exists studio_equipment_owner_all on public.studio_equipment;
+create policy studio_equipment_owner_all on public.studio_equipment
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+create table if not exists public.contract_equipment (
+  id           uuid primary key default gen_random_uuid(),
+  contract_id  uuid not null references public.studio_contracts (id) on delete cascade,
+  equipment_id uuid references public.studio_equipment (id) on delete set null,
+  name         text not null default '',
+  created_at   timestamptz not null default now()
+);
+create index if not exists contract_equipment_contract_idx on public.contract_equipment (contract_id);
+alter table public.contract_equipment enable row level security;
+drop policy if exists contract_equipment_owner_all on public.contract_equipment;
+create policy contract_equipment_owner_all on public.contract_equipment
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
 -- Planned payment schedule (lịch thu nhiều đợt có ngày đến hạn). Separate from
 -- contract_payments (actual receipts) — drives the "sắp đến hạn thu" reminder.
 create table if not exists public.contract_payment_plan (

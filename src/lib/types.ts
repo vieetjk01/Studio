@@ -313,6 +313,24 @@ export interface ContractPayment {
   created_at: string;
 }
 
+export interface StudioEquipment {
+  id: string;
+  owner_id: string;
+  name: string;
+  category: string | null;
+  note: string | null;
+  active: boolean;
+  created_at: string;
+}
+
+export interface ContractEquipment {
+  id: string;
+  contract_id: string;
+  equipment_id: string | null;
+  name: string;
+  created_at: string;
+}
+
 export interface ContractPaymentPlan {
   id: string;
   contract_id: string;
