@@ -25,7 +25,7 @@ export default function PackageCompare({
   const topPrice = Math.max(...items.map((i) => i.price));
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
       {items.map((it) => {
           const featured = it.price === topPrice && items.length > 1;
           const bookHref = bookingToken

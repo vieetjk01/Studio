@@ -271,12 +271,9 @@ export default function ProfileHome({
       {/* Price list — condensed (name + short note, no price); details on /banggia */}
       {priceLists.length > 0 && (
         <section id="bang-gia" className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] scroll-mt-20 px-6 md:px-10">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="eyebrow mb-1.5">Bảng giá</p>
-              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
-            </div>
-            <Link href="/banggia" className="text-sm" style={{ color: "var(--accent)" }}>Xem bảng giá chi tiết →</Link>
+          <div className="mb-5">
+            <p className="eyebrow mb-1.5">Bảng giá</p>
+            <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
           </div>
 
           <div className="space-y-10">
