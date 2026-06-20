@@ -1,9 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { vnd, type PricelistItem } from "@/lib/types";
+
+// Mẫu bảng giá cưới (tham khảo) — studio chỉnh sửa sau.
+const WEDDING_SEED: { name: string; price: number; unit: string; category: string; description: string }[] = [
+  { category: "Gói chụp cơ bản", name: "Truyền thống", price: 2500000, unit: "/ gói", description: "Giao toàn bộ file gốc\nChỉnh sửa 100 file" },
+  { category: "Gói chụp cơ bản", name: "Phóng sự x1", price: 4000000, unit: "/ gói", description: "1 thợ chụp nhà gái\nGiao toàn bộ file gốc\n150–200 hình chỉnh sửa" },
+  { category: "Gói chụp cơ bản", name: "Phóng sự x2", price: 6000000, unit: "/ gói", description: "1 thợ nhà gái, 1 thợ nhà trai\nGiao toàn bộ file gốc\nChỉnh sửa 300–400 hình" },
+  { category: "Gói quay phóng sự", name: "Gói quay cơ bản", price: 4000000, unit: "/ gói", description: "1 thợ quay (Sáng → trưa)\nGiao toàn bộ file\nVideo chỉnh sửa 3–5 phút" },
+  { category: "Gói quay phóng sự", name: "Gói quay Plus", price: 7500000, unit: "/ gói", description: "2 thợ quay nhà gái & nhà trai (Sáng → trưa)\n1 flycam (nếu khu vực cho phép bay)\nVideo chỉnh sửa 5–7 phút (có thể yêu cầu)" },
+  { category: "Gói quay phóng sự", name: "Gói Combo", price: 13500000, unit: "/ gói", description: "2 thợ chụp, 2 thợ quay, 1 flycam (Sáng → trưa)\nGiao toàn bộ file gốc\nChỉnh sửa 300–400 hình\nVideo 5–7 phút (theo yêu cầu)\nTặng Album 150 ảnh" },
+  { category: "Phát sinh thêm", name: "Chi phí phát sinh", price: 0, unit: "", description: "In album: trợ giá 500k/album 100 hình, in thêm 8.000đ/hình\nĐãi trước 1 ngày: +1.000.000đ\nPhát sinh tiệc tối: +500.000đ cho gói chụp\nChưa gồm phí đi lại nếu ở xa / ngoại tỉnh" },
+  { category: "Lưu ý", name: "Điều khoản", price: 0, unit: "", description: "Cọc trước 20% hợp đồng sau khi chốt gói\nThanh toán toàn bộ sau khi giao file gốc\nFile gốc được lưu trữ trong 30 ngày kể từ ngày giao" },
+];
 
 export default function PricingManager({
   ownerId,
@@ -41,6 +53,14 @@ export default function PricingManager({
       setList((p) => [...p, data as PricelistItem]);
       setF({ name: "", price: 0, unit: "", category: "", description: "" });
     }
+  }
+
+  async function seedWedding() {
+    setBusy(true);
+    const rows = WEDDING_SEED.map((s, i) => ({ ...s, owner_id: ownerId, position: list.length + i }));
+    const { data, error } = await supabase.from("studio_pricelist").insert(rows).select("*");
+    setBusy(false);
+    if (!error && data) setList((p) => [...p, ...(data as PricelistItem[])]);
   }
 
   async function toggleActive(it: PricelistItem) {
@@ -91,7 +111,10 @@ export default function PricingManager({
 
         <div className="lg:col-span-2">
           {list.length === 0 ? (
-            <div className="card flex items-center justify-center py-16 text-sm" style={{ color: "var(--text3)" }}>Chưa có mục nào trong bảng giá.</div>
+            <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
+              <p>Chưa có mục nào trong bảng giá.</p>
+              <button onClick={seedWedding} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá cưới</button>
+            </div>
           ) : (
             <div className="space-y-2">
               {list.map((it) => (
@@ -100,8 +123,10 @@ export default function PricingManager({
                     <p className="font-medium">
                       {it.name} {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
                     </p>
-                    <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(it.price)}<span className="text-xs" style={{ color: "var(--text3)" }}>{it.unit ? ` ${it.unit}` : ""}</span></p>
-                    {it.description && <p className="text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
+                    {it.price > 0 && (
+                      <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(it.price)}<span className="text-xs" style={{ color: "var(--text3)" }}>{it.unit ? ` ${it.unit}` : ""}</span></p>
+                    )}
+                    {it.description && <p className="whitespace-pre-line text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button onClick={() => toggleActive(it)} className="btn-ghost px-2.5 py-1.5 text-xs" title={it.active ? "Đang hiện" : "Đang ẩn"}>

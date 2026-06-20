@@ -57,12 +57,14 @@ export default async function PublicPricelist({ params }: { params: { token: str
                   <div key={it.id} className="flex items-start justify-between gap-4 p-4" style={{ borderColor: "var(--border)" }}>
                     <div>
                       <p className="font-medium">{it.name}</p>
-                      {it.description && <p className="mt-0.5 text-sm" style={{ color: "var(--text2)" }}>{it.description}</p>}
+                      {it.description && <p className="mt-0.5 whitespace-pre-line text-sm" style={{ color: "var(--text2)" }}>{it.description}</p>}
                     </div>
-                    <p className="shrink-0 font-serif text-lg font-medium">
-                      {vnd(it.price)}
-                      {it.unit && <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span>}
-                    </p>
+                    {it.price > 0 && (
+                      <p className="shrink-0 font-serif text-lg font-medium">
+                        {vnd(it.price)}
+                        {it.unit && <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span>}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
