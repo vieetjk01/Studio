@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Check, ExternalLink, Globe } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
@@ -11,8 +11,9 @@ import {
   type SiteBlockType,
   type SiteTheme,
 } from "@/lib/types";
+import { SITE_TEMPLATES } from "@/lib/site-templates";
 
-const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "contact"];
+const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "video", "social", "faq", "contact"];
 
 // Which config fields each block type exposes in the editor.
 const BLOCK_FIELDS: Record<SiteBlockType, { key: string; label: string; area?: boolean }[]> = {
@@ -34,6 +35,21 @@ const BLOCK_FIELDS: Record<SiteBlockType, { key: string; label: string; area?: b
     { key: "email", label: "Email" },
     { key: "address", label: "Địa chỉ" },
   ],
+  video: [
+    { key: "heading", label: "Tiêu đề" },
+    { key: "url", label: "Link YouTube / Vimeo" },
+  ],
+  social: [
+    { key: "heading", label: "Tiêu đề" },
+    { key: "facebook", label: "Facebook (URL)" },
+    { key: "instagram", label: "Instagram (URL)" },
+    { key: "tiktok", label: "TikTok (URL)" },
+    { key: "youtube", label: "YouTube (URL)" },
+  ],
+  faq: [
+    { key: "heading", label: "Tiêu đề" },
+    { key: "items", label: "Mỗi dòng: Câu hỏi | Câu trả lời", area: true },
+  ],
 };
 
 export default function SiteManager({
@@ -54,6 +70,7 @@ export default function SiteManager({
   const [published, setPublished] = useState(site.published);
   const [theme, setTheme] = useState<SiteTheme>(site.theme || {});
   const [blocks, setBlocks] = useState<SiteBlock[]>(initialBlocks);
+  const [dragId, setDragId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -122,16 +139,31 @@ export default function SiteManager({
     await supabase.from("site_blocks").delete().eq("id", id);
   }
 
-  async function move(i: number, dir: -1 | 1) {
-    const j = i + dir;
-    if (j < 0 || j >= blocks.length) return;
+  async function reorder(targetId: string) {
+    const src = dragId;
+    setDragId(null);
+    if (!src || src === targetId) return;
+    const from = blocks.findIndex((b) => b.id === src);
+    const to = blocks.findIndex((b) => b.id === targetId);
+    if (from < 0 || to < 0) return;
     const arr = [...blocks];
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
     setBlocks(arr);
-    await Promise.all([
-      supabase.from("site_blocks").update({ position: i }).eq("id", arr[i].id),
-      supabase.from("site_blocks").update({ position: j }).eq("id", arr[j].id),
-    ]);
+    await Promise.all(arr.map((b, i) => supabase.from("site_blocks").update({ position: i }).eq("id", b.id)));
+  }
+
+  async function applyTemplate(key: string) {
+    const tpl = SITE_TEMPLATES.find((t) => t.key === key);
+    if (!tpl) return;
+    if (blocks.length && !confirm("Áp dụng mẫu sẽ đổi màu sắc và thêm các khối của mẫu vào trang. Tiếp tục?")) return;
+    setTheme(tpl.theme);
+    await supabase.from("sites").update({ theme: tpl.theme }).eq("id", site.id);
+    const base = blocks.length;
+    const rows = tpl.blocks.map((b, i) => ({ site_id: site.id, type: b.type, position: base + i, config: b.config }));
+    const { data } = await supabase.from("site_blocks").insert(rows).select("*");
+    if (data) setBlocks((p) => [...p, ...(data as SiteBlock[])]);
+    toast("Đã áp dụng mẫu.");
   }
 
   return (
@@ -146,9 +178,12 @@ export default function SiteManager({
           <h1 className="font-serif text-3xl font-medium">Trang giới thiệu của bạn</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Tạo trang portfolio riêng trên tên miền phụ, kéo nội dung từ album & bảng giá sẵn có.</p>
         </div>
-        {liveUrl && published && (
-          <a href={liveUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><ExternalLink size={14} /> Xem trang</a>
-        )}
+        <div className="flex gap-2">
+          <a href="/dashboard/site/preview" target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><Eye size={14} /> Xem trước</a>
+          {liveUrl && published && (
+            <a href={liveUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><ExternalLink size={14} /> Xem trang thật</a>
+          )}
+        </div>
       </div>
 
       {/* Site settings */}
@@ -190,11 +225,23 @@ export default function SiteManager({
         )}
       </div>
 
+      {/* Templates */}
+      <div className="card mb-6 p-6">
+        <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> Mẫu có sẵn</h2>
+        <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Áp dụng nhanh một bố cục + màu sắc, rồi chỉnh lại tuỳ ý.</p>
+        <div className="flex flex-wrap gap-2">
+          {SITE_TEMPLATES.map((tp) => (
+            <button key={tp.key} onClick={() => applyTemplate(tp.key)} className="rounded-full px-3 py-1.5 text-xs" style={{ border: "1px solid var(--border2)", color: "var(--text2)" }}>
+              {tp.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Blocks */}
       <div className="card p-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-serif text-lg font-medium">Nội dung trang</h2>
-        </div>
+        <h2 className="mb-1 font-serif text-lg font-medium">Nội dung trang</h2>
+        <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Kéo thả <GripVertical size={12} className="inline" /> để đổi thứ tự khối. Bấm để thêm khối:</p>
         <div className="mb-4 flex flex-wrap gap-1.5">
           {BLOCK_TYPES.map((tp) => (
             <button key={tp} onClick={() => addBlock(tp)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text2)" }}>
@@ -207,13 +254,22 @@ export default function SiteManager({
           <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có khối nào. Bấm thêm khối ở trên (vd: Ảnh bìa → Bộ sưu tập → Bảng giá → Liên hệ).</p>
         ) : (
           <div className="space-y-3">
-            {blocks.map((b, i) => (
-              <div key={b.id} className="rounded-xl p-4" style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: b.visible ? 1 : 0.55 }}>
+            {blocks.map((b) => (
+              <div
+                key={b.id}
+                draggable
+                onDragStart={() => setDragId(b.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => reorder(b.id)}
+                onDragEnd={() => setDragId(null)}
+                className="rounded-xl p-4"
+                style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: dragId === b.id ? 0.4 : b.visible ? 1 : 0.55 }}
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="font-medium">{SITE_BLOCK_LABEL[b.type]}</p>
+                  <p className="flex items-center gap-2 font-medium">
+                    <GripVertical size={15} style={{ color: "var(--text3)", cursor: "grab" }} /> {SITE_BLOCK_LABEL[b.type]}
+                  </p>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => move(i, -1)} disabled={i === 0} className="btn-ghost px-2 py-1" title="Lên"><ChevronUp size={14} /></button>
-                    <button onClick={() => move(i, 1)} disabled={i === blocks.length - 1} className="btn-ghost px-2 py-1" title="Xuống"><ChevronDown size={14} /></button>
                     <button onClick={() => toggleVisible(b)} className="btn-ghost px-2 py-1" title={b.visible ? "Đang hiện" : "Đang ẩn"}>{b.visible ? <Eye size={14} /> : <EyeOff size={14} />}</button>
                     <button onClick={() => removeBlock(b.id)} className="btn-ghost px-2 py-1"><Trash2 size={14} /></button>
                   </div>

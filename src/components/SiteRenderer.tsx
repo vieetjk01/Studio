@@ -1,17 +1,20 @@
 import { mainUrl } from "@/lib/hosts";
-import { vnd, type Site, type SiteBlock } from "@/lib/types";
-
-export type SiteData = {
-  site: Site;
-  blocks: SiteBlock[];
-  owner: { full_name: string | null; pl_phone: string | null; pl_facebook: string | null; booking_token: string | null } | null;
-  albums: { id: string; slug: string; title: string; cover_url: string | null }[];
-  pricelist: { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null }[];
-  feedback: { id: string; client_name: string | null; rating: number | null; content: string }[];
-};
+import { vnd, type SiteBlock } from "@/lib/types";
+import type { SiteData } from "@/lib/site-loader";
 
 const str = (v: unknown, fallback = "") => (typeof v === "string" && v.trim() ? v : fallback);
 const lines = (v: unknown) => str(v).split("\n").map((s) => s.trim()).filter(Boolean);
+
+/** Extract a YouTube/Vimeo embed URL from a pasted link. */
+function embedUrl(raw: string): string | null {
+  const u = raw.trim();
+  if (!u) return null;
+  const yt = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/i);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vm = u.match(/vimeo\.com\/(\d+)/i);
+  if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+  return null;
+}
 
 export default function SiteRenderer({ data }: { data: SiteData }) {
   const { site, blocks, owner } = data;
@@ -20,7 +23,6 @@ export default function SiteRenderer({ data }: { data: SiteData }) {
   const fontVar = t.font === "sans" ? "var(--font-hanken)" : "var(--font-cormorant)";
 
   const wrap = {
-    // Theme-driven tokens (configurable per tenant).
     "--s-bg": t.bg || "#0c0c0d",
     "--s-text": t.text || "#ececec",
     "--s-accent": t.accent || "#c7a76b",
@@ -172,6 +174,55 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
           {owner?.booking_token && (
             <a href={mainUrl(`/book/${owner.booking_token}`)} style={ctaStyle()}>Đặt lịch ngay</a>
           )}
+        </Section>
+      );
+    }
+    case "video": {
+      const url = embedUrl(str(c.url));
+      if (!url) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading, "Video")}>
+          <div style={{ position: "relative", paddingBottom: "56.25%", borderRadius: 14, overflow: "hidden" }}>
+            <iframe src={url} title="video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
+          </div>
+        </Section>
+      );
+    }
+    case "social": {
+      const links: { label: string; url: string }[] = [
+        { label: "Facebook", url: str(c.facebook) },
+        { label: "Instagram", url: str(c.instagram) },
+        { label: "TikTok", url: str(c.tiktok) },
+        { label: "YouTube", url: str(c.youtube) },
+      ].filter((l) => l.url);
+      if (links.length === 0) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading, "Theo dõi")}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {links.map((l) => (
+              <a key={l.label} href={l.url} target="_blank" rel="noreferrer" style={{ padding: "10px 20px", borderRadius: 999, border: "1px solid var(--s-accent)", color: "inherit", textDecoration: "none" }}>
+                {l.label}
+              </a>
+            ))}
+          </div>
+        </Section>
+      );
+    }
+    case "faq": {
+      const items = lines(c.items)
+        .map((line) => { const [q, ...a] = line.split("|"); return { q: q.trim(), a: a.join("|").trim() }; })
+        .filter((x) => x.q);
+      if (items.length === 0) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading, "Câu hỏi thường gặp")}>
+          <div style={{ display: "grid", gap: 12 }}>
+            {items.map((it, i) => (
+              <div key={i} style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,.12)", padding: 18 }}>
+                <p style={{ fontWeight: 600 }}>{it.q}</p>
+                {it.a && <p style={{ marginTop: 6, opacity: 0.85, lineHeight: 1.6 }}>{it.a}</p>}
+              </div>
+            ))}
+          </div>
         </Section>
       );
     }
