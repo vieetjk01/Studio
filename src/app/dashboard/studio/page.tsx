@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
+import VietQRButton from "@/components/VietQR";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -47,6 +48,12 @@ export default async function StudioOverview() {
   if (!profile) return <NotStudio />;
 
   const supabase = createClient();
+  const bank = {
+    bin: (profile.pl_bank_bin as string | null) ?? null,
+    account: (profile.pl_bank_account as string | null) ?? null,
+    holder: (profile.pl_bank_holder as string | null) ?? null,
+    name: (profile.pl_bank_name as string | null) ?? null,
+  };
   let cq = supabase
     .from("studio_contracts")
     .select("*, contract_items(qty, unit_price), contract_edit_requests(status), contract_payments(amount), contract_crew(id, name, phone, role, status)")
@@ -57,6 +64,7 @@ export default async function StudioOverview() {
   type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
   const list = (contracts ?? []) as Array<{
     id: string;
+    code: string | null;
     title: string;
     client_name: string | null;
     client_phone: string | null;
@@ -245,6 +253,7 @@ export default async function StudioOverview() {
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>{c.client_name || "—"} · còn {vnd(due)}</p>
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
+                      <VietQRButton bank={bank} amount={due} addInfo={(c.code || c.title || "").slice(0, 25)} label="QR" />
                       <ZaloButton
                         phone={c.client_phone}
                         label="Zalo"
