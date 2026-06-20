@@ -50,6 +50,11 @@ export default function DashboardHeader({
     effectivePlan(profile.plan, profile.plan_expires_at) === "studio" ||
     !!profile.studio_owner_id;
 
+  // Personal site builder: photographer + studio plans (and admins).
+  const hasSite =
+    profile.role === "admin" ||
+    ["photographer", "studio"].includes(effectivePlan(profile.plan, profile.plan_expires_at));
+
   // Effective studio role of the logged-in user (for menu gating).
   const studioRole = profile.studio_owner_id
     ? profile.studio_role || "staff"
@@ -124,6 +129,7 @@ export default function DashboardHeader({
             : []),
           { href: "/dashboard/filter", label: t("filterPhotos") },
           { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
+          ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web" }] : []),
           ...(hasStudio ? [{ href: studioUrl("/dashboard/studio"), label: "Studio", external: true }] : []),
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),
           ...(profile.role === "admin"

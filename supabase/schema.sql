@@ -1195,6 +1195,47 @@ create policy contract_template_items_owner_all on public.contract_template_item
   with check (exists (select 1 from public.contract_templates t where t.id = template_id and public.is_studio_member(t.owner_id)));
 
 -- ============================================================================
+-- Site builder (multi-tenant portfolio sites on <sub>.vieetjk.com)
+-- ============================================================================
+-- One public site per account (photographer / studio plans).
+create table if not exists public.sites (
+  id            uuid primary key default gen_random_uuid(),
+  owner_id      uuid not null unique references public.profiles (id) on delete cascade,
+  subdomain     text unique,                 -- <subdomain>.vieetjk.com
+  custom_domain text unique,                 -- phase 2 (studio)
+  template      text not null default 'classic',
+  theme         jsonb not null default '{}'::jsonb,   -- { accent, bg, font, ... }
+  seo           jsonb not null default '{}'::jsonb,   -- { title, description, og_image }
+  published     boolean not null default false,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists sites_subdomain_idx on public.sites (subdomain);
+create index if not exists sites_custom_domain_idx on public.sites (custom_domain);
+alter table public.sites enable row level security;
+drop policy if exists sites_owner_all on public.sites;
+create policy sites_owner_all on public.sites
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+-- Ordered content blocks that make up a site (the drag-and-drop builder model).
+create table if not exists public.site_blocks (
+  id          uuid primary key default gen_random_uuid(),
+  site_id     uuid not null references public.sites (id) on delete cascade,
+  type        text not null,                 -- hero | gallery | about | pricing | testimonials | contact | gap | ...
+  position    integer not null default 0,
+  visible     boolean not null default true,
+  config      jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists site_blocks_site_idx on public.site_blocks (site_id, position);
+alter table public.site_blocks enable row level security;
+drop policy if exists site_blocks_owner_all on public.site_blocks;
+create policy site_blocks_owner_all on public.site_blocks
+  for all using (exists (select 1 from public.sites s where s.id = site_id and (s.owner_id = auth.uid() or public.is_admin())))
+  with check (exists (select 1 from public.sites s where s.id = site_id and (s.owner_id = auth.uid() or public.is_admin())));
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,
 --     can_zip = true, can_notes = true, monthly_album_limit = null

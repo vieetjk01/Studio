@@ -49,6 +49,23 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const { pathname, search } = request.nextUrl;
 
+  // ── Tenant sites: <subdomain>.vieetjk.com → /site/<subdomain> ─────────────
+  // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
+  if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`)) {
+    const systemHosts = new Set(
+      [MAIN_HOST, APP_HOST, IMG_HOST, STUDIO_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
+    );
+    if (!systemHosts.has(host)) {
+      const sub = host.slice(0, -(`.${MAIN_HOST}`.length));
+      if (sub && !sub.includes(".")) {
+        // Public tenant page (single page in v1); ignore deeper paths.
+        const url = request.nextUrl.clone();
+        url.pathname = `/site/${sub}`;
+        return NextResponse.rewrite(url);
+      }
+    }
+  }
+
   // ── Host-based routing ────────────────────────────────────────
   if (MAIN_HOST && APP_HOST && host) {
     // App routes requested on the public site -> send to the app subdomain.

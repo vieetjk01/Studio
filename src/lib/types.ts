@@ -551,6 +551,64 @@ export const EXPENSE_CATEGORY_LABEL: Record<string, string> = {
   other: "Khác",
 };
 
+// ── Site builder (multi-tenant portfolio sites) ─────────────────────────────
+
+export type SiteTheme = {
+  accent?: string;   // primary accent colour
+  bg?: string;       // background
+  text?: string;
+  font?: "serif" | "sans";
+};
+export type SiteSeo = { title?: string; description?: string; og_image?: string };
+
+export interface Site {
+  id: string;
+  owner_id: string;
+  subdomain: string | null;
+  custom_domain: string | null;
+  template: string;
+  theme: SiteTheme;
+  seo: SiteSeo;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SiteBlockType =
+  | "hero"
+  | "gallery"
+  | "about"
+  | "pricing"
+  | "testimonials"
+  | "contact";
+
+export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
+  hero: "Ảnh bìa / Giới thiệu",
+  gallery: "Bộ sưu tập ảnh",
+  about: "Về tôi / studio",
+  pricing: "Bảng giá",
+  testimonials: "Đánh giá khách",
+  contact: "Liên hệ & đặt lịch",
+};
+
+export interface SiteBlock {
+  id: string;
+  site_id: string;
+  type: SiteBlockType;
+  position: number;
+  visible: boolean;
+  // Free-form per-block config (heading, text, image url, selected album ids…).
+  config: Record<string, unknown>;
+  created_at: string;
+}
+
+/** Reserved subdomains that tenants may not claim. */
+export const RESERVED_SUBDOMAINS = new Set([
+  "www", "app", "album", "img", "image", "images", "studio", "api", "admin",
+  "mail", "smtp", "ftp", "cdn", "static", "assets", "blog", "help", "support",
+  "dashboard", "login", "auth", "vieetjk", "test", "dev", "staging",
+]);
+
 /** Sum of a list of payment amounts. */
 export function sumAmounts(rows: { amount: number }[]): number {
   return rows.reduce((s, r) => s + (r.amount || 0), 0);
