@@ -5,6 +5,7 @@ import { requireStudio } from "@/lib/auth-guards";
 import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
+import AutoEmailToggle from "@/components/AutoEmailToggle";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -54,10 +55,14 @@ export default async function StudioOverview() {
     holder: (profile.pl_bank_holder as string | null) ?? null,
     name: (profile.pl_bank_name as string | null) ?? null,
   };
+  // Explicit columns + drop cancelled at the DB (less payload than select *).
   let cq = supabase
     .from("studio_contracts")
-    .select("*, contract_items(qty, unit_price), contract_edit_requests(status), contract_payments(amount), contract_crew(id, name, phone, role, status)")
-    .eq("owner_id", profile.id);
+    .select(
+      "id, code, title, client_name, client_phone, client_messenger, location, event_date, event_time, delivery_due, status, shoot_type, client_signed_at, updated_at, contract_items(qty, unit_price), contract_edit_requests(status), contract_payments(amount), contract_crew(id, name, phone, role, status)"
+    )
+    .eq("owner_id", profile.id)
+    .neq("status", "cancelled");
   if (profile.actingRole === "staff") cq = cq.eq("assigned_to", profile.actingUserId);
   const { data: contracts } = await cq.order("event_date", { ascending: true, nullsFirst: false });
 
@@ -75,6 +80,8 @@ export default async function StudioOverview() {
     delivery_due: string | null;
     status: ContractStatus;
     shoot_type: keyof typeof SHOOT_TYPE_LABEL;
+    client_signed_at: string | null;
+    updated_at: string;
     contract_items: { qty: number; unit_price: number }[];
     contract_edit_requests: { status: string }[];
     contract_payments: { amount: number }[];
@@ -106,6 +113,12 @@ export default async function StudioOverview() {
   const pendingCrew = list
     .filter((c) => c.status !== "cancelled")
     .flatMap((c) => (c.contract_crew || []).filter((cr) => cr.status === "pending").map((cr) => ({ c, cr })));
+
+  // Contracts sent to the client but not signed yet (oldest waiting first).
+  const unsigned = list
+    .filter((c) => c.status === "sent" && !c.client_signed_at)
+    .map((c) => ({ c, days: Math.max(0, Math.floor((Date.now() - new Date(c.updated_at).getTime()) / 86400000)) }))
+    .sort((a, b) => b.days - a.days);
 
   // Photo deliveries past their due date and not yet completed.
   const lateDeliveries = list
@@ -196,9 +209,34 @@ export default async function StudioOverview() {
         ))}
       </div>
 
-      {/* Reminders: debts + crew awaiting response + late deliveries + due installments */}
-      {(debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (
+      {/* Reminders: unsigned + debts + crew awaiting response + late deliveries + due installments */}
+      {(unsigned.length > 0 || debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (
         <div className="mb-8 grid gap-6 lg:grid-cols-2">
+          {unsigned.length > 0 && (
+            <div className="card p-6" style={{ borderColor: "#6ba3c755" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#6ba3c7" }}>
+                <FileText size={18} /> Hợp đồng chờ khách ký
+              </h2>
+              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{unsigned.length} hợp đồng đã gửi nhưng chưa ký</p>
+              <ul className="space-y-2">
+                {unsigned.slice(0, 6).map(({ c, days }) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{c.title}</p>
+                      <p className="text-[11px]" style={{ color: days >= 3 ? "#c7a76b" : "var(--text3)" }}>
+                        {c.client_name || "—"} · đã gửi {days > 0 ? `${days} ngày trước` : "hôm nay"}
+                      </p>
+                    </Link>
+                    <ZaloButton
+                      phone={c.client_phone}
+                      label="Nhắc ký"
+                      message={`Xin chào ${c.client_name || "anh/chị"}, studio gửi lại hợp đồng "${c.title}" để anh/chị xem & ký xác nhận giúp em nhé. Cảm ơn ạ!`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {duePlan.length > 0 && (
             <div className="card p-6" style={{ borderColor: "#c7a76b55" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>
@@ -363,6 +401,10 @@ export default async function StudioOverview() {
           </Link>
         </div>
       </div>
+
+      {profile.actingRole !== "staff" && (
+        <AutoEmailToggle ownerId={profile.id} initial={!!profile.auto_client_emails} />
+      )}
     </div>
   );
 }

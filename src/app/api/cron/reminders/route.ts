@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
+import { mainUrl } from "@/lib/hosts";
 import { vnd } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +22,12 @@ export async function GET(req: NextRequest) {
   const today = ymd(nowVN);
   const tomorrow = ymd(new Date(nowVN.getTime() + 24 * 3600 * 1000));
 
-  const [shootsRes, duesRes, lateRes] = await Promise.all([
+  const since24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
+  const [shootsRes, duesRes, lateRes, doneRes] = await Promise.all([
     db
       .from("studio_contracts")
-      .select("owner_id, title, client_name, event_time, location, contract_crew(name, role)")
+      .select("owner_id, title, client_name, client_email, event_time, location, contract_crew(name, role)")
       .eq("event_date", tomorrow)
       .neq("status", "cancelled"),
     db
@@ -40,15 +43,22 @@ export async function GET(req: NextRequest) {
       .lt("delivery_due", today)
       .neq("status", "completed")
       .neq("status", "cancelled"),
+    db
+      .from("studio_contracts")
+      .select("owner_id, title, client_name, client_email, client_token")
+      .eq("status", "completed")
+      .gte("updated_at", since24h),
   ]);
 
-  type Shoot = { owner_id: string; title: string; client_name: string | null; event_time: string | null; location: string | null; contract_crew: { name: string; role: string }[] };
+  type Shoot = { owner_id: string; title: string; client_name: string | null; client_email: string | null; event_time: string | null; location: string | null; contract_crew: { name: string; role: string }[] };
   type Due = { amount: number; label: string; due_date: string; contract: { owner_id: string; title: string } | null };
   type Late = { owner_id: string; title: string; delivery_due: string };
+  type Done = { owner_id: string; title: string; client_name: string | null; client_email: string | null; client_token: string };
 
   const shoots = (shootsRes.data ?? []) as unknown as Shoot[];
   const dues = (duesRes.data ?? []) as unknown as Due[];
   const late = (lateRes.data ?? []) as unknown as Late[];
+  const done = (doneRes.data ?? []) as unknown as Done[];
 
   // Group everything by owner.
   type Bucket = { shoots: Shoot[]; dues: Due[]; late: Late[] };
@@ -62,11 +72,12 @@ export async function GET(req: NextRequest) {
   for (const d of dues) if (d.contract?.owner_id) bucket(d.contract.owner_id).dues.push(d);
   for (const l of late) bucket(l.owner_id).late.push(l);
 
-  const ownerIds = [...byOwner.keys()];
-  if (ownerIds.length === 0) return NextResponse.json({ ok: true, sent: 0, note: "nothing to remind" });
+  const allOwnerIds = [...new Set([...byOwner.keys(), ...shoots.map((s) => s.owner_id), ...done.map((d) => d.owner_id)])];
+  if (allOwnerIds.length === 0) return NextResponse.json({ ok: true, sent: 0, note: "nothing to remind" });
 
-  const { data: owners } = await db.from("profiles").select("id, email, full_name").in("id", ownerIds);
-  const ownerMap = new Map((owners ?? []).map((o) => [o.id as string, o as { id: string; email: string | null; full_name: string | null }]));
+  const { data: owners } = await db.from("profiles").select("id, email, full_name, auto_client_emails").in("id", allOwnerIds);
+  type OwnerRow = { id: string; email: string | null; full_name: string | null; auto_client_emails: boolean };
+  const ownerMap = new Map((owners ?? []).map((o) => [o.id as string, o as OwnerRow]));
 
   const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
   let sent = 0;
@@ -119,5 +130,34 @@ ${parts.join("")}
     results.push({ owner: ownerId, ok: r.ok, error: r.error });
   }
 
-  return NextResponse.json({ ok: true, sent, owners: results.length, results });
+  // ── Opt-in client emails: shoot reminders + review requests ──────────────
+  const optedIn = (id: string) => !!ownerMap.get(id)?.auto_client_emails;
+  let clientSent = 0;
+
+  for (const s of shoots) {
+    if (!s.client_email || !optedIn(s.owner_id)) continue;
+    const studio = ownerMap.get(s.owner_id)?.full_name || "Studio";
+    const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#222">
+<p>Xin chào ${esc(s.client_name || "anh/chị")},</p>
+<p>${esc(studio)} xin nhắc lịch chụp <b>ngày mai (${esc(tomorrow)})</b>${s.event_time ? ` lúc <b>${esc(s.event_time)}</b>` : ""}${s.location ? ` tại ${esc(s.location)}` : ""}.</p>
+<p>Hẹn gặp anh/chị ạ! 📸</p>
+<p style="color:#888;font-size:12px">Email tự động từ ${esc(studio)}.</p></div>`;
+    const r = await sendEmail({ to: s.client_email, subject: `Nhắc lịch chụp ngày mai — ${studio}`, html });
+    if (r.ok) clientSent++;
+  }
+
+  for (const c of done) {
+    if (!c.client_email || !optedIn(c.owner_id)) continue;
+    const studio = ownerMap.get(c.owner_id)?.full_name || "Studio";
+    const link = c.client_token ? mainUrl(`/c/${c.client_token}`) : "";
+    const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#222">
+<p>Xin chào ${esc(c.client_name || "anh/chị")},</p>
+<p>Cảm ơn anh/chị đã tin tưởng ${esc(studio)}! Nếu hài lòng, anh/chị dành chút thời gian <b>đánh giá</b> giúp studio nhé.</p>
+${link ? `<p><a href="${link}">Mở cổng &amp; đánh giá →</a> (mục “Đánh giá studio”)</p>` : ""}
+<p style="color:#888;font-size:12px">Email tự động từ ${esc(studio)}.</p></div>`;
+    const r = await sendEmail({ to: c.client_email, subject: `Cảm ơn & xin đánh giá — ${studio}`, html });
+    if (r.ok) clientSent++;
+  }
+
+  return NextResponse.json({ ok: true, sent, clientSent, owners: results.length });
 }

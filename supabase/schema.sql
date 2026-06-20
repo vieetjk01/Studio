@@ -881,6 +881,7 @@ alter table public.profiles add column if not exists pl_bank_holder  text;
 alter table public.profiles add column if not exists pl_bank_account text;
 alter table public.profiles add column if not exists pl_bank_name    text;
 alter table public.profiles add column if not exists pl_bank_bin     text;  -- VietQR (NAPAS) bank code, for payment QR generation
+alter table public.profiles add column if not exists auto_client_emails boolean not null default false;  -- opt-in: auto-email clients (shoot reminder, review request)
 
 create table if not exists public.studio_bookings (
   id             uuid primary key default gen_random_uuid(),
