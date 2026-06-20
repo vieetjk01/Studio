@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
@@ -51,6 +51,7 @@ export default function ContractView({ token }: { token: string }) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [selection, setSelection] = useState<Gallery | null>(null);
+  const [qr, setQr] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -71,6 +72,19 @@ export default function ContractView({ token }: { token: string }) {
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
+
+  // QR of this portal page (printed on the PDF)
+  useEffect(() => {
+    if (!contract) return;
+    (async () => {
+      try {
+        const QRCode = (await import("qrcode")).default;
+        setQr(await QRCode.toDataURL(window.location.href, { margin: 1, width: 240, color: { dark: "#111", light: "#ffffff" } }));
+      } catch {
+        /* QR is optional */
+      }
+    })();
+  }, [contract]);
 
   async function fetchContract(pw: string) {
     const res = await fetch(`/api/c/${token}`, {
@@ -425,6 +439,7 @@ export default function ContractView({ token }: { token: string }) {
         total={total}
         collected={collected}
         balance={balance}
+        qr={qr}
       />
     </>
   );
@@ -438,6 +453,7 @@ function PrintDoc({
   total,
   collected,
   balance,
+  qr,
 }: {
   contract: Contract;
   studioName: string;
@@ -446,6 +462,7 @@ function PrintDoc({
   total: number;
   collected: number;
   balance: number;
+  qr: string;
 }) {
   return (
     <div className="print-doc" style={{ display: "none", padding: "32px", maxWidth: 720, margin: "0 auto", fontFamily: "Georgia, serif", color: "#111" }}>
@@ -453,6 +470,10 @@ function PrintDoc({
       <p style={{ textAlign: "center", fontSize: 13, margin: "4px 0 24px" }}>
         {contract.title}{contract.code ? ` · ${contract.code}` : ""}
       </p>
+      {qr && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={qr} alt="QR" style={{ position: "absolute", top: 24, right: 24, width: 92, height: 92 }} />
+      )}
 
       <table style={{ width: "100%", fontSize: 13, marginBottom: 16, borderCollapse: "collapse" }}>
         <tbody>
