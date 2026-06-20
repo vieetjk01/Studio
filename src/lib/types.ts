@@ -220,6 +220,8 @@ export interface StudioContract {
   brief_refs: string | null;
   brief_note: string | null;
   brief_submitted_at: string | null;
+  chosen_quote_option_id: string | null;
+  chosen_quote_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -353,6 +355,16 @@ export interface ContractEquipment {
   contract_id: string;
   equipment_id: string | null;
   name: string;
+  created_at: string;
+}
+
+export interface ContractQuoteOption {
+  id: string;
+  contract_id: string;
+  name: string;
+  price: number;
+  description: string | null;
+  position: number;
   created_at: string;
 }
 

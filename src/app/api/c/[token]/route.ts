@@ -21,13 +21,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
     link?: string;
     rating?: number;
     brief?: { concept?: string; outfit?: string; refs?: string; note?: string };
+    option_id?: string;
   };
   const db = createAdminClient();
 
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, updated_at, owner:profiles(full_name)"
+      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, chosen_quote_option_id, chosen_quote_at, updated_at, owner:profiles(full_name)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -90,6 +91,19 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ ok: true });
   }
 
+  if (body.action === "choose_quote") {
+    if (!body.option_id) return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    const { data: opt } = await db.from("contract_quote_options").select("name, contract_id").eq("id", body.option_id).maybeSingle();
+    if (!opt || opt.contract_id !== contract.id) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    const { error } = await db
+      .from("studio_contracts")
+      .update({ chosen_quote_option_id: body.option_id, chosen_quote_at: new Date().toISOString() })
+      .eq("id", contract.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await notify("info", `${who} đã chọn gói “${opt.name}” cho HĐ “${contract.title}”`);
+    return NextResponse.json({ ok: true });
+  }
+
   if (body.action === "set_messenger") {
     const link = (body.link ?? "").trim().slice(0, 500);
     const { error } = await db.from("studio_contracts").update({ client_messenger: link || null }).eq("id", contract.id);
@@ -124,10 +138,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
     await db.from("studio_contracts").update({ client_viewed_at: new Date().toISOString() }).eq("id", contract.id);
   }
 
-  const [{ data: items }, { data: payments }, { data: milestones }] = await Promise.all([
+  const [{ data: items }, { data: payments }, { data: milestones }, { data: quoteOptions }] = await Promise.all([
     db.from("contract_items").select("id, name, qty, unit_price, position").eq("contract_id", contract.id).order("position"),
     db.from("contract_payments").select("id, amount, kind, paid_at").eq("contract_id", contract.id).order("paid_at", { ascending: false }),
     db.from("studio_events").select("id, title, event_date, event_time").eq("contract_id", contract.id).order("event_date"),
+    db.from("contract_quote_options").select("id, name, price, description, position").eq("contract_id", contract.id).order("position"),
   ]);
 
   // Linked delivery gallery (so the portal can deep-link the client's photos).
@@ -159,6 +174,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     items: items ?? [],
     payments: payments ?? [],
     milestones: milestones ?? [],
+    quote_options: quoteOptions ?? [],
     gallery,
     selection,
   });

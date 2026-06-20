@@ -45,6 +45,7 @@ type Contract = {
 type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
 type Milestone = { id: string; title: string; event_date: string; event_time: string | null };
+type QuoteOption = { id: string; name: string; price: number; description: string | null };
 type Gallery = { slug: string; title: string };
 
 type Lang = "vi" | "en";
@@ -67,6 +68,7 @@ const TR = {
     briefTitle: "Brief buổi chụp", briefPrompt: "Cho studio biết mong muốn của bạn để buổi chụp đúng ý.",
     briefConcept: "Concept / phong cách", briefOutfit: "Trang phục / số người", briefRefs: "Link ảnh tham khảo", briefNote: "Yêu cầu khác",
     briefSave: "Gửi brief", briefSaved: "Đã gửi brief — cảm ơn bạn!",
+    quoteTitle: "Chọn gói dịch vụ", quotePrompt: "Mời bạn chọn gói phù hợp nhất.", choose: "Chọn gói này", chosen: "Đã chọn",
   },
   en: {
     portalTitle: "Your contract", gatePrompt: "Enter your registered phone number to view the contract.",
@@ -86,6 +88,7 @@ const TR = {
     briefTitle: "Shoot brief", briefPrompt: "Tell the studio your wishes so the shoot turns out right.",
     briefConcept: "Concept / style", briefOutfit: "Outfit / headcount", briefRefs: "Reference photo links", briefNote: "Other requests",
     briefSave: "Send brief", briefSaved: "Brief sent — thank you!",
+    quoteTitle: "Choose a package", quotePrompt: "Please pick the option that suits you best.", choose: "Choose this", chosen: "Chosen",
   },
 } as const;
 
@@ -98,6 +101,8 @@ export default function ContractView({ token }: { token: string }) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [selection, setSelection] = useState<Gallery | null>(null);
+  const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
+  const [chosenQuote, setChosenQuote] = useState<string | null>(null);
   const [qr, setQr] = useState("");
   const [lang, setLang] = useState<Lang>("vi");
   const t = (k: keyof typeof TR.vi) => TR[lang][k];
@@ -157,6 +162,8 @@ export default function ContractView({ token }: { token: string }) {
     setMilestones(j.milestones ?? []);
     setGallery(j.gallery ?? null);
     setSelection(j.selection ?? null);
+    setQuoteOptions(j.quote_options ?? []);
+    setChosenQuote(j.contract?.chosen_quote_option_id ?? null);
     setMessenger(j.contract?.client_messenger ?? "");
     setBrief({
       concept: j.contract?.brief_concept ?? "",
@@ -192,6 +199,15 @@ export default function ContractView({ token }: { token: string }) {
       setEditMsg("");
       setTimeout(() => setSent(false), 4000);
     }
+  }
+
+  async function chooseQuote(optionId: string) {
+    const res = await fetch(`/api/c/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "choose_quote", phone, option_id: optionId }),
+    });
+    if (res.ok) setChosenQuote(optionId);
   }
 
   async function submitBrief() {
@@ -309,6 +325,32 @@ export default function ContractView({ token }: { token: string }) {
             </div>
           )}
         </div>
+
+        {quoteOptions.length > 0 && (
+          <div className="card mt-6 p-6">
+            <h2 className="mb-1 font-serif text-lg font-medium">{t("quoteTitle")}</h2>
+            <p className="mb-4 text-sm" style={{ color: "var(--text2)" }}>{t("quotePrompt")}</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {quoteOptions.map((o) => {
+                const isChosen = chosenQuote === o.id;
+                return (
+                  <div key={o.id} className="rounded-xl p-4" style={{ background: "var(--surface2)", border: `1px solid ${isChosen ? "var(--accent)" : "var(--border)"}` }}>
+                    <p className="font-serif text-lg font-medium">{o.name}</p>
+                    <p className="mt-1 font-serif text-xl font-medium" style={{ color: "var(--accent)" }}>{vnd(o.price)}</p>
+                    {o.description && <p className="mt-2 whitespace-pre-wrap text-xs" style={{ color: "var(--text2)" }}>{o.description}</p>}
+                    <button
+                      onClick={() => chooseQuote(o.id)}
+                      disabled={isChosen}
+                      className={isChosen ? "btn-ghost mt-3 w-full text-xs" : "btn-primary mt-3 w-full text-xs"}
+                    >
+                      {isChosen ? `✓ ${t("chosen")}` : t("choose")}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {milestones.length > 0 && (
           <div className="card mt-6 p-6">

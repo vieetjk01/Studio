@@ -41,6 +41,7 @@ import {
   type ContractTask,
   type ContractPaymentPlan,
   type ContractProduct,
+  type ContractQuoteOption,
   type ProductStatus,
   PRODUCT_STATUS_LABEL,
   type StudioCrew,
@@ -96,6 +97,7 @@ export default function ContractEditor({
   initialEquipment,
   equipConflict,
   initialProducts,
+  initialQuoteOptions,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -115,6 +117,7 @@ export default function ContractEditor({
   initialEquipment: ContractEquipment[];
   equipConflict: Record<string, string>;
   initialProducts: ContractProduct[];
+  initialQuoteOptions: ContractQuoteOption[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -169,6 +172,8 @@ export default function ContractEditor({
   const [equipName, setEquipName] = useState("");
   const [products, setProducts] = useState<ContractProduct[]>(initialProducts);
   const [prodForm, setProdForm] = useState({ name: "", qty: 1, cost: 0 });
+  const [quoteOptions, setQuoteOptions] = useState<ContractQuoteOption[]>(initialQuoteOptions);
+  const [optForm, setOptForm] = useState({ name: "", price: 0, description: "" });
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
@@ -520,6 +525,24 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     setProducts((p) => p.filter((x) => x.id !== id));
   }
   const PROD_TONE: Record<ProductStatus, string> = { ordered: "var(--text3)", in_progress: "#6ba3c7", done: "#7bb38a" };
+
+  // ── Quote options ──────────────────────────────────────────────
+  async function addOption() {
+    if (!optForm.name.trim()) return;
+    const { data } = await supabase
+      .from("contract_quote_options")
+      .insert({ contract_id: contract.id, name: optForm.name.trim(), price: Math.max(0, Math.round(Number(optForm.price) || 0)), description: optForm.description.trim() || null, position: quoteOptions.length })
+      .select("*")
+      .single();
+    if (data) {
+      setQuoteOptions((p) => [...p, data as ContractQuoteOption]);
+      setOptForm({ name: "", price: 0, description: "" });
+    }
+  }
+  async function deleteOption(id: string) {
+    await supabase.from("contract_quote_options").delete().eq("id", id);
+    setQuoteOptions((p) => p.filter((o) => o.id !== id));
+  }
 
   // ── Studio counter-signature ───────────────────────────────────
   async function saveStudioSignature() {
@@ -906,6 +929,36 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <button onClick={saveItems} disabled={busy === "items"} className="btn-primary mt-4">
               {busy === "items" ? "Đang lưu…" : "Lưu hạng mục"}
             </button>
+          </div>
+
+          {/* Quote options */}
+          <div className="card p-6">
+            <h2 className="mb-1 font-serif text-lg font-medium">Báo giá nhiều phương án</h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Tạo 2–3 gói cho khách chọn ngay trong cổng. Khi khách chọn, bạn sẽ nhận thông báo.</p>
+            {quoteOptions.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có phương án nào.</p>
+            ) : (
+              <ul className="space-y-2">
+                {quoteOptions.map((o) => {
+                  const chosen = contract.chosen_quote_option_id === o.id;
+                  return (
+                    <li key={o.id} className="flex items-start justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)", border: chosen ? "1px solid var(--accent)" : "1px solid transparent" }}>
+                      <div>
+                        <p className="text-sm font-medium">{o.name} · {vnd(o.price)} {chosen && <span style={{ color: "var(--accent)" }}>· ✓ khách chọn</span>}</p>
+                        {o.description && <p className="text-[11px]" style={{ color: "var(--text3)" }}>{o.description}</p>}
+                      </div>
+                      <button onClick={() => deleteOption(o.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="mt-3 grid gap-2 sm:grid-cols-12">
+              <input className="input sm:col-span-5" placeholder="Tên gói (Cơ bản…)" value={optForm.name} onChange={(e) => setOptForm((p) => ({ ...p, name: e.target.value }))} />
+              <input type="number" className="input sm:col-span-3" placeholder="Giá" value={optForm.price || ""} onChange={(e) => setOptForm((p) => ({ ...p, price: Number(e.target.value) }))} />
+              <input className="input sm:col-span-4" placeholder="Mô tả ngắn" value={optForm.description} onChange={(e) => setOptForm((p) => ({ ...p, description: e.target.value }))} />
+            </div>
+            <button onClick={addOption} className="btn-ghost mt-3"><Plus size={15} /> Thêm phương án</button>
           </div>
 
           {/* Payments */}

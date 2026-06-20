@@ -10,6 +10,7 @@ import type {
   ContractTask,
   ContractPaymentPlan,
   ContractProduct,
+  ContractQuoteOption,
   StudioCrew,
   StudioEvent,
   StudioExpense,
@@ -75,7 +76,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .order("created_at", { ascending: false }),
     ]);
 
-  const [{ data: milestones }, { data: tasks }, { data: expenses }, { data: plan }, { data: equipRoster }, { data: contractEquip }, { data: products }] = await Promise.all([
+  const [{ data: milestones }, { data: tasks }, { data: expenses }, { data: plan }, { data: equipRoster }, { data: contractEquip }, { data: products }, { data: quoteOptions }] = await Promise.all([
     supabase.from("studio_events").select("*").eq("contract_id", params.id).order("event_date"),
     supabase.from("contract_tasks").select("*").eq("contract_id", params.id).order("position"),
     supabase.from("studio_expenses").select("*").eq("contract_id", params.id).order("spent_at", { ascending: false }),
@@ -83,6 +84,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
     supabase.from("studio_equipment").select("*").eq("owner_id", profile.id).eq("active", true).order("name"),
     supabase.from("contract_equipment").select("*").eq("contract_id", params.id).order("created_at"),
     supabase.from("contract_products").select("*").eq("contract_id", params.id).order("position"),
+    supabase.from("contract_quote_options").select("*").eq("contract_id", params.id).order("position"),
   ]);
 
   // Equipment double-booking: same gear on another of this studio's contracts that day.
@@ -145,6 +147,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       initialEquipment={(contractEquip ?? []) as ContractEquipment[]}
       equipConflict={equipConflict}
       initialProducts={(products ?? []) as ContractProduct[]}
+      initialQuoteOptions={(quoteOptions ?? []) as ContractQuoteOption[]}
     />
   );
 }

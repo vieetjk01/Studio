@@ -773,6 +773,30 @@ create policy contract_products_owner_all on public.contract_products
             where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
   );
 
+-- Multi-option quote (báo giá nhiều phương án) — client picks one in the portal.
+create table if not exists public.contract_quote_options (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  name        text not null default '',
+  price       integer not null default 0,
+  description text,
+  position    integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists contract_quote_options_contract_idx on public.contract_quote_options (contract_id);
+alter table public.contract_quote_options enable row level security;
+drop policy if exists contract_quote_options_owner_all on public.contract_quote_options;
+create policy contract_quote_options_owner_all on public.contract_quote_options
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+alter table public.studio_contracts add column if not exists chosen_quote_option_id uuid;
+alter table public.studio_contracts add column if not exists chosen_quote_at timestamptz;
+
 -- Pre-shoot brief (khách điền concept/yêu cầu qua cổng).
 alter table public.studio_contracts add column if not exists brief_concept text;
 alter table public.studio_contracts add column if not exists brief_outfit text;
