@@ -1417,10 +1417,17 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </div>
           </div>
 
-          {/* Print / product orders */}
+          {/* Image processing / print / product orders */}
           <div className="card p-6">
-            <h2 className="mb-1 font-serif text-lg font-medium">Đơn in / sản phẩm</h2>
-            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Album in, ảnh ép gỗ… — bấm trạng thái để chuyển Đã đặt → Đang làm → Đã giao.</p>
+            <h2 className="mb-1 font-serif text-lg font-medium">Xử lý ảnh / video / in ấn</h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Các nội dung cần xử lý &amp; sản phẩm — quản lý &amp; giao việc ở mục “Xử lý hình ảnh”.</p>
+            <div className="mb-4 flex flex-wrap gap-1.5">
+              {["Xử lý hình ảnh", "Xử lý video", "In ấn album", "In ấn ảnh", "Ép gỗ / khung"].map((name) => (
+                <button key={name} type="button" onClick={() => setProdForm((p) => ({ ...p, name }))} className="rounded-full px-2.5 py-1 text-xs" style={{ border: "1px dashed var(--border2)", color: "var(--text3)" }}>
+                  + {name}
+                </button>
+              ))}
+            </div>
             {products.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có sản phẩm nào.</p>
             ) : (

@@ -761,6 +761,7 @@ create table if not exists public.contract_products (
   position    integer not null default 0,
   created_at  timestamptz not null default now()
 );
+alter table public.contract_products add column if not exists assigned_to uuid references public.profiles (id) on delete set null;
 create index if not exists contract_products_contract_idx on public.contract_products (contract_id);
 alter table public.contract_products enable row level security;
 drop policy if exists contract_products_owner_all on public.contract_products;

@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera, Calenda
 import { createClient } from "@/lib/supabase/client";
 import ZaloButton from "@/components/ZaloButton";
 import { shootReminderMessage } from "@/lib/zalo";
-import type { StudioEvent } from "@/lib/types";
+import { SHOOT_TYPE_LABEL, type StudioEvent, type ShootType } from "@/lib/types";
 
 export type ContractMarker = {
   id: string;
@@ -17,6 +17,9 @@ export type ContractMarker = {
   event_date: string;
   event_time: string | null;
   status: string;
+  shoot_type: ShootType;
+  contract_items: { name: string; qty: number }[];
+  contract_crew: { id: string }[];
 };
 
 const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -226,6 +229,14 @@ export default function CalendarView({
                       </p>
                     </div>
                   </Link>
+                  <dl className="mt-2 space-y-0.5 text-[11px]" style={{ color: "var(--text2)" }}>
+                    <div><span style={{ color: "var(--text3)" }}>Dịch vụ: </span>{SHOOT_TYPE_LABEL[c.shoot_type] || c.shoot_type}</div>
+                    {c.contract_items.length > 0 && (
+                      <div><span style={{ color: "var(--text3)" }}>Hạng mục: </span>{c.contract_items.map((it) => `${it.name}${it.qty > 1 ? ` x${it.qty}` : ""}`).join(", ")}</div>
+                    )}
+                    <div><span style={{ color: "var(--text3)" }}>Nhân sự: </span>{c.contract_crew.length} người</div>
+                    {c.location && <div><span style={{ color: "var(--text3)" }}>Địa điểm: </span>{c.location}</div>}
+                  </dl>
                   {c.client_phone && (
                     <div className="mt-2">
                       <ZaloButton

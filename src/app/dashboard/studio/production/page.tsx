@@ -21,11 +21,22 @@ export default async function ProductionPage() {
   const supabase = createClient();
   let q = supabase
     .from("contract_products")
-    .select("id, name, qty, cost, status, note, contract:studio_contracts!inner(id, owner_id, title, client_name, delivery_due, assigned_to)")
+    .select("id, name, qty, cost, status, note, assigned_to, contract:studio_contracts!inner(id, owner_id, title, client_name, delivery_due, assigned_to)")
     .eq("contract.owner_id", profile.id)
     .order("created_at", { ascending: true });
   if (profile.actingRole === "staff") q = q.eq("contract.assigned_to", profile.actingUserId);
   const { data } = await q;
 
-  return <ProductionView initial={(data ?? []) as unknown as ProductRow[]} />;
+  const { data: staff } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("studio_owner_id", profile.id)
+    .order("full_name");
+
+  return (
+    <ProductionView
+      initial={(data ?? []) as unknown as ProductRow[]}
+      staff={(staff ?? []) as { id: string; full_name: string | null; email: string }[]}
+    />
+  );
 }
