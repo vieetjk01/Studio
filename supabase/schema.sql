@@ -952,6 +952,8 @@ create table if not exists public.contract_payment_plan (
   position    integer not null default 0,
   created_at  timestamptz not null default now()
 );
+-- Link an installment to the actual payment recorded when it is marked collected.
+alter table public.contract_payment_plan add column if not exists payment_id uuid references public.contract_payments (id) on delete set null;
 create index if not exists contract_payment_plan_contract_idx on public.contract_payment_plan (contract_id);
 alter table public.contract_payment_plan enable row level security;
 drop policy if exists contract_payment_plan_owner_all on public.contract_payment_plan;

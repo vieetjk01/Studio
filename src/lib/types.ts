@@ -428,6 +428,7 @@ export interface ContractPaymentPlan {
   due_date: string | null;
   paid: boolean;
   paid_at: string | null;
+  payment_id: string | null;
   position: number;
   created_at: string;
 }

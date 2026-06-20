@@ -55,7 +55,6 @@ import {
   type ContractStatus,
   type CrewRole,
   type CrewStatus,
-  type PaymentKind,
 } from "@/lib/types";
 
 type ItemRow = { id?: string; name: string; qty: number; unit_price: number };
@@ -186,8 +185,6 @@ export default function ContractEditor({
   const [quoteOptions, setQuoteOptions] = useState<ContractQuoteOption[]>(initialQuoteOptions);
   const [optForm, setOptForm] = useState({ name: "", price: 0, description: "" });
 
-  // new payment form
-  const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
   // new milestone form
   const [ms, setMs] = useState({ title: "", event_date: "", event_time: "" });
   // studio signature
@@ -328,36 +325,6 @@ export default function ContractEditor({
   }
 
   // ── Payments ───────────────────────────────────────────────────
-  async function addPayment() {
-    const amount = Math.max(0, Math.round(Number(pay.amount) || 0));
-    if (!amount) {
-      toast("Nhập số tiền.");
-      return;
-    }
-    setBusy("payment");
-    const { data, error } = await supabase
-      .from("contract_payments")
-      .insert({
-        contract_id: contract.id,
-        amount,
-        kind: pay.kind,
-        method: pay.method.trim() || null,
-        paid_at: pay.paid_at || today(),
-        note: pay.note.trim() || null,
-      })
-      .select("*")
-      .single();
-    setBusy(null);
-    if (error) {
-      toast(`Lỗi: ${error.message}`);
-      return;
-    }
-    if (data) {
-      setPayments((p) => [data as ContractPayment, ...p]);
-      setPay({ amount: 0, kind: "installment", method: "", paid_at: today(), note: "" });
-    }
-  }
-
   async function deletePayment(id: string) {
     await supabase.from("contract_payments").delete().eq("id", id);
     setPayments((p) => p.filter((x) => x.id !== id));
@@ -472,30 +439,78 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     setExpenses((p) => p.filter((e) => e.id !== id));
   }
 
-  // ── Payment schedule ───────────────────────────────────────────
-  async function addPlan() {
+  // ── Payment schedule (unified: marking an instalment paid records a payment) ──
+  async function addPlan(markPaid = false) {
     const amount = Math.max(0, Math.round(Number(planForm.amount) || 0));
     if (!planForm.label.trim() && !amount) return;
+    const label = planForm.label.trim() || "Đợt thanh toán";
+    setBusy(markPaid ? "planPaid" : "plan");
+    let payment_id: string | null = null;
+    if (markPaid) {
+      const { data: payment } = await supabase
+        .from("contract_payments")
+        .insert({ contract_id: contract.id, amount, kind: "installment", paid_at: today(), note: label })
+        .select("*")
+        .single();
+      if (payment) {
+        setPayments((p) => [payment as ContractPayment, ...p]);
+        payment_id = (payment as ContractPayment).id;
+      }
+    }
     const { data } = await supabase
       .from("contract_payment_plan")
-      .insert({ contract_id: contract.id, label: planForm.label.trim() || "Đợt thanh toán", amount, due_date: planForm.due_date || null, position: plan.length })
+      .insert({
+        contract_id: contract.id,
+        label,
+        amount,
+        due_date: planForm.due_date || null,
+        position: plan.length,
+        paid: markPaid,
+        paid_at: markPaid ? new Date().toISOString() : null,
+        payment_id,
+      })
       .select("*")
       .single();
+    setBusy(null);
     if (data) {
       setPlan((p) => [...p, data as ContractPaymentPlan]);
       setPlanForm({ label: "", amount: 0, due_date: "" });
     }
   }
-  async function togglePlanPaid(it: ContractPaymentPlan) {
-    const next = !it.paid;
-    await supabase.from("contract_payment_plan").update({ paid: next, paid_at: next ? new Date().toISOString() : null }).eq("id", it.id);
-    setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: next } : x)));
+  // Mark an instalment collected → records a real payment; un-marking removes it.
+  async function markPlanPaid(it: ContractPaymentPlan) {
+    if (it.paid) {
+      if (it.payment_id) {
+        await supabase.from("contract_payments").delete().eq("id", it.payment_id);
+        setPayments((p) => p.filter((x) => x.id !== it.payment_id));
+      }
+      await supabase.from("contract_payment_plan").update({ paid: false, paid_at: null, payment_id: null }).eq("id", it.id);
+      setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: false, paid_at: null, payment_id: null } : x)));
+    } else {
+      const amount = Math.max(0, Math.round(Number(it.amount) || 0));
+      const nowIso = new Date().toISOString();
+      const { data: payment } = await supabase
+        .from("contract_payments")
+        .insert({ contract_id: contract.id, amount, kind: "installment", paid_at: today(), note: it.label })
+        .select("*")
+        .single();
+      const pid = payment ? (payment as ContractPayment).id : null;
+      if (payment) setPayments((p) => [payment as ContractPayment, ...p]);
+      await supabase.from("contract_payment_plan").update({ paid: true, paid_at: nowIso, payment_id: pid }).eq("id", it.id);
+      setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: true, paid_at: nowIso, payment_id: pid } : x)));
+    }
   }
-  async function deletePlan(id: string) {
-    await supabase.from("contract_payment_plan").delete().eq("id", id);
-    setPlan((p) => p.filter((x) => x.id !== id));
+  async function deletePlan(it: ContractPaymentPlan) {
+    if (it.payment_id) {
+      await supabase.from("contract_payments").delete().eq("id", it.payment_id);
+      setPayments((p) => p.filter((x) => x.id !== it.payment_id));
+    }
+    await supabase.from("contract_payment_plan").delete().eq("id", it.id);
+    setPlan((p) => p.filter((x) => x.id !== it.id));
   }
   const todayStr = today();
+  // Payments not tied to a scheduled instalment (e.g. recorded before the merge).
+  const orphanPayments = payments.filter((p) => !plan.some((pl) => pl.payment_id === p.id));
 
   // ── Equipment ──────────────────────────────────────────────────
   async function addEquipment(name: string, equipmentId: string | null) {
@@ -1006,79 +1021,82 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <button onClick={addOption} className="btn-ghost mt-3"><Plus size={15} /> Thêm phương án</button>
           </div>
 
-          {/* Payments */}
+          {/* Payments — unified schedule + collection */}
           <div className="card p-6">
-            <h2 className="mb-4 font-serif text-lg font-medium">Theo dõi thanh toán</h2>
-            {payments.length === 0 ? (
-              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa ghi nhận khoản thu nào.</p>
-            ) : (
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="font-serif text-lg font-medium">Thanh toán</h2>
+              <p className="text-xs" style={{ color: "var(--text2)" }}>
+                Đã thu <b style={{ color: "#7bb38a" }}>{vnd(collected)}</b> · Còn lại <b style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</b>
+              </p>
+            </div>
+            <p className="mb-4 text-[11px]" style={{ color: "var(--text3)" }}>
+              Mỗi đợt thu đặt sẵn số tiền &amp; hạn — bấm “Đã thu” để ghi nhận khoản thu (quá hạn chưa thu sẽ cảnh báo ở Tổng quan).
+            </p>
+
+            {plan.length > 0 && (
               <ul className="space-y-2">
-                {payments.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                    <div>
-                      <p className="text-sm font-medium">{vnd(p.amount)} · {PAYMENT_KIND_LABEL[p.kind]}</p>
-                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>
-                        {p.paid_at}{p.method ? ` · ${p.method}` : ""}{p.note ? ` · ${p.note}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => printReceipt(p)} className="text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
-                      <button onClick={() => deletePayment(p.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
-                    </div>
-                  </li>
-                ))}
+                {plan.map((it) => {
+                  const overdue = !it.paid && it.due_date && it.due_date < todayStr;
+                  const linked = it.payment_id ? payments.find((p) => p.id === it.payment_id) : undefined;
+                  return (
+                    <li key={it.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                      <div>
+                        <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
+                        <p className="text-[11px]" style={{ color: overdue ? "#c77b7b" : it.paid ? "#7bb38a" : "var(--text3)" }}>
+                          {it.paid
+                            ? `Đã thu${it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}`
+                            : `${it.due_date ? `hạn ${it.due_date}` : "không hạn"}${overdue ? " · quá hạn" : ""}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
+                        {it.paid && linked && (
+                          <button onClick={() => printReceipt(linked)} className="text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
+                        )}
+                        <button onClick={() => markPlanPaid(it)} className="text-[11px]" style={{ color: it.paid ? "#7bb38a" : "var(--text3)" }}>
+                          {it.paid ? "✓ Đã thu" : "Đánh dấu thu"}
+                        </button>
+                        <button onClick={() => deletePlan(it)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
-            {/* Add payment */}
-            <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
-              <MoneyInput className="input sm:col-span-3" placeholder="Số tiền" value={pay.amount} onChange={(n) => setPay((p) => ({ ...p, amount: n }))} />
-              <select className="input sm:col-span-3" value={pay.kind} onChange={(e) => setPay((p) => ({ ...p, kind: e.target.value as PaymentKind }))}>
-                {(Object.keys(PAYMENT_KIND_LABEL) as PaymentKind[]).map((k) => (
-                  <option key={k} value={k}>{PAYMENT_KIND_LABEL[k]}</option>
-                ))}
-              </select>
-              <input className="input sm:col-span-3" placeholder="Hình thức (CK/tiền mặt)" value={pay.method} onChange={(e) => setPay((p) => ({ ...p, method: e.target.value }))} />
-              <input type="date" className="input sm:col-span-3" value={pay.paid_at} onChange={(e) => setPay((p) => ({ ...p, paid_at: e.target.value }))} />
-            </div>
-            <button onClick={addPayment} disabled={busy === "payment"} className="btn-ghost mt-3">
-              <Plus size={15} /> {busy === "payment" ? "Đang thêm…" : "Ghi nhận khoản thu"}
-            </button>
 
-            {/* Payment schedule */}
-            <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-              <h3 className="mb-1 text-sm font-medium">Lịch thu tiền (đợt &amp; ngày đến hạn)</h3>
-              <p className="mb-3 text-[11px]" style={{ color: "var(--text3)" }}>Đặt các đợt cần thu — quá hạn chưa thu sẽ cảnh báo ở Tổng quan.</p>
-              {plan.length > 0 && (
-                <ul className="space-y-2">
-                  {plan.map((it) => {
-                    const overdue = !it.paid && it.due_date && it.due_date < todayStr;
-                    return (
-                      <li key={it.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                        <div>
-                          <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
-                          <p className="text-[11px]" style={{ color: overdue ? "#c77b7b" : "var(--text3)" }}>
-                            {it.due_date ? `hạn ${it.due_date}` : "không hạn"}{overdue ? " · quá hạn" : ""}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
-                          <button onClick={() => togglePlanPaid(it)} className="text-[11px]" style={{ color: it.paid ? "#7bb38a" : "var(--text3)" }}>
-                            {it.paid ? "✓ Đã thu" : "Đánh dấu thu"}
-                          </button>
-                          <button onClick={() => deletePlan(it.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              <div className="mt-3 grid gap-2 sm:grid-cols-12">
-                <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
-                <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
-                <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
-              </div>
-              <button onClick={addPlan} className="btn-ghost mt-3"><Plus size={15} /> Thêm đợt thu</button>
+            {/* Add an instalment — optionally mark it collected immediately */}
+            <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
+              <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
+              <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
+              <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => addPlan(false)} disabled={busy === "plan"} className="btn-ghost"><Plus size={15} /> {busy === "plan" ? "Đang thêm…" : "Thêm đợt thu"}</button>
+              <button onClick={() => addPlan(true)} disabled={busy === "planPaid"} className="btn-ghost" style={{ color: "#7bb38a" }}><Check size={15} /> {busy === "planPaid" ? "Đang lưu…" : "Thêm & đã thu"}</button>
+            </div>
+
+            {/* Backward-compat: payments recorded before the merge (no instalment) */}
+            {orphanPayments.length > 0 && (
+              <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+                <h3 className="mb-3 text-sm font-medium">Khoản thu khác</h3>
+                <ul className="space-y-2">
+                  {orphanPayments.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                      <div>
+                        <p className="text-sm font-medium">{vnd(p.amount)} · {PAYMENT_KIND_LABEL[p.kind]}</p>
+                        <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+                          {p.paid_at}{p.method ? ` · ${p.method}` : ""}{p.note ? ` · ${p.note}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => printReceipt(p)} className="text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
+                        <button onClick={() => deletePayment(p.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Per-contract expenses */}
