@@ -1,0 +1,40 @@
+// Vietnamese banks with their VietQR BIN (NAPAS) codes — used to build
+// img.vietqr.io payment QR images. Short, curated list of the common ones.
+export type Bank = { bin: string; code: string; name: string };
+
+export const BANKS: Bank[] = [
+  { bin: "970436", code: "VCB", name: "Vietcombank" },
+  { bin: "970407", code: "TCB", name: "Techcombank" },
+  { bin: "970418", code: "BIDV", name: "BIDV" },
+  { bin: "970415", code: "ICB", name: "VietinBank" },
+  { bin: "970405", code: "VBA", name: "Agribank" },
+  { bin: "970422", code: "MB", name: "MB Bank" },
+  { bin: "970416", code: "ACB", name: "ACB" },
+  { bin: "970432", code: "VPB", name: "VPBank" },
+  { bin: "970403", code: "STB", name: "Sacombank" },
+  { bin: "970423", code: "TPB", name: "TPBank" },
+  { bin: "970441", code: "VIB", name: "VIB" },
+  { bin: "970443", code: "SHB", name: "SHB" },
+  { bin: "970437", code: "HDB", name: "HDBank" },
+  { bin: "970448", code: "OCB", name: "OCB" },
+  { bin: "970426", code: "MSB", name: "MSB" },
+  { bin: "970440", code: "SEAB", name: "SeABank" },
+  { bin: "970431", code: "EIB", name: "Eximbank" },
+  { bin: "970449", code: "LPB", name: "LPBank" },
+  { bin: "970429", code: "SCB", name: "SCB" },
+  { bin: "970409", code: "BAB", name: "BacABank" },
+  { bin: "970428", code: "NAB", name: "NamABank" },
+  { bin: "970412", code: "PVCB", name: "PVcomBank" },
+  { bin: "970425", code: "ABB", name: "ABBANK" },
+  { bin: "970427", code: "VAB", name: "VietABank" },
+  { bin: "970452", code: "KLB", name: "Kienlongbank" },
+  { bin: "970400", code: "SGICB", name: "SaigonBank" },
+  { bin: "546034", code: "CAKE", name: "Cake by VPBank" },
+  { bin: "963388", code: "TIMO", name: "Timo" },
+  { bin: "971005", code: "VTLMONEY", name: "Viettel Money" },
+];
+
+export function bankByBin(bin: string | null | undefined): Bank | undefined {
+  if (!bin) return undefined;
+  return BANKS.find((b) => b.bin === bin);
+}

@@ -5,9 +5,10 @@ import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pen
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
+import { BANKS } from "@/lib/banks";
 import { vnd, type PricelistItem } from "@/lib/types";
 
-type Contact = { pl_phone: string; pl_facebook: string; pl_bank_holder: string; pl_bank_account: string; pl_bank_name: string };
+type Contact = { pl_phone: string; pl_facebook: string; pl_bank_holder: string; pl_bank_account: string; pl_bank_name: string; pl_bank_bin: string };
 
 export default function PricingManager({
   ownerId,
@@ -185,7 +186,22 @@ export default function PricingManager({
           <div><label className="label">Facebook</label><input className="input" placeholder="fb.com/…" value={c.pl_facebook} onChange={(e) => setC((p) => ({ ...p, pl_facebook: e.target.value }))} /></div>
           <div><label className="label">Chủ tài khoản</label><input className="input" value={c.pl_bank_holder} onChange={(e) => setC((p) => ({ ...p, pl_bank_holder: e.target.value }))} /></div>
           <div><label className="label">Số tài khoản</label><input className="input" value={c.pl_bank_account} onChange={(e) => setC((p) => ({ ...p, pl_bank_account: e.target.value }))} /></div>
-          <div><label className="label">Ngân hàng</label><input className="input" value={c.pl_bank_name} onChange={(e) => setC((p) => ({ ...p, pl_bank_name: e.target.value }))} /></div>
+          <div>
+            <label className="label">Ngân hàng</label>
+            <select
+              className="input"
+              value={c.pl_bank_bin}
+              onChange={(e) => {
+                const b = BANKS.find((x) => x.bin === e.target.value);
+                setC((p) => ({ ...p, pl_bank_bin: e.target.value, pl_bank_name: b ? b.name : p.pl_bank_name }));
+              }}
+            >
+              <option value="">— Chọn ngân hàng (để tạo mã QR) —</option>
+              {BANKS.map((b) => (
+                <option key={b.bin} value={b.bin}>{b.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <button onClick={saveContact} className="btn-primary mt-4">{savedContact ? <Check size={15} /> : null} {savedContact ? "Đã lưu" : "Lưu liên hệ"}</button>
       </div>
