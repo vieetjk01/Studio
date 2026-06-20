@@ -89,12 +89,12 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .not("phone", "is", null),
       supabase.from("crew_unavailable").select("phone, note").eq("date", contract.event_date),
     ]);
-    for (const r of (bookings ?? []) as Array<{ phone: string | null; contract: { id: string; title: string } | null }>) {
+    for (const r of (bookings ?? []) as unknown as Array<{ phone: string | null; contract: { id: string; title: string } | null }>) {
       if (r.contract?.id === params.id) continue;
       const p = digits(r.phone);
       if (p) conflictByPhone[p] = `Trùng lịch: ${r.contract?.title || "HĐ khác"}`;
     }
-    for (const r of (unavail ?? []) as Array<{ phone: string; note: string | null }>) {
+    for (const r of (unavail ?? []) as unknown as Array<{ phone: string; note: string | null }>) {
       const p = digits(r.phone);
       if (p && !conflictByPhone[p]) conflictByPhone[p] = r.note ? `Đã báo bận: ${r.note}` : "Đã báo bận ngày này";
     }

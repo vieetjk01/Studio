@@ -38,7 +38,7 @@ export default async function TeamPage() {
     contract: { id: string; title: string; event_date: string | null; status: string } | null;
   };
 
-  const assignments: TeamAssignment[] = ((crewRows ?? []) as Row[])
+  const assignments: TeamAssignment[] = ((crewRows ?? []) as unknown as Row[])
     .filter((r) => r.contract?.event_date && r.contract.status !== "cancelled")
     .map((r) => ({
       name: r.name || r.phone || "—",
