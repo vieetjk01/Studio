@@ -30,6 +30,7 @@ export default function NewContractForm({
   const [clientPhone, setClientPhone] = useState("");
   const [shootType, setShootType] = useState<ShootType>("photo");
   const [eventDate, setEventDate] = useState("");
+  const [depositPct, setDepositPct] = useState(30);
   const [templateId, setTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -75,6 +76,16 @@ export default function NewContractForm({
         .sort((a, b) => a.position - b.position)
         .map((i, idx) => ({ contract_id: data.id, name: i.name, qty: i.qty, unit_price: i.unit_price, position: idx }));
       await supabase.from("contract_items").insert(rows);
+    }
+    // Auto-create a deposit instalment from the template total.
+    const tplTotal = tpl?.contract_template_items?.reduce((s, i) => s + (i.qty || 0) * (i.unit_price || 0), 0) || 0;
+    if (depositPct > 0 && tplTotal > 0) {
+      await supabase.from("contract_payment_plan").insert({
+        contract_id: data.id,
+        label: `Cọc ${depositPct}%`,
+        amount: Math.round((tplTotal * depositPct) / 100),
+        position: 0,
+      });
     }
     setSaving(false);
     router.push(`/dashboard/studio/contracts/${data.id}`);
@@ -132,6 +143,13 @@ export default function NewContractForm({
             <label className="label">Ngày chụp / quay</label>
             <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
           </div>
+        </div>
+        <div>
+          <label className="label">Đặt cọc (% giá trị mẫu)</label>
+          <input type="number" min={0} max={100} className="input" value={depositPct} onChange={(e) => setDepositPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} />
+          <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+            Khi dùng mẫu, tự tạo sẵn đợt &ldquo;Cọc {depositPct}%&rdquo; trong mục Thanh toán. Đặt 0 để bỏ qua.
+          </p>
         </div>
 
         {err && <p className="text-sm text-red-400">{err}</p>}
