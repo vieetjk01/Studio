@@ -40,6 +40,7 @@ import {
   type ContractTask,
   type StudioCrew,
   type StudioEvent,
+  type StudioExpense,
   type ShootType,
   type ContractStatus,
   type CrewRole,
@@ -82,6 +83,7 @@ export default function ContractEditor({
   studioName,
   conflictByPhone,
   initialTasks,
+  initialExpenses,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -95,6 +97,7 @@ export default function ContractEditor({
   studioName: string;
   conflictByPhone: Record<string, string>;
   initialTasks: ContractTask[];
+  initialExpenses: StudioExpense[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -141,6 +144,8 @@ export default function ContractEditor({
   const [milestones, setMilestones] = useState<StudioEvent[]>(initialMilestones);
   const [tasks, setTasks] = useState<ContractTask[]>(initialTasks);
   const [newTask, setNewTask] = useState("");
+  const [expenses, setExpenses] = useState<StudioExpense[]>(initialExpenses);
+  const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today() });
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
@@ -164,6 +169,8 @@ export default function ContractEditor({
   const balance = total - collected;
   const payroll = crew.reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const paidPayroll = crew.filter((c) => c.paid).reduce((s, c) => s + (Number(c.salary) || 0), 0);
+  const expenseTotal = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  const profit = total - payroll - expenseTotal;
   // Unified client portal lives on the main site (vieetjk.com/c/<token>).
   const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
@@ -399,6 +406,29 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     setTasks((p) => p.filter((x) => x.id !== id));
   }
   const tasksDone = tasks.filter((t) => t.done).length;
+
+  // ── Per-contract expenses ──────────────────────────────────────
+  async function addExpense() {
+    const amount = Math.max(0, Math.round(Number(exp.amount) || 0));
+    if (!exp.title.trim() || !amount) return;
+    const { data, error } = await supabase
+      .from("studio_expenses")
+      .insert({ owner_id: contract.owner_id, contract_id: contract.id, title: exp.title.trim(), amount, spent_at: exp.spent_at || today() })
+      .select("*")
+      .single();
+    if (error) {
+      toast(`Lỗi: ${error.message}`);
+      return;
+    }
+    if (data) {
+      setExpenses((p) => [data as StudioExpense, ...p]);
+      setExp({ title: "", amount: 0, spent_at: today() });
+    }
+  }
+  async function deleteExpense(id: string) {
+    await supabase.from("studio_expenses").delete().eq("id", id);
+    setExpenses((p) => p.filter((e) => e.id !== id));
+  }
 
   // ── Studio counter-signature ───────────────────────────────────
   async function saveStudioSignature() {
@@ -772,6 +802,39 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </button>
           </div>
 
+          {/* Per-contract expenses */}
+          <div className="card p-6">
+            <h2 className="mb-1 font-serif text-lg font-medium">Chi phí hợp đồng</h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
+              Chi phí riêng cho buổi này (di chuyển, đạo cụ, thuê ngoài…) — để tính lãi/lỗ thực &amp; vào báo cáo thu chi.
+            </p>
+            {expenses.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có chi phí nào.</p>
+            ) : (
+              <ul className="space-y-2">
+                {expenses.map((e) => (
+                  <li key={e.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                    <div>
+                      <p className="text-sm font-medium">{vnd(e.amount)} · {e.title}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{e.spent_at}</p>
+                    </div>
+                    <button onClick={() => deleteExpense(e.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
+              <input className="input sm:col-span-6" placeholder="Nội dung chi" value={exp.title} onChange={(e) => setExp((p) => ({ ...p, title: e.target.value }))} />
+              <input type="number" className="input sm:col-span-3" placeholder="Số tiền" value={exp.amount || ""} onChange={(e) => setExp((p) => ({ ...p, amount: Number(e.target.value) }))} />
+              <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
+            </div>
+            <button onClick={addExpense} className="btn-ghost mt-3"><Plus size={15} /> Thêm chi phí</button>
+            <div className="mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border)" }}>
+              <span className="text-sm" style={{ color: "var(--text2)" }}>Tổng chi phí hợp đồng</span>
+              <span className="font-serif text-lg font-medium">{vnd(expenseTotal)}</span>
+            </div>
+          </div>
+
           {/* Milestones / schedule */}
           <div className="card p-6">
             <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
@@ -997,10 +1060,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <dt style={{ color: "var(--text2)" }}>Đã trả lương</dt>
                 <dd className="font-medium">{vnd(paidPayroll)}</dd>
               </div>
+              <div className="flex justify-between">
+                <dt style={{ color: "var(--text2)" }}>Chi phí hợp đồng</dt>
+                <dd className="font-medium">{vnd(expenseTotal)}</dd>
+              </div>
               <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
-                <dt style={{ color: "var(--text2)" }}>Lợi nhuận tạm tính</dt>
-                <dd className="font-medium" style={{ color: total - payroll >= 0 ? "#7bb38a" : "#c77b7b" }}>
-                  {vnd(total - payroll)}
+                <dt style={{ color: "var(--text2)" }}>Lãi/lỗ dự tính</dt>
+                <dd className="font-serif text-lg font-medium" style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }}>
+                  {vnd(profit)}
                 </dd>
               </div>
             </dl>

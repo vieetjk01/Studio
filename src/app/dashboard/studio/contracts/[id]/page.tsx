@@ -10,6 +10,7 @@ import type {
   ContractTask,
   StudioCrew,
   StudioEvent,
+  StudioExpense,
 } from "@/lib/types";
 import ContractEditor from "./ContractEditor";
 
@@ -70,9 +71,10 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .order("created_at", { ascending: false }),
     ]);
 
-  const [{ data: milestones }, { data: tasks }] = await Promise.all([
+  const [{ data: milestones }, { data: tasks }, { data: expenses }] = await Promise.all([
     supabase.from("studio_events").select("*").eq("contract_id", params.id).order("event_date"),
     supabase.from("contract_tasks").select("*").eq("contract_id", params.id).order("position"),
+    supabase.from("studio_expenses").select("*").eq("contract_id", params.id).order("spent_at", { ascending: false }),
   ]);
 
   // Scheduling conflicts for the contract's date: crew already booked on another
@@ -114,6 +116,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       studioName={profile.full_name || "Studio"}
       conflictByPhone={conflictByPhone}
       initialTasks={(tasks ?? []) as ContractTask[]}
+      initialExpenses={(expenses ?? []) as StudioExpense[]}
     />
   );
 }
