@@ -39,6 +39,7 @@ export default async function ReportsPage() {
       payments={(payments ?? []) as unknown as PaymentRow[]}
       salaries={(salaries ?? []) as unknown as SalaryRow[]}
       initialExpenses={(expenses ?? []) as StudioExpense[]}
+      initialTarget={Number(profile.monthly_revenue_target) || 0}
     />
   );
 }

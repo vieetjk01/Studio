@@ -28,16 +28,21 @@ export default function ReportsView({
   payments,
   salaries,
   initialExpenses,
+  initialTarget,
 }: {
   ownerId: string;
   payments: PaymentRow[];
   salaries: SalaryRow[];
   initialExpenses: StudioExpense[];
+  initialTarget: number;
 }) {
   const supabase = createClient();
   const now = new Date();
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [expenses, setExpenses] = useState<StudioExpense[]>(initialExpenses);
+  const [target, setTarget] = useState(initialTarget);
+  const [targetEdit, setTargetEdit] = useState(false);
+  const [targetInput, setTargetInput] = useState(String(initialTarget || ""));
 
   const [exp, setExp] = useState({ title: "", amount: 0, category: "equipment", spent_at: now.toISOString().slice(0, 10), note: "" });
   const [busy, setBusy] = useState(false);
@@ -52,6 +57,14 @@ export default function ReportsView({
   const salaryOut = monthSalaries.reduce((s, p) => s + (p.salary || 0), 0);
   const otherOut = monthExpenses.reduce((s, p) => s + (p.amount || 0), 0);
   const profit = income - salaryOut - otherOut;
+  const targetPct = target > 0 ? Math.min(100, Math.round((income / target) * 100)) : 0;
+
+  async function saveTarget() {
+    const v = Math.max(0, Math.round(Number(targetInput) || 0));
+    await supabase.from("profiles").update({ monthly_revenue_target: v }).eq("id", ownerId);
+    setTarget(v);
+    setTargetEdit(false);
+  }
 
   // 12-month series (ending at the current real month) for the chart.
   const series = useMemo(() => {
@@ -161,6 +174,36 @@ export default function ReportsView({
           <p className="mt-3 font-serif text-2xl font-medium" style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }}>{vnd(profit)}</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Lợi nhuận</p>
         </div>
+      </div>
+
+      {/* Revenue target */}
+      <div className="card mb-6 p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-serif text-lg font-medium">Mục tiêu doanh thu tháng</h2>
+          {targetEdit ? (
+            <div className="flex items-center gap-2">
+              <input type="number" className="input w-36" placeholder="Số tiền" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} />
+              <button onClick={saveTarget} className="btn-primary px-3 py-1.5 text-xs">Lưu</button>
+            </div>
+          ) : (
+            <button onClick={() => { setTargetInput(String(target || "")); setTargetEdit(true); }} className="btn-ghost px-3 py-1.5 text-xs">
+              {target > 0 ? "Sửa mục tiêu" : "Đặt mục tiêu"}
+            </button>
+          )}
+        </div>
+        {target > 0 ? (
+          <>
+            <div className="h-3 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
+              <div className="h-full rounded-full" style={{ width: `${targetPct}%`, background: targetPct >= 100 ? "#7bb38a" : "#c7a76b" }} />
+            </div>
+            <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+              {vnd(income)} / {vnd(target)} · <b style={{ color: targetPct >= 100 ? "#7bb38a" : "var(--text)" }}>{targetPct}%</b>
+              {targetPct >= 100 ? " 🎉 đạt mục tiêu!" : ` · còn ${vnd(Math.max(0, target - income))}`}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa đặt mục tiêu doanh thu cho tháng.</p>
+        )}
       </div>
 
       {/* 12-month chart */}

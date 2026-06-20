@@ -746,6 +746,9 @@ alter table public.studio_contracts add column if not exists client_messenger te
 -- their photos straight from the unified portal.
 alter table public.studio_contracts add column if not exists selection_album_id uuid references public.albums (id) on delete set null;
 
+-- Monthly revenue target (mục tiêu doanh thu) per studio account.
+alter table public.profiles add column if not exists monthly_revenue_target integer not null default 0;
+
 -- Lead source (nguồn khách) for the CRM + per-contract direct expenses.
 alter table public.studio_contracts add column if not exists source text; -- facebook | referral | google | walk_in | returning | other
 -- Reuse studio_expenses for per-contract costs too (null contract_id = general).

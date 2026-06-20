@@ -517,6 +517,41 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     setRequests((p) => p.map((r) => (r.id === id ? { ...r, status: "resolved" } : r)));
   }
 
+  async function duplicateContract() {
+    setBusy("dup");
+    const token = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "");
+    const { data, error } = await supabase
+      .from("studio_contracts")
+      .insert({
+        owner_id: contract.owner_id,
+        title: `${f.title} (bản sao)`,
+        client_name: f.client_name.trim() || null,
+        client_phone: f.client_phone.trim() || null,
+        client_email: f.client_email.trim() || null,
+        client_messenger: f.client_messenger.trim() || null,
+        shoot_type: f.shoot_type,
+        status: "draft",
+        location: f.location.trim() || null,
+        note: f.note.trim() || null,
+        source: f.source || null,
+        client_token: token,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      setBusy(null);
+      toast(`Lỗi: ${error?.message || "không nhân bản được"}`);
+      return;
+    }
+    const clean = items
+      .map((i) => ({ name: i.name.trim(), qty: Math.max(0, Math.round(Number(i.qty) || 0)), unit_price: Math.max(0, Math.round(Number(i.unit_price) || 0)) }))
+      .filter((i) => i.name);
+    if (clean.length) {
+      await supabase.from("contract_items").insert(clean.map((i, idx) => ({ ...i, contract_id: data.id, position: idx })));
+    }
+    router.push(`/dashboard/studio/contracts/${data.id}`);
+  }
+
   async function deleteContract() {
     if (!confirm("Xoá hợp đồng này? Mọi hạng mục, nhân sự, thanh toán & yêu cầu sẽ bị xoá theo.")) return;
     setBusy("delete");
@@ -552,6 +587,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">
             Xem như khách
           </a>
+          <button onClick={duplicateContract} disabled={busy === "dup"} className="btn-ghost px-3 py-2 text-xs">
+            <Copy size={14} /> {busy === "dup" ? "Đang sao…" : "Nhân bản"}
+          </button>
           <button onClick={deleteContract} disabled={busy === "delete"} className="btn-danger px-3 py-2 text-xs">
             <Trash2 size={14} /> Xoá
           </button>
