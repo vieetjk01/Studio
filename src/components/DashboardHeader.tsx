@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -18,6 +18,11 @@ interface NavLink {
   label: string;
   external?: boolean;
 }
+interface NavGroup {
+  label: string;
+  children: NavLink[];
+}
+const isGroup = (x: NavLink | NavGroup): x is NavGroup => "children" in x;
 
 export default function DashboardHeader({
   profile,
@@ -43,26 +48,47 @@ export default function DashboardHeader({
     profile.role === "admin" ||
     effectivePlan(profile.plan, profile.plan_expires_at) === "studio";
 
+  // Studio nav grouped into dropdowns to keep the bar tidy.
+  const studioNav: (NavLink | NavGroup)[] = [
+    { href: "/dashboard/studio", label: "Tổng quan" },
+    { href: "/dashboard/studio/board", label: "Bảng" },
+    {
+      label: "Hợp đồng",
+      children: [
+        { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
+        { href: "/dashboard/studio/bookings", label: "Đặt lịch" },
+        { href: "/dashboard/studio/clients", label: "Khách hàng" },
+        { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
+      ],
+    },
+    {
+      label: "Lịch",
+      children: [
+        { href: "/dashboard/studio/calendar", label: "Lịch chụp" },
+        { href: "/dashboard/studio/team", label: "Lịch đội" },
+      ],
+    },
+    {
+      label: "Tài chính",
+      children: [
+        { href: "/dashboard/studio/payroll", label: "Bảng lương" },
+        { href: "/dashboard/studio/reports", label: "Thu chi" },
+      ],
+    },
+    {
+      label: "Đội ngũ",
+      children: [
+        { href: "/dashboard/studio/crew", label: "Sổ thợ" },
+        { href: "/dashboard/studio/equipment", label: "Thiết bị" },
+        { href: "/dashboard/studio/messages", label: "Mẫu tin" },
+      ],
+    },
+    { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+  ];
+
   // Build the link set for this host. Cross-host links use absolute URLs.
   const links: NavLink[] =
-    kind === "studio"
-      ? [
-          { href: "/dashboard/studio", label: "Tổng quan" },
-          { href: "/dashboard/studio/board", label: "Bảng" },
-          { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
-          { href: "/dashboard/studio/bookings", label: "Đặt lịch" },
-          { href: "/dashboard/studio/clients", label: "Khách hàng" },
-          { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
-          { href: "/dashboard/studio/calendar", label: "Lịch" },
-          { href: "/dashboard/studio/team", label: "Lịch đội" },
-          { href: "/dashboard/studio/payroll", label: "Bảng lương" },
-          { href: "/dashboard/studio/reports", label: "Thu chi" },
-          { href: "/dashboard/studio/crew", label: "Sổ thợ" },
-          { href: "/dashboard/studio/equipment", label: "Thiết bị" },
-          { href: "/dashboard/studio/messages", label: "Mẫu tin" },
-          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
-        ]
-      : kind === "img"
+    kind === "img"
       ? [
           { href: "/dashboard/compress", label: t("compressPhotos") },
           { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
@@ -103,13 +129,40 @@ export default function DashboardHeader({
     );
   }
 
+  function renderGroup(g: NavGroup) {
+    const active = g.children.some((c) => pathname === c.href);
+    return (
+      <div key={g.label} className="group relative">
+        <button className={`flex items-center gap-1 text-sm transition-colors ${active ? "text-accent" : "text-accent-muted hover:text-accent"}`}>
+          {g.label}
+          <ChevronDown size={13} />
+        </button>
+        <div className="invisible absolute left-0 top-full z-30 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
+          <div className="grid min-w-[170px] gap-1 rounded-xl p-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            {g.children.map((c) => (
+              <Link
+                key={c.href}
+                href={c.href}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${pathname === c.href ? "text-accent" : "text-accent-muted hover:bg-[var(--surface2)] hover:text-accent"}`}
+              >
+                {c.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-20 border-b border-ink-800 bg-ink-950/80 px-6 py-4 backdrop-blur md:px-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Brand href={kind === "img" ? "/" : kind === "studio" ? "/dashboard/studio" : "/dashboard"} />
           <nav className="hidden items-center gap-x-5 gap-y-1.5 md:flex md:flex-wrap">
-            {links.map((l) => renderLink(l))}
+            {kind === "studio"
+              ? studioNav.map((item) => (isGroup(item) ? renderGroup(item) : renderLink(item)))
+              : links.map((l) => renderLink(l))}
           </nav>
         </div>
         <div className="flex items-center gap-3 md:gap-4">
@@ -140,11 +193,24 @@ export default function DashboardHeader({
       {/* Mobile dropdown menu */}
       {menuOpen && (
         <nav className="mt-3 grid gap-1 border-t border-ink-800 pt-3 md:hidden">
-          {links.map((l) => (
-            <div key={l.href} className="py-1.5">
-              {renderLink(l, () => setMenuOpen(false))}
-            </div>
-          ))}
+          {kind === "studio"
+            ? studioNav.map((item) =>
+                isGroup(item) ? (
+                  <div key={item.label} className="py-1.5">
+                    <p className="mb-1 text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>{item.label}</p>
+                    <div className="grid gap-1.5 pl-3">
+                      {item.children.map((c) => renderLink(c, () => setMenuOpen(false)))}
+                    </div>
+                  </div>
+                ) : (
+                  <div key={item.href} className="py-1.5">{renderLink(item, () => setMenuOpen(false))}</div>
+                )
+              )
+            : links.map((l) => (
+                <div key={l.href} className="py-1.5">
+                  {renderLink(l, () => setMenuOpen(false))}
+                </div>
+              ))}
         </nav>
       )}
     </header>
