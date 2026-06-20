@@ -124,8 +124,9 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
               display: "flex",
               flexDirection: "column",
               gap: 18,
-              [navPos === "right" ? "borderLeft" : "borderRight"]: "1px solid var(--s-border)",
-            } as React.CSSProperties}
+              borderRight: navPos === "left" ? "1px solid var(--s-border)" : undefined,
+              borderLeft: navPos === "right" ? "1px solid var(--s-border)" : undefined,
+            }}
           >
             <div>{brand}</div>
             <nav style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
