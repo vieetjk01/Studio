@@ -51,6 +51,7 @@ export default function DashboardHeader({
           { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
           { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
           { href: "/dashboard/studio/calendar", label: "Lịch" },
+          { href: "/dashboard/studio/team", label: "Lịch đội" },
           { href: "/dashboard/studio/payroll", label: "Bảng lương" },
           { href: "/dashboard/studio/reports", label: "Thu chi" },
           { href: "/dashboard/studio/crew", label: "Sổ thợ" },
