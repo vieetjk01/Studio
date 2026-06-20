@@ -593,7 +593,12 @@ export type SiteBlockType =
   | "social"
   | "faq"
   | "services"
-  | "stats";
+  | "stats"
+  | "cta"
+  | "team"
+  | "quote"
+  | "logos"
+  | "map";
 
 export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
   hero: "Ảnh bìa / Giới thiệu",
@@ -607,6 +612,11 @@ export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
   faq: "Câu hỏi thường gặp",
   services: "Dịch vụ / Quy trình",
   stats: "Con số nổi bật",
+  cta: "Kêu gọi đặt lịch",
+  team: "Đội ngũ",
+  quote: "Trích dẫn nổi bật",
+  logos: "Logo đối tác / báo chí",
+  map: "Bản đồ địa chỉ",
 };
 
 export interface SiteBlock {

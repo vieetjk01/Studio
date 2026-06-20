@@ -372,6 +372,80 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
         </Section>
       );
     }
+    case "cta": {
+      return (
+        <section style={{ maxWidth: "var(--s-maxw)", margin: "0 auto", padding: "24px" }}>
+          <div style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: "clamp(28px,6vw,56px)", textAlign: "center", background: "color-mix(in srgb, var(--s-accent) 8%, transparent)" }}>
+            <h2 style={{ fontFamily: fontVar, fontSize: "clamp(26px,4vw,40px)" }}>{str(c.heading, "Sẵn sàng lưu giữ khoảnh khắc của bạn?")}</h2>
+            {str(c.text) && <p style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.6 }}>{str(c.text)}</p>}
+            {owner?.booking_token && (
+              <a href={mainUrl(`/book/${owner.booking_token}`)} style={ctaStyle()}>{str(c.button, "Đặt lịch")}</a>
+            )}
+          </div>
+        </section>
+      );
+    }
+    case "team": {
+      const items = lines(c.items)
+        .map((line) => { const [n, role, img] = line.split("|"); return { n: (n || "").trim(), role: (role || "").trim(), img: (img || "").trim() }; })
+        .filter((x) => x.n);
+      if (items.length === 0) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading, "Đội ngũ")}>
+          <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", textAlign: "center" }}>
+            {items.map((it, i) => (
+              <div key={i}>
+                <div style={{ width: 120, height: 120, margin: "0 auto", borderRadius: 999, overflow: "hidden", border: "1px solid var(--s-border)", background: "color-mix(in srgb, var(--s-text) 8%, transparent)" }}>
+                  {it.img && <img src={it.img} alt={it.n} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                </div>
+                <p style={{ fontFamily: fontVar, fontSize: 17, marginTop: 10 }}>{it.n}</p>
+                {it.role && <p style={{ opacity: 0.75, fontSize: 13 }}>{it.role}</p>}
+              </div>
+            ))}
+          </div>
+        </Section>
+      );
+    }
+    case "quote": {
+      if (!str(c.text)) return null;
+      return (
+        <section style={{ maxWidth: "var(--s-maxw)", margin: "0 auto", padding: "56px 24px", textAlign: "center" }}>
+          <p style={{ fontFamily: fontVar, fontSize: "clamp(22px,3.4vw,34px)", lineHeight: 1.4, fontStyle: "italic" }}>
+            “{str(c.text)}”
+          </p>
+          {str(c.author) && <p style={{ marginTop: 16, color: "var(--s-accent)", fontWeight: 600 }}>— {str(c.author)}</p>}
+        </section>
+      );
+    }
+    case "logos": {
+      const items = lines(c.items);
+      if (items.length === 0) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading)}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 32, alignItems: "center", justifyContent: "center" }}>
+            {items.map((src, i) => (
+              <img key={i} src={src} alt="" style={{ height: 40, maxWidth: 160, objectFit: "contain", opacity: 0.7, filter: "grayscale(1)" }} />
+            ))}
+          </div>
+        </Section>
+      );
+    }
+    case "map": {
+      const addr = str(c.address);
+      if (!addr) return null;
+      return (
+        <Section fontVar={fontVar} heading={str(c.heading, "Địa chỉ")}>
+          <div style={{ borderRadius: "var(--s-radius)", overflow: "hidden", border: "1px solid var(--s-border)" }}>
+            <iframe
+              title="map"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`}
+              style={{ width: "100%", height: 360, border: 0 }}
+              loading="lazy"
+            />
+          </div>
+        </Section>
+      );
+    }
     default:
       return null;
   }

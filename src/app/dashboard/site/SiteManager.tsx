@@ -13,7 +13,7 @@ import {
 } from "@/lib/types";
 import { SITE_TEMPLATES } from "@/lib/site-templates";
 
-const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "services", "stats", "video", "social", "faq", "contact"];
+const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "services", "stats", "team", "quote", "cta", "logos", "video", "social", "faq", "map", "contact"];
 
 type AlbumLite = { id: string; slug: string; title: string; cover_url: string | null };
 
@@ -59,6 +59,27 @@ const BLOCK_FIELDS: Record<SiteBlockType, { key: string; label: string; area?: b
   stats: [
     { key: "heading", label: "Tiêu đề (tuỳ chọn)" },
     { key: "items", label: "Mỗi dòng: Con số | Nhãn (vd: 8 năm | Kinh nghiệm)", area: true },
+  ],
+  cta: [
+    { key: "heading", label: "Tiêu đề lớn" },
+    { key: "text", label: "Mô tả ngắn" },
+    { key: "button", label: "Chữ trên nút (mặc định: Đặt lịch)" },
+  ],
+  team: [
+    { key: "heading", label: "Tiêu đề" },
+    { key: "items", label: "Mỗi dòng: Tên | Vai trò | Ảnh (URL)", area: true },
+  ],
+  quote: [
+    { key: "text", label: "Nội dung trích dẫn", area: true },
+    { key: "author", label: "Tác giả / khách hàng" },
+  ],
+  logos: [
+    { key: "heading", label: "Tiêu đề (tuỳ chọn)" },
+    { key: "items", label: "Mỗi dòng 1 link logo (URL ảnh)", area: true },
+  ],
+  map: [
+    { key: "heading", label: "Tiêu đề (tuỳ chọn)" },
+    { key: "address", label: "Địa chỉ studio (hiện bản đồ)" },
   ],
 };
 
