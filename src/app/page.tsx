@@ -1,9 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveStudioOwner } from "@/lib/studio-owner";
 import { thumbnailUrl } from "@/lib/drive";
 import ProfileHome from "./ProfileHome";
 import type { SiteSettings } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
@@ -92,15 +94,9 @@ export default async function HomePage() {
     }
     feedback = (fbRes.data ?? []) as typeof feedback;
 
-    // Studio price list shown on the homepage (the main admin account's list).
-    const { data: adminProfile } = await db
-      .from("profiles")
-      .select("id, booking_token")
-      .eq("role", "admin")
-      .eq("is_active", true)
-      .order("created_at")
-      .limit(1)
-      .maybeSingle();
+    // Studio price list shown on the homepage — resolved the SAME way as
+    // /banggia so the two pages always agree on which account they read.
+    const adminProfile = await resolveStudioOwner();
     if (adminProfile) {
       const { data: pl } = await db
         .from("studio_pricelist")

@@ -1,21 +1,16 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PRICE_LISTS } from "@/lib/pricelist-seeds";
+import { resolveStudioOwner } from "@/lib/studio-owner";
 import PricelistPoster from "@/components/PricelistPoster";
 import type { PricelistItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Public price list for the main studio (admin account) at a clean URL.
 export default async function BangGiaPage({ searchParams }: { searchParams?: { list?: string } }) {
   const db = createAdminClient();
-  const { data: owner } = await db
-    .from("profiles")
-    .select("id, full_name, booking_token, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name")
-    .eq("role", "admin")
-    .eq("is_active", true)
-    .order("created_at")
-    .limit(1)
-    .maybeSingle();
+  const owner = await resolveStudioOwner();
 
   if (!owner) {
     return (
