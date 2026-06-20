@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw, Monitor, Smartphone, RotateCcw, X } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw, Monitor, Smartphone, RotateCcw, X, Wand2, CheckCircle2, Circle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
@@ -93,6 +93,47 @@ const BLOCK_FIELDS: Record<SiteBlockType, { key: string; label: string; area?: b
     { key: "heading", label: "Tiêu đề (tuỳ chọn)" },
     { key: "address", label: "Địa chỉ studio (hiện bản đồ)" },
   ],
+};
+
+// Short, plain-language hint shown under each block in the editor.
+const BLOCK_TIP: Partial<Record<SiteBlockType, string>> = {
+  hero: "Ảnh lớn đầu trang kèm tên & câu giới thiệu.",
+  gallery: "Lưới album ảnh của bạn.",
+  about: "Đoạn giới thiệu ngắn + 1 ảnh.",
+  pricing: "Tự hiển thị bảng giá đang bật.",
+  testimonials: "Tự hiển thị đánh giá khách đã duyệt.",
+  contact: "Thông tin liên hệ + nút đặt lịch.",
+  video: "Nhúng 1 video YouTube/Vimeo.",
+  social: "Các nút mạng xã hội.",
+  faq: "Danh sách câu hỏi – trả lời.",
+  services: "Danh sách dịch vụ / quy trình làm việc.",
+  stats: "Vài con số nổi bật (năm KN, số album…).",
+  cta: "Dải kêu gọi khách đặt lịch.",
+  team: "Ảnh + tên các thành viên ekip.",
+  quote: "Một câu trích dẫn nổi bật.",
+  logos: "Hàng logo đối tác / báo chí.",
+  map: "Bản đồ địa chỉ studio.",
+};
+
+// One-click sample content so non-designers see a finished-looking block.
+const sImg = (s: string, w = 1200, h = 800) => `https://picsum.photos/seed/${s}/${w}/${h}`;
+const BLOCK_SAMPLE: Partial<Record<SiteBlockType, Record<string, unknown>>> = {
+  hero: { heading: "", subheading: "Nhiếp ảnh gia cưới & chân dung", image: sImg("vk-s-hero", 1600, 900) },
+  about: { heading: "Về tôi", text: "Mình kể chuyện qua từng khung hình.\nMỗi buổi chụp là một kỷ niệm được lưu giữ trọn vẹn.", image: sImg("vk-s-about") },
+  services: { heading: "Dịch vụ", items: "Chụp cưới | Phóng sự trọn ngày\nPrewedding | Concept theo yêu cầu\nGia đình | Studio & ngoại cảnh" },
+  stats: { items: "8 năm | Kinh nghiệm\n300+ | Album\n100% | Khách hài lòng" },
+  faq: { heading: "Câu hỏi thường gặp", items: "Đặt cọc bao nhiêu? | Studio giữ lịch khi cọc 30%.\nKhi nào nhận ảnh? | Ảnh chỉnh giao trong 15–20 ngày." },
+  video: { heading: "Video highlight", url: "" },
+  social: { heading: "Theo dõi", facebook: "", instagram: "" },
+  cta: { heading: "Sẵn sàng cho buổi chụp của bạn?", text: "Liên hệ ngay để giữ ngày đẹp và nhận tư vấn miễn phí.", button: "Đặt lịch ngay" },
+  team: { heading: "Đội ngũ", items: `Minh Anh | Photographer | ${sImg("vk-s-t1", 400, 400)}\nQuốc Bảo | Quay phim | ${sImg("vk-s-t2", 400, 400)}\nThu Hà | Trang điểm | ${sImg("vk-s-t3", 400, 400)}` },
+  quote: { text: "Chúng tôi không chỉ chụp ảnh — chúng tôi kể lại câu chuyện ngày trọng đại của bạn.", author: "Vieetjk Studio" },
+  logos: { heading: "Được tin tưởng bởi", items: "https://dummyimage.com/160x40/cccccc/333333&text=Brand+1\nhttps://dummyimage.com/160x40/cccccc/333333&text=Brand+2\nhttps://dummyimage.com/160x40/cccccc/333333&text=Brand+3" },
+  map: { heading: "Ghé studio", address: "Hồ Gươm, Hà Nội" },
+  contact: { heading: "Liên hệ & đặt lịch" },
+  gallery: { heading: "Bộ sưu tập nổi bật" },
+  pricing: { heading: "Bảng giá dịch vụ" },
+  testimonials: { heading: "Khách hàng nói gì" },
 };
 
 export default function SiteManager({
@@ -221,6 +262,17 @@ export default function SiteManager({
     refreshPreview();
   }
 
+  // Fill a block with ready-made sample content (keeps anything already typed).
+  async function fillSample(b: SiteBlock) {
+    const sample = BLOCK_SAMPLE[b.type];
+    if (!sample) return;
+    const next = { ...sample, ...b.config }; // don't overwrite what the user already wrote
+    setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, config: next } : x)));
+    await supabase.from("site_blocks").update({ config: next }).eq("id", b.id);
+    toast("Đã điền nội dung mẫu.");
+    refreshPreview();
+  }
+
   async function toggleVisible(b: SiteBlock) {
     const next = !b.visible;
     setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, visible: next } : x)));
@@ -298,6 +350,25 @@ export default function SiteManager({
       <div className="flex flex-col gap-5 lg:h-[calc(100vh-170px)] lg:flex-row lg:items-stretch lg:overflow-hidden">
         {/* LEFT — controls (≈1/4), scrolls on its own */}
         <div className="space-y-6 lg:w-1/4 lg:min-w-[280px] lg:shrink-0 lg:h-full lg:overflow-y-auto lg:pr-2">
+          {/* Completion checklist */}
+          <div className="card p-5">
+            <h2 className="mb-2 flex items-center gap-2 font-serif text-lg font-medium"><CheckCircle2 size={16} /> Sẵn sàng xuất bản?</h2>
+            <ul className="space-y-1.5 text-sm">
+              {[
+                { ok: !!subdomain.trim() && !validSubdomain(subdomain), label: "Đặt tên miền phụ" },
+                { ok: blocks.length > 0, label: "Thêm khối nội dung" },
+                { ok: blocks.some((b) => b.type === "hero"), label: "Có ảnh bìa (Hero)" },
+                { ok: blocks.some((b) => ["contact", "cta", "social"].includes(b.type)), label: "Có liên hệ / đặt lịch" },
+                { ok: published, label: "Bật Xuất bản" },
+              ].map((it, i) => (
+                <li key={i} className="flex items-center gap-2" style={{ color: it.ok ? "var(--text)" : "var(--text3)" }}>
+                  {it.ok ? <CheckCircle2 size={15} style={{ color: "#5fd29a" }} /> : <Circle size={15} />}
+                  {it.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {/* Step 1: pick a template */}
           <div className="card p-5">
             <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu</h2>
@@ -459,7 +530,11 @@ export default function SiteManager({
           style={{ minHeight: 70, padding: paletteType ? 6 : 0, outline: paletteType ? "2px dashed var(--accent)" : "none", outlineOffset: 2 }}
         >
           {blocks.length === 0 && (
-            <p className="rounded-xl border border-dashed p-4 text-center text-sm" style={{ borderColor: "var(--border2)", color: "var(--text3)" }}>Kéo khối thả vào đây, hoặc bấm nút khối ở trên (vd: Ảnh bìa → Bộ sưu tập → Bảng giá → Liên hệ).</p>
+            <div className="rounded-xl border border-dashed p-5 text-center text-sm" style={{ borderColor: "var(--border2)", color: "var(--text3)" }}>
+              <p className="mb-1">Chưa có khối nào.</p>
+              <p>Cách nhanh nhất: chọn một <b>mẫu</b> ở Bước 1 — trang sẽ có sẵn đầy đủ khối, bạn chỉ cần sửa chữ &amp; ảnh.</p>
+              <p className="mt-1">Hoặc bấm/kéo nút khối ở trên (vd: Ảnh bìa → Bộ sưu tập → Bảng giá → Liên hệ), rồi bấm <Wand2 size={12} className="inline" /> để điền nội dung mẫu.</p>
+            </div>
           )}
             {blocks.map((b, idx) => (
               <div
@@ -472,15 +547,21 @@ export default function SiteManager({
                 className="rounded-xl p-4"
                 style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: dragId === b.id ? 0.4 : b.visible ? 1 : 0.55 }}
               >
-                <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="mb-1 flex items-center justify-between gap-2">
                   <p className="flex items-center gap-2 font-medium">
                     <GripVertical size={15} style={{ color: "var(--text3)", cursor: "grab" }} /> {SITE_BLOCK_LABEL[b.type]}
                   </p>
                   <div className="flex items-center gap-1">
+                    {BLOCK_SAMPLE[b.type] && (
+                      <button onClick={() => fillSample(b)} className="btn-ghost px-2 py-1" title="Điền nội dung mẫu"><Wand2 size={14} /></button>
+                    )}
                     <button onClick={() => toggleVisible(b)} className="btn-ghost px-2 py-1" title={b.visible ? "Đang hiện" : "Đang ẩn"}>{b.visible ? <Eye size={14} /> : <EyeOff size={14} />}</button>
                     <button onClick={() => removeBlock(b.id)} className="btn-ghost px-2 py-1"><Trash2 size={14} /></button>
                   </div>
                 </div>
+                {BLOCK_TIP[b.type] && (
+                  <p className="mb-2 text-[11px]" style={{ color: "var(--text3)" }}>{BLOCK_TIP[b.type]}</p>
+                )}
                 {b.type !== "hero" && (
                   <select className="input mb-2 py-1 text-xs" value={String(b.config.width || "full")} onChange={(e) => setConfig(b.id, "width", e.target.value)}>
                     <option value="full">Khối toàn phần</option>
