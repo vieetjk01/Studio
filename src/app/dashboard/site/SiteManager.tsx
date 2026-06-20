@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
@@ -85,6 +85,8 @@ export default function SiteManager({
   const [dragId, setDragId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0);
+  const refreshPreview = () => setPreviewKey((k) => k + 1);
 
   const studioPro = plan === "studio" || isAdmin;
   const liveUrl = subdomain && mainHost ? `https://${subdomain}.${mainHost}` : "";
@@ -120,6 +122,7 @@ export default function SiteManager({
     }
     setSubdomain(v);
     toast("Đã lưu trang.");
+    refreshPreview();
   }
 
   async function addBlock(type: SiteBlockType) {
@@ -128,7 +131,7 @@ export default function SiteManager({
       .insert({ site_id: site.id, type, position: blocks.length, config: {} })
       .select("*")
       .single();
-    if (data) setBlocks((p) => [...p, data as SiteBlock]);
+    if (data) { setBlocks((p) => [...p, data as SiteBlock]); refreshPreview(); }
   }
 
   function setConfig(id: string, key: string, value: unknown) {
@@ -148,17 +151,20 @@ export default function SiteManager({
   async function saveBlock(b: SiteBlock) {
     await supabase.from("site_blocks").update({ config: b.config, visible: b.visible }).eq("id", b.id);
     toast("Đã lưu khối.");
+    refreshPreview();
   }
 
   async function toggleVisible(b: SiteBlock) {
     const next = !b.visible;
     setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, visible: next } : x)));
     await supabase.from("site_blocks").update({ visible: next }).eq("id", b.id);
+    refreshPreview();
   }
 
   async function removeBlock(id: string) {
     setBlocks((p) => p.filter((b) => b.id !== id));
     await supabase.from("site_blocks").delete().eq("id", id);
+    refreshPreview();
   }
 
   async function reorder(targetId: string) {
@@ -173,6 +179,7 @@ export default function SiteManager({
     arr.splice(to, 0, moved);
     setBlocks(arr);
     await Promise.all(arr.map((b, i) => supabase.from("site_blocks").update({ position: i }).eq("id", b.id)));
+    refreshPreview();
   }
 
   async function applyTemplate(key: string) {
@@ -186,6 +193,7 @@ export default function SiteManager({
     const { data } = await supabase.from("site_blocks").insert(rows).select("*");
     if (data) setBlocks((p) => [...p, ...(data as SiteBlock[])]);
     toast("Đã áp dụng mẫu.");
+    refreshPreview();
   }
 
   return (
@@ -201,11 +209,23 @@ export default function SiteManager({
           <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Tạo trang portfolio riêng trên tên miền phụ, kéo nội dung từ album & bảng giá sẵn có.</p>
         </div>
         <div className="flex gap-2">
-          <a href="/dashboard/site/preview" target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><Eye size={14} /> Xem trước</a>
+          <a href="/site-preview" target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><ExternalLink size={14} /> Mở tab mới</a>
           {liveUrl && published && (
             <a href={liveUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs"><ExternalLink size={14} /> Xem trang thật</a>
           )}
         </div>
+      </div>
+
+      {/* Live preview */}
+      <div className="card mb-6 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-serif text-lg font-medium"><Eye size={16} /> Xem trước</h2>
+          <button onClick={refreshPreview} className="btn-ghost px-3 py-1.5 text-xs"><RefreshCw size={13} /> Làm mới</button>
+        </div>
+        <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
+          <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: "70vh", border: 0, background: "#fff" }} />
+        </div>
+        <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>Khung xem trước cập nhật sau khi bạn bấm “Lưu” từng phần (hoặc bấm “Làm mới”).</p>
       </div>
 
       {/* Site settings */}
