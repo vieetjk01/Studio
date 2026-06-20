@@ -9,6 +9,7 @@ import type {
   ContractPayment,
   ContractTask,
   ContractPaymentPlan,
+  ContractProduct,
   StudioCrew,
   StudioEvent,
   StudioExpense,
@@ -74,13 +75,14 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .order("created_at", { ascending: false }),
     ]);
 
-  const [{ data: milestones }, { data: tasks }, { data: expenses }, { data: plan }, { data: equipRoster }, { data: contractEquip }] = await Promise.all([
+  const [{ data: milestones }, { data: tasks }, { data: expenses }, { data: plan }, { data: equipRoster }, { data: contractEquip }, { data: products }] = await Promise.all([
     supabase.from("studio_events").select("*").eq("contract_id", params.id).order("event_date"),
     supabase.from("contract_tasks").select("*").eq("contract_id", params.id).order("position"),
     supabase.from("studio_expenses").select("*").eq("contract_id", params.id).order("spent_at", { ascending: false }),
     supabase.from("contract_payment_plan").select("*").eq("contract_id", params.id).order("due_date", { nullsFirst: false }),
     supabase.from("studio_equipment").select("*").eq("owner_id", profile.id).eq("active", true).order("name"),
     supabase.from("contract_equipment").select("*").eq("contract_id", params.id).order("created_at"),
+    supabase.from("contract_products").select("*").eq("contract_id", params.id).order("position"),
   ]);
 
   // Equipment double-booking: same gear on another of this studio's contracts that day.
@@ -142,6 +144,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       equipmentRoster={(equipRoster ?? []) as StudioEquipment[]}
       initialEquipment={(contractEquip ?? []) as ContractEquipment[]}
       equipConflict={equipConflict}
+      initialProducts={(products ?? []) as ContractProduct[]}
     />
   );
 }

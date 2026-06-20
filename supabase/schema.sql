@@ -749,6 +749,30 @@ alter table public.studio_contracts add column if not exists selection_album_id 
 -- Monthly revenue target (mục tiêu doanh thu) per studio account.
 alter table public.profiles add column if not exists monthly_revenue_target integer not null default 0;
 
+-- Print / physical product orders per contract (album in, ảnh ép gỗ…).
+create table if not exists public.contract_products (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  name        text not null default '',
+  qty         integer not null default 1,
+  cost        integer not null default 0,
+  status      text not null default 'ordered' check (status in ('ordered', 'in_progress', 'done')),
+  note        text,
+  position    integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists contract_products_contract_idx on public.contract_products (contract_id);
+alter table public.contract_products enable row level security;
+drop policy if exists contract_products_owner_all on public.contract_products;
+create policy contract_products_owner_all on public.contract_products
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
 -- Pre-shoot brief (khách điền concept/yêu cầu qua cổng).
 alter table public.studio_contracts add column if not exists brief_concept text;
 alter table public.studio_contracts add column if not exists brief_outfit text;

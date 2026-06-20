@@ -40,6 +40,9 @@ import {
   type ContractPayment,
   type ContractTask,
   type ContractPaymentPlan,
+  type ContractProduct,
+  type ProductStatus,
+  PRODUCT_STATUS_LABEL,
   type StudioCrew,
   type StudioEvent,
   type StudioExpense,
@@ -92,6 +95,7 @@ export default function ContractEditor({
   equipmentRoster,
   initialEquipment,
   equipConflict,
+  initialProducts,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -110,6 +114,7 @@ export default function ContractEditor({
   equipmentRoster: StudioEquipment[];
   initialEquipment: ContractEquipment[];
   equipConflict: Record<string, string>;
+  initialProducts: ContractProduct[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -162,6 +167,8 @@ export default function ContractEditor({
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
   const [equipment, setEquipment] = useState<ContractEquipment[]>(initialEquipment);
   const [equipName, setEquipName] = useState("");
+  const [products, setProducts] = useState<ContractProduct[]>(initialProducts);
+  const [prodForm, setProdForm] = useState({ name: "", qty: 1, cost: 0 });
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
@@ -488,6 +495,31 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     await supabase.from("contract_equipment").delete().eq("id", id);
     setEquipment((p) => p.filter((e) => e.id !== id));
   }
+
+  // ── Print / product orders ─────────────────────────────────────
+  async function addProduct() {
+    if (!prodForm.name.trim()) return;
+    const { data } = await supabase
+      .from("contract_products")
+      .insert({ contract_id: contract.id, name: prodForm.name.trim(), qty: Math.max(1, Math.round(Number(prodForm.qty) || 1)), cost: Math.max(0, Math.round(Number(prodForm.cost) || 0)), position: products.length })
+      .select("*")
+      .single();
+    if (data) {
+      setProducts((p) => [...p, data as ContractProduct]);
+      setProdForm({ name: "", qty: 1, cost: 0 });
+    }
+  }
+  async function cycleProduct(it: ContractProduct) {
+    const order: ProductStatus[] = ["ordered", "in_progress", "done"];
+    const next = order[(order.indexOf(it.status) + 1) % order.length];
+    await supabase.from("contract_products").update({ status: next }).eq("id", it.id);
+    setProducts((p) => p.map((x) => (x.id === it.id ? { ...x, status: next } : x)));
+  }
+  async function deleteProduct(id: string) {
+    await supabase.from("contract_products").delete().eq("id", id);
+    setProducts((p) => p.filter((x) => x.id !== id));
+  }
+  const PROD_TONE: Record<ProductStatus, string> = { ordered: "var(--text3)", in_progress: "#6ba3c7", done: "#7bb38a" };
 
   // ── Studio counter-signature ───────────────────────────────────
   async function saveStudioSignature() {
@@ -1189,6 +1221,38 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <input className="input" placeholder="Hoặc nhập thiết bị tự do…" value={equipName} onChange={(e) => setEquipName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addEquipment(equipName, null); }} />
               <button onClick={() => addEquipment(equipName, null)} className="btn-ghost shrink-0"><Plus size={15} /></button>
             </div>
+          </div>
+
+          {/* Print / product orders */}
+          <div className="card p-6">
+            <h2 className="mb-1 font-serif text-lg font-medium">Đơn in / sản phẩm</h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Album in, ảnh ép gỗ… — bấm trạng thái để chuyển Đã đặt → Đang làm → Đã giao.</p>
+            {products.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có sản phẩm nào.</p>
+            ) : (
+              <ul className="space-y-2">
+                {products.map((it) => (
+                  <li key={it.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                    <div>
+                      <p className="text-sm font-medium">{it.name} {it.qty > 1 ? `×${it.qty}` : ""}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{it.cost > 0 ? vnd(it.cost) : ""}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => cycleProduct(it)} className="text-[11px]" style={{ color: PROD_TONE[it.status] }}>
+                        {PRODUCT_STATUS_LABEL[it.status]}
+                      </button>
+                      <button onClick={() => deleteProduct(it.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-3 grid gap-2 sm:grid-cols-12">
+              <input className="input sm:col-span-6" placeholder="Tên sản phẩm" value={prodForm.name} onChange={(e) => setProdForm((p) => ({ ...p, name: e.target.value }))} />
+              <input type="number" className="input sm:col-span-2" placeholder="SL" value={prodForm.qty} onChange={(e) => setProdForm((p) => ({ ...p, qty: Number(e.target.value) }))} />
+              <input type="number" className="input sm:col-span-4" placeholder="Chi phí" value={prodForm.cost || ""} onChange={(e) => setProdForm((p) => ({ ...p, cost: Number(e.target.value) }))} />
+            </div>
+            <button onClick={addProduct} className="btn-ghost mt-3"><Plus size={15} /> Thêm sản phẩm</button>
           </div>
 
           {/* Studio counter-signature (Bên A) */}

@@ -356,6 +356,24 @@ export interface ContractEquipment {
   created_at: string;
 }
 
+export type ProductStatus = "ordered" | "in_progress" | "done";
+export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {
+  ordered: "Đã đặt",
+  in_progress: "Đang làm",
+  done: "Đã giao",
+};
+export interface ContractProduct {
+  id: string;
+  contract_id: string;
+  name: string;
+  qty: number;
+  cost: number;
+  status: ProductStatus;
+  note: string | null;
+  position: number;
+  created_at: string;
+}
+
 export interface ContractPaymentPlan {
   id: string;
   contract_id: string;
