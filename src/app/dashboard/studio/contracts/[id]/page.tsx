@@ -136,9 +136,29 @@ export default async function ContractPage({ params }: { params: { id: string } 
     }
   }
 
+  // Same-day scheduling: other non-cancelled contracts on this contract's date.
+  let sameDayContracts: { id: string; title: string; client_name: string | null }[] = [];
+  if (contract.event_date) {
+    const { data: sd } = await supabase
+      .from("studio_contracts")
+      .select("id, title, client_name")
+      .eq("owner_id", profile.id)
+      .eq("event_date", contract.event_date)
+      .neq("id", params.id)
+      .neq("status", "cancelled");
+    sameDayContracts = (sd ?? []) as { id: string; title: string; client_name: string | null }[];
+  }
+
   return (
     <ContractEditor
       contract={contract as StudioContract}
+      bank={{
+        bin: (profile.pl_bank_bin as string | null) ?? null,
+        account: (profile.pl_bank_account as string | null) ?? null,
+        holder: (profile.pl_bank_holder as string | null) ?? null,
+        name: (profile.pl_bank_name as string | null) ?? null,
+      }}
+      sameDayContracts={sameDayContracts}
       initialItems={(items ?? []) as ContractItem[]}
       initialCrew={(crew ?? []) as ContractCrew[]}
       initialRequests={(requests ?? []) as ContractEditRequest[]}

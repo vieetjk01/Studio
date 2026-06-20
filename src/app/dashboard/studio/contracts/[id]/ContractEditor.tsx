@@ -23,6 +23,7 @@ import EmailButton from "@/components/EmailButton";
 import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
+import VietQRButton, { type BankInfo } from "@/components/VietQR";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -101,6 +102,8 @@ export default function ContractEditor({
   initialQuoteOptions,
   staffList,
   canAssign,
+  bank,
+  sameDayContracts,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -123,6 +126,8 @@ export default function ContractEditor({
   initialQuoteOptions: ContractQuoteOption[];
   staffList: { id: string; full_name: string | null; email: string }[];
   canAssign: boolean;
+  bank: BankInfo;
+  sameDayContracts: { id: string; title: string; client_name: string | null }[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -204,7 +209,9 @@ export default function ContractEditor({
   const payroll = crew.reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const paidPayroll = crew.filter((c) => c.paid).reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const expenseTotal = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-  const profit = total - payroll - expenseTotal;
+  const productCost = products.reduce((s, p) => s + (Number(p.cost) || 0) * (Number(p.qty) || 1), 0);
+  const profit = total - payroll - expenseTotal - productCost;
+  const qrInfo = (contract.code || contract.title || "").slice(0, 25);
   // Unified client portal lives on the main site (vieetjk.com/c/<token>).
   const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
@@ -659,6 +666,25 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </div>
       </div>
 
+      {/* Same-day scheduling warning */}
+      {sameDayContracts.length > 0 && (
+        <div className="card mb-6 p-4" style={{ borderColor: "#c7a76b55", background: "#c7a76b11" }}>
+          <p className="flex items-center gap-2 text-sm font-medium" style={{ color: "#c7a76b" }}>
+            <CalendarClock size={16} /> Trùng ngày {f.event_date}: có {sameDayContracts.length} hợp đồng khác cùng ngày
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {sameDayContracts.map((c) => (
+              <li key={c.id}>
+                <Link href={`/dashboard/studio/contracts/${c.id}`} className="rounded-full px-3 py-1 text-xs" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                  {c.title}{c.client_name ? ` · ${c.client_name}` : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>Kiểm tra nhân sự &amp; thiết bị để tránh trùng (xem cảnh báo ⚠ ở mục Nhân sự / Thiết bị).</p>
+        </div>
+      )}
+
       {/* Share link */}
       <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
         <LinkIcon size={16} style={{ color: "var(--text3)" }} />
@@ -1035,6 +1061,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
+                          {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
                           <button onClick={() => togglePlanPaid(it)} className="text-[11px]" style={{ color: it.paid ? "#7bb38a" : "var(--text3)" }}>
                             {it.paid ? "✓ Đã thu" : "Đánh dấu thu"}
                           </button>
@@ -1370,21 +1397,28 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <dt style={{ color: "var(--text2)" }}>Đã thu</dt>
                 <dd className="font-medium" style={{ color: "#7bb38a" }}>{vnd(collected)}</dd>
               </div>
-              <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <div className="flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
                 <dt style={{ color: "var(--text2)" }}>Còn lại</dt>
-                <dd className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</dd>
+                <dd className="flex items-center gap-2">
+                  <span className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</span>
+                  {balance > 0 && <VietQRButton bank={bank} amount={balance} addInfo={qrInfo} label="QR" />}
+                </dd>
               </div>
               <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
                 <dt style={{ color: "var(--text2)" }}>Tổng lương nhân sự</dt>
-                <dd className="font-medium">{vnd(payroll)}</dd>
+                <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(payroll)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt style={{ color: "var(--text2)" }}>Đã trả lương</dt>
-                <dd className="font-medium">{vnd(paidPayroll)}</dd>
+                <dt style={{ color: "var(--text3)" }}>· Đã trả lương</dt>
+                <dd style={{ color: "var(--text3)" }}>{vnd(paidPayroll)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt style={{ color: "var(--text2)" }}>Chi phí hợp đồng</dt>
-                <dd className="font-medium">{vnd(expenseTotal)}</dd>
+                <dt style={{ color: "var(--text2)" }}>Chi phí sản phẩm</dt>
+                <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(productCost)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt style={{ color: "var(--text2)" }}>Chi phí khác</dt>
+                <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(expenseTotal)}</dd>
               </div>
               <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
                 <dt style={{ color: "var(--text2)" }}>Lãi/lỗ dự tính</dt>
@@ -1392,6 +1426,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   {vnd(profit)}
                 </dd>
               </div>
+              <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+                Lãi/lỗ = giá trị HĐ − lương − chi phí sản phẩm − chi phí khác.
+              </p>
             </dl>
           </div>
         </div>
