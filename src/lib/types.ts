@@ -213,6 +213,7 @@ export interface StudioContract {
   studio_signed_at: string | null;
   gallery_album_id: string | null;
   client_viewed_at: string | null;
+  assigned_to: string | null;
   delivery_due: string | null;
   client_messenger: string | null;
   selection_album_id: string | null;
