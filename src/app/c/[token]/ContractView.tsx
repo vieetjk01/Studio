@@ -35,6 +35,11 @@ type Contract = {
   studio_signed_name: string | null;
   studio_signature: string | null;
   studio_signed_at: string | null;
+  brief_concept: string | null;
+  brief_outfit: string | null;
+  brief_refs: string | null;
+  brief_note: string | null;
+  brief_submitted_at: string | null;
   updated_at: string;
 };
 type Item = { id: string; name: string; qty: number; unit_price: number };
@@ -59,6 +64,9 @@ const TR = {
     editReq: "Yêu cầu chỉnh sửa", editPrompt: "Nếu có điểm chưa phù hợp, hãy gửi yêu cầu cho studio trước khi ký.",
     editSent: "Đã gửi yêu cầu. Studio sẽ liên hệ với bạn.", editPh: "Nội dung muốn chỉnh sửa…", send: "Gửi yêu cầu", sending: "Đang gửi…",
     updated: "Cập nhật", needName: "Nhập họ tên người ký.",
+    briefTitle: "Brief buổi chụp", briefPrompt: "Cho studio biết mong muốn của bạn để buổi chụp đúng ý.",
+    briefConcept: "Concept / phong cách", briefOutfit: "Trang phục / số người", briefRefs: "Link ảnh tham khảo", briefNote: "Yêu cầu khác",
+    briefSave: "Gửi brief", briefSaved: "Đã gửi brief — cảm ơn bạn!",
   },
   en: {
     portalTitle: "Your contract", gatePrompt: "Enter your registered phone number to view the contract.",
@@ -75,6 +83,9 @@ const TR = {
     editReq: "Request changes", editPrompt: "If something isn't right, send a request to the studio before signing.",
     editSent: "Request sent. The studio will contact you.", editPh: "What you'd like to change…", send: "Send request", sending: "Sending…",
     updated: "Updated", needName: "Enter the signer's name.",
+    briefTitle: "Shoot brief", briefPrompt: "Tell the studio your wishes so the shoot turns out right.",
+    briefConcept: "Concept / style", briefOutfit: "Outfit / headcount", briefRefs: "Reference photo links", briefNote: "Other requests",
+    briefSave: "Send brief", briefSaved: "Brief sent — thank you!",
   },
 } as const;
 
@@ -111,6 +122,10 @@ export default function ContractView({ token }: { token: string }) {
   const [reviewText, setReviewText] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
 
+  // brief
+  const [brief, setBrief] = useState({ concept: "", outfit: "", refs: "", note: "" });
+  const [briefSent, setBriefSent] = useState(false);
+
   // QR of this portal page (printed on the PDF)
   useEffect(() => {
     if (!contract) return;
@@ -143,6 +158,12 @@ export default function ContractView({ token }: { token: string }) {
     setGallery(j.gallery ?? null);
     setSelection(j.selection ?? null);
     setMessenger(j.contract?.client_messenger ?? "");
+    setBrief({
+      concept: j.contract?.brief_concept ?? "",
+      outfit: j.contract?.brief_outfit ?? "",
+      refs: j.contract?.brief_refs ?? "",
+      note: j.contract?.brief_note ?? "",
+    });
     return { ok: true };
   }
 
@@ -170,6 +191,18 @@ export default function ContractView({ token }: { token: string }) {
       setSent(true);
       setEditMsg("");
       setTimeout(() => setSent(false), 4000);
+    }
+  }
+
+  async function submitBrief() {
+    const res = await fetch(`/api/c/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "brief", phone, brief }),
+    });
+    if (res.ok) {
+      setBriefSent(true);
+      setTimeout(() => setBriefSent(false), 3000);
     }
   }
 
@@ -395,6 +428,21 @@ export default function ContractView({ token }: { token: string }) {
               </button>
             </>
           )}
+        </div>
+
+        {/* Brief */}
+        <div className="card mt-6 p-6">
+          <h2 className="mb-2 font-serif text-lg font-medium">{t("briefTitle")}</h2>
+          <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>{t("briefPrompt")}</p>
+          <div className="space-y-3">
+            <input className="input" placeholder={t("briefConcept")} value={brief.concept} onChange={(e) => setBrief((p) => ({ ...p, concept: e.target.value }))} />
+            <input className="input" placeholder={t("briefOutfit")} value={brief.outfit} onChange={(e) => setBrief((p) => ({ ...p, outfit: e.target.value }))} />
+            <input className="input" placeholder={t("briefRefs")} value={brief.refs} onChange={(e) => setBrief((p) => ({ ...p, refs: e.target.value }))} />
+            <textarea className="input min-h-[70px]" placeholder={t("briefNote")} value={brief.note} onChange={(e) => setBrief((p) => ({ ...p, note: e.target.value }))} />
+            <button onClick={submitBrief} className="btn-primary">
+              {briefSent ? <Check size={15} /> : null} {briefSent ? t("briefSaved") : t("briefSave")}
+            </button>
+          </div>
         </div>
 
         {/* Review */}

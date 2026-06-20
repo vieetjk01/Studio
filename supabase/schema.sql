@@ -749,6 +749,13 @@ alter table public.studio_contracts add column if not exists selection_album_id 
 -- Monthly revenue target (mục tiêu doanh thu) per studio account.
 alter table public.profiles add column if not exists monthly_revenue_target integer not null default 0;
 
+-- Pre-shoot brief (khách điền concept/yêu cầu qua cổng).
+alter table public.studio_contracts add column if not exists brief_concept text;
+alter table public.studio_contracts add column if not exists brief_outfit text;
+alter table public.studio_contracts add column if not exists brief_refs text;
+alter table public.studio_contracts add column if not exists brief_note text;
+alter table public.studio_contracts add column if not exists brief_submitted_at timestamptz;
+
 -- Lead source (nguồn khách) for the CRM + per-contract direct expenses.
 alter table public.studio_contracts add column if not exists source text; -- facebook | referral | google | walk_in | returning | other
 -- Reuse studio_expenses for per-contract costs too (null contract_id = general).

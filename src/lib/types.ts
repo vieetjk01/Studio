@@ -215,6 +215,11 @@ export interface StudioContract {
   client_messenger: string | null;
   selection_album_id: string | null;
   source: string | null;
+  brief_concept: string | null;
+  brief_outfit: string | null;
+  brief_refs: string | null;
+  brief_note: string | null;
+  brief_submitted_at: string | null;
   created_at: string;
   updated_at: string;
 }

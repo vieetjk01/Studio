@@ -20,13 +20,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
     signature?: string;
     link?: string;
     rating?: number;
+    brief?: { concept?: string; outfit?: string; refs?: string; note?: string };
   };
   const db = createAdminClient();
 
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, updated_at, owner:profiles(full_name)"
+      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, updated_at, owner:profiles(full_name)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -69,6 +70,23 @@ export async function POST(req: Request, { params }: { params: { token: string }
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await notify("review", `${who} đã đánh giá ${rating ? `${rating}★` : ""} HĐ “${contract.title}”`);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "brief") {
+    const b = body.brief || {};
+    const { error } = await db
+      .from("studio_contracts")
+      .update({
+        brief_concept: b.concept?.trim() || null,
+        brief_outfit: b.outfit?.trim() || null,
+        brief_refs: b.refs?.trim() || null,
+        brief_note: b.note?.trim() || null,
+        brief_submitted_at: new Date().toISOString(),
+      })
+      .eq("id", contract.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await notify("info", `${who} đã gửi brief buổi chụp “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
 

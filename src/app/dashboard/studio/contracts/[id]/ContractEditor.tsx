@@ -13,6 +13,7 @@ import {
   PenLine,
   CalendarClock,
   Star,
+  FileText,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl, mainUrl } from "@/lib/hosts";
@@ -696,6 +697,22 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Client brief */}
+      {contract.brief_submitted_at && (
+        <div className="card mb-6 p-5" style={{ borderColor: "#6ba3c755" }}>
+          <h2 className="mb-2 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#6ba3c7" }}>
+            <FileText size={18} /> Brief từ khách
+          </h2>
+          <dl className="space-y-1.5 text-sm">
+            {contract.brief_concept && <div><dt className="inline" style={{ color: "var(--text3)" }}>Concept: </dt><dd className="inline">{contract.brief_concept}</dd></div>}
+            {contract.brief_outfit && <div><dt className="inline" style={{ color: "var(--text3)" }}>Trang phục/người: </dt><dd className="inline">{contract.brief_outfit}</dd></div>}
+            {contract.brief_refs && <div><dt className="inline" style={{ color: "var(--text3)" }}>Tham khảo: </dt><dd className="inline break-all">{contract.brief_refs}</dd></div>}
+            {contract.brief_note && <div><dt className="inline" style={{ color: "var(--text3)" }}>Khác: </dt><dd className="inline">{contract.brief_note}</dd></div>}
+          </dl>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>Gửi lúc {new Date(contract.brief_submitted_at).toLocaleString("vi-VN")}</p>
         </div>
       )}
 
