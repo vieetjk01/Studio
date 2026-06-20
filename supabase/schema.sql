@@ -752,6 +752,29 @@ alter table public.studio_contracts add column if not exists source text; -- fac
 alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
 create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
 
+-- Online booking: a public per-studio link where prospective clients request a
+-- date. Each studio gets a booking_token; requests land in studio_bookings.
+alter table public.profiles add column if not exists booking_token text unique;
+
+create table if not exists public.studio_bookings (
+  id             uuid primary key default gen_random_uuid(),
+  owner_id       uuid not null references public.profiles (id) on delete cascade,
+  name           text not null default '',
+  phone          text not null default '',
+  service        text,
+  preferred_date date,
+  note           text,
+  status         text not null default 'new' check (status in ('new', 'handled', 'archived')),
+  created_at     timestamptz not null default now()
+);
+create index if not exists studio_bookings_owner_idx on public.studio_bookings (owner_id, status);
+alter table public.studio_bookings enable row level security;
+-- Owner/admin manage; public inserts go through the service role API.
+drop policy if exists studio_bookings_owner_all on public.studio_bookings;
+create policy studio_bookings_owner_all on public.studio_bookings
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
 -- Equipment roster (sổ thiết bị) + per-contract assignment (tránh trùng máy/lens).
 create table if not exists public.studio_equipment (
   id         uuid primary key default gen_random_uuid(),

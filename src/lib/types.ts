@@ -313,6 +313,18 @@ export interface ContractPayment {
   created_at: string;
 }
 
+export interface StudioBooking {
+  id: string;
+  owner_id: string;
+  name: string;
+  phone: string;
+  service: string | null;
+  preferred_date: string | null;
+  note: string | null;
+  status: "new" | "handled" | "archived";
+  created_at: string;
+}
+
 export interface StudioEquipment {
   id: string;
   owner_id: string;
