@@ -320,6 +320,20 @@ export interface ContractPayment {
   created_at: string;
 }
 
+export interface StudioPackage {
+  id: string;
+  owner_id: string;
+  client_name: string;
+  client_phone: string | null;
+  name: string;
+  total_sessions: number;
+  used_sessions: number;
+  price: number;
+  paid: boolean;
+  note: string | null;
+  created_at: string;
+}
+
 export interface MessageTemplate {
   id: string;
   owner_id: string;

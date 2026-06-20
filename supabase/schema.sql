@@ -810,6 +810,27 @@ alter table public.studio_contracts add column if not exists source text; -- fac
 alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
 create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
 
+-- Prepaid session packages / combo cards (thẻ buổi trả trước) per client.
+create table if not exists public.studio_packages (
+  id             uuid primary key default gen_random_uuid(),
+  owner_id       uuid not null references public.profiles (id) on delete cascade,
+  client_name    text not null default '',
+  client_phone   text,
+  name           text not null default 'Thẻ buổi',
+  total_sessions integer not null default 1,
+  used_sessions  integer not null default 0,
+  price          integer not null default 0,
+  paid           boolean not null default false,
+  note           text,
+  created_at     timestamptz not null default now()
+);
+create index if not exists studio_packages_owner_idx on public.studio_packages (owner_id);
+alter table public.studio_packages enable row level security;
+drop policy if exists studio_packages_owner_all on public.studio_packages;
+create policy studio_packages_owner_all on public.studio_packages
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
 -- Saved message templates (mẫu tin nhắn) for quick copy into Zalo/Messenger/email.
 create table if not exists public.message_templates (
   id         uuid primary key default gen_random_uuid(),

@@ -58,6 +58,7 @@ export default function DashboardHeader({
         { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
         { href: "/dashboard/studio/bookings", label: "Đặt lịch" },
         { href: "/dashboard/studio/clients", label: "Khách hàng" },
+        { href: "/dashboard/studio/packages", label: "Thẻ buổi" },
         { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
       ],
     },
