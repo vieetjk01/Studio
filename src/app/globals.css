@@ -159,4 +159,9 @@ body {
     display: block !important;
     color: #111 !important;
   }
+  /* Force a font with full Vietnamese diacritics so the PDF never shows tofu. */
+  .print-doc,
+  .print-doc * {
+    font-family: "Times New Roman", "DejaVu Serif", Arial, sans-serif !important;
+  }
 }

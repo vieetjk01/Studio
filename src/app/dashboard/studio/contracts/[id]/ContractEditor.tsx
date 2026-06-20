@@ -364,7 +364,7 @@ export default function ContractEditor({
     const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
     const collectedNow = sumAmounts(payments);
     const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Phiếu thu</title>
-<style>body{font-family:Georgia,serif;color:#111;max-width:560px;margin:24px auto;padding:0 24px}
+<style>body{font-family:'Times New Roman',Times,serif;color:#111;max-width:560px;margin:24px auto;padding:0 24px}
 h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
 .tot{border-top:1px solid #333;margin-top:8px;padding-top:8px;font-weight:700}.sign{margin-top:48px;text-align:center;font-size:13px}</style></head>
 <body onload="window.print()">

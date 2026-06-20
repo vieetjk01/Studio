@@ -47,7 +47,7 @@ type Contract = {
 };
 type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
-type Milestone = { id: string; title: string; event_date: string; event_time: string | null };
+type Milestone = { id: string; title: string; event_date: string; event_time: string | null; note: string | null };
 type QuoteOption = { id: string; name: string; price: number; description: string | null };
 type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean };
 type ExpenseRow = { id: string; title: string; amount: number; category: string | null; spent_at: string };
@@ -397,14 +397,28 @@ export default function ContractView({ token }: { token: string }) {
           </div>
         )}
 
-        {milestones.length > 0 && (
+        {(contract.event_date || milestones.length > 0) && (
           <div className="card mt-6 p-6">
-            <h2 className="mb-4 font-serif text-lg font-medium">{t("schedule")}</h2>
-            <ul className="space-y-2">
+            <h2 className="mb-4 font-serif text-lg font-medium">{lang === "vi" ? "Lịch trình chi tiết" : "Schedule"}</h2>
+            <ul className="space-y-3">
+              {contract.event_date && (
+                <li className="flex flex-wrap items-start gap-3 text-sm">
+                  <Calendar size={15} className="mt-0.5" style={{ color: "var(--accent)" }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{lang === "vi" ? "Buổi chính" : "Main session"}{contract.title ? ` — ${contract.title}` : ""}</p>
+                    {contract.location && <p className="text-xs" style={{ color: "var(--text3)" }}>📍 {contract.location}</p>}
+                  </div>
+                  <span style={{ color: "var(--text2)" }}>{contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</span>
+                  <CalendarButtons compact event={{ date: contract.event_date, time: contract.event_time, title: contract.title, location: contract.location }} />
+                </li>
+              )}
               {milestones.map((m) => (
-                <li key={m.id} className="flex flex-wrap items-center gap-3 text-sm">
-                  <Calendar size={15} style={{ color: "var(--text3)" }} />
-                  <span className="flex-1">{m.title}</span>
+                <li key={m.id} className="flex flex-wrap items-start gap-3 text-sm">
+                  <Calendar size={15} className="mt-0.5" style={{ color: "var(--text3)" }} />
+                  <div className="min-w-0 flex-1">
+                    <p>{m.title}</p>
+                    {m.note && <p className="text-xs" style={{ color: "var(--text3)" }}>{m.note}</p>}
+                  </div>
                   <span style={{ color: "var(--text2)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</span>
                   <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: contract.location }} />
                 </li>
@@ -535,9 +549,11 @@ export default function ContractView({ token }: { token: string }) {
             <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-medium"><Package size={17} /> {lang === "vi" ? "Sản phẩm đính kèm" : "Products"}</h2>
             <ul className="space-y-2 text-sm">
               {products.map((p) => (
-                <li key={p.id} className="flex items-center justify-between">
-                  <span>{p.name}{p.qty > 1 ? ` ×${p.qty}` : ""}</span>
-                  <span className="text-xs" style={{ color: "var(--text3)" }}>{PRODUCT_STATUS_LABEL[p.status as keyof typeof PRODUCT_STATUS_LABEL] || p.status}</span>
+                <li key={p.id} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 flex-1">{p.name}{p.qty > 1 ? ` ×${p.qty}` : ""}
+                    <span className="ml-2 text-[11px]" style={{ color: "var(--text3)" }}>{PRODUCT_STATUS_LABEL[p.status as keyof typeof PRODUCT_STATUS_LABEL] || p.status}</span>
+                  </span>
+                  {p.cost > 0 && <span className="font-medium">{vnd(p.cost * (p.qty || 1))}</span>}
                 </li>
               ))}
             </ul>
@@ -741,7 +757,7 @@ function PrintDoc({
   qr: string;
 }) {
   return (
-    <div className="print-doc" style={{ display: "none", padding: "32px", maxWidth: 720, margin: "0 auto", fontFamily: "Georgia, serif", color: "#111" }}>
+    <div className="print-doc" style={{ display: "none", padding: "32px", maxWidth: 720, margin: "0 auto", fontFamily: '"Times New Roman", Times, serif', color: "#111" }}>
       <h1 style={{ textAlign: "center", fontSize: 22, fontWeight: 700, margin: 0 }}>HỢP ĐỒNG DỊCH VỤ</h1>
       <p style={{ textAlign: "center", fontSize: 13, margin: "4px 0 24px" }}>
         {contract.title}{contract.code ? ` · ${contract.code}` : ""}
