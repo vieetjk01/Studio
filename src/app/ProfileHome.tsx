@@ -26,7 +26,9 @@ import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
-import type { SiteSettings, BookingService } from "@/lib/types";
+import { vnd, type SiteSettings, type BookingService } from "@/lib/types";
+
+type PriceRow = { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
 
 
 const SERVICES: {
@@ -61,6 +63,8 @@ export default function ProfileHome({
   photoGalleries = [],
   videoGalleries = [],
   feedback = [],
+  pricelist = [],
+  pricelistUrl = "",
 }: {
   settings: SiteSettings;
   featuredImages?: string[];
@@ -68,9 +72,21 @@ export default function ProfileHome({
   photoGalleries?: GalleryCard[];
   videoGalleries?: GalleryCard[];
   feedback?: { id: string; client_name: string | null; rating: number | null; content: string }[];
+  pricelist?: PriceRow[];
+  pricelistUrl?: string;
 }) {
   const { t } = useLang();
   const contactRef = useRef<HTMLDivElement>(null);
+  const [openPrice, setOpenPrice] = useState<string | null>(null);
+
+  // Condensed price list grouped by category (priced rows only).
+  const priceGroups: { name: string; items: PriceRow[] }[] = [];
+  for (const it of pricelist.filter((p) => p.price > 0)) {
+    const cat = it.category?.trim() || "Dịch vụ";
+    let g = priceGroups.find((x) => x.name === cat);
+    if (!g) { g = { name: cat, items: [] }; priceGroups.push(g); }
+    g.items.push(it);
+  }
 
   const [booking, setBooking] = useState({
     service: "wedding" as BookingService,
@@ -247,6 +263,55 @@ export default function ProfileHome({
             <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Phim & video</h2>
           </div>
           <GalleryGrid items={videoGalleries} video />
+        </section>
+      )}
+
+      {/* Price list (condensed, click to expand details) */}
+      {priceGroups.length > 0 && (
+        <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="eyebrow mb-1.5">Bảng giá</p>
+              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
+            </div>
+            {pricelistUrl && (
+              <Link href={pricelistUrl} className="text-sm" style={{ color: "var(--accent)" }}>Xem bảng giá đầy đủ →</Link>
+            )}
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {priceGroups.map((g) => (
+              <div key={g.name}>
+                <h3 className="mb-2 font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{g.name}</h3>
+                <div className="card divide-y overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                  {g.items.map((it) => {
+                    const open = openPrice === it.id;
+                    return (
+                      <div key={it.id} style={{ borderColor: "var(--border)" }}>
+                        <button
+                          onClick={() => setOpenPrice(open ? null : it.id)}
+                          className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-[var(--surface2)]"
+                        >
+                          <span className="font-medium">{it.name}</span>
+                          <span className="flex items-center gap-2">
+                            <span className="font-serif text-lg font-medium">{vnd(it.price)}{it.unit ? <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span> : null}</span>
+                            {it.description && <ArrowRight size={14} className="transition-transform" style={{ color: "var(--text3)", transform: open ? "rotate(90deg)" : "none" }} />}
+                          </span>
+                        </button>
+                        {open && it.description && (
+                          <p className="whitespace-pre-line px-4 pb-4 text-sm" style={{ color: "var(--text2)" }}>{it.description}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {pricelistUrl && (
+            <div className="mt-6 text-center">
+              <Link href={pricelistUrl} className="btn-ghost">Xem chi tiết &amp; đặt lịch</Link>
+            </div>
+          )}
         </section>
       )}
 

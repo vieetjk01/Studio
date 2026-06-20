@@ -45,6 +45,9 @@ export default async function HomePage() {
   let pinnedPhotoGalleries: GalleryCard[] = [];
   let pinnedVideoGalleries: GalleryCard[] = [];
   let feedback: { id: string; client_name: string | null; rating: number | null; content: string }[] = [];
+  type PriceRow = { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
+  let pricelist: PriceRow[] = [];
+  let pricelistUrl = "";
 
   // The homepage must never 500 just because Supabase isn't configured/seeded
   // yet — degrade gracefully to defaults if anything goes wrong.
@@ -87,6 +90,26 @@ export default async function HomePage() {
       else pinnedPhotoGalleries.push(card);
     }
     feedback = (fbRes.data ?? []) as typeof feedback;
+
+    // Studio price list shown on the homepage (the main admin account's list).
+    const { data: adminProfile } = await db
+      .from("profiles")
+      .select("id, booking_token")
+      .eq("role", "admin")
+      .eq("is_active", true)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    if (adminProfile) {
+      const { data: pl } = await db
+        .from("studio_pricelist")
+        .select("id, name, price, unit, category, description")
+        .eq("owner_id", adminProfile.id)
+        .eq("active", true)
+        .order("position");
+      pricelist = (pl ?? []) as PriceRow[];
+      if (adminProfile.booking_token) pricelistUrl = `/gia/${adminProfile.booking_token}`;
+    }
   } catch (e) {
     console.error("[home] failed to load data, using defaults:", e);
   }
@@ -99,6 +122,8 @@ export default async function HomePage() {
       photoGalleries={pinnedPhotoGalleries.slice(0, 8)}
       videoGalleries={pinnedVideoGalleries.slice(0, 8)}
       feedback={feedback}
+      pricelist={pricelist}
+      pricelistUrl={pricelistUrl}
     />
   );
 }
