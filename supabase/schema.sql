@@ -831,6 +831,26 @@ create policy studio_packages_owner_all on public.studio_packages
   for all using (owner_id = auth.uid() or public.is_admin())
   with check (owner_id = auth.uid() or public.is_admin());
 
+-- Public price list / rate card (bảng giá gửi khách). Shared via booking_token.
+create table if not exists public.studio_pricelist (
+  id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references public.profiles (id) on delete cascade,
+  name        text not null default '',
+  price       integer not null default 0,
+  unit        text,            -- e.g. "/ buổi", "/ giờ"
+  category    text,
+  description text,
+  active      boolean not null default true,
+  position    integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists studio_pricelist_owner_idx on public.studio_pricelist (owner_id, position);
+alter table public.studio_pricelist enable row level security;
+drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;
+create policy studio_pricelist_owner_all on public.studio_pricelist
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
 -- Saved message templates (mẫu tin nhắn) for quick copy into Zalo/Messenger/email.
 create table if not exists public.message_templates (
   id         uuid primary key default gen_random_uuid(),
@@ -1126,6 +1146,9 @@ create policy message_templates_owner_all on public.message_templates
   for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
 drop policy if exists studio_packages_owner_all on public.studio_packages;
 create policy studio_packages_owner_all on public.studio_packages
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;
+create policy studio_pricelist_owner_all on public.studio_pricelist
   for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
 
 -- Contract-child tables: gated via the parent contract's owner.

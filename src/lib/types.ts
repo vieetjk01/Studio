@@ -323,6 +323,19 @@ export interface ContractPayment {
   created_at: string;
 }
 
+export interface PricelistItem {
+  id: string;
+  owner_id: string;
+  name: string;
+  price: number;
+  unit: string | null;
+  category: string | null;
+  description: string | null;
+  active: boolean;
+  position: number;
+  created_at: string;
+}
+
 export interface StudioPackage {
   id: string;
   owner_id: string;
