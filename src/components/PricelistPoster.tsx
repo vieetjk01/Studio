@@ -1,3 +1,4 @@
+import { Check, Star } from "lucide-react";
 import { vnd, type PricelistItem } from "@/lib/types";
 
 export type PosterList = { key: string; label: string; title: string };
@@ -97,26 +98,48 @@ export default function PricelistPoster({
           <p className="mt-10 text-center" style={{ color: C.muted }}>Chưa cập nhật bảng giá.</p>
         ) : (
           <>
-            <div className="mt-10 grid gap-10 md:grid-cols-2">
-              {pkgGroups.map((g) => (
-                <div key={g.name}>
-                  <h2 className="mb-5 font-serif text-[clamp(20px,3vw,28px)] font-semibold uppercase" style={{ color: C.green }}>{g.name}</h2>
-                  <div className="space-y-6">
-                    {g.items.map((it) => (
-                      <div key={it.id}>
-                        <p className="font-serif text-lg font-semibold" style={{ color: C.greenDeep }}>
-                          {it.name}: {vnd(it.price)}{it.unit ? ` ${it.unit}` : ""}
-                        </p>
-                        <ul className="mt-1.5 space-y-1">
-                          {bullets(it.description).map((b, i) => (
-                            <li key={i} className="text-[15px]" style={{ color: C.muted }}>– {b}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+            <div className="mt-10 space-y-10">
+              {pkgGroups.map((g) => {
+                const top = Math.max(...g.items.map((i) => i.price));
+                return (
+                  <div key={g.name}>
+                    <h2 className="mb-5 font-serif text-[clamp(20px,3vw,28px)] font-semibold uppercase" style={{ color: C.green }}>{g.name}</h2>
+                    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+                      {g.items.map((it) => {
+                        const featured = it.price === top && g.items.length > 1;
+                        const pkg = `${selectedList?.label || ""} · ${it.name}`;
+                        const href = bookHref.includes("/book/") ? `${bookHref}?pkg=${encodeURIComponent(pkg)}` : bookHref;
+                        return (
+                          <div key={it.id} className="relative flex flex-col rounded-2xl p-6"
+                            style={{ background: C.panel, border: `1px solid ${featured ? C.green : C.line}`, boxShadow: featured ? `0 0 0 1px ${C.green}` : "none" }}>
+                            {featured && (
+                              <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: C.green, color: C.panel }}>
+                                <Star size={11} /> Đầy đủ nhất
+                              </span>
+                            )}
+                            <p className="font-serif text-xl font-semibold" style={{ color: C.greenDeep }}>{it.name}</p>
+                            <p className="mt-1 font-serif text-3xl font-semibold" style={{ color: C.green }}>
+                              {vnd(it.price)}{it.unit ? <span className="text-sm" style={{ color: C.muted }}> {it.unit}</span> : null}
+                            </p>
+                            <ul className="mt-4 flex-1 space-y-2">
+                              {bullets(it.description).map((b, i) => (
+                                <li key={i} className="flex items-start gap-2 text-[15px]" style={{ color: C.muted }}>
+                                  <Check size={15} className="mt-0.5 shrink-0" style={{ color: C.green }} />
+                                  <span>{b}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <a href={href} className="mt-5 inline-block rounded-full px-5 py-2.5 text-center text-sm font-medium"
+                              style={featured ? { background: C.greenDeep, color: C.panel } : { border: `1px solid ${C.green}`, color: C.green }}>
+                              Chọn gói &amp; đặt lịch
+                            </a>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {noteGroups.length > 0 && (
