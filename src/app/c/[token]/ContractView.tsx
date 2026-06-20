@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, Phone, Mail, ListChecks, Package } from "lucide-react";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
@@ -52,7 +52,7 @@ type QuoteOption = { id: string; name: string; price: number; description: strin
 type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean };
 type ExpenseRow = { id: string; title: string; amount: number; category: string | null; spent_at: string };
 type TaskRow = { id: string; label: string; done: boolean };
-type ProductRow = { id: string; name: string; qty: number; status: string };
+type ProductRow = { id: string; name: string; qty: number; cost: number; status: string };
 type Gallery = { slug: string; title: string };
 
 type Lang = "vi" | "en";
@@ -103,6 +103,7 @@ export default function ContractView({ token }: { token: string }) {
   const [phone, setPhone] = useState("");
   const [contract, setContract] = useState<Contract | null>(null);
   const [studioName, setStudioName] = useState("Studio");
+  const [studioPhone, setStudioPhone] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -170,6 +171,7 @@ export default function ContractView({ token }: { token: string }) {
     const j = await res.json();
     setContract(j.contract);
     setStudioName(j.studio_name || "Studio");
+    setStudioPhone(j.studio_phone ?? null);
     setItems(j.items ?? []);
     setPayments(j.payments ?? []);
     setMilestones(j.milestones ?? []);
@@ -311,7 +313,10 @@ export default function ContractView({ token }: { token: string }) {
     );
   }
 
-  const total = contractTotal(items);
+  const itemsTotal = contractTotal(items);
+  const surcharge = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  const printing = products.reduce((s, p) => s + (Number(p.cost) || 0) * (Number(p.qty) || 1), 0);
+  const total = itemsTotal + surcharge + printing;
   const collected = sumAmounts(payments);
   const balance = total - collected;
   const signed = !!contract.client_signed_at;
@@ -336,27 +341,34 @@ export default function ContractView({ token }: { token: string }) {
           {SHOOT_TYPE_LABEL[contract.shoot_type]} · {CONTRACT_STATUS_LABEL[contract.status]}
         </p>
 
-        <div className="card mt-6 space-y-3 p-6 text-sm">
-          {contract.client_name && (
-            <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> {t("client")}: <b>{contract.client_name}</b></div>
-          )}
-          {contract.client_phone && (
-            <div className="flex items-center gap-2"><Phone size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "SĐT" : "Phone"}: <b>{contract.client_phone}</b></div>
-          )}
-          {contract.client_email && (
-            <div className="flex items-center gap-2"><Mail size={15} style={{ color: "var(--text3)" }} /> Email: <b>{contract.client_email}</b></div>
-          )}
-          {(contract.event_date || contract.event_time) && (
-            <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} />{contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
-          )}
-          {contract.location && (
-            <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
-          )}
-          {contract.event_date && (
-            <div className="pt-1">
-              <CalendarButtons compact event={{ date: contract.event_date, time: contract.event_time, title: contract.title, location: contract.location }} />
+        <div className="card mt-6 p-6 text-sm">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <p className="eyebrow mb-1.5">{lang === "vi" ? "Bên A · Studio" : "Party A · Studio"}</p>
+              <p className="font-medium">{studioName}</p>
+              {studioPhone && <p style={{ color: "var(--text2)" }}>{lang === "vi" ? "SĐT" : "Phone"}: {studioPhone}</p>}
             </div>
-          )}
+            <div>
+              <p className="eyebrow mb-1.5">{lang === "vi" ? "Bên B · Khách hàng" : "Party B · Client"}</p>
+              <p className="font-medium">{contract.client_name || "—"}</p>
+              {contract.client_phone && <p style={{ color: "var(--text2)" }}>{lang === "vi" ? "SĐT" : "Phone"}: {contract.client_phone}</p>}
+              {contract.client_email && <p style={{ color: "var(--text2)" }}>Email: {contract.client_email}</p>}
+            </div>
+          </div>
+          <div className="mt-4 space-y-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Gói dịch vụ" : "Service"}: <b>{SHOOT_TYPE_LABEL[contract.shoot_type]}</b></div>
+            {(contract.event_date || contract.event_time) && (
+              <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Ngày chính" : "Main date"}: {contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
+            )}
+            {contract.location && (
+              <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
+            )}
+            {contract.event_date && (
+              <div className="pt-1">
+                <CalendarButtons compact event={{ date: contract.event_date, time: contract.event_time, title: contract.title, location: contract.location }} />
+              </div>
+            )}
+          </div>
         </div>
 
         {quoteOptions.length > 0 && (
@@ -451,9 +463,16 @@ export default function ContractView({ token }: { token: string }) {
             </table>
           )}
           <dl className="mt-4 space-y-2 border-t pt-4 text-sm" style={{ borderColor: "var(--border)" }}>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("totalVal")}</dt><dd className="font-serif text-lg font-medium">{vnd(total)}</dd></div>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("paid")}</dt><dd style={{ color: "#7bb38a" }}>{vnd(collected)}</dd></div>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-medium">{vnd(balance)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Giá trị dịch vụ" : "Service value"}</dt><dd>{vnd(itemsTotal)}</dd></div>
+            {surcharge > 0 && (
+              <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Chi phí phát sinh" : "Surcharges"}</dt><dd>{vnd(surcharge)}</dd></div>
+            )}
+            {printing > 0 && (
+              <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Chi phí in ấn" : "Printing"}</dt><dd>{vnd(printing)}</dd></div>
+            )}
+            <div className="flex justify-between border-t pt-2" style={{ borderColor: "var(--border)" }}><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Tổng giá trị hợp đồng" : "Total"}</dt><dd className="font-serif text-lg font-medium">{vnd(total)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Đã thanh toán / cọc" : "Paid / deposit"}</dt><dd style={{ color: "#7bb38a" }}>− {vnd(collected)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</dd></div>
           </dl>
           {payments.length > 0 && (
             <ul className="mt-3 space-y-1 text-xs" style={{ color: "var(--text3)" }}>
@@ -467,7 +486,8 @@ export default function ContractView({ token }: { token: string }) {
           )}
           {balance > 0 && (
             <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-              <p className="mb-3 text-sm font-medium">{lang === "vi" ? "Thanh toán / chuyển khoản" : "Payment"}</p>
+              <p className="text-sm font-medium">{lang === "vi" ? "Thanh toán / chuyển khoản" : "Payment"}</p>
+              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Bấm vào nút bên dưới để hiện mã QR chuyển khoản." : "Tap a button below to reveal the transfer QR."}</p>
               {bank.bin && bank.account ? (
                 <div className="flex flex-wrap gap-2">
                   {plan.filter((p) => !p.paid && p.amount > 0).length > 0 ? (
@@ -553,9 +573,21 @@ export default function ContractView({ token }: { token: string }) {
 
         {/* Signing */}
         <div className="card mt-6 p-6">
-          <h2 className="mb-2 flex items-center gap-2 font-serif text-lg font-medium">
+          <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-medium">
             <PenLine size={17} /> {t("signTitle")}
           </h2>
+          {/* Bên A — studio (read-only) */}
+          <div className="mb-4 rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+            <p className="eyebrow mb-1">{lang === "vi" ? "Bên A · Studio" : "Party A · Studio"}</p>
+            {contract.studio_signature ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={contract.studio_signature} alt="" className="h-14 rounded bg-white p-1" />
+            ) : (
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Studio chưa ký" : "Not signed"}</p>
+            )}
+            <p className="mt-1 text-sm">{contract.studio_signed_name || studioName}</p>
+          </div>
+          <p className="eyebrow mb-2">{lang === "vi" ? "Bên B · Khách hàng" : "Party B · Client"}</p>
           {signed ? (
             <div>
               <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
@@ -666,8 +698,12 @@ export default function ContractView({ token }: { token: string }) {
       <PrintDoc
         contract={contract}
         studioName={studioName}
+        studioPhone={studioPhone}
         items={items}
         milestones={milestones}
+        itemsTotal={itemsTotal}
+        surcharge={surcharge}
+        printing={printing}
         total={total}
         collected={collected}
         balance={balance}
@@ -680,8 +716,12 @@ export default function ContractView({ token }: { token: string }) {
 function PrintDoc({
   contract,
   studioName,
+  studioPhone,
   items,
   milestones,
+  itemsTotal,
+  surcharge,
+  printing,
   total,
   collected,
   balance,
@@ -689,8 +729,12 @@ function PrintDoc({
 }: {
   contract: Contract;
   studioName: string;
+  studioPhone: string | null;
   items: Item[];
   milestones: Milestone[];
+  itemsTotal: number;
+  surcharge: number;
+  printing: number;
   total: number;
   collected: number;
   balance: number;
@@ -709,17 +753,17 @@ function PrintDoc({
 
       <table style={{ width: "100%", fontSize: 13, marginBottom: 16, borderCollapse: "collapse" }}>
         <tbody>
-          <tr><td style={{ padding: "3px 0", width: 130 }}>Bên A (Studio):</td><td><b>{studioName}</b></td></tr>
-          <tr><td style={{ padding: "3px 0" }}>Bên B (Khách hàng):</td><td><b>{contract.client_name || "—"}</b>{contract.client_email ? ` · ${contract.client_email}` : ""}</td></tr>
-          <tr><td style={{ padding: "3px 0" }}>Loại dịch vụ:</td><td>{SHOOT_TYPE_LABEL[contract.shoot_type]}</td></tr>
-          <tr><td style={{ padding: "3px 0" }}>Thời gian:</td><td>{contract.event_date || "—"}{contract.event_time ? ` · ${contract.event_time}` : ""}</td></tr>
+          <tr><td style={{ padding: "3px 0", width: 130 }}>Bên A (Studio):</td><td><b>{studioName}</b>{studioPhone ? ` · ĐT: ${studioPhone}` : ""}</td></tr>
+          <tr><td style={{ padding: "3px 0" }}>Bên B (Khách hàng):</td><td><b>{contract.client_name || "—"}</b>{contract.client_phone ? ` · ĐT: ${contract.client_phone}` : ""}{contract.client_email ? ` · ${contract.client_email}` : ""}</td></tr>
+          <tr><td style={{ padding: "3px 0" }}>Gói dịch vụ:</td><td>{SHOOT_TYPE_LABEL[contract.shoot_type]}</td></tr>
+          <tr><td style={{ padding: "3px 0" }}>Ngày chính:</td><td>{contract.event_date || "—"}{contract.event_time ? ` · ${contract.event_time}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Địa điểm:</td><td>{contract.location || "—"}</td></tr>
         </tbody>
       </table>
 
       {milestones.length > 0 && (
         <>
-          <h2 style={{ fontSize: 15, margin: "16px 0 8px" }}>Lịch trình</h2>
+          <h2 style={{ fontSize: 15, margin: "16px 0 8px" }}>Lịch trình (các buổi phụ)</h2>
           <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse", marginBottom: 8 }}>
             <tbody>
               {milestones.map((m) => (
@@ -757,8 +801,11 @@ function PrintDoc({
 
       <table style={{ width: "100%", fontSize: 13, marginTop: 12 }}>
         <tbody>
-          <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Tổng giá trị hợp đồng:</td><td style={{ textAlign: "right", width: 140, fontWeight: 700 }}>{vnd(total)}</td></tr>
-          <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Đã thanh toán:</td><td style={{ textAlign: "right" }}>{vnd(collected)}</td></tr>
+          <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Giá trị dịch vụ:</td><td style={{ textAlign: "right", width: 140 }}>{vnd(itemsTotal)}</td></tr>
+          {surcharge > 0 && <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Chi phí phát sinh:</td><td style={{ textAlign: "right" }}>{vnd(surcharge)}</td></tr>}
+          {printing > 0 && <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Chi phí in ấn:</td><td style={{ textAlign: "right" }}>{vnd(printing)}</td></tr>}
+          <tr><td style={{ textAlign: "right", padding: "4px 0", borderTop: "1px solid #333" }}>Tổng giá trị hợp đồng:</td><td style={{ textAlign: "right", fontWeight: 700, borderTop: "1px solid #333" }}>{vnd(total)}</td></tr>
+          <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Đã thanh toán / cọc:</td><td style={{ textAlign: "right" }}>− {vnd(collected)}</td></tr>
           <tr><td style={{ textAlign: "right", padding: "2px 0" }}>Còn lại:</td><td style={{ textAlign: "right", fontWeight: 700 }}>{vnd(balance)}</td></tr>
         </tbody>
       </table>

@@ -41,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   // Owner / studio info fetched separately (failure here must not break access).
   const { data: ownerObj } = await db
     .from("profiles")
-    .select("full_name, email, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin")
+    .select("full_name, email, pl_phone, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin")
     .eq("id", contract.owner_id)
     .maybeSingle();
   const studioName = ownerObj?.full_name || "Studio";
@@ -180,7 +180,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     db.from("contract_payment_plan").select("id, label, amount, due_date, paid").eq("contract_id", contract.id).order("position"),
     db.from("studio_expenses").select("id, title, amount, category, spent_at").eq("contract_id", contract.id).order("spent_at", { ascending: false }),
     db.from("contract_tasks").select("id, label, done, position").eq("contract_id", contract.id).order("position"),
-    db.from("contract_products").select("id, name, qty, status, position").eq("contract_id", contract.id).order("position"),
+    db.from("contract_products").select("id, name, qty, cost, status, position").eq("contract_id", contract.id).order("position"),
   ]);
 
   // Linked delivery gallery (so the portal can deep-link the client's photos).
@@ -209,6 +209,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   return NextResponse.json({
     contract: { ...contract, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
     studio_name: studioName,
+    studio_phone: ownerObj?.pl_phone ?? null,
     bank,
     items: items ?? [],
     payments: payments ?? [],
