@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw, Maximize2, Minimize2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
@@ -86,6 +86,7 @@ export default function SiteManager({
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  const [wide, setWide] = useState(true);
   const refreshPreview = () => setPreviewKey((k) => k + 1);
   const mode = theme.mode || "dark";
   function setMode(m: "light" | "dark") {
@@ -201,18 +202,23 @@ export default function SiteManager({
   }
 
   return (
-    <div className="animate-[vkFade_.5s_ease_both]">
+    <div className="animate-[vkFade_.5s_ease_both]" style={wide ? { width: "100vw", marginLeft: "calc(50% - 50vw)", paddingLeft: 24, paddingRight: 24 } : undefined}>
       {msg && (
         <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>{msg}</div>
       )}
 
-      <div className="mb-6">
-        <p className="eyebrow mb-1.5">Trang web riêng</p>
-        <h1 className="font-serif text-3xl font-medium">Trang giới thiệu của bạn</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Chọn 1 mẫu, đổi nội dung — xem kết quả ngay bên phải. Không cần biết thiết kế.</p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="eyebrow mb-1.5">Trang web riêng</p>
+          <h1 className="font-serif text-3xl font-medium">Trang giới thiệu của bạn</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Chọn 1 mẫu, đổi nội dung — xem kết quả ngay bên phải. Không cần biết thiết kế.</p>
+        </div>
+        <button onClick={() => setWide((w) => !w)} className="btn-ghost px-3 py-2 text-xs">
+          {wide ? <><Minimize2 size={14} /> Thu gọn</> : <><Maximize2 size={14} /> Toàn màn hình</>}
+        </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(340px,440px)]">
+      <div className={wide ? "grid gap-6 lg:grid-cols-[1fr_minmax(460px,46vw)]" : "grid gap-6 lg:grid-cols-[1fr_minmax(340px,440px)]"}>
         {/* LEFT — controls */}
         <div className="order-2 space-y-6 lg:order-1">
           {/* Step 1: pick a template */}
@@ -265,6 +271,22 @@ export default function SiteManager({
             <details className="mt-3">
               <summary className="cursor-pointer text-xs" style={{ color: "var(--text3)" }}>Tuỳ chỉnh nâng cao</summary>
               <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">Vị trí menu</label>
+                  <select className="input" value={theme.navPosition || "top"} onChange={(e) => setTheme((t) => ({ ...t, navPosition: e.target.value as "top" | "left" | "right" }))}>
+                    <option value="top">Menu trên</option>
+                    <option value="left">Menu bên trái</option>
+                    <option value="right">Menu bên phải</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Cỡ ảnh bìa</label>
+                  <select className="input" value={theme.heroSize || "medium"} onChange={(e) => setTheme((t) => ({ ...t, heroSize: e.target.value as "small" | "medium" | "large" }))}>
+                    <option value="small">Nhỏ</option>
+                    <option value="medium">Vừa</option>
+                    <option value="large">Lớn</option>
+                  </select>
+                </div>
                 <div>
                   <label className="label">Phông chữ</label>
                   <select className="input" value={theme.font || "serif"} onChange={(e) => setTheme((t) => ({ ...t, font: e.target.value as "serif" | "sans" }))}>
@@ -429,7 +451,7 @@ export default function SiteManager({
                 </div>
               </div>
               <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
-                <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: "78vh", border: 0, background: "#fff" }} />
+                <iframe key={previewKey} src="/site-preview" title="Xem trước" className="w-full" style={{ height: wide ? "86vh" : "78vh", border: 0, background: "#fff" }} />
               </div>
               {liveUrl && published && (
                 <a href={liveUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-center text-xs text-accent hover:underline">Trang thật: {liveUrl}</a>

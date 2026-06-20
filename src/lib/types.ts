@@ -563,6 +563,8 @@ export type SiteTheme = {
   heroAlign?: "center" | "left";    // hero text alignment
   galleryCols?: number;             // gallery columns (2–4)
   radius?: "rounded" | "sharp";     // corner style
+  navPosition?: "top" | "left" | "right"; // menu placement
+  heroSize?: "small" | "medium" | "large"; // cover height
 };
 export type SiteSeo = { title?: string; description?: string; og_image?: string };
 

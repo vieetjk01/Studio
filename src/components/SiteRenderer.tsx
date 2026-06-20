@@ -1,5 +1,5 @@
 import { mainUrl } from "@/lib/hosts";
-import { vnd, type SiteBlock } from "@/lib/types";
+import { vnd, SITE_BLOCK_LABEL, type SiteBlock } from "@/lib/types";
 import type { SiteData } from "@/lib/site-loader";
 
 const str = (v: unknown, fallback = "") => (typeof v === "string" && v.trim() ? v : fallback);
@@ -35,7 +35,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     "--s-bg": t.bg || "#0c0c0d",
     "--s-text": t.text || "#ececec",
     "--s-accent": t.accent || "#c7a76b",
-    "--s-border": dark ? "var(--s-border)" : "rgba(0,0,0,.12)",
+    "--s-border": dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
     "--s-radius": t.radius === "sharp" ? "0px" : "14px",
     background: "var(--s-bg)",
@@ -43,51 +43,100 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     minHeight: "100vh",
   } as React.CSSProperties;
 
+  const navPos = t.navPosition || "top";
+  const navItems = blocks.filter((b) => b.type !== "hero").map((b) => ({ id: b.id, label: str(b.config?.heading) || SITE_BLOCK_LABEL[b.type] }));
+
+  const brand = t.logo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={t.logo} alt={name} style={{ height: 36, width: "auto" }} />
+  ) : (
+    <span style={{ fontFamily: fontVar, fontSize: 20, letterSpacing: 1 }}>{name}</span>
+  );
+
+  const content =
+    blocks.length === 0 ? (
+      <div style={{ display: "flex", minHeight: "60vh", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 24 }}>
+        <div>
+          <h1 style={{ fontFamily: fontVar, fontSize: 40 }}>{name}</h1>
+          <p style={{ opacity: 0.6, marginTop: 8 }}>Trang đang được hoàn thiện.</p>
+        </div>
+      </div>
+    ) : (
+      blocks.map((b) => (
+        <div id={`sec-${b.id}`} key={b.id}>
+          <Block block={b} data={data} fontVar={fontVar} demo={demo} />
+        </div>
+      ))
+    );
+
+  const footer = (
+    <footer style={{ borderTop: "1px solid var(--s-border)", padding: "28px 24px", textAlign: "center", fontSize: 13, opacity: 0.55 }}>
+      © {name}
+      {site.template !== "studio-pro" && (
+        <>
+          {" · "}
+          <a href={mainUrl("/")} style={{ color: "inherit" }}>Tạo bởi Vieetjk</a>
+        </>
+      )}
+    </footer>
+  );
+
+  // Top navigation (default).
+  if (navPos === "top") {
+    return (
+      <div style={wrap}>
+        {blocks.length > 0 && (
+          <header style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", gap: 20, justifyContent: "space-between", padding: "12px 24px", borderBottom: "1px solid var(--s-border)", background: "color-mix(in srgb, var(--s-bg) 82%, transparent)", backdropFilter: "blur(8px)" }}>
+            {brand}
+            <nav style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 14 }}>
+              {navItems.map((n) => (
+                <a key={n.id} href={`#sec-${n.id}`} style={{ color: "inherit", opacity: 0.85, textDecoration: "none" }}>{n.label}</a>
+              ))}
+            </nav>
+          </header>
+        )}
+        {content}
+        {footer}
+      </div>
+    );
+  }
+
+  // Left / right sidebar navigation.
   return (
     <div style={wrap}>
-      {blocks.length > 0 && (
-        <header
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: t.heroAlign === "left" ? "flex-start" : "center",
-            padding: "14px 24px",
-            borderBottom: "1px solid var(--s-border)",
-            background: "color-mix(in srgb, var(--s-bg) 82%, transparent)",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          {t.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={t.logo} alt={name} style={{ height: 36, width: "auto" }} />
-          ) : (
-            <span style={{ fontFamily: fontVar, fontSize: 20, letterSpacing: 1 }}>{name}</span>
-          )}
-        </header>
-      )}
-      {blocks.length === 0 ? (
-        <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 24 }}>
-          <div>
-            <h1 style={{ fontFamily: fontVar, fontSize: 40 }}>{name}</h1>
-            <p style={{ opacity: 0.6, marginTop: 8 }}>Trang đang được hoàn thiện.</p>
-          </div>
-        </div>
-      ) : (
-        blocks.map((b) => <Block key={b.id} block={b} data={data} fontVar={fontVar} demo={demo} />)
-      )}
-
-      <footer style={{ borderTop: "1px solid var(--s-border)", padding: "28px 24px", textAlign: "center", fontSize: 13, opacity: 0.55 }}>
-        © {name}
-        {site.template !== "studio-pro" && (
-          <>
-            {" · "}
-            <a href={mainUrl("/")} style={{ color: "inherit" }}>Tạo bởi Vieetjk</a>
-          </>
+      <div style={{ display: "flex", flexDirection: navPos === "right" ? "row-reverse" : "row", minHeight: "100vh" }}>
+        {blocks.length > 0 && (
+          <aside
+            style={{
+              width: 230,
+              flexShrink: 0,
+              position: "sticky",
+              top: 0,
+              alignSelf: "flex-start",
+              height: "100vh",
+              padding: "28px 22px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+              [navPos === "right" ? "borderLeft" : "borderRight"]: "1px solid var(--s-border)",
+            } as React.CSSProperties}
+          >
+            <div>{brand}</div>
+            <nav style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
+              {navItems.map((n) => (
+                <a key={n.id} href={`#sec-${n.id}`} style={{ color: "inherit", opacity: 0.85, textDecoration: "none" }}>{n.label}</a>
+              ))}
+            </nav>
+            {owner?.booking_token && (
+              <a href={mainUrl(`/book/${owner.booking_token}`)} style={{ marginTop: "auto", padding: "10px 16px", borderRadius: 999, background: "var(--s-accent)", color: "#171717", fontWeight: 600, textAlign: "center", textDecoration: "none", fontSize: 14 }}>Đặt lịch</a>
+            )}
+          </aside>
         )}
-      </footer>
+        <main style={{ flex: 1, minWidth: 0 }}>
+          {content}
+          {footer}
+        </main>
+      </div>
     </div>
   );
 }
@@ -111,11 +160,12 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
     case "hero": {
       const img = str(c.image);
       const left = t.heroAlign === "left";
+      const heroH = t.heroSize === "small" ? "42vh" : t.heroSize === "large" ? "74vh" : "54vh";
       return (
         <section
           style={{
             position: "relative",
-            minHeight: "70vh",
+            minHeight: heroH,
             display: "flex",
             alignItems: "center",
             justifyContent: left ? "flex-start" : "center",

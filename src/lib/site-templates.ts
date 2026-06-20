@@ -96,4 +96,29 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
       { type: "contact", config: { heading: "Liên hệ & đặt lịch" } },
     ],
   },
+  {
+    key: "side-minimal",
+    name: "Tối giản · menu trái",
+    thumb: img("vk-side", 600, 380),
+    theme: { mode: "light", accent: "#1a1a1a", bg: "#fbfbfa", text: "#1a1a1a", font: "sans", heroAlign: "left", galleryCols: 3, radius: "sharp", navPosition: "left", heroSize: "small" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Nhiếp ảnh tối giản", image: img("vk-side-hero") } },
+      { type: "gallery", config: { heading: "Tác phẩm" } },
+      { type: "about", config: { heading: "Giới thiệu", text: "Ít chi tiết thừa — chỉ còn cảm xúc.", image: img("vk-side-about", 800, 600) } },
+      { type: "services", config: { heading: "Dịch vụ", items: "Chân dung | Studio & ngoại cảnh\nSự kiện | Phóng sự\nThương mại | Sản phẩm" } },
+      { type: "contact", config: { heading: "Liên hệ" } },
+    ],
+  },
+  {
+    key: "mono-dark",
+    name: "Tối thanh lịch",
+    thumb: img("vk-mono", 600, 380),
+    theme: { mode: "dark", accent: "#eaeaea", bg: "#0b0b0b", text: "#eaeaea", font: "sans", heroAlign: "center", galleryCols: 4, radius: "sharp", navPosition: "top", heroSize: "small" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Đen trắng · tinh tế", image: img("vk-mono-hero") } },
+      { type: "gallery", config: { heading: "Portfolio" } },
+      { type: "stats", config: { items: "10 năm | Kinh nghiệm\n500+ | Dự án" } },
+      { type: "contact", config: { heading: "Liên hệ" } },
+    ],
+  },
 ];
