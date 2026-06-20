@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Minus, RotateCcw, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import MoneyInput from "@/components/MoneyInput";
 import { vnd, type StudioPackage } from "@/lib/types";
 
 export default function PackagesManager({
@@ -74,7 +75,7 @@ export default function PackagesManager({
             <div><label className="label">Tên gói</label><input className="input" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="label">Số buổi</label><input type="number" className="input" value={f.total_sessions} onChange={(e) => setF((p) => ({ ...p, total_sessions: Number(e.target.value) }))} /></div>
-              <div><label className="label">Giá</label><input type="number" className="input" value={f.price || ""} onChange={(e) => setF((p) => ({ ...p, price: Number(e.target.value) }))} /></div>
+              <div><label className="label">Giá</label><MoneyInput value={f.price} onChange={(n) => setF((p) => ({ ...p, price: n }))} /></div>
             </div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang tạo…" : "Tạo thẻ"}</button>
           </div>

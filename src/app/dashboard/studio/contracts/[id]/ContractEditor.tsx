@@ -22,6 +22,7 @@ import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
 import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
+import MoneyInput from "@/components/MoneyInput";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -931,8 +932,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                       onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))} />
                     <input type="number" className="input col-span-3 text-center sm:col-span-2" value={it.qty}
                       onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, qty: Number(e.target.value) } : x)))} />
-                    <input type="number" className="input col-span-7 text-right sm:col-span-3" value={it.unit_price}
-                      onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, unit_price: Number(e.target.value) } : x)))} />
+                    <MoneyInput className="input col-span-7 text-right sm:col-span-3" value={it.unit_price}
+                      onChange={(n) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, unit_price: n } : x)))} />
                     <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="col-span-2 flex justify-center sm:col-span-1" style={{ color: "var(--text3)" }} aria-label="Xoá">
                       <Trash2 size={15} />
                     </button>
@@ -973,7 +974,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
             <div className="mt-3 grid gap-2 sm:grid-cols-12">
               <input className="input sm:col-span-5" placeholder="Tên gói (Cơ bản…)" value={optForm.name} onChange={(e) => setOptForm((p) => ({ ...p, name: e.target.value }))} />
-              <input type="number" className="input sm:col-span-3" placeholder="Giá" value={optForm.price || ""} onChange={(e) => setOptForm((p) => ({ ...p, price: Number(e.target.value) }))} />
+              <MoneyInput className="input sm:col-span-3" placeholder="Giá" value={optForm.price} onChange={(n) => setOptForm((p) => ({ ...p, price: n }))} />
               <input className="input sm:col-span-4" placeholder="Mô tả ngắn" value={optForm.description} onChange={(e) => setOptForm((p) => ({ ...p, description: e.target.value }))} />
             </div>
             <button onClick={addOption} className="btn-ghost mt-3"><Plus size={15} /> Thêm phương án</button>
@@ -1004,7 +1005,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
             {/* Add payment */}
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
-              <input type="number" className="input sm:col-span-3" placeholder="Số tiền" value={pay.amount || ""} onChange={(e) => setPay((p) => ({ ...p, amount: Number(e.target.value) }))} />
+              <MoneyInput className="input sm:col-span-3" placeholder="Số tiền" value={pay.amount} onChange={(n) => setPay((p) => ({ ...p, amount: n }))} />
               <select className="input sm:col-span-3" value={pay.kind} onChange={(e) => setPay((p) => ({ ...p, kind: e.target.value as PaymentKind }))}>
                 {(Object.keys(PAYMENT_KIND_LABEL) as PaymentKind[]).map((k) => (
                   <option key={k} value={k}>{PAYMENT_KIND_LABEL[k]}</option>
@@ -1046,7 +1047,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               )}
               <div className="mt-3 grid gap-2 sm:grid-cols-12">
                 <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
-                <input type="number" className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount || ""} onChange={(e) => setPlanForm((p) => ({ ...p, amount: Number(e.target.value) }))} />
+                <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
                 <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
               </div>
               <button onClick={addPlan} className="btn-ghost mt-3"><Plus size={15} /> Thêm đợt thu</button>
@@ -1076,7 +1077,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-6" placeholder="Nội dung chi" value={exp.title} onChange={(e) => setExp((p) => ({ ...p, title: e.target.value }))} />
-              <input type="number" className="input sm:col-span-3" placeholder="Số tiền" value={exp.amount || ""} onChange={(e) => setExp((p) => ({ ...p, amount: Number(e.target.value) }))} />
+              <MoneyInput className="input sm:col-span-3" placeholder="Số tiền" value={exp.amount} onChange={(n) => setExp((p) => ({ ...p, amount: n }))} />
               <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
             </div>
             <button onClick={addExpense} className="btn-ghost mt-3"><Plus size={15} /> Thêm chi phí</button>
@@ -1206,7 +1207,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                             <option key={k} value={k}>{CREW_ROLE_LABEL[k]}</option>
                           ))}
                         </select>
-                        <input type="number" className="input text-right sm:col-span-2" placeholder="Lương" value={c.salary} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, salary: Number(e.target.value) } : x)))} />
+                        <MoneyInput className="input text-right sm:col-span-2" placeholder="Lương" value={c.salary} onChange={(n) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, salary: n } : x)))} />
                       </div>
                       <input className="input mt-2" placeholder="Yêu cầu riêng gửi cho người này (vd: mang lens 35mm, có mặt 7:30)…" value={c.note} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, note: e.target.value } : x)))} />
                       {c.phone && conflictFor(c.phone) && (
@@ -1321,7 +1322,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mt-3 grid gap-2 sm:grid-cols-12">
               <input className="input sm:col-span-6" placeholder="Tên sản phẩm" value={prodForm.name} onChange={(e) => setProdForm((p) => ({ ...p, name: e.target.value }))} />
               <input type="number" className="input sm:col-span-2" placeholder="SL" value={prodForm.qty} onChange={(e) => setProdForm((p) => ({ ...p, qty: Number(e.target.value) }))} />
-              <input type="number" className="input sm:col-span-4" placeholder="Chi phí" value={prodForm.cost || ""} onChange={(e) => setProdForm((p) => ({ ...p, cost: Number(e.target.value) }))} />
+              <MoneyInput className="input sm:col-span-4" placeholder="Chi phí" value={prodForm.cost} onChange={(n) => setProdForm((p) => ({ ...p, cost: n }))} />
             </div>
             <button onClick={addProduct} className="btn-ghost mt-3"><Plus size={15} /> Thêm sản phẩm</button>
           </div>

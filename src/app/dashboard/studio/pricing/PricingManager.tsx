@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import MoneyInput from "@/components/MoneyInput";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
 import { vnd, type PricelistItem } from "@/lib/types";
 
@@ -153,7 +154,7 @@ export default function PricingManager({
           <div className="space-y-3">
             <div><label className="label">Tên dịch vụ</label><input className="input" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Giá</label><input type="number" className="input" value={f.price || ""} onChange={(e) => setF((p) => ({ ...p, price: Number(e.target.value) }))} /></div>
+              <div><label className="label">Giá</label><MoneyInput value={f.price} onChange={(n) => setF((p) => ({ ...p, price: n }))} /></div>
               <div><label className="label">Đơn vị</label><input className="input" placeholder="/ gói" value={f.unit} onChange={(e) => setF((p) => ({ ...p, unit: e.target.value }))} /></div>
             </div>
             <div><label className="label">Nhóm</label><input className="input" placeholder="Gói chụp / Gói quay…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
@@ -176,7 +177,7 @@ export default function PricingManager({
                     <div className="grid gap-2 sm:grid-cols-2">
                       <input className="input" placeholder="Tên" value={edit.name} onChange={(e) => setEdit((p) => ({ ...p, name: e.target.value }))} />
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="number" className="input" placeholder="Giá" value={edit.price || ""} onChange={(e) => setEdit((p) => ({ ...p, price: Number(e.target.value) }))} />
+                        <MoneyInput placeholder="Giá" value={edit.price} onChange={(n) => setEdit((p) => ({ ...p, price: n }))} />
                         <input className="input" placeholder="Đơn vị" value={edit.unit} onChange={(e) => setEdit((p) => ({ ...p, unit: e.target.value }))} />
                       </div>
                     </div>

@@ -25,9 +25,8 @@ export default function PackageCompare({
   const topPrice = Math.max(...items.map((i) => i.price));
 
   return (
-    <div className="overflow-x-auto pb-2">
-      <div className="flex gap-3" style={{ minWidth: items.length > 4 ? `${items.length * 188}px` : undefined }}>
-        {items.map((it) => {
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {items.map((it) => {
           const featured = it.price === topPrice && items.length > 1;
           const bookHref = bookingToken
             ? `/book/${bookingToken}?pkg=${encodeURIComponent(`${listLabel} · ${it.name}`)}`
@@ -35,7 +34,7 @@ export default function PackageCompare({
           return (
             <div
               key={it.id}
-              className="relative flex w-[185px] shrink-0 flex-col rounded-2xl p-4"
+              className="relative flex flex-col rounded-2xl p-4"
               style={{
                 background: featured ? "var(--surface2)" : "var(--surface)",
                 border: `1px solid ${featured ? "var(--accent)" : "var(--border)"}`,
@@ -63,7 +62,6 @@ export default function PackageCompare({
             </div>
           );
         })}
-      </div>
     </div>
   );
 }

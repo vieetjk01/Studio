@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wallet, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import MoneyInput from "@/components/MoneyInput";
 import { vnd, EXPENSE_CATEGORY_LABEL, PAYMENT_KIND_LABEL, type StudioExpense, type PaymentKind } from "@/lib/types";
 
 export type PaymentRow = {
@@ -42,7 +43,7 @@ export default function ReportsView({
   const [expenses, setExpenses] = useState<StudioExpense[]>(initialExpenses);
   const [target, setTarget] = useState(initialTarget);
   const [targetEdit, setTargetEdit] = useState(false);
-  const [targetInput, setTargetInput] = useState(String(initialTarget || ""));
+  const [targetInput, setTargetInput] = useState(initialTarget || 0);
 
   const [exp, setExp] = useState({ title: "", amount: 0, category: "equipment", spent_at: now.toISOString().slice(0, 10), note: "" });
   const [busy, setBusy] = useState(false);
@@ -182,11 +183,11 @@ export default function ReportsView({
           <h2 className="font-serif text-lg font-medium">Mục tiêu doanh thu tháng</h2>
           {targetEdit ? (
             <div className="flex items-center gap-2">
-              <input type="number" className="input w-36" placeholder="Số tiền" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} />
+              <MoneyInput className="input w-36" placeholder="Số tiền" value={targetInput} onChange={setTargetInput} />
               <button onClick={saveTarget} className="btn-primary px-3 py-1.5 text-xs">Lưu</button>
             </div>
           ) : (
-            <button onClick={() => { setTargetInput(String(target || "")); setTargetEdit(true); }} className="btn-ghost px-3 py-1.5 text-xs">
+            <button onClick={() => { setTargetInput(target || 0); setTargetEdit(true); }} className="btn-ghost px-3 py-1.5 text-xs">
               {target > 0 ? "Sửa mục tiêu" : "Đặt mục tiêu"}
             </button>
           )}
@@ -278,7 +279,7 @@ export default function ReportsView({
         <h2 className="mb-4 font-serif text-lg font-medium">Thêm chi phí</h2>
         <div className="grid gap-2 sm:grid-cols-12">
           <input className="input sm:col-span-4" placeholder="Nội dung chi" value={exp.title} onChange={(e) => setExp((p) => ({ ...p, title: e.target.value }))} />
-          <input type="number" className="input sm:col-span-2" placeholder="Số tiền" value={exp.amount || ""} onChange={(e) => setExp((p) => ({ ...p, amount: Number(e.target.value) }))} />
+          <MoneyInput className="input sm:col-span-2" placeholder="Số tiền" value={exp.amount} onChange={(n) => setExp((p) => ({ ...p, amount: n }))} />
           <select className="input sm:col-span-3" value={exp.category} onChange={(e) => setExp((p) => ({ ...p, category: e.target.value }))}>
             {Object.keys(EXPENSE_CATEGORY_LABEL).map((k) => (
               <option key={k} value={k}>{EXPENSE_CATEGORY_LABEL[k]}</option>
