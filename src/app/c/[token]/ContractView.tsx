@@ -105,6 +105,7 @@ export default function ContractView({ token }: { token: string }) {
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
   const [bank, setBank] = useState<BankInfo>({ bin: null, account: null, holder: null, name: null });
+  const [paidReported, setPaidReported] = useState(false);
   const [qr, setQr] = useState("");
   const [lang, setLang] = useState<Lang>("vi");
   const t = (k: keyof typeof TR.vi) => TR[lang][k];
@@ -202,6 +203,15 @@ export default function ContractView({ token }: { token: string }) {
       setEditMsg("");
       setTimeout(() => setSent(false), 4000);
     }
+  }
+
+  async function reportPaid() {
+    const res = await fetch(`/api/c/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "paid", phone }),
+    });
+    if (res.ok) setPaidReported(true);
   }
 
   async function chooseQuote(optionId: string) {
@@ -439,6 +449,15 @@ export default function ContractView({ token }: { token: string }) {
             <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
               <p className="mb-3 text-center text-sm font-medium">{lang === "vi" ? "Quét mã để thanh toán phần còn lại" : "Scan to pay the balance"}</p>
               <VietQR bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} />
+              <div className="mt-4 text-center">
+                {paidReported ? (
+                  <p className="text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã gửi thông báo, studio sẽ đối soát." : "Sent — the studio will reconcile."}</p>
+                ) : (
+                  <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
+                    {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

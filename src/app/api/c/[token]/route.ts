@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, chosen_quote_option_id, chosen_quote_at, updated_at, owner:profiles(full_name, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin)"
+      "id, owner_id, code, title, client_name, client_phone, client_email, client_messenger, shoot_type, event_date, event_time, location, status, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, gallery_album_id, selection_album_id, client_viewed_at, brief_concept, brief_outfit, brief_refs, brief_note, brief_submitted_at, chosen_quote_option_id, chosen_quote_at, updated_at, owner:profiles(full_name, email, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin)"
     )
     .eq("client_token", params.token)
     .maybeSingle();
@@ -37,6 +38,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
   const ownerObj = contract.owner as {
     full_name?: string;
+    email?: string | null;
     pl_bank_holder?: string | null;
     pl_bank_account?: string | null;
     pl_bank_name?: string | null;
@@ -56,8 +58,25 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   const who = contract.client_name || "Khách";
-  const notify = (kind: string, message: string) =>
-    db.from("studio_notifications").insert({ owner_id: contract.owner_id, contract_id: contract.id, kind, message });
+  const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
+  // Record an in-app notification; when `mail` is set, also email the owner.
+  async function notify(kind: string, message: string, mail = false) {
+    await db.from("studio_notifications").insert({ owner_id: contract.owner_id, contract_id: contract.id, kind, message });
+    if (mail && ownerObj?.email) {
+      const host = process.env.NEXT_PUBLIC_STUDIO_HOST;
+      const link = host ? `https://${host}/dashboard/studio/contracts/${contract.id}` : "";
+      await sendEmail({
+        to: ownerObj.email,
+        subject: `Studio: ${message}`,
+        html: `<div style="font-family:Arial,sans-serif;color:#222"><p>${esc(message)}</p>${link ? `<p><a href="${link}">Mở hợp đồng →</a></p>` : ""}<p style="color:#888;font-size:12px">Thông báo tự động từ cổng khách.</p></div>`,
+      }).catch(() => {});
+    }
+  }
+
+  if (body.action === "paid") {
+    await notify("payment", `${who} báo đã chuyển khoản cho HĐ “${contract.title}”`, true);
+    return NextResponse.json({ ok: true });
+  }
 
   if (body.action === "edit_request") {
     const message = body.message?.trim();
@@ -66,7 +85,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       .from("contract_edit_requests")
       .insert({ contract_id: contract.id, message });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await notify("edit_request", `${who} yêu cầu chỉnh sửa HĐ “${contract.title}”`);
+    await notify("edit_request", `${who} yêu cầu chỉnh sửa HĐ “${contract.title}”`, true);
     return NextResponse.json({ ok: true });
   }
 
@@ -141,7 +160,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       })
       .eq("id", contract.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await notify("signed", `${name} đã ký hợp đồng “${contract.title}”`);
+    await notify("signed", `${name} đã ký hợp đồng “${contract.title}”`, true);
     return NextResponse.json({ ok: true });
   }
 

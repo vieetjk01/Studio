@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
@@ -20,6 +20,14 @@ export const metadata: Metadata = {
   title: "Vieetjk — Photo collection for customers",
   description:
     "Vieetjk · Photo Collection — minimalist dark photo selection for studio clients.",
+  appleWebApp: { capable: true, title: "Vieetjk", statusBarStyle: "black-translucent" },
+  icons: { apple: "/logo-mark.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b0b0d",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
