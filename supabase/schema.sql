@@ -871,6 +871,12 @@ create policy message_templates_owner_all on public.message_templates
 alter table public.profiles add column if not exists booking_token text unique;
 -- Secret token for the read-only .ics calendar feed (Google Calendar subscribe).
 alter table public.profiles add column if not exists calendar_token text unique;
+-- Contact + bank info shown on the public price list / booking pages.
+alter table public.profiles add column if not exists pl_phone        text;
+alter table public.profiles add column if not exists pl_facebook     text;
+alter table public.profiles add column if not exists pl_bank_holder  text;
+alter table public.profiles add column if not exists pl_bank_account text;
+alter table public.profiles add column if not exists pl_bank_name    text;
 
 create table if not exists public.studio_bookings (
   id             uuid primary key default gen_random_uuid(),

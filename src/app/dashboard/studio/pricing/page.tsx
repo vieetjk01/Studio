@@ -39,6 +39,13 @@ export default async function PricingPage() {
       ownerId={profile.id}
       initial={(data ?? []) as PricelistItem[]}
       shareUrl={token ? mainUrl(`/gia/${token}`) : ""}
+      contact={{
+        pl_phone: profile.pl_phone ?? "",
+        pl_facebook: profile.pl_facebook ?? "",
+        pl_bank_holder: profile.pl_bank_holder ?? "",
+        pl_bank_account: profile.pl_bank_account ?? "",
+        pl_bank_name: profile.pl_bank_name ?? "",
+      }}
     />
   );
 }
