@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     cycle?: string | null;
     max_uses?: number | null;
     expires_at?: string | null;
+    trial_days?: number | null;
   };
   const db = createAdminClient();
 
@@ -36,11 +37,12 @@ export async function POST(req: Request) {
   const cycle = body.cycle === "month" || body.cycle === "year" ? body.cycle : null;
   const max_uses = body.max_uses == null ? null : Math.max(1, Math.round(Number(body.max_uses)));
   const expires_at = body.expires_at ? new Date(body.expires_at).toISOString() : null;
+  const trial_days = body.trial_days == null ? null : Math.max(0, Math.round(Number(body.trial_days))) || null;
 
   const { data, error } = await db
     .from("discount_codes")
-    .insert({ code, percent, plan, cycle, active: true, max_uses, expires_at })
-    .select("id, code, percent, plan, cycle, active, max_uses, used_count, expires_at, created_at")
+    .insert({ code, percent, plan, cycle, active: true, max_uses, expires_at, trial_days })
+    .select("id, code, percent, plan, cycle, active, max_uses, used_count, expires_at, trial_days, created_at")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, code: data });

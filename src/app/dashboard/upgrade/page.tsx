@@ -75,6 +75,40 @@ export default function UpgradePage() {
   const [appliedCode, setAppliedCode] = useState<{ code: string; percent: number; plan: string | null; cycle: string | null } | null>(null);
   const [codeMsg, setCodeMsg] = useState<string | null>(null);
 
+  // Trial code (instant self-serve)
+  const [trialCode, setTrialCode] = useState("");
+  const [trialBusy, setTrialBusy] = useState(false);
+  const [trialOk, setTrialOk] = useState(false);
+  const [trialMsg, setTrialMsg] = useState<string | null>(null);
+
+  async function redeemTrial() {
+    const c = trialCode.trim().toUpperCase();
+    if (!c) return;
+    setTrialBusy(true);
+    setTrialMsg(null);
+    const res = await fetch("/api/discount/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: c }),
+    });
+    const d = await res.json().catch(() => null);
+    setTrialBusy(false);
+    if (res.ok && d?.ok) {
+      setTrialOk(true);
+      setCurrentPlan(d.plan as Plan);
+      setTrialMsg(`Đã kích hoạt gói ${PLAN_LABEL[d.plan as Plan]} dùng thử ${d.trial_days} ngày! Tải lại trang để bắt đầu dùng.`);
+    } else {
+      setTrialOk(false);
+      setTrialMsg(
+        d?.error === "already_used" ? "Bạn đã dùng mã này rồi."
+        : d?.error === "expired" ? "Mã đã hết hạn."
+        : d?.error === "used_up" ? "Mã đã hết lượt dùng."
+        : d?.error === "not_trial" ? "Mã này không phải mã dùng thử."
+        : "Mã không hợp lệ hoặc đã hết hiệu lực."
+      );
+    }
+  }
+
   useEffect(() => {
     (async () => {
       const supabase = createClient();
@@ -246,6 +280,17 @@ export default function UpgradePage() {
         </div>
       </div>
       {codeMsg && <p className="mb-4 text-[13px]" style={{ color: appliedCode ? "var(--gold)" : "#f87171" }}>{codeMsg}</p>}
+
+      {/* Trial code — instant activation */}
+      <div className="card mb-6 p-5">
+        <h3 className="mb-1 flex items-center gap-2 text-sm font-medium"><Sparkles size={15} style={{ color: "var(--gold)" }} /> Dùng thử</h3>
+        <p className="mb-3 text-[13px]" style={{ color: "var(--text2)" }}>Có mã dùng thử? Nhập để kích hoạt gói ngay, không cần thanh toán.</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <input value={trialCode} onChange={(e) => setTrialCode(e.target.value.toUpperCase())} placeholder="Mã dùng thử" className="input w-44" />
+          <button onClick={redeemTrial} disabled={trialBusy} className="btn-primary"><Zap size={14} /> {trialBusy ? "Đang kích hoạt…" : "Kích hoạt dùng thử"}</button>
+        </div>
+        {trialMsg && <p className="mt-2 text-[13px]" style={{ color: trialOk ? "#5fd29a" : "#f87171" }}>{trialMsg}</p>}
+      </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ plan, icon: Icon, accent, promo }) => (

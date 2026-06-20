@@ -49,13 +49,14 @@ export default function SettingsPanel({
 
   // Discount codes
   const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
-  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; cycle: string; uses: "1" | "many"; expires: string }>({
+  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; cycle: string; uses: "1" | "many"; expires: string; trial: number }>({
     code: "",
     percent: 10,
     plan: "",
     cycle: "",
     uses: "many",
     expires: "",
+    trial: 0,
   });
 
   function randomCode() {
@@ -79,12 +80,13 @@ export default function SettingsPanel({
         cycle: newCode.cycle || null,
         max_uses: newCode.uses === "1" ? 1 : null,
         expires_at: newCode.expires || null,
+        trial_days: newCode.trial || null,
       }),
     });
     const data = await res.json();
     if (res.ok && data.code) {
       setCodes((c) => [data.code, ...c]);
-      setNewCode({ code: "", percent: 10, plan: "", cycle: "", uses: "many", expires: "" });
+      setNewCode({ code: "", percent: 10, plan: "", cycle: "", uses: "many", expires: "", trial: 0 });
     } else {
       setMsg(data.error?.includes("duplicate") ? "Mã đã tồn tại" : t("error"));
       setTimeout(() => setMsg(null), 2500);
@@ -281,12 +283,22 @@ export default function SettingsPanel({
                 <option value="1">1 lần</option>
               </select>
             </div>
+            <div className="w-28">
+              <label className="label">Dùng thử (ngày)</label>
+              <input type="number" min={0} className="input" value={newCode.trial} onChange={(e) => setNewCode({ ...newCode, trial: Math.max(0, Number(e.target.value) || 0) })} />
+            </div>
             <div className="w-36">
               <label className="label">Hạn dùng (tuỳ chọn)</label>
               <input type="date" className="input" value={newCode.expires} onChange={(e) => setNewCode({ ...newCode, expires: e.target.value })} />
             </div>
             <button onClick={addCode} className="btn-primary"><Plus size={15} /> Thêm</button>
           </div>
+          <p className="text-[12px]" style={{ color: "var(--text3)" }}>
+            “Dùng thử (ngày)” &gt; 0 → mã kích hoạt gói ngay cho khách trong N ngày (tự phục vụ, không cần duyệt).{" "}
+            <button type="button" onClick={() => { randomCode(); setNewCode((n) => ({ ...n, plan: "studio", trial: 1, percent: 0, uses: "many" })); }} className="text-accent hover:underline">
+              Tạo nhanh mã dùng thử Studio 1 ngày
+            </button>
+          </p>
           {codes.length === 0 ? (
             <p className="text-[13px]" style={{ color: "var(--text3)" }}>Chưa có mã giảm giá.</p>
           ) : (
@@ -294,7 +306,11 @@ export default function SettingsPanel({
               {codes.map((c) => (
                 <div key={c.id} className="flex items-center gap-3 px-3 py-2 text-[13px]">
                   <span className="font-mono font-medium" style={{ color: "var(--text)" }}>{c.code}</span>
-                  <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>
+                  {c.trial_days ? (
+                    <span style={{ color: "var(--accent)" }}>dùng thử {c.trial_days} ngày</span>
+                  ) : (
+                    <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>
+                  )}
                   <span style={{ color: "var(--text3)" }}>
                     {c.plan ? c.plan : "mọi gói"}
                     {c.cycle ? ` · ${c.cycle === "year" ? "năm" : "tháng"}` : ""}

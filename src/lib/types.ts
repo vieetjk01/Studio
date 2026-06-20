@@ -111,6 +111,7 @@ export interface DiscountCode {
   used_count: number;
   expires_at: string | null;
   cycle: string | null;
+  trial_days: number | null;
   created_at: string;
 }
 
