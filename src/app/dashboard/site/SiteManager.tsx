@@ -211,9 +211,9 @@ export default function SiteManager({
         <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Chọn mẫu, đổi nội dung — xem kết quả ngay bên phải.</p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(280px,1fr)_3fr]">
-        {/* LEFT — controls */}
-        <div className="order-2 space-y-6 lg:order-1">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        {/* LEFT — controls (≈1/4) */}
+        <div className="space-y-6 lg:w-1/4 lg:min-w-[280px] lg:shrink-0">
           {/* Step 1: pick a template */}
           <div className="card p-5">
             <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu (1 chạm)</h2>
@@ -445,8 +445,8 @@ export default function SiteManager({
           </div>
         </div>
 
-        {/* RIGHT — live preview */}
-        <div className="order-1 lg:order-2">
+        {/* RIGHT — live preview (≈3/4) */}
+        <div className="lg:min-w-0 lg:flex-1">
           <div className="lg:sticky lg:top-20">
             <div className="card p-3">
               <div className="mb-2 flex items-center justify-between">
