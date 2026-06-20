@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, GripVertical, Check, ExternalLink, Globe, Sparkles, RefreshCw, Monitor, Smartphone, RotateCcw, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
@@ -86,10 +86,24 @@ export default function SiteManager({
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewTpl, setPreviewTpl] = useState<string | null>(null);
   const refreshPreview = () => setPreviewKey((k) => k + 1);
   const mode = theme.mode || "dark";
   function setMode(m: "light" | "dark") {
     setTheme((t) => ({ ...t, mode: m, bg: m === "light" ? "#ffffff" : "#0c0c0d", text: m === "light" ? "#161616" : "#ececec" }));
+  }
+
+  async function resetSite() {
+    if (!confirm("Xoá toàn bộ khối nội dung và cài đặt giao diện để làm lại từ đầu? (Không xoá album/bảng giá của bạn.)")) return;
+    setBusy(true);
+    await supabase.from("site_blocks").delete().eq("site_id", site.id);
+    await supabase.from("sites").update({ theme: {} }).eq("id", site.id);
+    setBusy(false);
+    setBlocks([]);
+    setTheme({});
+    toast("Đã xoá — bắt đầu lại từ đầu.");
+    refreshPreview();
   }
 
   const studioPro = plan === "studio" || isAdmin;
@@ -206,9 +220,30 @@ export default function SiteManager({
         <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>{msg}</div>
       )}
 
-      <div className="mb-4">
-        <h1 className="font-serif text-2xl font-medium">Trang giới thiệu của bạn</h1>
-        <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Chọn mẫu, đổi nội dung — xem kết quả ngay bên phải.</p>
+      {/* Top toolbar: domain + publish + save + preview controls */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <h1 className="mr-auto font-serif text-xl font-medium">Trang web của bạn</h1>
+
+        <div className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+          <input className="input h-8 w-32 text-xs" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
+          <span className="text-xs" style={{ color: "var(--text3)" }}>.{mainHost || "vieetjk.com"}</span>
+          <label className="flex items-center gap-1 whitespace-nowrap text-xs" style={{ color: "var(--text2)" }}>
+            <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} /> Xuất bản
+          </label>
+        </div>
+        <button onClick={saveSite} disabled={busy} className="btn-primary px-3 py-2 text-xs"><Check size={14} /> {busy ? "Đang lưu…" : "Lưu & cập nhật"}</button>
+
+        <span className="mx-1 hidden h-6 w-px sm:block" style={{ background: "var(--border)" }} />
+
+        <div className="flex overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
+          <button onClick={() => setDevice("desktop")} className="px-2.5 py-2" title="Xem máy tính" style={{ background: device === "desktop" ? "var(--surface2)" : "transparent", color: device === "desktop" ? "var(--accent)" : "var(--text2)" }}><Monitor size={14} /></button>
+          <button onClick={() => setDevice("mobile")} className="px-2.5 py-2" title="Xem điện thoại" style={{ background: device === "mobile" ? "var(--surface2)" : "transparent", color: device === "mobile" ? "var(--accent)" : "var(--text2)" }}><Smartphone size={14} /></button>
+        </div>
+        <button onClick={refreshPreview} className="btn-ghost px-2.5 py-2 text-xs"><RefreshCw size={13} /> Làm mới</button>
+        {liveUrl && published && (
+          <a href={liveUrl} target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-2 text-xs"><ExternalLink size={13} /> Trang thật</a>
+        )}
+        <button onClick={resetSite} disabled={busy} className="btn-ghost px-2.5 py-2 text-xs" style={{ color: "#c77b7b" }}><RotateCcw size={13} /> Làm lại</button>
       </div>
 
       <div className="flex flex-col gap-5 lg:h-[calc(100vh-170px)] lg:flex-row lg:items-stretch lg:overflow-hidden">
@@ -216,18 +251,21 @@ export default function SiteManager({
         <div className="space-y-6 lg:w-1/4 lg:min-w-[280px] lg:shrink-0 lg:h-full lg:overflow-y-auto lg:pr-2">
           {/* Step 1: pick a template */}
           <div className="card p-5">
-            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu (1 chạm)</h2>
-            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Bấm một mẫu để áp dụng ngay; nội dung &amp; ảnh chỉ là mẫu, bạn đổi lại sau.</p>
+            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu</h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Bấm ảnh để <b>xem trước trang hoàn chỉnh</b>, rồi “Dùng”. Nội dung &amp; ảnh là mẫu, bạn đổi sau.</p>
             <div className="grid grid-cols-2 gap-2">
               {SITE_TEMPLATES.map((tp) => (
-                <button key={tp.key} onClick={() => applyTemplate(tp.key)} className="overflow-hidden rounded-xl text-left transition-transform hover:scale-[1.02]" style={{ border: "1px solid var(--border)" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={tp.thumb} alt={tp.name} className="aspect-[3/2] w-full object-cover" />
+                <div key={tp.key} className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
+                  <button onClick={() => setPreviewTpl(tp.key)} className="relative block w-full" title="Xem trước">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={tp.thumb} alt={tp.name} className="aspect-[3/2] w-full object-cover" />
+                    <span className="absolute bottom-1 right-1 rounded px-1.5 py-0.5 text-[9px]" style={{ background: "rgba(0,0,0,.6)", color: "#fff" }}><Eye size={9} className="mr-0.5 inline" />Xem</span>
+                  </button>
                   <div className="flex items-center justify-between gap-1 p-2">
-                    <span className="text-xs font-medium">{tp.name}</span>
-                    <span className="rounded-full px-1.5 py-0.5 text-[9px]" style={{ background: "var(--surface2)", color: "var(--text3)" }}>{tp.theme.mode === "light" ? "Sáng" : "Tối"}</span>
+                    <span className="truncate text-xs font-medium">{tp.name} <span style={{ color: "var(--text3)" }}>· {tp.theme.mode === "light" ? "Sáng" : "Tối"}</span></span>
+                    <button onClick={() => applyTemplate(tp.key)} className="btn-primary shrink-0 px-2 py-0.5 text-[10px]">Dùng</button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -424,50 +462,44 @@ export default function SiteManager({
         )}
           </div>
 
-          {/* Step 4: domain + publish */}
-          <div className="card p-5">
-            <h2 className="mb-3 font-serif text-lg font-medium">4. Tên miền &amp; xuất bản</h2>
-            <label className="label">Tên miền phụ</label>
-            <div className="flex items-center gap-2">
-              <input className="input" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
-              <span className="shrink-0 text-sm" style={{ color: "var(--text3)" }}>.{mainHost || "vieetjk.com"}</span>
-            </div>
-            <label className="mt-3 flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
-              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
-              Xuất bản (cho mọi người xem)
-            </label>
-            <button onClick={saveSite} disabled={busy} className="btn-primary mt-4 w-full"><Check size={15} /> {busy ? "Đang lưu…" : "Lưu & cập nhật trang"}</button>
-            {!studioPro && (
-              <p className="mt-3 flex items-center gap-1.5 text-[11px]" style={{ color: "var(--text3)" }}>
-                <Globe size={12} /> Tên miền riêng (vd: studio-cua-ban.com) dành cho gói Studio — giai đoạn sau.
-              </p>
-            )}
-          </div>
+          {!studioPro && (
+            <p className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--text3)" }}>
+              <Globe size={12} /> Tên miền riêng (vd: studio-cua-ban.com) dành cho gói Studio — giai đoạn sau.
+            </p>
+          )}
         </div>
 
         {/* RIGHT — live preview (≈3/4), fixed; the site scrolls inside the iframe */}
         <div className="lg:h-full lg:min-w-0 lg:flex-1">
-          <div className="card flex flex-col p-3 lg:h-full">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 px-1 font-serif text-base font-medium"><Eye size={15} /> Xem trực tiếp</h2>
-              <div className="flex gap-1.5">
-                <button onClick={refreshPreview} className="btn-ghost px-2.5 py-1 text-xs"><RefreshCw size={13} /> Làm mới</button>
-                <a href="/site-preview" target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1 text-xs" title="Mở tab mới"><ExternalLink size={13} /></a>
-              </div>
+          <div className="card flex flex-col p-2 lg:h-full">
+            <div className="flex justify-center overflow-hidden rounded-xl lg:flex-1" style={{ border: "1px solid var(--border)", background: device === "mobile" ? "var(--surface2)" : "#fff", padding: device === "mobile" ? 10 : 0 }}>
+              <iframe
+                key={previewKey}
+                src="/site-preview"
+                title="Xem trước"
+                className="h-[82vh] lg:h-full"
+                style={{ width: device === "mobile" ? 390 : "100%", maxWidth: "100%", border: 0, background: "#fff", borderRadius: device === "mobile" ? 12 : 0 }}
+              />
             </div>
-            <div className="overflow-hidden rounded-xl lg:flex-1" style={{ border: "1px solid var(--border)" }}>
-              <iframe key={previewKey} src="/site-preview" title="Xem trước" className="h-[82vh] w-full lg:h-full" style={{ border: 0, background: "#fff" }} />
-            </div>
-            {liveUrl && published && (
-              <a href={liveUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-center text-xs text-accent hover:underline">Trang thật: {liveUrl}</a>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Template full-page preview modal */}
+      {previewTpl && (
+        <div className="fixed inset-0 z-50 flex flex-col p-3" style={{ background: "rgba(0,0,0,.7)" }} onClick={() => setPreviewTpl(null)}>
+          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2 border-b px-3 py-2" style={{ borderColor: "var(--border)" }}>
+              <span className="text-sm font-medium">Xem trước mẫu: {SITE_TEMPLATES.find((t) => t.key === previewTpl)?.name}</span>
+              <div className="flex gap-2">
+                <button onClick={() => { const k = previewTpl; setPreviewTpl(null); if (k) applyTemplate(k); }} className="btn-primary px-3 py-1.5 text-xs">Dùng mẫu này</button>
+                <button onClick={() => setPreviewTpl(null)} className="btn-ghost px-2.5 py-1.5 text-xs"><X size={14} /></button>
+              </div>
+            </div>
+            <iframe src={`/site-preview?template=${previewTpl}`} title="Xem trước mẫu" className="w-full flex-1" style={{ border: 0, background: "#fff" }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-/* deploy: rebuild 1e6c8a6 */
-
-/* redeploy ping 175934 */
