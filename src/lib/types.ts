@@ -313,6 +313,18 @@ export interface ContractPayment {
   created_at: string;
 }
 
+export interface ContractPaymentPlan {
+  id: string;
+  contract_id: string;
+  label: string;
+  amount: number;
+  due_date: string | null;
+  paid: boolean;
+  paid_at: string | null;
+  position: number;
+  created_at: string;
+}
+
 export interface StudioExpense {
   id: string;
   owner_id: string;

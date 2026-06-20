@@ -8,6 +8,7 @@ import type {
   ContractEditRequest,
   ContractPayment,
   ContractTask,
+  ContractPaymentPlan,
   StudioCrew,
   StudioEvent,
   StudioExpense,
@@ -71,10 +72,11 @@ export default async function ContractPage({ params }: { params: { id: string } 
         .order("created_at", { ascending: false }),
     ]);
 
-  const [{ data: milestones }, { data: tasks }, { data: expenses }] = await Promise.all([
+  const [{ data: milestones }, { data: tasks }, { data: expenses }, { data: plan }] = await Promise.all([
     supabase.from("studio_events").select("*").eq("contract_id", params.id).order("event_date"),
     supabase.from("contract_tasks").select("*").eq("contract_id", params.id).order("position"),
     supabase.from("studio_expenses").select("*").eq("contract_id", params.id).order("spent_at", { ascending: false }),
+    supabase.from("contract_payment_plan").select("*").eq("contract_id", params.id).order("due_date", { nullsFirst: false }),
   ]);
 
   // Scheduling conflicts for the contract's date: crew already booked on another
@@ -117,6 +119,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       conflictByPhone={conflictByPhone}
       initialTasks={(tasks ?? []) as ContractTask[]}
       initialExpenses={(expenses ?? []) as StudioExpense[]}
+      initialPlan={(plan ?? []) as ContractPaymentPlan[]}
     />
   );
 }

@@ -752,6 +752,31 @@ alter table public.studio_contracts add column if not exists source text; -- fac
 alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
 create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
 
+-- Planned payment schedule (lịch thu nhiều đợt có ngày đến hạn). Separate from
+-- contract_payments (actual receipts) — drives the "sắp đến hạn thu" reminder.
+create table if not exists public.contract_payment_plan (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  label       text not null default 'Đợt thanh toán',
+  amount      integer not null default 0,
+  due_date    date,
+  paid        boolean not null default false,
+  paid_at     timestamptz,
+  position    integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists contract_payment_plan_contract_idx on public.contract_payment_plan (contract_id);
+alter table public.contract_payment_plan enable row level security;
+drop policy if exists contract_payment_plan_owner_all on public.contract_payment_plan;
+create policy contract_payment_plan_owner_all on public.contract_payment_plan
+  for all using (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_contracts c
+            where c.id = contract_id and (c.owner_id = auth.uid() or public.is_admin()))
+  );
+
 -- ============================================================================
 -- Studio notifications (chuông): events worth the studio's attention. Inserted
 -- both by the owner's own client (RLS) and the service role (client/crew portals).

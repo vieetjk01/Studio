@@ -103,6 +103,23 @@ export default async function StudioOverview() {
     .filter((c) => c.delivery_due && c.delivery_due < today && c.status !== "completed" && c.status !== "cancelled")
     .sort((a, b) => (a.delivery_due || "").localeCompare(b.delivery_due || ""));
 
+  // Scheduled payment installments due within 7 days (or overdue) & unpaid.
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 7);
+  const dueLimit = horizon.toISOString().slice(0, 10);
+  const { data: planRows } = await supabase
+    .from("contract_payment_plan")
+    .select("id, label, amount, due_date, paid, contract:studio_contracts!inner(id, owner_id, title)")
+    .eq("contract.owner_id", profile.id)
+    .eq("paid", false)
+    .not("due_date", "is", null)
+    .lte("due_date", dueLimit)
+    .order("due_date");
+  const duePlan = ((planRows ?? []) as unknown as Array<{
+    id: string; label: string; amount: number; due_date: string;
+    contract: { id: string; title: string } | null;
+  }>);
+
   const stats = [
     { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length) },
     { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
@@ -132,9 +149,31 @@ export default async function StudioOverview() {
         ))}
       </div>
 
-      {/* Reminders: outstanding debts + crew awaiting response + late deliveries */}
-      {(debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0) && (
+      {/* Reminders: debts + crew awaiting response + late deliveries + due installments */}
+      {(debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (
         <div className="mb-8 grid gap-6 lg:grid-cols-2">
+          {duePlan.length > 0 && (
+            <div className="card p-6" style={{ borderColor: "#c7a76b55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>
+                <Wallet size={18} /> Sắp đến hạn thu
+              </h2>
+              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{duePlan.length} đợt thu trong 7 ngày tới / quá hạn</p>
+              <ul className="space-y-2">
+                {duePlan.slice(0, 6).map((d) => (
+                  <li key={d.id}>
+                    <Link href={`/dashboard/studio/contracts/${d.contract?.id}`} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{d.contract?.title || "Hợp đồng"} · {d.label}</p>
+                        <p className="text-[11px]" style={{ color: d.due_date < today ? "#c77b7b" : "var(--text3)" }}>
+                          {vnd(d.amount)} · hạn {d.due_date}{d.due_date < today ? " · quá hạn" : ""}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {lateDeliveries.length > 0 && (
             <div className="card p-6" style={{ borderColor: "#c77b7b55" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c77b7b" }}>

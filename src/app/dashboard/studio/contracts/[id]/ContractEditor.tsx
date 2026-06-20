@@ -38,6 +38,7 @@ import {
   type ContractEditRequest,
   type ContractPayment,
   type ContractTask,
+  type ContractPaymentPlan,
   type StudioCrew,
   type StudioEvent,
   type StudioExpense,
@@ -84,6 +85,7 @@ export default function ContractEditor({
   conflictByPhone,
   initialTasks,
   initialExpenses,
+  initialPlan,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -98,6 +100,7 @@ export default function ContractEditor({
   conflictByPhone: Record<string, string>;
   initialTasks: ContractTask[];
   initialExpenses: StudioExpense[];
+  initialPlan: ContractPaymentPlan[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -146,6 +149,8 @@ export default function ContractEditor({
   const [newTask, setNewTask] = useState("");
   const [expenses, setExpenses] = useState<StudioExpense[]>(initialExpenses);
   const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today() });
+  const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
+  const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
 
   // new payment form
   const [pay, setPay] = useState({ amount: 0, kind: "installment" as PaymentKind, method: "", paid_at: today(), note: "" });
@@ -429,6 +434,31 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     await supabase.from("studio_expenses").delete().eq("id", id);
     setExpenses((p) => p.filter((e) => e.id !== id));
   }
+
+  // ── Payment schedule ───────────────────────────────────────────
+  async function addPlan() {
+    const amount = Math.max(0, Math.round(Number(planForm.amount) || 0));
+    if (!planForm.label.trim() && !amount) return;
+    const { data } = await supabase
+      .from("contract_payment_plan")
+      .insert({ contract_id: contract.id, label: planForm.label.trim() || "Đợt thanh toán", amount, due_date: planForm.due_date || null, position: plan.length })
+      .select("*")
+      .single();
+    if (data) {
+      setPlan((p) => [...p, data as ContractPaymentPlan]);
+      setPlanForm({ label: "", amount: 0, due_date: "" });
+    }
+  }
+  async function togglePlanPaid(it: ContractPaymentPlan) {
+    const next = !it.paid;
+    await supabase.from("contract_payment_plan").update({ paid: next, paid_at: next ? new Date().toISOString() : null }).eq("id", it.id);
+    setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: next } : x)));
+  }
+  async function deletePlan(id: string) {
+    await supabase.from("contract_payment_plan").delete().eq("id", id);
+    setPlan((p) => p.filter((x) => x.id !== id));
+  }
+  const todayStr = today();
 
   // ── Studio counter-signature ───────────────────────────────────
   async function saveStudioSignature() {
@@ -800,6 +830,41 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <button onClick={addPayment} disabled={busy === "payment"} className="btn-ghost mt-3">
               <Plus size={15} /> {busy === "payment" ? "Đang thêm…" : "Ghi nhận khoản thu"}
             </button>
+
+            {/* Payment schedule */}
+            <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+              <h3 className="mb-1 text-sm font-medium">Lịch thu tiền (đợt &amp; ngày đến hạn)</h3>
+              <p className="mb-3 text-[11px]" style={{ color: "var(--text3)" }}>Đặt các đợt cần thu — quá hạn chưa thu sẽ cảnh báo ở Tổng quan.</p>
+              {plan.length > 0 && (
+                <ul className="space-y-2">
+                  {plan.map((it) => {
+                    const overdue = !it.paid && it.due_date && it.due_date < todayStr;
+                    return (
+                      <li key={it.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                        <div>
+                          <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
+                          <p className="text-[11px]" style={{ color: overdue ? "#c77b7b" : "var(--text3)" }}>
+                            {it.due_date ? `hạn ${it.due_date}` : "không hạn"}{overdue ? " · quá hạn" : ""}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => togglePlanPaid(it)} className="text-[11px]" style={{ color: it.paid ? "#7bb38a" : "var(--text3)" }}>
+                            {it.paid ? "✓ Đã thu" : "Đánh dấu thu"}
+                          </button>
+                          <button onClick={() => deletePlan(it.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="mt-3 grid gap-2 sm:grid-cols-12">
+                <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
+                <input type="number" className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount || ""} onChange={(e) => setPlanForm((p) => ({ ...p, amount: Number(e.target.value) }))} />
+                <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
+              </div>
+              <button onClick={addPlan} className="btn-ghost mt-3"><Plus size={15} /> Thêm đợt thu</button>
+            </div>
           </div>
 
           {/* Per-contract expenses */}
