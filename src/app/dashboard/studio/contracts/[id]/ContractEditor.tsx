@@ -25,7 +25,7 @@ import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
 import ClauseInserter from "@/components/ClauseInserter";
-import { PRESET_ITEMS, PRESET_TASKS } from "@/lib/contract-code";
+import { PRESET_ITEMS, PRESET_TASKS, nextContractCode } from "@/lib/contract-code";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
   contractTotal,
@@ -217,8 +217,27 @@ export default function ContractEditor({
   // Unified client portal lives on the main site (vieetjk.com/c/<token>).
   const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
+  // Required fields — flagged red until filled.
+  const reqMissing = {
+    title: !f.title.trim(),
+    code: !f.code.trim(),
+    client_name: !f.client_name.trim(),
+    client_phone: !f.client_phone.trim(),
+  };
+  const redIf = (bad: boolean) => (bad ? { borderColor: "#c77b7b" } : undefined);
+
+  async function fillCode() {
+    if (f.code.trim()) return;
+    const code = await nextContractCode(supabase, contract.owner_id);
+    set("code", code);
+  }
+
   // ── Save contract fields ───────────────────────────────────────
   async function saveContract() {
+    if (reqMissing.title || reqMissing.code || reqMissing.client_name || reqMissing.client_phone) {
+      toast("Cần nhập: Tên HĐ, Mã HĐ, Tên khách, SĐT khách.");
+      return;
+    }
     setBusy("contract");
     const { error } = await supabase
       .from("studio_contracts")
@@ -673,10 +692,13 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1.5">{SHOOT_TYPE_LABEL[f.shoot_type]}</p>
+          <p className="eyebrow mb-1.5">{SHOOT_TYPE_LABEL[f.shoot_type]}{f.code ? ` · ${f.code}` : ""}</p>
           <h1 className="font-serif text-3xl font-medium">{f.title || "Hợp đồng"}</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary px-4 py-2 text-xs">
+            <Check size={14} /> {busy === "contract" ? "Đang lưu…" : "Lưu hợp đồng"}
+          </button>
           <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">
             Xem như khách
           </a>
@@ -835,22 +857,25 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="label">Tên hợp đồng</label>
-                  <input className="input" value={f.title} onChange={(e) => set("title", e.target.value)} />
+                  <label className="label">Tên hợp đồng <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <input className="input" value={f.title} onChange={(e) => set("title", e.target.value)} style={redIf(reqMissing.title)} />
                 </div>
                 <div>
-                  <label className="label">Mã hợp đồng</label>
-                  <input className="input" placeholder="HD-2026-001" value={f.code} onChange={(e) => set("code", e.target.value)} />
+                  <label className="label">Mã hợp đồng <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <div className="flex gap-2">
+                    <input className="input" placeholder="HD-06-2026-001" value={f.code} onChange={(e) => set("code", e.target.value)} style={redIf(reqMissing.code)} />
+                    {!f.code.trim() && <button type="button" onClick={fillCode} className="btn-ghost shrink-0 px-3 text-xs">Tạo mã</button>}
+                  </div>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label className="label">Khách hàng</label>
-                  <input className="input" value={f.client_name} onChange={(e) => set("client_name", e.target.value)} />
+                  <label className="label">Khách hàng <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <input className="input" value={f.client_name} onChange={(e) => set("client_name", e.target.value)} style={redIf(reqMissing.client_name)} />
                 </div>
                 <div>
-                  <label className="label">SĐT khách</label>
-                  <input className="input" value={f.client_phone} onChange={(e) => set("client_phone", e.target.value)} />
+                  <label className="label">SĐT khách <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <input className="input" value={f.client_phone} onChange={(e) => set("client_phone", e.target.value)} style={redIf(reqMissing.client_phone)} />
                 </div>
                 <div>
                   <label className="label">Email khách</label>
