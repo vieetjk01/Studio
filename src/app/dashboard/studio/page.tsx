@@ -120,6 +120,35 @@ export default async function StudioOverview() {
     contract: { id: string; title: string } | null;
   }>);
 
+  // ── KPIs ──────────────────────────────────────────────────────
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const [{ data: payMonth }, { count: newBookings }, { count: bookingsAll }] = await Promise.all([
+    supabase
+      .from("contract_payments")
+      .select("amount, contract:studio_contracts!inner(owner_id)")
+      .eq("contract.owner_id", profile.id)
+      .gte("paid_at", monthStart),
+    supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id).eq("status", "new"),
+    supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
+  ]);
+  const revenueMonth = sumAmounts((payMonth ?? []) as unknown as { amount: number }[]);
+  const notCancelled = list.filter((c) => c.status !== "cancelled");
+  const avgValue = notCancelled.length ? Math.round(totalValue / notCancelled.length) : 0;
+  const uniqueClients = new Set(
+    notCancelled.map((c) => (c.client_phone || "").replace(/\D/g, "") || (c.client_name || "").trim().toLowerCase()).filter(Boolean)
+  ).size;
+  // Rough close rate: contracts vs total booking requests received.
+  const closeRate = bookingsAll ? Math.min(100, Math.round((notCancelled.length / bookingsAll) * 100)) : null;
+
+  const kpis = [
+    { label: "Doanh thu tháng này", value: vnd(revenueMonth) },
+    { label: "Giá trị HĐ trung bình", value: vnd(avgValue) },
+    { label: "Số khách hàng", value: String(uniqueClients) },
+    closeRate != null
+      ? { label: "Tỉ lệ chốt (HĐ/đặt lịch)", value: `${closeRate}%` }
+      : { label: "Đặt lịch mới", value: String(newBookings ?? 0) },
+  ];
+
   const stats = [
     { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length) },
     { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
@@ -139,12 +168,21 @@ export default async function StudioOverview() {
         </Link>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="card p-5">
             <s.icon size={18} style={{ color: "var(--text3)" }} />
             <p className="mt-3 font-serif text-2xl font-medium">{s.value}</p>
             <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {kpis.map((k) => (
+          <div key={k.label} className="card p-5">
+            <p className="font-serif text-xl font-medium">{k.value}</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>{k.label}</p>
           </div>
         ))}
       </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Download } from "lucide-react";
 import {
   contractTotal,
   sumAmounts,
@@ -50,6 +50,26 @@ export default function ContractsListView({ list }: { list: ContractRow[] }) {
     });
   }, [list, q, status]);
 
+  function exportCsv() {
+    const rows: string[][] = [["Mã", "Tên HĐ", "Khách", "SĐT", "Trạng thái", "Ngày", "Giá trị", "Đã thu", "Còn lại"]];
+    for (const c of filtered) {
+      const total = contractTotal(c.contract_items || []);
+      const collected = sumAmounts(c.contract_payments || []);
+      rows.push([
+        c.code || "", c.title, c.client_name || "", c.client_phone || "",
+        CONTRACT_STATUS_LABEL[c.status], c.event_date || "",
+        String(total), String(collected), String(total - collected),
+      ]);
+    }
+    const csv = "﻿" + rows.map((r) => r.map((x) => `"${(x ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "hop-dong.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-6 flex items-center justify-between">
@@ -57,9 +77,14 @@ export default function ContractsListView({ list }: { list: ContractRow[] }) {
           <p className="eyebrow mb-1.5">Quản lý studio</p>
           <h1 className="font-serif text-3xl font-medium">Hợp đồng</h1>
         </div>
-        <Link href="/dashboard/studio/contracts/new" className="btn-primary">
-          <Plus size={16} /> Hợp đồng mới
-        </Link>
+        <div className="flex gap-2">
+          {list.length > 0 && (
+            <button onClick={exportCsv} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> CSV</button>
+          )}
+          <Link href="/dashboard/studio/contracts/new" className="btn-primary">
+            <Plus size={16} /> Hợp đồng mới
+          </Link>
+        </div>
       </div>
 
       {list.length > 0 && (

@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { Phone, Repeat } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { contractTotal, sumAmounts, vnd, LEAD_SOURCE_LABEL } from "@/lib/types";
+import { contractTotal, sumAmounts } from "@/lib/types";
+import ClientsView, { type ClientAgg } from "./ClientsView";
 
 export const dynamic = "force-dynamic";
 
@@ -40,17 +39,7 @@ export default async function ClientsPage() {
 
   const rows = (data ?? []) as unknown as Row[];
 
-  type Agg = {
-    key: string;
-    name: string;
-    phone: string;
-    count: number;
-    value: number;
-    collected: number;
-    last: string | null;
-    source: string | null;
-  };
-  const map = new Map<string, Agg>();
+  const map = new Map<string, ClientAgg>();
   for (const r of rows) {
     if (r.status === "cancelled") continue;
     const key = digits(r.client_phone) || (r.client_name || "").trim().toLowerCase();
@@ -65,51 +54,6 @@ export default async function ClientsPage() {
     map.set(key, a);
   }
   const clients = Array.from(map.values()).sort((x, y) => (y.last || "").localeCompare(x.last || ""));
-  const returning = clients.filter((c) => c.count > 1).length;
 
-  return (
-    <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Khách hàng</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
-          {clients.length} khách · {returning} khách quay lại (chụp ≥ 2 lần)
-        </p>
-      </div>
-
-      {clients.length === 0 ? (
-        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Chưa có khách hàng nào.</div>
-      ) : (
-        <div className="space-y-2">
-          {clients.map((c) => (
-            <Link
-              key={c.key}
-              href={`/dashboard/studio/clients/${encodeURIComponent(digits(c.phone) || c.key)}`}
-              className="card flex flex-col gap-2 p-4 transition-colors hover:bg-[var(--surface2)] sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="flex items-center gap-2 font-medium">
-                  {c.name}
-                  {c.count > 1 && (
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--surface2)", color: "#7bb38a" }}>
-                      <Repeat size={10} /> khách cũ
-                    </span>
-                  )}
-                </p>
-                <p className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text3)" }}>
-                  <Phone size={12} /> {c.phone || "—"} · {c.count} hợp đồng
-                  {c.source ? ` · ${LEAD_SOURCE_LABEL[c.source] || c.source}` : ""}
-                  {c.last ? ` · gần nhất ${c.last}` : ""}
-                </p>
-              </div>
-              <div className="text-left sm:text-right">
-                <p className="font-serif text-lg font-medium">{vnd(c.value)}</p>
-                <p className="text-xs" style={{ color: "var(--text3)" }}>đã thu {vnd(c.collected)}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return <ClientsView clients={clients} />;
 }
