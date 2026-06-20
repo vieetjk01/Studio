@@ -5,20 +5,23 @@ import type { PricelistItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function PublicPricelist({ params, searchParams }: { params: { token: string }; searchParams?: { list?: string } }) {
+// Public price list for the main studio (admin account) at a clean URL.
+export default async function BangGiaPage({ searchParams }: { searchParams?: { list?: string } }) {
   const db = createAdminClient();
   const { data: owner } = await db
     .from("profiles")
-    .select("id, full_name, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name")
-    .eq("booking_token", params.token)
+    .select("id, full_name, booking_token, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name")
+    .eq("role", "admin")
+    .eq("is_active", true)
+    .order("created_at")
+    .limit(1)
     .maybeSingle();
 
   if (!owner) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 text-center">
         <div className="card p-8">
-          <h1 className="font-serif text-2xl font-medium">Không tìm thấy</h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Link bảng giá không hợp lệ.</p>
+          <h1 className="font-serif text-2xl font-medium">Chưa có bảng giá</h1>
         </div>
       </div>
     );
@@ -36,6 +39,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
   const lists = available.length ? available : PRICE_LISTS.slice(0, 1);
   const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
+  const token = (owner as { booking_token: string | null }).booking_token || "";
 
   return (
     <PricelistPoster
@@ -43,8 +47,8 @@ export default async function PublicPricelist({ params, searchParams }: { params
       items={items}
       lists={lists}
       selected={selected}
-      tabBase={`/gia/${params.token}`}
-      bookHref={`/book/${params.token}`}
+      tabBase="/banggia"
+      bookHref={token ? `/book/${token}` : "#"}
     />
   );
 }

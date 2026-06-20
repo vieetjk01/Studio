@@ -27,7 +27,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { PRICE_LISTS } from "@/lib/pricelist-seeds";
-import { vnd, type SiteSettings, type BookingService } from "@/lib/types";
+import type { SiteSettings, BookingService } from "@/lib/types";
 
 type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
 
@@ -65,8 +65,6 @@ export default function ProfileHome({
   videoGalleries = [],
   feedback = [],
   pricelist = [],
-  pricelistUrl = "",
-  bookingToken = "",
 }: {
   settings: SiteSettings;
   featuredImages?: string[];
@@ -139,6 +137,9 @@ export default function ProfileHome({
           </button>
           <Link href="/album" className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
             Album
+          </Link>
+          <Link href="/banggia" className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
+            Bảng giá
           </Link>
           <button onClick={() => scrollTo(contactRef)} className="rounded-full px-4 py-2 text-sm font-medium" style={{ color: "var(--text2)" }}>
             Liên hệ
@@ -265,47 +266,40 @@ export default function ProfileHome({
         </section>
       )}
 
-      {/* Price list (condensed, grouped by list, click to expand details) */}
+      {/* Price list — condensed (name + short note, no price); details on /banggia */}
       {priceLists.length > 0 && (
-        <section className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] px-6 md:px-10">
-          <div className="mb-5">
-            <p className="eyebrow mb-1.5">Bảng giá</p>
-            <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
+        <section id="bang-gia" className="mx-auto mt-[clamp(40px,5vw,64px)] max-w-[1180px] scroll-mt-20 px-6 md:px-10">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="eyebrow mb-1.5">Bảng giá</p>
+              <h2 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Gói dịch vụ</h2>
+            </div>
+            <Link href="/banggia" className="text-sm" style={{ color: "var(--accent)" }}>Xem bảng giá chi tiết →</Link>
           </div>
 
           <div className="space-y-8">
             {priceLists.map((l) => (
               <div key={l.key}>
-                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                  <h3 className="font-serif text-xl font-medium" style={{ color: "var(--accent)" }}>Bảng giá {l.label}</h3>
-                  {pricelistUrl && (
-                    <Link href={`${pricelistUrl}?list=${l.key}`} className="text-sm" style={{ color: "var(--accent)" }}>Xem đầy đủ →</Link>
-                  )}
-                </div>
+                <h3 className="mb-3 font-serif text-xl font-medium" style={{ color: "var(--accent)" }}>Bảng giá {l.label}</h3>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {l.items.map((it) => {
-                    const pkgName = `${l.label} · ${it.name}`;
-                    const href = bookingToken ? `/book/${bookingToken}?pkg=${encodeURIComponent(pkgName)}` : (pricelistUrl ? `${pricelistUrl}?list=${l.key}` : "#");
-                    return (
-                      <Link
-                        key={it.id}
-                        href={href}
-                        className="card group flex flex-col p-5 transition-colors hover:bg-[var(--surface2)]"
-                      >
-                        {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>{it.category}</span>}
-                        <span className="mt-0.5 font-serif text-lg font-medium">{it.name}</span>
-                        <span className="mt-1 font-serif text-2xl font-medium" style={{ color: "var(--accent)" }}>
-                          {vnd(it.price)}{it.unit ? <span className="text-xs" style={{ color: "var(--text3)" }}> {it.unit}</span> : null}
+                  {l.items.map((it) => (
+                    <Link
+                      key={it.id}
+                      href={`/banggia?list=${l.key}`}
+                      className="card group flex flex-col p-5 transition-colors hover:bg-[var(--surface2)]"
+                    >
+                      {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>{it.category}</span>}
+                      <span className="mt-0.5 font-serif text-lg font-medium">{it.name}</span>
+                      {it.description && (
+                        <span className="mt-1.5 line-clamp-2 text-sm" style={{ color: "var(--text2)" }}>
+                          {it.description.split("\n").filter(Boolean).join(" · ")}
                         </span>
-                        {it.description && (
-                          <span className="mt-2 line-clamp-3 whitespace-pre-line text-xs" style={{ color: "var(--text2)" }}>{it.description}</span>
-                        )}
-                        <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium" style={{ color: "var(--accent)" }}>
-                          Chọn gói &amp; đặt lịch <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-                        </span>
-                      </Link>
-                    );
-                  })}
+                      )}
+                      <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium" style={{ color: "var(--accent)" }}>
+                        Chi tiết <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    </Link>
+                  ))}
                 </div>
               </div>
             ))}
