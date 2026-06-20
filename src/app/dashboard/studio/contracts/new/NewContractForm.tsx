@@ -47,8 +47,8 @@ export default function NewContractForm({
 
   async function create() {
     setErr(null);
-    if (!clientPhone.trim()) {
-      setErr("Cần SĐT khách — đây là mật khẩu để khách mở cổng hợp đồng.");
+    if (!/^\d{10}$/.test(clientPhone.replace(/\D/g, ""))) {
+      setErr("SĐT khách phải đủ 10 số (dùng làm mật khẩu để khách mở cổng hợp đồng).");
       return;
     }
     setSaving(true);
@@ -67,7 +67,7 @@ export default function NewContractForm({
         code,
         title: title.trim() || "Hợp đồng",
         client_name: clientName.trim() || null,
-        client_phone: clientPhone.trim() || null,
+        client_phone: clientPhone.replace(/\D/g, "") || null,
         shoot_type: shootType,
         event_date: eventDate || null,
         note,
@@ -144,7 +144,7 @@ export default function NewContractForm({
           </div>
           <div>
             <label className="label">SĐT khách (mật khẩu xem HĐ)</label>
-            <input className="input" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
+            <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

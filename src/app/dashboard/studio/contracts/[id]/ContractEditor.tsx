@@ -217,13 +217,15 @@ export default function ContractEditor({
   // Unified client portal lives on the main site (vieetjk.com/c/<token>).
   const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
-  // Required fields — flagged red until filled.
+  // Required fields — flagged red until valid. Phone must be 10 digits.
+  const phoneOk = /^\d{10}$/.test(f.client_phone.replace(/\D/g, ""));
   const reqMissing = {
     title: !f.title.trim(),
     code: !f.code.trim(),
     client_name: !f.client_name.trim(),
-    client_phone: !f.client_phone.trim(),
+    client_phone: !phoneOk,
   };
+  const studioSigned = !!contract.studio_signed_at || !!(studioSignName.trim() && studioSignature);
   const redIf = (bad: boolean) => (bad ? { borderColor: "#c77b7b" } : undefined);
 
   async function fillCode() {
@@ -234,18 +236,31 @@ export default function ContractEditor({
 
   // ── Save contract fields ───────────────────────────────────────
   async function saveContract() {
-    if (reqMissing.title || reqMissing.code || reqMissing.client_name || reqMissing.client_phone) {
-      toast("Cần nhập: Tên HĐ, Mã HĐ, Tên khách, SĐT khách.");
+    if (reqMissing.title || reqMissing.code || reqMissing.client_name) {
+      toast("Cần nhập: Tên HĐ, Mã HĐ, Tên khách.");
+      return;
+    }
+    if (reqMissing.client_phone) {
+      toast("SĐT khách phải đủ 10 số.");
+      return;
+    }
+    if (!studioSigned) {
+      toast("Cần chữ ký studio (Bên A) trước khi lưu — ký ở mục “Chữ ký Bên A (Studio)”.");
       return;
     }
     setBusy("contract");
+    const pendingStudioSig =
+      !contract.studio_signed_at && studioSignName.trim() && studioSignature
+        ? { studio_signed_name: studioSignName.trim(), studio_signature: studioSignature, studio_signed_at: new Date().toISOString() }
+        : {};
     const { error } = await supabase
       .from("studio_contracts")
       .update({
         title: f.title.trim() || "Hợp đồng",
         code: f.code.trim() || null,
         client_name: f.client_name.trim() || null,
-        client_phone: f.client_phone.trim() || null,
+        client_phone: f.client_phone.replace(/\D/g, "") || null,
+        ...pendingStudioSig,
         client_email: f.client_email.trim() || null,
         shoot_type: f.shoot_type,
         status: f.status,
@@ -696,9 +711,12 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           <h1 className="font-serif text-3xl font-medium">{f.title || "Hợp đồng"}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary px-4 py-2 text-xs">
-            <Check size={14} /> {busy === "contract" ? "Đang lưu…" : "Lưu hợp đồng"}
-          </button>
+          <div className="flex flex-col items-end">
+            <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary px-4 py-2 text-xs">
+              <Check size={14} /> {busy === "contract" ? "Đang lưu…" : "Lưu hợp đồng"}
+            </button>
+            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "#c77b7b" }}>Cần chữ ký studio để lưu</span>}
+          </div>
           <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">
             Xem như khách
           </a>
@@ -875,7 +893,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 </div>
                 <div>
                   <label className="label">SĐT khách <span style={{ color: "#c77b7b" }}>*</span></label>
-                  <input className="input" value={f.client_phone} onChange={(e) => set("client_phone", e.target.value)} style={redIf(reqMissing.client_phone)} />
+                  <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={f.client_phone} onChange={(e) => set("client_phone", e.target.value)} style={redIf(reqMissing.client_phone)} />
+                  {reqMissing.client_phone && <p className="mt-1 text-[11px]" style={{ color: "#c77b7b" }}>Phải đủ 10 số.</p>}
                 </div>
                 <div>
                   <label className="label">Email khách</label>
