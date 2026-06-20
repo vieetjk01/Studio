@@ -27,6 +27,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { PRICE_LISTS } from "@/lib/pricelist-seeds";
+import PackageCompare from "@/components/PackageCompare";
 import type { SiteSettings, BookingService } from "@/lib/types";
 
 type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null };
@@ -65,6 +66,7 @@ export default function ProfileHome({
   videoGalleries = [],
   feedback = [],
   pricelist = [],
+  bookingToken = "",
 }: {
   settings: SiteSettings;
   featuredImages?: string[];
@@ -79,11 +81,19 @@ export default function ProfileHome({
   const { t } = useLang();
   const contactRef = useRef<HTMLDivElement>(null);
 
-  // Condensed price list grouped by list (Cưới / Đính hôn), priced rows only.
+  // Priced packages grouped by list (Cưới / Đính hôn) → category, for comparison.
   const priced = pricelist.filter((p) => p.price > 0);
-  const priceLists = PRICE_LISTS
-    .map((l) => ({ ...l, items: priced.filter((p) => (p.list_key || "cuoi") === l.key) }))
-    .filter((l) => l.items.length > 0);
+  const priceLists = PRICE_LISTS.map((l) => {
+    const listItems = priced.filter((p) => (p.list_key || "cuoi") === l.key);
+    const cats: { name: string; items: typeof listItems }[] = [];
+    for (const it of listItems) {
+      const cat = it.category?.trim() || "Gói dịch vụ";
+      let g = cats.find((x) => x.name === cat);
+      if (!g) { g = { name: cat, items: [] }; cats.push(g); }
+      g.items.push(it);
+    }
+    return { ...l, cats };
+  }).filter((l) => l.cats.length > 0);
 
   const [booking, setBooking] = useState({
     service: "wedding" as BookingService,
@@ -277,28 +287,19 @@ export default function ProfileHome({
             <Link href="/banggia" className="text-sm" style={{ color: "var(--accent)" }}>Xem bảng giá chi tiết →</Link>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-12">
             {priceLists.map((l) => (
               <div key={l.key}>
-                <h3 className="mb-3 font-serif text-xl font-medium" style={{ color: "var(--accent)" }}>Bảng giá {l.label}</h3>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {l.items.map((it) => (
-                    <Link
-                      key={it.id}
-                      href={`/banggia?list=${l.key}`}
-                      className="card group flex flex-col p-5 transition-colors hover:bg-[var(--surface2)]"
-                    >
-                      {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>{it.category}</span>}
-                      <span className="mt-0.5 font-serif text-lg font-medium">{it.name}</span>
-                      {it.description && (
-                        <span className="mt-1.5 line-clamp-2 text-sm" style={{ color: "var(--text2)" }}>
-                          {it.description.split("\n").filter(Boolean).join(" · ")}
-                        </span>
-                      )}
-                      <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium" style={{ color: "var(--accent)" }}>
-                        Chi tiết <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-                      </span>
-                    </Link>
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                  <h3 className="font-serif text-2xl font-medium" style={{ color: "var(--accent)" }}>Bảng giá {l.label}</h3>
+                  <Link href={`/banggia?list=${l.key}`} className="text-sm" style={{ color: "var(--accent)" }}>Xem chi tiết &amp; lưu ý →</Link>
+                </div>
+                <div className="space-y-8">
+                  {l.cats.map((cat) => (
+                    <div key={cat.name}>
+                      <p className="eyebrow mb-3">{cat.name}</p>
+                      <PackageCompare items={cat.items} bookingToken={bookingToken} listKey={l.key} listLabel={l.label} />
+                    </div>
                   ))}
                 </div>
               </div>
