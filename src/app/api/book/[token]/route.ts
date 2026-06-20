@@ -13,6 +13,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     note?: string;
     package_name?: string;
     package_price?: number;
+    facebook?: string;
   };
   if (!body.name?.trim() || !body.phone?.trim()) {
     return NextResponse.json({ error: "missing" }, { status: 400 });
@@ -36,6 +37,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     note: body.note?.trim() || null,
     package_name: pkgName,
     package_price: body.package_price != null && Number.isFinite(body.package_price) ? Math.max(0, Math.round(body.package_price)) : null,
+    facebook: body.facebook?.trim() || null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

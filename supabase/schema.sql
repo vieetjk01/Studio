@@ -904,6 +904,7 @@ create table if not exists public.studio_bookings (
 );
 alter table public.studio_bookings add column if not exists package_name  text;
 alter table public.studio_bookings add column if not exists package_price integer;
+alter table public.studio_bookings add column if not exists facebook      text;
 create index if not exists studio_bookings_owner_idx on public.studio_bookings (owner_id, status);
 alter table public.studio_bookings enable row level security;
 -- Owner/admin manage; public inserts go through the service role API.

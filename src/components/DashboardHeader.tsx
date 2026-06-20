@@ -65,10 +65,9 @@ export default function DashboardHeader({
       label: "Hợp đồng",
       children: [
         { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
-        { href: "/dashboard/studio/production", label: "Sản xuất" },
+        { href: "/dashboard/studio/production", label: "Xử lý hình ảnh" },
         { href: "/dashboard/studio/bookings", label: "Đặt lịch" },
         { href: "/dashboard/studio/clients", label: "Khách hàng" },
-        { href: "/dashboard/studio/packages", label: "Thẻ buổi" },
         { href: "/dashboard/studio/pricing", label: "Bảng giá" },
         { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
       ],
@@ -92,7 +91,6 @@ export default function DashboardHeader({
       children: [
         { href: "/dashboard/studio/crew", label: "Sổ thợ" },
         { href: "/dashboard/studio/ranking", label: "Xếp hạng" },
-        { href: "/dashboard/studio/equipment", label: "Thiết bị" },
         { href: "/dashboard/studio/messages", label: "Mẫu tin" },
         ...(studioRole === "owner" || studioRole === "admin"
           ? [{ href: "/dashboard/studio/staff", label: "Nhân viên" }]

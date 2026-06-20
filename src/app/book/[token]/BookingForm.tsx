@@ -17,9 +17,10 @@ export default function BookingForm({
   packages?: PkgOption[];
   presetPackage?: string;
 }) {
-  const [f, setF] = useState({ name: "", phone: "", service: "", preferred_date: "", note: "" });
+  const [f, setF] = useState({ name: "", phone: "", service: "", preferred_date: "", note: "", facebook: "" });
   // Preselect the package coming from the homepage link, if it matches.
   const [pkg, setPkg] = useState(() => (packages.some((p) => p.name === presetPackage) ? presetPackage : ""));
+  const [customPkg, setCustomPkg] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -33,11 +34,13 @@ export default function BookingForm({
       return;
     }
     const chosen = packages.find((p) => p.name === pkg);
+    const packageName = pkg === "__custom__" ? customPkg.trim() || null : chosen?.name || null;
+    const packagePrice = pkg === "__custom__" ? null : chosen?.price ?? null;
     setBusy(true);
     const res = await fetch(`/api/book/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...f, package_name: chosen?.name || null, package_price: chosen?.price ?? null }),
+      body: JSON.stringify({ ...f, package_name: packageName, package_price: packagePrice }),
     });
     setBusy(false);
     if (res.ok) setSent(true);
@@ -77,20 +80,26 @@ export default function BookingForm({
           <label className="label">Số điện thoại *</label>
           <input className="input" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
         </div>
-        {packages.length > 0 && (
-          <div>
-            <label className="label">Chọn gói</label>
-            <select className="input" value={pkg} onChange={(e) => setPkg(e.target.value)}>
-              <option value="">— Chưa chọn / tư vấn thêm —</option>
-              {packages.map((p) => (
-                <option key={p.name} value={p.name}>{p.name} — {vnd(p.price)}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="label">Chọn gói</label>
+          <select className="input" value={pkg} onChange={(e) => setPkg(e.target.value)}>
+            <option value="">— Chưa chọn / tư vấn thêm —</option>
+            {packages.map((p) => (
+              <option key={p.name} value={p.name}>{p.name} — {vnd(p.price)}</option>
+            ))}
+            <option value="__custom__">— Gói khác (tự ghi) —</option>
+          </select>
+          {pkg === "__custom__" && (
+            <input className="input mt-2" placeholder="Ghi gói bạn muốn (vd: chụp kỷ yếu nhóm 10 người…)" value={customPkg} onChange={(e) => setCustomPkg(e.target.value)} />
+          )}
+        </div>
         <div>
           <label className="label">Loại dịch vụ</label>
           <input className="input" placeholder="VD: chụp cưới, sự kiện…" value={f.service} onChange={(e) => set("service", e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Link Facebook (để studio liên hệ)</label>
+          <input className="input" placeholder="facebook.com/… (không bắt buộc)" value={f.facebook} onChange={(e) => set("facebook", e.target.value)} />
         </div>
         <div>
           <label className="label">Ngày mong muốn</label>

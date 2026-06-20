@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
 import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
 import { fullClauseText } from "@/lib/contract-clauses";
+import { messengerUrl } from "@/components/MessengerButton";
 import { vnd, type StudioBooking } from "@/lib/types";
 
 export default function BookingsView({
@@ -43,6 +44,7 @@ export default function BookingsView({
         title: b.service ? `${b.service} — ${b.name}` : `Hợp đồng — ${b.name}`,
         client_name: b.name,
         client_phone: b.phone,
+        client_messenger: b.facebook || null,
         event_date: b.preferred_date,
         note,
         client_token: ct,
@@ -114,6 +116,11 @@ export default function BookingsView({
                   {b.package_name && (
                     <p className="mt-0.5 text-xs" style={{ color: "var(--accent)" }}>
                       Gói: {b.package_name}{b.package_price ? ` · ${vnd(b.package_price)}` : ""}
+                    </p>
+                  )}
+                  {b.facebook && (
+                    <p className="mt-0.5 truncate text-xs" style={{ color: "var(--text3)" }}>
+                      FB: <a href={messengerUrl(b.facebook)} target="_blank" rel="noreferrer" className="hover:underline" style={{ color: "var(--text2)" }}>{b.facebook}</a>
                     </p>
                   )}
                   {b.note && <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>{b.note}</p>}
