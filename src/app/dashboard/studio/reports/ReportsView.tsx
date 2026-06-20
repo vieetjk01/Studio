@@ -21,6 +21,7 @@ export type SalaryRow = {
   paid_at: string | null;
   contract: { title: string } | null;
 };
+export type SourceStat = { source: string; label: string; count: number; value: number; collected: number };
 
 const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 
@@ -30,12 +31,14 @@ export default function ReportsView({
   salaries,
   initialExpenses,
   initialTarget,
+  sourceStats,
 }: {
   ownerId: string;
   payments: PaymentRow[];
   salaries: SalaryRow[];
   initialExpenses: StudioExpense[];
   initialTarget: number;
+  sourceStats: SourceStat[];
 }) {
   const supabase = createClient();
   const now = new Date();
@@ -226,6 +229,32 @@ export default function ReportsView({
           <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#c77b7b" }} /> Chi</span>
         </div>
       </div>
+
+      {/* Lead-source analytics (all-time) */}
+      {sourceStats.length > 0 && (() => {
+        const maxVal = Math.max(1, ...sourceStats.map((s) => s.value));
+        const totalVal = sourceStats.reduce((s, x) => s + x.value, 0);
+        return (
+          <div className="card mb-6 p-6">
+            <h2 className="mb-1 font-serif text-lg font-medium">Nguồn khách (toàn thời gian)</h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Giá trị hợp đồng theo kênh khách đến — biết kênh nào ra tiền nhất.</p>
+            <ul className="space-y-3">
+              {sourceStats.map((s) => (
+                <li key={s.source}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="font-medium">{s.label} <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {s.count} HĐ</span></span>
+                    <span>{vnd(s.value)} <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {totalVal > 0 ? Math.round((s.value / totalVal) * 100) : 0}%</span></span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${(s.value / maxVal) * 100}%`, background: "var(--accent)" }} />
+                  </div>
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Đã thu {vnd(s.collected)}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Income detail */}

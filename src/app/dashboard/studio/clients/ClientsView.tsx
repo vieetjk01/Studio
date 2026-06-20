@@ -22,6 +22,7 @@ const digits = (s: string) => (s || "").replace(/\D/g, "");
 export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
   const [q, setQ] = useState("");
   const [onlyOld, setOnlyOld] = useState(false);
+  const [sort, setSort] = useState<"recent" | "value" | "count">("recent");
   const returning = clients.filter((c) => c.count > 1).length;
 
   // "Lâu chưa quay lại": last shoot > 6 months ago.
@@ -35,13 +36,18 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
 
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();
-    return clients.filter((c) => {
+    const list = clients.filter((c) => {
       if (onlyOld && !isOld(c)) return false;
       if (!n) return true;
       return c.name.toLowerCase().includes(n) || c.phone.toLowerCase().includes(n);
     });
+    const sorted = [...list];
+    if (sort === "value") sorted.sort((a, b) => b.value - a.value);
+    else if (sort === "count") sorted.sort((a, b) => b.count - a.count || b.value - a.value);
+    else sorted.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
+    return sorted;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clients, q, onlyOld, cutoff]);
+  }, [clients, q, onlyOld, cutoff, sort]);
 
   function exportCsv() {
     const rows: string[][] = [["Tên", "SĐT", "Số HĐ", "Tổng giá trị", "Đã thu", "Lần gần nhất", "Nguồn"]];
@@ -81,6 +87,16 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text3)" }} />
               <input className="input pl-9" placeholder="Tìm theo tên hoặc SĐT…" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
+            <select
+              className="input shrink-0 w-auto py-2 text-xs"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as "recent" | "value" | "count")}
+              title="Sắp xếp"
+            >
+              <option value="recent">Gần đây nhất</option>
+              <option value="value">Chi nhiều nhất</option>
+              <option value="count">Nhiều hợp đồng nhất</option>
+            </select>
             <button
               onClick={() => setOnlyOld((v) => !v)}
               className="shrink-0 rounded-full px-3 py-2 text-xs"

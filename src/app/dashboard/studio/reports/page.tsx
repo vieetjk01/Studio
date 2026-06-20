@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import type { StudioExpense } from "@/lib/types";
-import ReportsView, { type PaymentRow, type SalaryRow } from "./ReportsView";
+import { LEAD_SOURCE_LABEL, contractTotal, sumAmounts, type StudioExpense } from "@/lib/types";
+import ReportsView, { type PaymentRow, type SalaryRow, type SourceStat } from "./ReportsView";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +43,29 @@ export default async function ReportsPage() {
     supabase.from("studio_expenses").select("*").eq("owner_id", profile.id),
   ]);
 
+  // Lead-source analytics: value & collected per acquisition channel (all-time).
+  const { data: srcContracts } = await supabase
+    .from("studio_contracts")
+    .select("source, contract_items(qty, unit_price), contract_payments(amount)")
+    .eq("owner_id", profile.id)
+    .neq("status", "cancelled");
+  const srcMap = new Map<string, { count: number; value: number; collected: number }>();
+  for (const c of (srcContracts ?? []) as unknown as Array<{
+    source: string | null;
+    contract_items: { qty: number; unit_price: number }[];
+    contract_payments: { amount: number }[];
+  }>) {
+    const key = c.source || "other";
+    const cur = srcMap.get(key) || { count: 0, value: 0, collected: 0 };
+    cur.count += 1;
+    cur.value += contractTotal(c.contract_items || []);
+    cur.collected += sumAmounts(c.contract_payments || []);
+    srcMap.set(key, cur);
+  }
+  const sourceStats: SourceStat[] = [...srcMap.entries()]
+    .map(([source, v]) => ({ source, label: LEAD_SOURCE_LABEL[source] || source, ...v }))
+    .sort((a, b) => b.value - a.value);
+
   return (
     <ReportsView
       ownerId={profile.id}
@@ -50,6 +73,7 @@ export default async function ReportsPage() {
       salaries={(salaries ?? []) as unknown as SalaryRow[]}
       initialExpenses={(expenses ?? []) as StudioExpense[]}
       initialTarget={Number(profile.monthly_revenue_target) || 0}
+      sourceStats={sourceStats}
     />
   );
 }
