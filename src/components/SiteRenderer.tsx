@@ -5,6 +5,14 @@ import type { SiteData } from "@/lib/site-loader";
 const str = (v: unknown, fallback = "") => (typeof v === "string" && v.trim() ? v : fallback);
 const lines = (v: unknown) => str(v).split("\n").map((s) => s.trim()).filter(Boolean);
 
+function isLightHex(hex?: string): boolean {
+  if (!hex) return false;
+  const m = hex.replace("#", "");
+  if (m.length < 6) return false;
+  const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
+}
+
 /** Extract a YouTube/Vimeo embed URL from a pasted link. */
 function embedUrl(raw: string): string | null {
   const u = raw.trim();
@@ -22,10 +30,14 @@ export default function SiteRenderer({ data }: { data: SiteData }) {
   const name = owner?.full_name || site.subdomain || "Studio";
   const fontVar = t.font === "sans" ? "var(--font-hanken)" : "var(--font-cormorant)";
 
+  const dark = (t.mode ?? (isLightHex(t.bg) ? "light" : "dark")) === "dark";
   const wrap = {
     "--s-bg": t.bg || "#0c0c0d",
     "--s-text": t.text || "#ececec",
     "--s-accent": t.accent || "#c7a76b",
+    "--s-border": dark ? "var(--s-border)" : "rgba(0,0,0,.12)",
+    "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
+    "--s-radius": t.radius === "sharp" ? "0px" : "14px",
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
@@ -33,6 +45,29 @@ export default function SiteRenderer({ data }: { data: SiteData }) {
 
   return (
     <div style={wrap}>
+      {blocks.length > 0 && (
+        <header
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: t.heroAlign === "left" ? "flex-start" : "center",
+            padding: "14px 24px",
+            borderBottom: "1px solid var(--s-border)",
+            background: "color-mix(in srgb, var(--s-bg) 82%, transparent)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          {t.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={t.logo} alt={name} style={{ height: 36, width: "auto" }} />
+          ) : (
+            <span style={{ fontFamily: fontVar, fontSize: 20, letterSpacing: 1 }}>{name}</span>
+          )}
+        </header>
+      )}
       {blocks.length === 0 ? (
         <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 24 }}>
           <div>
@@ -44,7 +79,7 @@ export default function SiteRenderer({ data }: { data: SiteData }) {
         blocks.map((b) => <Block key={b.id} block={b} data={data} fontVar={fontVar} />)
       )}
 
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,.1)", padding: "28px 24px", textAlign: "center", fontSize: 13, opacity: 0.55 }}>
+      <footer style={{ borderTop: "1px solid var(--s-border)", padding: "28px 24px", textAlign: "center", fontSize: 13, opacity: 0.55 }}>
         © {name}
         {site.template !== "studio-pro" && (
           <>
@@ -68,12 +103,14 @@ function Section({ children, fontVar, heading }: { children: React.ReactNode; fo
 
 function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fontVar: string }) {
   const c = block.config || {};
+  const t = data.site.theme || {};
   const { owner, albums, pricelist, feedback } = data;
   const name = owner?.full_name || data.site.subdomain || "Studio";
 
   switch (block.type) {
     case "hero": {
       const img = str(c.image);
+      const left = t.heroAlign === "left";
       return (
         <section
           style={{
@@ -81,15 +118,16 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
             minHeight: "70vh",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            padding: 24,
+            justifyContent: left ? "flex-start" : "center",
+            textAlign: left ? "left" : "center",
+            padding: left ? "24px 6vw" : 24,
             backgroundImage: img ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.55)), url(${img})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            color: img ? "#fff" : undefined,
           }}
         >
-          <div>
+          <div style={{ maxWidth: 820 }}>
             <h1 style={{ fontFamily: fontVar, fontSize: "clamp(36px,7vw,72px)", lineHeight: 1.05 }}>{str(c.heading, name)}</h1>
             {str(c.subheading) && <p style={{ marginTop: 14, fontSize: 18, opacity: 0.85 }}>{str(c.subheading)}</p>}
             {owner?.booking_token && (
@@ -107,7 +145,7 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
             <div style={{ lineHeight: 1.7, opacity: 0.9 }}>
               {lines(c.text).map((p, i) => <p key={i} style={{ marginBottom: 12 }}>{p}</p>)}
             </div>
-            {img && <img src={img} alt="" style={{ width: "100%", borderRadius: 14, objectFit: "cover" }} />}
+            {img && <img src={img} alt="" style={{ width: "100%", borderRadius: "var(--s-radius)", objectFit: "cover" }} />}
           </div>
         </Section>
       );
@@ -116,12 +154,14 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
       const ids = Array.isArray(c.album_ids) ? (c.album_ids as string[]) : [];
       const picked = ids.length ? ids.map((id) => albums.find((a) => a.id === id)).filter(Boolean) as typeof albums : albums;
       if (picked.length === 0) return null;
+      const cols = Number(t.galleryCols) || 0;
+      const minW = cols === 2 ? 320 : cols === 3 ? 230 : cols === 4 ? 175 : 240;
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Bộ sưu tập")}>
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: `repeat(auto-fill,minmax(${minW}px,1fr))` }}>
             {picked.map((a) => (
               <a key={a.id} href={mainUrl(`/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
-                <div style={{ aspectRatio: "4/3", borderRadius: 12, overflow: "hidden", background: "rgba(255,255,255,.06)" }}>
+                <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
                   {a.cover_url && <img src={a.cover_url} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
                 <p style={{ marginTop: 8, fontSize: 14 }}>{a.title}</p>
@@ -137,7 +177,7 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
         <Section fontVar={fontVar} heading={str(c.heading, "Bảng giá")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
             {pricelist.map((p) => (
-              <div key={p.id} style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,.12)", padding: 20 }}>
+              <div key={p.id} style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 20 }}>
                 {p.category && <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1, opacity: 0.6 }}>{p.category}</p>}
                 <p style={{ fontFamily: fontVar, fontSize: 20, marginTop: 2 }}>{p.name}</p>
                 <p style={{ fontFamily: fontVar, fontSize: 24, color: "var(--s-accent)", marginTop: 4 }}>{vnd(p.price)}{p.unit ? ` ${p.unit}` : ""}</p>
@@ -154,7 +194,7 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
         <Section fontVar={fontVar} heading={str(c.heading, "Khách hàng nói gì")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
             {feedback.map((f) => (
-              <div key={f.id} style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,.12)", padding: 20 }}>
+              <div key={f.id} style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 20 }}>
                 {f.rating ? <p style={{ color: "var(--s-accent)" }}>{"★".repeat(f.rating)}</p> : null}
                 <p style={{ marginTop: 6, fontSize: 14, lineHeight: 1.6, opacity: 0.9 }}>{f.content}</p>
                 {f.client_name && <p style={{ marginTop: 8, fontSize: 13, opacity: 0.6 }}>— {f.client_name}</p>}
@@ -184,7 +224,7 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
       if (!url) return null;
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Video")}>
-          <div style={{ position: "relative", paddingBottom: "56.25%", borderRadius: 14, overflow: "hidden" }}>
+          <div style={{ position: "relative", paddingBottom: "56.25%", borderRadius: "var(--s-radius)", overflow: "hidden" }}>
             <iframe src={url} title="video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
           </div>
         </Section>
@@ -219,7 +259,7 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
         <Section fontVar={fontVar} heading={str(c.heading, "Câu hỏi thường gặp")}>
           <div style={{ display: "grid", gap: 12 }}>
             {items.map((it, i) => (
-              <div key={i} style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,.12)", padding: 18 }}>
+              <div key={i} style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 18 }}>
                 <p style={{ fontWeight: 600 }}>{it.q}</p>
                 {it.a && <p style={{ marginTop: 6, opacity: 0.85, lineHeight: 1.6 }}>{it.a}</p>}
               </div>
@@ -237,7 +277,7 @@ function Block({ block, data, fontVar }: { block: SiteBlock; data: SiteData; fon
         <Section fontVar={fontVar} heading={str(c.heading, "Dịch vụ")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
             {items.map((it, i) => (
-              <div key={i} style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,.12)", padding: 20 }}>
+              <div key={i} style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 20 }}>
                 <span style={{ color: "var(--s-accent)", fontFamily: fontVar, fontSize: 22 }}>{String(i + 1).padStart(2, "0")}</span>
                 <p style={{ fontFamily: fontVar, fontSize: 19, marginTop: 4 }}>{it.title}</p>
                 {it.desc && <p style={{ marginTop: 6, opacity: 0.85, lineHeight: 1.6, fontSize: 14 }}>{it.desc}</p>}

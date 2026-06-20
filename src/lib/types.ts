@@ -558,6 +558,11 @@ export type SiteTheme = {
   bg?: string;       // background
   text?: string;
   font?: "serif" | "sans";
+  mode?: "light" | "dark";          // affects borders/cards
+  logo?: string;                    // logo image URL (shown in the top bar)
+  heroAlign?: "center" | "left";    // hero text alignment
+  galleryCols?: number;             // gallery columns (2–4)
+  radius?: "rounded" | "sharp";     // corner style
 };
 export type SiteSeo = { title?: string; description?: string; og_image?: string };
 

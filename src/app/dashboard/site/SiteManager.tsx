@@ -254,7 +254,62 @@ export default function SiteManager({
               <option value="sans">Hiện đại (sans)</option>
             </select>
           </div>
+          <div>
+            <label className="label">Giao diện</label>
+            <select
+              className="input"
+              value={theme.mode || "dark"}
+              onChange={(e) => {
+                const mode = e.target.value as "light" | "dark";
+                setTheme((t) => ({ ...t, mode, bg: mode === "light" ? "#ffffff" : "#0c0c0d", text: mode === "light" ? "#161616" : "#ececec" }));
+              }}
+            >
+              <option value="dark">Tối</option>
+              <option value="light">Sáng</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Canh chữ Hero</label>
+            <select className="input" value={theme.heroAlign || "center"} onChange={(e) => setTheme((t) => ({ ...t, heroAlign: e.target.value as "center" | "left" }))}>
+              <option value="center">Giữa</option>
+              <option value="left">Trái</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Số cột ảnh</label>
+            <select className="input" value={String(theme.galleryCols || 3)} onChange={(e) => setTheme((t) => ({ ...t, galleryCols: Number(e.target.value) }))}>
+              <option value="2">2 cột</option>
+              <option value="3">3 cột</option>
+              <option value="4">4 cột</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Góc bo</label>
+            <select className="input" value={theme.radius || "rounded"} onChange={(e) => setTheme((t) => ({ ...t, radius: e.target.value as "rounded" | "sharp" }))}>
+              <option value="rounded">Bo tròn</option>
+              <option value="sharp">Vuông</option>
+            </select>
+          </div>
         </div>
+
+        {/* Logo */}
+        <div className="mt-4">
+          <label className="label">Logo (URL)</label>
+          <input className="input" placeholder="https://…/logo.png" value={theme.logo || ""} onChange={(e) => setTheme((t) => ({ ...t, logo: e.target.value }))} />
+          {albums.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px]" style={{ color: "var(--text3)" }}>hoặc chọn từ album:</span>
+              {albums.filter((a) => a.cover_url).slice(0, 10).map((a) => (
+                <button key={a.id} type="button" onClick={() => setTheme((t) => ({ ...t, logo: a.cover_url || "" }))} title={a.title} className="h-8 w-10 overflow-hidden rounded" style={{ border: theme.logo === a.cover_url ? "2px solid var(--accent)" : "1px solid var(--border)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.cover_url as string} alt={a.title} className="h-full w-full object-cover" />
+                </button>
+              ))}
+              {theme.logo && <button type="button" onClick={() => setTheme((t) => ({ ...t, logo: "" }))} className="text-[11px]" style={{ color: "var(--text3)" }}>bỏ logo</button>}
+            </div>
+          )}
+        </div>
+
         <label className="mt-4 flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
           <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
           Xuất bản trang (cho phép mọi người truy cập)
