@@ -70,6 +70,22 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 /** Admins are unlimited regardless of their stored plan. */
 export const ADMIN_LIMITS: PlanLimits = PLAN_LIMITS.studio;
 
+/**
+ * Studio-module access level a plan unlocks:
+ *   none    — no access to studio.vieetjk.com
+ *   booking — đặt lịch, bảng giá, lịch chụp, khách hàng (gói Photographer)
+ *   full    — booking + hợp đồng, tài chính, đội ngũ (gói Studio / admin)
+ */
+export type StudioTier = "none" | "booking" | "full";
+
+export const STUDIO_TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, full: 2 };
+
+export function studioTier(plan: Plan, isAdmin = false): StudioTier {
+  if (isAdmin || plan === "studio") return "full";
+  if (plan === "photographer") return "booking";
+  return "none";
+}
+
 export function limitsFor(plan: Plan, isAdmin: boolean): PlanLimits {
   return isAdmin ? ADMIN_LIMITS : PLAN_LIMITS[plan];
 }
@@ -143,11 +159,12 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
     "50 album mỗi tháng",
     "Đầy đủ tính năng gói Basic + full quyền khách hàng",
     "Nén qua Google Drive (Picker): 15 lần / tháng",
-    "Website cá nhân riêng (đang xây dựng)",
-    "Trang album ảnh riêng (đang xây dựng)",
-    "Đổi logo website cá nhân (đang xây dựng)",
+    "Trang quản lý lịch chụp riêng (studio.vieetjk.com)",
+    "Nhận đặt lịch online (link + QR cho khách)",
+    "Bảng giá dịch vụ & danh bạ khách hàng",
+    "Lịch chụp + nhắc lịch",
+    "Website cá nhân riêng + đổi logo",
     "Tên miền cá nhân (đang xây dựng)",
-    "Quản lý lịch chụp cá nhân (đang xây dựng)",
   ],
   studio: [
     "Tất cả tính năng gói Photographer — không giới hạn",

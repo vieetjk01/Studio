@@ -46,16 +46,15 @@ const COMPARE: { label: string; free: Cmp; basic: Cmp; photographer: Cmp; studio
   { label: "Nén qua Drive (Picker)", free: "1 lần", basic: "5 / tháng", photographer: "15 / tháng", studio: "∞" },
   { label: "Gallery giao khách", free: false, basic: false, photographer: true, studio: true },
   { label: "Website / tên miền riêng", free: false, basic: false, photographer: "Đang xây dựng", studio: "Đang xây dựng" },
-  { label: "Quản lý lịch chụp / hợp đồng", free: false, basic: false, photographer: false, studio: "Đang xây dựng" },
+  { label: "Đặt lịch · bảng giá · lịch chụp", free: false, basic: false, photographer: true, studio: true },
+  { label: "Hợp đồng · tài chính · quản lý đội", free: false, basic: false, photographer: false, studio: true },
 ];
 
 const COMING_SOON = [
-  "Website cá nhân riêng cho photographer",
-  "Trang album ảnh riêng theo thương hiệu",
-  "Đổi logo & tên miền cá nhân",
-  "Quản lý lịch chụp",
-  "Quản lý hợp đồng khách hàng",
-  "Quản lý photographer cho từng hợp đồng",
+  "Tên miền cá nhân (.com riêng)",
+  "Cổng thanh toán tự động",
+  "Upload ảnh trực tiếp lên website",
+  "Ứng dụng di động cho studio",
 ];
 
 export default function UpgradePage() {

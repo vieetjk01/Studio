@@ -29,13 +29,13 @@ type Row = {
 };
 
 export default async function ClientDetail({ params }: { params: { phone: string } }) {
-  const profile = await requireStudio();
+  const profile = await requireStudio("booking");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <div className="card p-8">
-          <h1 className="font-serif text-2xl font-medium">Cần gói Studio</h1>
-          <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem gói Studio</a>
+          <h1 className="font-serif text-2xl font-medium">Cần gói Photographer trở lên</h1>
+          <a href="/dashboard/upgrade" className="btn-primary mt-5">Nâng cấp gói</a>
         </div>
       </div>
     );

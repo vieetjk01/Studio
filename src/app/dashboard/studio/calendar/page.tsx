@@ -7,16 +7,16 @@ import CalendarView, { type ContractMarker } from "./CalendarView";
 export const dynamic = "force-dynamic";
 
 export default async function CalendarPage() {
-  const profile = await requireStudio();
+  const profile = await requireStudio("booking");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <div className="card p-8">
-          <h1 className="font-serif text-2xl font-medium">Cần gói Studio</h1>
+          <h1 className="font-serif text-2xl font-medium">Cần gói Photographer trở lên</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-            Tính năng này chỉ dành cho tài khoản gói Studio.
+            Tính năng này dành cho tài khoản gói Photographer trở lên.
           </p>
-          <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem gói Studio</a>
+          <a href="/dashboard/upgrade" className="btn-primary mt-5">Nâng cấp gói</a>
         </div>
       </div>
     );

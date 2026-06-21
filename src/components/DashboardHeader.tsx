@@ -11,17 +11,19 @@ import StudioSearch from "@/components/StudioSearch";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { appUrl, imgUrl, studioUrl } from "@/lib/hosts";
-import { effectivePlan } from "@/lib/plans";
+import { effectivePlan, studioTier, STUDIO_TIER_RANK, type StudioTier } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
 interface NavLink {
   href: string;
   label: string;
   external?: boolean;
+  tier?: StudioTier; // min studio tier needed to see this item (default "full")
 }
 interface NavGroup {
   label: string;
   children: NavLink[];
+  tier?: StudioTier; // min studio tier needed to see this group (default "full")
 }
 const isGroup = (x: NavLink | NavGroup): x is NavGroup => "children" in x;
 
@@ -44,11 +46,13 @@ export default function DashboardHeader({
     router.refresh();
   }
 
-  // Studio access: admins, accounts on an active Studio plan, or staff members.
-  const hasStudio =
-    profile.role === "admin" ||
-    effectivePlan(profile.plan, profile.plan_expires_at) === "studio" ||
-    !!profile.studio_owner_id;
+  // Studio-module access level. Staff belong to a full Studio account, so they
+  // inherit the full tier; otherwise it's derived from the user's own plan.
+  const tier: StudioTier = profile.studio_owner_id
+    ? "full"
+    : studioTier(effectivePlan(profile.plan, profile.plan_expires_at), profile.role === "admin");
+  // Photographer = booking tier (đặt lịch / bảng giá / lịch chụp), Studio = full.
+  const hasStudio = tier !== "none";
 
   // Personal site builder: photographer + studio plans (and admins).
   const hasSite =
@@ -62,26 +66,27 @@ export default function DashboardHeader({
     ? "admin"
     : "owner";
 
-  // Studio nav grouped into dropdowns to keep the bar tidy.
+  // Studio nav grouped into dropdowns to keep the bar tidy. Each group/link
+  // carries the minimum tier needed to see it (booking = Photographer plan).
   const studioNav: (NavLink | NavGroup)[] = [
-    { href: "/dashboard/studio", label: "Tổng quan" },
+    { href: "/dashboard/studio", label: "Tổng quan", tier: "booking" },
+    {
+      label: "Đặt lịch & Khách",
+      tier: "booking",
+      children: [
+        { href: "/dashboard/studio/bookings", label: "Đặt lịch" },
+        { href: "/dashboard/studio/calendar", label: "Lịch chụp" },
+        { href: "/dashboard/studio/pricing", label: "Bảng giá" },
+        { href: "/dashboard/studio/clients", label: "Khách hàng" },
+      ],
+    },
     { href: "/dashboard/studio/board", label: "Bảng" },
     {
       label: "Hợp đồng",
       children: [
         { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
         { href: "/dashboard/studio/production", label: "Xử lý hình ảnh" },
-        { href: "/dashboard/studio/bookings", label: "Đặt lịch" },
-        { href: "/dashboard/studio/clients", label: "Khách hàng" },
-        { href: "/dashboard/studio/pricing", label: "Bảng giá" },
         { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
-      ],
-    },
-    {
-      label: "Lịch",
-      children: [
-        { href: "/dashboard/studio/calendar", label: "Lịch chụp" },
-        { href: "/dashboard/studio/team", label: "Lịch đội" },
       ],
     },
     {
@@ -94,6 +99,7 @@ export default function DashboardHeader({
     {
       label: "Đội ngũ",
       children: [
+        { href: "/dashboard/studio/team", label: "Lịch đội" },
         { href: "/dashboard/studio/crew", label: "Sổ thợ" },
         { href: "/dashboard/studio/ranking", label: "Xếp hạng" },
         { href: "/dashboard/studio/messages", label: "Mẫu tin" },
@@ -102,11 +108,13 @@ export default function DashboardHeader({
           : []),
       ],
     },
-    { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+    { href: appUrl("/dashboard"), label: t("myAlbums"), external: true, tier: "booking" },
   ];
 
-  // Role-based visibility: accountant → overview + finance only; staff → hide finance.
+  // Visibility: by tier (Photographer only sees booking-tier items), then by
+  // role (accountant → overview + finance only; staff → hide finance).
   const studioVisible = studioNav.filter((item) => {
+    if (STUDIO_TIER_RANK[item.tier ?? "full"] > STUDIO_TIER_RANK[tier]) return false;
     const label = item.label;
     if (studioRole === "accountant") return label === "Tổng quan" || label === "Tài chính";
     if (studioRole === "staff") return label !== "Tài chính";
@@ -130,7 +138,7 @@ export default function DashboardHeader({
           { href: "/dashboard/filter", label: t("filterPhotos") },
           { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
           ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web" }] : []),
-          ...(hasStudio ? [{ href: studioUrl("/dashboard/studio"), label: "Studio", external: true }] : []),
+          ...(hasStudio ? [{ href: studioUrl("/dashboard/studio"), label: tier === "full" ? "Studio" : "Quản lý", external: true }] : []),
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),
           ...(profile.role === "admin"
             ? [

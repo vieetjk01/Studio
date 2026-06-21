@@ -33,22 +33,127 @@ function NotStudio() {
   return (
     <div className="mx-auto max-w-lg text-center">
       <div className="card p-8">
-        <h1 className="font-serif text-2xl font-medium">Cần gói Studio</h1>
+        <h1 className="font-serif text-2xl font-medium">Cần gói Photographer trở lên</h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-          Trang quản lý studio (hợp đồng, lịch chụp, quản lý photographer) chỉ dành cho
-          tài khoản gói <b>Studio</b>. Vui lòng nâng cấp để sử dụng.
+          Trang quản lý dành cho tài khoản gói <b>Photographer</b> (đặt lịch, bảng giá,
+          lịch chụp) trở lên. Gói <b>Studio</b> mở thêm hợp đồng, tài chính & quản lý đội ngũ.
         </p>
-        <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem gói Studio</a>
+        <a href="/dashboard/upgrade" className="btn-primary mt-5">Nâng cấp gói</a>
+      </div>
+    </div>
+  );
+}
+
+/** Photographer-plan overview: bookings + upcoming shoots, no contracts/finance. */
+async function BookingOverview({ ownerId }: { ownerId: string }) {
+  const supabase = createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from("studio_bookings")
+    .select("id, name, phone, service, preferred_date, package_name, package_price, status, created_at")
+    .eq("owner_id", ownerId)
+    .neq("status", "archived")
+    .order("created_at", { ascending: false });
+  const bookings = (data ?? []) as Array<{
+    id: string; name: string; phone: string; service: string | null;
+    preferred_date: string | null; package_name: string | null; package_price: number | null;
+    status: "new" | "handled" | "archived"; created_at: string;
+  }>;
+
+  const newCount = bookings.filter((b) => b.status === "new").length;
+  const upcoming = bookings
+    .filter((b) => b.preferred_date && b.preferred_date >= today)
+    .sort((a, b) => (a.preferred_date || "").localeCompare(b.preferred_date || ""))
+    .slice(0, 8);
+
+  const stats = [
+    { icon: AlertCircle, label: "Đặt lịch mới", value: String(newCount) },
+    { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
+    { icon: Users, label: "Tổng yêu cầu đặt lịch", value: String(bookings.length) },
+  ];
+
+  const quickLinks = [
+    { href: "/dashboard/studio/bookings", icon: Clock, label: "Đặt lịch", desc: "Yêu cầu khách gửi" },
+    { href: "/dashboard/studio/calendar", icon: CalendarDays, label: "Lịch chụp", desc: "Xem & sắp lịch" },
+    { href: "/dashboard/studio/pricing", icon: Wallet, label: "Bảng giá", desc: "Các gói dịch vụ" },
+    { href: "/dashboard/studio/clients", icon: Users, label: "Khách hàng", desc: "Danh bạ khách" },
+  ];
+
+  return (
+    <div className="animate-[vkFade_.5s_ease_both]">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <p className="eyebrow mb-1.5">Quản lý lịch chụp</p>
+          <h1 className="font-serif text-3xl font-medium">Tổng quan</h1>
+        </div>
+        <Link href="/dashboard/studio/bookings" className="btn-primary">
+          <CalendarDays size={16} /> Đặt lịch
+        </Link>
+      </div>
+
+      <div className="mb-8 grid grid-cols-3 gap-4">
+        {stats.map((s) => (
+          <div key={s.label} className="card p-5">
+            <s.icon size={18} style={{ color: "var(--text3)" }} />
+            <p className="mt-3 font-serif text-2xl font-medium">{s.value}</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {quickLinks.map((q) => (
+          <Link key={q.href} href={q.href} className="card p-5 transition-colors hover:border-[var(--gold)]">
+            <q.icon size={18} style={{ color: "var(--gold)" }} />
+            <p className="mt-3 font-medium">{q.label}</p>
+            <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>{q.desc}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="card p-6">
+        <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
+          <CalendarDays size={18} style={{ color: "var(--gold)" }} /> Lịch chụp sắp tới
+        </h2>
+        <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
+          {upcoming.length > 0 ? `${upcoming.length} buổi chụp đã có ngày` : "Chưa có lịch chụp nào sắp tới"}
+        </p>
+        {upcoming.length > 0 ? (
+          <ul className="space-y-2">
+            {upcoming.map((b) => (
+              <li key={b.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{b.name}</p>
+                  <p className="text-[11px]" style={{ color: "var(--text3)" }}>
+                    {[b.package_name || b.service, b.phone].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm" style={{ color: "var(--gold)" }}>{b.preferred_date}</p>
+                  {b.package_price ? <p className="text-[11px]" style={{ color: "var(--text3)" }}>{vnd(b.package_price)}</p> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Link href="/dashboard/studio/bookings" className="btn-ghost mt-1">Mở trang đặt lịch</Link>
+        )}
       </div>
     </div>
   );
 }
 
 export default async function StudioOverview() {
-  const profile = await requireStudio();
+  const profile = await requireStudio("booking");
   if (!profile) return <NotStudio />;
 
   const supabase = createClient();
+
+  // Photographer plan (booking tier): a focused overview around shoots &
+  // bookings — no contracts/finance, which belong to the full Studio plan.
+  if (profile.studioTier === "booking") return <BookingOverview ownerId={profile.id} />;
+
   const bank = {
     bin: (profile.pl_bank_bin as string | null) ?? null,
     account: (profile.pl_bank_account as string | null) ?? null,
