@@ -20,11 +20,35 @@
   --logo: #c0151a;
 }
 
+/* Light theme — opt-in via data-theme="light" on <html> (homepage toggle). */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f6f3;
+  --bg2: #efeee9;
+  --surface: #ffffff;
+  --surface2: #f1f0ec;
+  --border: rgba(0, 0, 0, 0.10);
+  --border2: rgba(0, 0, 0, 0.20);
+  --text: #1a1a1c;
+  --text2: rgba(26, 26, 28, 0.62);
+  --text3: rgba(26, 26, 28, 0.42);
+  --accent: #1a1a1c;
+  --accentInk: #f7f6f3;
+  --gold: #b8893a;
+  --logo: #c0151a;
+}
+
 html,
 body {
   margin: 0;
   background-color: var(--bg);
   color: var(--text);
+}
+
+/* Smooth the homepage light/dark switch. */
+:root[data-theme] body,
+:root[data-theme] body * {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 
 body {

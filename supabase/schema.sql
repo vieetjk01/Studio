@@ -315,6 +315,10 @@ insert into public.site_settings (id) values (1) on conflict (id) do nothing;
 alter table public.site_settings add column if not exists contact_facebook text;
 alter table public.site_settings add column if not exists contact_tiktok   text;
 alter table public.site_settings add column if not exists contact_youtube  text;
+-- Browser tab / SEO: custom <title>, meta description and favicon shown on the tab.
+alter table public.site_settings add column if not exists site_title       text;
+alter table public.site_settings add column if not exists site_description text;
+alter table public.site_settings add column if not exists favicon_url      text;
 
 alter table public.site_settings enable row level security;
 drop policy if exists site_settings_public_read on public.site_settings;
@@ -849,6 +853,9 @@ create table if not exists public.studio_pricelist (
 );
 alter table public.studio_pricelist add column if not exists list_key text not null default 'cuoi';
 alter table public.studio_pricelist add column if not exists show_on_home boolean not null default true;
+-- Optional homepage price override: when set, vieetjk.com shows this instead of
+-- `price` (the full price list at /gia still shows the real `price`).
+alter table public.studio_pricelist add column if not exists home_price integer;
 create index if not exists studio_pricelist_owner_idx on public.studio_pricelist (owner_id, list_key, position);
 alter table public.studio_pricelist enable row level security;
 drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;
@@ -883,6 +890,11 @@ alter table public.profiles add column if not exists pl_bank_holder  text;
 alter table public.profiles add column if not exists pl_bank_account text;
 alter table public.profiles add column if not exists pl_bank_name    text;
 alter table public.profiles add column if not exists pl_bank_bin     text;  -- VietQR (NAPAS) bank code, for payment QR generation
+-- Price-list poster appearance: custom background / text / accent colours + logo.
+alter table public.profiles add column if not exists pl_bg           text;
+alter table public.profiles add column if not exists pl_text         text;
+alter table public.profiles add column if not exists pl_accent       text;
+alter table public.profiles add column if not exists pl_logo_url     text;
 alter table public.profiles add column if not exists auto_client_emails boolean not null default false;  -- opt-in: auto-email clients (shoot reminder, review request)
 
 -- Widen the shoot_type check to the fuller service list (idempotent).

@@ -216,6 +216,30 @@ export default function SettingsPanel({
         </div>
       </div>
 
+      {/* Browser tab / SEO */}
+      <div className="mt-8 card space-y-4 p-6">
+        <h2 className="text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
+          Thanh tab trình duyệt &amp; SEO
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {field("site_title", "Tiêu đề trang (tab trình duyệt)", { placeholder: "Vieetjk — Studio ảnh cưới" })}
+          {field("favicon_url", "Logo trên tab (favicon URL)", { placeholder: "https://… .png / .ico" })}
+        </div>
+        {field("site_description", "Mô tả trang (SEO)", { textarea: true, placeholder: "Mô tả ngắn hiển thị khi chia sẻ link / trên Google." })}
+        <div className="flex items-center gap-3">
+          {form.favicon_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={form.favicon_url as string} alt="favicon" className="h-8 w-8 rounded" style={{ border: "1px solid var(--border)" }} />
+          ) : null}
+          <p className="text-[12px]" style={{ color: "var(--text3)" }}>
+            Ảnh vuông (vd 64×64 hoặc 512×512), định dạng PNG/ICO. Để trống để dùng logo mặc định.
+          </p>
+        </div>
+        <button onClick={save} disabled={saving} className="btn-primary w-full sm:w-auto">
+          <Save size={15} /> {saving ? t("saving") : "Lưu thông tin trình duyệt"}
+        </button>
+      </div>
+
       {/* Plans & pricing */}
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="card space-y-4 p-6">

@@ -78,6 +78,7 @@ export default function DashboardHeader({
         { href: "/dashboard/studio/calendar", label: "Lịch chụp" },
         { href: "/dashboard/studio/pricing", label: "Bảng giá" },
         { href: "/dashboard/studio/clients", label: "Khách hàng" },
+        { href: appUrl("/dashboard/galleries"), label: "Gallery khách", external: true },
       ],
     },
     { href: "/dashboard/studio/board", label: "Bảng" },
@@ -175,15 +176,14 @@ export default function DashboardHeader({
         </button>
         <div className="invisible absolute left-0 top-full z-30 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
           <div className="grid min-w-[170px] gap-1 rounded-xl p-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            {g.children.map((c) => (
-              <Link
-                key={c.href}
-                href={c.href}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${pathname === c.href ? "text-accent" : "text-accent-muted hover:bg-[var(--surface2)] hover:text-accent"}`}
-              >
-                {c.label}
-              </Link>
-            ))}
+            {g.children.map((c) => {
+              const cls = `rounded-lg px-3 py-1.5 text-sm transition-colors ${pathname === c.href ? "text-accent" : "text-accent-muted hover:bg-[var(--surface2)] hover:text-accent"}`;
+              return c.external ? (
+                <a key={c.href} href={c.href} className={cls}>{c.label}</a>
+              ) : (
+                <Link key={c.href} href={c.href} className={cls}>{c.label}</Link>
+              );
+            })}
           </div>
         </div>
       </div>

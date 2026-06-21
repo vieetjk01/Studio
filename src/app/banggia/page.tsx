@@ -44,6 +44,7 @@ export default async function BangGiaPage({ searchParams }: { searchParams?: { l
       selected={selected}
       tabBase="/banggia"
       bookHref={token ? `/book/${token}` : "#"}
+      theme={{ bg: owner.pl_bg, text: owner.pl_text, accent: owner.pl_accent, logo: owner.pl_logo_url }}
     />
   );
 }

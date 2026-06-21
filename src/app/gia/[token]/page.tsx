@@ -9,7 +9,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
   const db = createAdminClient();
   const { data: owner } = await db
     .from("profiles")
-    .select("id, full_name, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name")
+    .select("id, full_name, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bg, pl_text, pl_accent, pl_logo_url")
     .eq("booking_token", params.token)
     .maybeSingle();
 
@@ -45,6 +45,12 @@ export default async function PublicPricelist({ params, searchParams }: { params
       selected={selected}
       tabBase={`/gia/${params.token}`}
       bookHref={`/book/${params.token}`}
+      theme={{
+        bg: (owner as Record<string, string | null>).pl_bg,
+        text: (owner as Record<string, string | null>).pl_text,
+        accent: (owner as Record<string, string | null>).pl_accent,
+        logo: (owner as Record<string, string | null>).pl_logo_url,
+      }}
     />
   );
 }

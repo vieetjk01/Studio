@@ -56,6 +56,12 @@ export default async function PricingPage() {
         pl_bank_name: profile.pl_bank_name ?? "",
         pl_bank_bin: profile.pl_bank_bin ?? "",
       }}
+      appearance={{
+        pl_bg: profile.pl_bg ?? "",
+        pl_text: profile.pl_text ?? "",
+        pl_accent: profile.pl_accent ?? "",
+        pl_logo_url: profile.pl_logo_url ?? "",
+      }}
     />
   );
 }

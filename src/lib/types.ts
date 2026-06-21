@@ -87,6 +87,9 @@ export interface SiteSettings {
   contact_youtube: string | null;
   contact_address: string;
   contact_hours: string;
+  site_title: string | null;
+  site_description: string | null;
+  favicon_url: string | null;
   featured_images: string[] | null;
   basic_discount_percent: number;
   price_basic_month: number;
@@ -344,6 +347,7 @@ export interface PricelistItem {
   description: string | null;
   active: boolean;
   show_on_home: boolean;
+  home_price: number | null; // optional homepage price override (null = use price)
   position: number;
   created_at: string;
 }

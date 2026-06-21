@@ -10,39 +10,47 @@ import { VietQR } from "@/components/VietQR";
 import { vnd, type PricelistItem } from "@/lib/types";
 
 type Contact = { pl_phone: string; pl_facebook: string; pl_bank_holder: string; pl_bank_account: string; pl_bank_name: string; pl_bank_bin: string };
+type Appearance = { pl_bg: string; pl_text: string; pl_accent: string; pl_logo_url: string };
+
+const DEFAULT_APPEARANCE: Appearance = { pl_bg: "#e7ebdf", pl_text: "#23402c", pl_accent: "#2f6b3e", pl_logo_url: "" };
 
 export default function PricingManager({
   ownerId,
   initial,
   shareUrl,
   contact,
+  appearance,
 }: {
   ownerId: string;
   initial: PricelistItem[];
   shareUrl: string; // base /gia/<token>
   contact: Contact;
+  appearance: Appearance;
 }) {
   const supabase = createClient();
   const [list, setList] = useState<PricelistItem[]>(initial);
   const [activeList, setActiveList] = useState(PRICE_LISTS[0].key);
-  const [f, setF] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
+  const [f, setF] = useState({ name: "", price: 0, home_price: 0, unit: "", category: "", description: "" });
   const [c, setC] = useState<Contact>(contact);
   const [savedContact, setSavedContact] = useState(false);
+  const [ap, setAp] = useState<Appearance>(appearance);
+  const [savedAppear, setSavedAppear] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [edit, setEdit] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
+  const [edit, setEdit] = useState({ name: "", price: 0, home_price: 0, unit: "", category: "", description: "" });
   const [note, setNote] = useState({ name: "", description: "" });
   const [dragId, setDragId] = useState<string | null>(null);
 
   function startEdit(it: PricelistItem) {
     setEditId(it.id);
-    setEdit({ name: it.name, price: it.price, unit: it.unit || "", category: it.category || "", description: it.description || "" });
+    setEdit({ name: it.name, price: it.price, home_price: it.home_price ?? 0, unit: it.unit || "", category: it.category || "", description: it.description || "" });
   }
   async function saveEdit(id: string) {
     const patch = {
       name: edit.name.trim() || "(chưa đặt tên)",
       price: Math.max(0, Math.round(Number(edit.price) || 0)),
+      home_price: edit.home_price > 0 ? Math.round(edit.home_price) : null,
       unit: edit.unit.trim() || null,
       category: edit.category.trim() || null,
       description: edit.description.trim() || null,
@@ -50,6 +58,17 @@ export default function PricingManager({
     await supabase.from("studio_pricelist").update(patch).eq("id", id);
     setList((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
     setEditId(null);
+  }
+
+  async function saveAppearance() {
+    await supabase.from("profiles").update({
+      pl_bg: ap.pl_bg || null,
+      pl_text: ap.pl_text || null,
+      pl_accent: ap.pl_accent || null,
+      pl_logo_url: ap.pl_logo_url.trim() || null,
+    }).eq("id", ownerId);
+    setSavedAppear(true);
+    setTimeout(() => setSavedAppear(false), 1500);
   }
 
   const visible = list.filter((it) => (it.list_key || "cuoi") === activeList);
@@ -103,6 +122,7 @@ export default function PricingManager({
         list_key: activeList,
         name: f.name.trim(),
         price: Math.max(0, Math.round(Number(f.price) || 0)),
+        home_price: f.home_price > 0 ? Math.round(f.home_price) : null,
         unit: f.unit.trim() || null,
         category: f.category.trim() || null,
         description: f.description.trim() || null,
@@ -113,7 +133,7 @@ export default function PricingManager({
     setBusy(false);
     if (!error && data) {
       setList((p) => [...p, data as PricelistItem]);
-      setF({ name: "", price: 0, unit: "", category: "", description: "" });
+      setF({ name: "", price: 0, home_price: 0, unit: "", category: "", description: "" });
     }
   }
 
@@ -220,6 +240,43 @@ export default function PricingManager({
         </div>
       </div>
 
+      {/* Appearance: background / text / accent colours + logo on the public poster */}
+      <div className="card mb-6 p-6">
+        <h2 className="mb-1 font-serif text-lg font-medium">Giao diện bảng giá</h2>
+        <p className="mb-4 text-sm" style={{ color: "var(--text2)" }}>Chọn màu nền, màu chữ, màu nhấn và logo hiển thị trên bảng giá gửi khách.</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {([
+            ["pl_bg", "Màu nền"],
+            ["pl_text", "Màu chữ"],
+            ["pl_accent", "Màu nhấn"],
+          ] as [keyof Appearance, string][]).map(([key, label]) => (
+            <div key={key}>
+              <label className="label">{label}</label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={ap[key] || DEFAULT_APPEARANCE[key]} onChange={(e) => setAp((p) => ({ ...p, [key]: e.target.value }))} className="h-10 w-12 shrink-0 cursor-pointer rounded-lg" style={{ border: "1px solid var(--border)", background: "transparent" }} />
+                <input className="input" value={ap[key]} placeholder={DEFAULT_APPEARANCE[key]} onChange={(e) => setAp((p) => ({ ...p, [key]: e.target.value }))} />
+              </div>
+            </div>
+          ))}
+          <div>
+            <label className="label">Logo (URL)</label>
+            <input className="input" placeholder="https://… .png" value={ap.pl_logo_url} onChange={(e) => setAp((p) => ({ ...p, pl_logo_url: e.target.value }))} />
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button onClick={saveAppearance} className="btn-primary">{savedAppear ? <Check size={15} /> : null} {savedAppear ? "Đã lưu" : "Lưu giao diện"}</button>
+          <button onClick={() => setAp(DEFAULT_APPEARANCE)} className="btn-ghost px-3 py-2 text-xs">Khôi phục mặc định</button>
+          {/* Live preview swatch */}
+          <span className="ml-auto flex items-center gap-2 rounded-xl px-4 py-2 text-sm" style={{ background: ap.pl_bg || DEFAULT_APPEARANCE.pl_bg, color: ap.pl_text || DEFAULT_APPEARANCE.pl_text, border: "1px solid var(--border)" }}>
+            {ap.pl_logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ap.pl_logo_url} alt="logo" className="h-5 w-5 rounded object-contain" />
+            ) : null}
+            Xem trước · <b style={{ color: ap.pl_accent || DEFAULT_APPEARANCE.pl_accent }}>10.000.000đ</b>
+          </span>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card h-fit p-6">
           <h2 className="mb-4 font-serif text-lg font-medium">Thêm mục</h2>
@@ -229,6 +286,7 @@ export default function PricingManager({
               <div><label className="label">Giá</label><MoneyInput value={f.price} onChange={(n) => setF((p) => ({ ...p, price: n }))} /></div>
               <div><label className="label">Đơn vị</label><input className="input" placeholder="/ gói" value={f.unit} onChange={(e) => setF((p) => ({ ...p, unit: e.target.value }))} /></div>
             </div>
+            <div><label className="label">Giá hiển thị trang chủ (nếu khác)</label><MoneyInput value={f.home_price} onChange={(n) => setF((p) => ({ ...p, home_price: n }))} /><p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Để 0 nếu trang chủ dùng cùng giá với bảng giá.</p></div>
             <div><label className="label">Nhóm</label><input className="input" placeholder="Gói chụp / Gói quay…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
             <div><label className="label">Mô tả (mỗi dòng 1 ý)</label><textarea className="input min-h-[70px]" value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} /></div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang thêm…" : "Thêm vào bảng giá"}</button>
@@ -257,6 +315,7 @@ export default function PricingManager({
                           <input className="input" placeholder="Đơn vị" value={edit.unit} onChange={(e) => setEdit((p) => ({ ...p, unit: e.target.value }))} />
                         </div>
                       </div>
+                      <div><MoneyInput placeholder="Giá trang chủ (nếu khác, 0 = giống bảng giá)" value={edit.home_price} onChange={(n) => setEdit((p) => ({ ...p, home_price: n }))} /></div>
                       <input className="input" placeholder="Nhóm" value={edit.category} onChange={(e) => setEdit((p) => ({ ...p, category: e.target.value }))} />
                       <textarea className="input min-h-[70px]" placeholder="Mô tả (mỗi dòng 1 ý)" value={edit.description} onChange={(e) => setEdit((p) => ({ ...p, description: e.target.value }))} />
                       <div className="flex gap-2">
@@ -281,6 +340,7 @@ export default function PricingManager({
                           {it.name} {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
                         </p>
                         <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(it.price)}<span className="text-xs" style={{ color: "var(--text3)" }}>{it.unit ? ` ${it.unit}` : ""}</span></p>
+                        {it.home_price != null && it.home_price !== it.price && <p className="text-[11px]" style={{ color: "var(--text3)" }}>Trang chủ: {vnd(it.home_price)}</p>}
                         {it.description && <p className="whitespace-pre-line text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
                         {!it.show_on_home && <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Ẩn ở trang chủ</p>}
                       </div>

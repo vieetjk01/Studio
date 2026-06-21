@@ -20,6 +20,9 @@ const FIELDS = [
   "contact_youtube",
   "contact_address",
   "contact_hours",
+  "site_title",
+  "site_description",
+  "favicon_url",
 ] as const;
 
 /** Update the studio profile / contact settings. Admin only. */
