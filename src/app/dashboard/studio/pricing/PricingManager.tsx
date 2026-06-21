@@ -30,7 +30,7 @@ export default function PricingManager({
   const supabase = createClient();
   const [list, setList] = useState<PricelistItem[]>(initial);
   const [activeList, setActiveList] = useState(PRICE_LISTS[0].key);
-  const [f, setF] = useState({ name: "", price: 0, home_price: 0, unit: "", category: "", description: "" });
+  const [f, setF] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [c, setC] = useState<Contact>(contact);
   const [savedContact, setSavedContact] = useState(false);
   const [ap, setAp] = useState<Appearance>(appearance);
@@ -38,19 +38,18 @@ export default function PricingManager({
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [edit, setEdit] = useState({ name: "", price: 0, home_price: 0, unit: "", category: "", description: "" });
+  const [edit, setEdit] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [note, setNote] = useState({ name: "", description: "" });
   const [dragId, setDragId] = useState<string | null>(null);
 
   function startEdit(it: PricelistItem) {
     setEditId(it.id);
-    setEdit({ name: it.name, price: it.price, home_price: it.home_price ?? 0, unit: it.unit || "", category: it.category || "", description: it.description || "" });
+    setEdit({ name: it.name, price: it.price, unit: it.unit || "", category: it.category || "", description: it.description || "" });
   }
   async function saveEdit(id: string) {
     const patch = {
       name: edit.name.trim() || "(chưa đặt tên)",
       price: Math.max(0, Math.round(Number(edit.price) || 0)),
-      home_price: edit.home_price > 0 ? Math.round(edit.home_price) : null,
       unit: edit.unit.trim() || null,
       category: edit.category.trim() || null,
       description: edit.description.trim() || null,
@@ -122,7 +121,6 @@ export default function PricingManager({
         list_key: activeList,
         name: f.name.trim(),
         price: Math.max(0, Math.round(Number(f.price) || 0)),
-        home_price: f.home_price > 0 ? Math.round(f.home_price) : null,
         unit: f.unit.trim() || null,
         category: f.category.trim() || null,
         description: f.description.trim() || null,
@@ -133,7 +131,7 @@ export default function PricingManager({
     setBusy(false);
     if (!error && data) {
       setList((p) => [...p, data as PricelistItem]);
-      setF({ name: "", price: 0, home_price: 0, unit: "", category: "", description: "" });
+      setF({ name: "", price: 0, unit: "", category: "", description: "" });
     }
   }
 
@@ -286,7 +284,6 @@ export default function PricingManager({
               <div><label className="label">Giá</label><MoneyInput value={f.price} onChange={(n) => setF((p) => ({ ...p, price: n }))} /></div>
               <div><label className="label">Đơn vị</label><input className="input" placeholder="/ gói" value={f.unit} onChange={(e) => setF((p) => ({ ...p, unit: e.target.value }))} /></div>
             </div>
-            <div><label className="label">Giá hiển thị trang chủ (nếu khác)</label><MoneyInput value={f.home_price} onChange={(n) => setF((p) => ({ ...p, home_price: n }))} /><p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Để 0 nếu trang chủ dùng cùng giá với bảng giá.</p></div>
             <div><label className="label">Nhóm</label><input className="input" placeholder="Gói chụp / Gói quay…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
             <div><label className="label">Mô tả (mỗi dòng 1 ý)</label><textarea className="input min-h-[70px]" value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} /></div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang thêm…" : "Thêm vào bảng giá"}</button>
@@ -315,7 +312,6 @@ export default function PricingManager({
                           <input className="input" placeholder="Đơn vị" value={edit.unit} onChange={(e) => setEdit((p) => ({ ...p, unit: e.target.value }))} />
                         </div>
                       </div>
-                      <div><MoneyInput placeholder="Giá trang chủ (nếu khác, 0 = giống bảng giá)" value={edit.home_price} onChange={(n) => setEdit((p) => ({ ...p, home_price: n }))} /></div>
                       <input className="input" placeholder="Nhóm" value={edit.category} onChange={(e) => setEdit((p) => ({ ...p, category: e.target.value }))} />
                       <textarea className="input min-h-[70px]" placeholder="Mô tả (mỗi dòng 1 ý)" value={edit.description} onChange={(e) => setEdit((p) => ({ ...p, description: e.target.value }))} />
                       <div className="flex gap-2">
@@ -340,7 +336,6 @@ export default function PricingManager({
                           {it.name} {it.category && <span className="text-[11px]" style={{ color: "var(--text3)" }}>· {it.category}</span>}
                         </p>
                         <p className="font-serif text-lg font-medium" style={{ color: "var(--accent)" }}>{vnd(it.price)}<span className="text-xs" style={{ color: "var(--text3)" }}>{it.unit ? ` ${it.unit}` : ""}</span></p>
-                        {it.home_price != null && it.home_price !== it.price && <p className="text-[11px]" style={{ color: "var(--text3)" }}>Trang chủ: {vnd(it.home_price)}</p>}
                         {it.description && <p className="whitespace-pre-line text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
                         {!it.show_on_home && <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Ẩn ở trang chủ</p>}
                       </div>

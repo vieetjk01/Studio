@@ -36,6 +36,16 @@ export default async function BangGiaPage({ searchParams }: { searchParams?: { l
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
   const token = (owner as { booking_token: string | null }).booking_token || "";
 
+  // Poster appearance is optional — read it defensively so a not-yet-migrated DB
+  // (missing pl_bg/pl_text/… columns) never breaks the public price list.
+  let theme: { bg?: string | null; text?: string | null; accent?: string | null; logo?: string | null } | undefined;
+  const { data: th } = await db
+    .from("profiles")
+    .select("pl_bg, pl_text, pl_accent, pl_logo_url")
+    .eq("id", owner.id)
+    .maybeSingle();
+  if (th) theme = { bg: th.pl_bg, text: th.pl_text, accent: th.pl_accent, logo: th.pl_logo_url };
+
   return (
     <PricelistPoster
       contact={owner as never}
@@ -44,7 +54,7 @@ export default async function BangGiaPage({ searchParams }: { searchParams?: { l
       selected={selected}
       tabBase="/banggia"
       bookHref={token ? `/book/${token}` : "#"}
-      theme={{ bg: owner.pl_bg, text: owner.pl_text, accent: owner.pl_accent, logo: owner.pl_logo_url }}
+      theme={theme}
     />
   );
 }

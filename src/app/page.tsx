@@ -50,7 +50,7 @@ export default async function HomePage() {
   let pinnedPhotoGalleries: GalleryCard[] = [];
   let pinnedVideoGalleries: GalleryCard[] = [];
   let feedback: { id: string; client_name: string | null; rating: number | null; content: string }[] = [];
-  type PriceRow = { id: string; list_key: string; name: string; price: number; home_price: number | null; unit: string | null; category: string | null; description: string | null; show_on_home: boolean };
+  type PriceRow = { id: string; list_key: string; name: string; price: number; unit: string | null; category: string | null; description: string | null; show_on_home: boolean };
   let pricelist: PriceRow[] = [];
   let pricelistUrl = "";
   let bookingToken = "";
@@ -103,17 +103,12 @@ export default async function HomePage() {
     if (adminProfile) {
       const { data: pl } = await db
         .from("studio_pricelist")
-        .select("id, list_key, name, price, home_price, unit, category, description, show_on_home")
+        .select("id, list_key, name, price, unit, category, description, show_on_home")
         .eq("owner_id", adminProfile.id)
         .eq("active", true)
         .eq("show_on_home", true)
         .order("position");
-      // Apply the optional homepage price override so vieetjk.com can show a
-      // different price than the full price list at /gia.
-      pricelist = ((pl ?? []) as PriceRow[]).map((r) => ({
-        ...r,
-        price: r.home_price != null ? r.home_price : r.price,
-      }));
+      pricelist = (pl ?? []) as PriceRow[];
       if (adminProfile.booking_token) {
         bookingToken = adminProfile.booking_token as string;
         pricelistUrl = `/gia/${bookingToken}`;

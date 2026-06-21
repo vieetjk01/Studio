@@ -347,7 +347,6 @@ export interface PricelistItem {
   description: string | null;
   active: boolean;
   show_on_home: boolean;
-  home_price: number | null; // optional homepage price override (null = use price)
   position: number;
   created_at: string;
 }

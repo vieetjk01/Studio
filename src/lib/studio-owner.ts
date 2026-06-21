@@ -10,10 +10,6 @@ export type StudioOwner = {
   pl_bank_holder: string | null;
   pl_bank_account: string | null;
   pl_bank_name: string | null;
-  pl_bg: string | null;
-  pl_text: string | null;
-  pl_accent: string | null;
-  pl_logo_url: string | null;
 };
 
 /**
@@ -32,7 +28,7 @@ export async function resolveStudioOwner(): Promise<StudioOwner | null> {
   const { data: admins } = await db
     .from("profiles")
     .select(
-      "id, full_name, booking_token, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bg, pl_text, pl_accent, pl_logo_url, created_at"
+      "id, full_name, booking_token, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name, created_at"
     )
     .eq("role", "admin")
     .eq("is_active", true)

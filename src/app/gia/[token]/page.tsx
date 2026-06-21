@@ -9,7 +9,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
   const db = createAdminClient();
   const { data: owner } = await db
     .from("profiles")
-    .select("id, full_name, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bg, pl_text, pl_accent, pl_logo_url")
+    .select("id, full_name, pl_phone, pl_facebook, pl_bank_holder, pl_bank_account, pl_bank_name")
     .eq("booking_token", params.token)
     .maybeSingle();
 
@@ -37,6 +37,16 @@ export default async function PublicPricelist({ params, searchParams }: { params
   const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
 
+  // Poster appearance is optional — read it defensively so a not-yet-migrated DB
+  // (missing pl_bg/pl_text/… columns) never breaks the public price list.
+  let theme: { bg?: string | null; text?: string | null; accent?: string | null; logo?: string | null } | undefined;
+  const { data: th } = await db
+    .from("profiles")
+    .select("pl_bg, pl_text, pl_accent, pl_logo_url")
+    .eq("id", owner.id)
+    .maybeSingle();
+  if (th) theme = { bg: th.pl_bg, text: th.pl_text, accent: th.pl_accent, logo: th.pl_logo_url };
+
   return (
     <PricelistPoster
       contact={owner as never}
@@ -45,12 +55,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
       selected={selected}
       tabBase={`/gia/${params.token}`}
       bookHref={`/book/${params.token}`}
-      theme={{
-        bg: (owner as Record<string, string | null>).pl_bg,
-        text: (owner as Record<string, string | null>).pl_text,
-        accent: (owner as Record<string, string | null>).pl_accent,
-        logo: (owner as Record<string, string | null>).pl_logo_url,
-      }}
+      theme={theme}
     />
   );
 }
