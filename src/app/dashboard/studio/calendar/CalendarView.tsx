@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import ZaloButton from "@/components/ZaloButton";
 import { shootReminderMessage } from "@/lib/zalo";
 import { SHOOT_TYPE_LABEL, type StudioEvent, type ShootType } from "@/lib/types";
+import { lunarCellLabel, lunarFull } from "@/lib/lunar";
 
 export type ContractMarker = {
   id: string;
@@ -193,6 +194,7 @@ export default function CalendarView({
                   }}
                 >
                   <span style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{d}</span>
+                  <span className="text-[9px] leading-none" style={{ color: "var(--text3)" }}>{lunarCellLabel(dateStr)}</span>
                   <span className="mt-1 flex flex-wrap justify-center gap-0.5">
                     {cons.map((c) => (
                       <span key={c.id} className="h-1.5 w-1.5 rounded-full" style={{ background: "#c7a76b" }} />
@@ -216,7 +218,8 @@ export default function CalendarView({
         <div className="space-y-6">
           {selected ? (
             <div className="card p-5">
-              <h2 className="mb-3 font-serif text-lg font-medium">{selected}</h2>
+              <h2 className="font-serif text-lg font-medium">{selected}</h2>
+              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lunarFull(selected)}</p>
 
               {selContracts.map((c) => (
                 <div key={c.id} className="mb-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>

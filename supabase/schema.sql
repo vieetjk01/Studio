@@ -1099,6 +1099,8 @@ create table if not exists public.contract_payments (
   created_at  timestamptz not null default now()
 );
 create index if not exists contract_payments_contract_idx on public.contract_payments (contract_id);
+-- Optional proof-of-transfer image (uploaded to the payment-proofs bucket).
+alter table public.contract_payments add column if not exists proof_url text;
 
 -- Misc studio expenses (chi phí khác ngoài lương) for the monthly report.
 create table if not exists public.studio_expenses (
@@ -1130,6 +1132,27 @@ drop policy if exists studio_expenses_owner_all on public.studio_expenses;
 create policy studio_expenses_owner_all on public.studio_expenses
   for all using (owner_id = auth.uid() or public.is_admin())
   with check (owner_id = auth.uid() or public.is_admin());
+
+-- ============================================================================
+-- STORAGE: payment-proofs bucket (transfer screenshots attached to payments)
+-- Public read (so receipts/links work); only signed-in studio users may write.
+-- ============================================================================
+insert into storage.buckets (id, name, public)
+values ('payment-proofs', 'payment-proofs', true)
+on conflict (id) do nothing;
+
+drop policy if exists payment_proofs_read on storage.objects;
+create policy payment_proofs_read on storage.objects
+  for select using (bucket_id = 'payment-proofs');
+drop policy if exists payment_proofs_insert on storage.objects;
+create policy payment_proofs_insert on storage.objects
+  for insert to authenticated with check (bucket_id = 'payment-proofs');
+drop policy if exists payment_proofs_update on storage.objects;
+create policy payment_proofs_update on storage.objects
+  for update to authenticated using (bucket_id = 'payment-proofs');
+drop policy if exists payment_proofs_delete on storage.objects;
+create policy payment_proofs_delete on storage.objects
+  for delete to authenticated using (bucket_id = 'payment-proofs');
 
 -- ============================================================================
 -- MULTI-ACCOUNT / STAFF PERMISSIONS

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarOff } from "lucide-react";
 import { CREW_ROLE_LABEL, CREW_STATUS_LABEL, type CrewRole, type CrewStatus } from "@/lib/types";
+import { lunarCellLabel } from "@/lib/lunar";
 
 export type TeamAssignment = {
   name: string;
@@ -97,7 +98,10 @@ export default function TeamCalendar({
                   className="flex min-h-[64px] flex-col rounded-lg p-1.5 text-left text-sm transition-colors"
                   style={{ background: isSel ? "var(--surface2)" : "transparent", border: isToday ? "1px solid var(--border2)" : "1px solid transparent" }}
                 >
-                  <span style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{d}</span>
+                  <span className="flex items-baseline gap-1">
+                    <span style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{d}</span>
+                    <span className="text-[9px] leading-none" style={{ color: "var(--text3)" }}>{lunarCellLabel(dateStr)}</span>
+                  </span>
                   <span className="mt-0.5 space-y-0.5">
                     {a.slice(0, 2).map((x, k) => (
                       <span key={k} className="block truncate text-[10px]" style={{ color: STATUS_TONE[x.status] }}>{x.name}</span>

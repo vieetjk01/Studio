@@ -332,6 +332,7 @@ export interface ContractPayment {
   method: string | null;
   kind: PaymentKind;
   note: string | null;
+  proof_url: string | null;
   paid_at: string;
   created_at: string;
 }

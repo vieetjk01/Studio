@@ -14,6 +14,8 @@ import {
   CalendarClock,
   Star,
   FileText,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl, mainUrl } from "@/lib/hosts";
@@ -175,6 +177,8 @@ export default function ContractEditor({
   const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today() });
   const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
+  const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
+  const [proofBusy, setProofBusy] = useState(false);
   const [products, setProducts] = useState<ContractProduct[]>(initialProducts);
   const [prodForm, setProdForm] = useState({ name: "", qty: 1, cost: 0 });
   const [quoteOptions, setQuoteOptions] = useState<ContractQuoteOption[]>(initialQuoteOptions);
@@ -471,6 +475,41 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     setExpenses((p) => p.filter((e) => e.id !== id));
   }
 
+  // Quick-pick amounts for the instalment form (VND).
+  const QUICK_AMOUNTS = [500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000];
+
+  // Upload a transfer-proof image to the payment-proofs bucket; returns its URL.
+  async function uploadProof(file: File): Promise<string | null> {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${contract.owner_id}/${contract.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("payment-proofs").upload(path, file, { upsert: false });
+    if (error) {
+      toast("Tải ảnh thất bại — kiểm tra đã chạy schema.sql (bucket payment-proofs) chưa.");
+      return null;
+    }
+    return supabase.storage.from("payment-proofs").getPublicUrl(path).data.publicUrl;
+  }
+
+  async function pickPlanProof(file: File | null) {
+    if (!file) return;
+    setProofBusy(true);
+    const url = await uploadProof(file);
+    setProofBusy(false);
+    if (url) setPlanProof(url);
+  }
+
+  // Attach (or replace) the transfer-proof image on an already-recorded payment.
+  async function attachProof(paymentId: string, file: File | null) {
+    if (!file) return;
+    setProofBusy(true);
+    const url = await uploadProof(file);
+    if (url) {
+      await supabase.from("contract_payments").update({ proof_url: url }).eq("id", paymentId);
+      setPayments((p) => p.map((x) => (x.id === paymentId ? { ...x, proof_url: url } : x)));
+    }
+    setProofBusy(false);
+  }
+
   // ── Payment schedule (unified: marking an instalment paid records a payment) ──
   async function addPlan(markPaid = false) {
     const amount = Math.max(0, Math.round(Number(planForm.amount) || 0));
@@ -481,7 +520,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     if (markPaid) {
       const { data: payment } = await supabase
         .from("contract_payments")
-        .insert({ contract_id: contract.id, amount, kind: "installment", paid_at: today(), note: label })
+        .insert({ contract_id: contract.id, amount, kind: "installment", paid_at: today(), note: label, ...(planProof ? { proof_url: planProof } : {}) })
         .select("*")
         .single();
       if (payment) {
@@ -507,6 +546,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     if (data) {
       setPlan((p) => [...p, data as ContractPaymentPlan]);
       setPlanForm({ label: "", amount: 0, due_date: "" });
+      setPlanProof("");
     }
   }
   // Mark an instalment collected → records a real payment; un-marking removes it.
@@ -1093,6 +1133,18 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                       </div>
                       <div className="flex items-center gap-3">
                         {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
+                        {it.paid && linked?.proof_url && (
+                          <a href={linked.proof_url} target="_blank" rel="noreferrer" title="Xem ảnh chuyển khoản">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={linked.proof_url} alt="CK" className="h-7 w-7 rounded object-cover" style={{ border: "1px solid var(--border)" }} />
+                          </a>
+                        )}
+                        {it.paid && linked && (
+                          <label className="cursor-pointer text-[11px]" style={{ color: "var(--text3)" }} title="Tải ảnh đã chuyển khoản">
+                            <ImageIcon size={14} />
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => attachProof(linked.id, e.target.files?.[0] ?? null)} />
+                          </label>
+                        )}
                         {it.paid && linked && (
                           <button onClick={() => printReceipt(linked)} className="text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
                         )}
@@ -1112,6 +1164,32 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
               <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
               <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
+            </div>
+            {/* Quick amounts */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {QUICK_AMOUNTS.map((a) => (
+                <button key={a} onClick={() => setPlanForm((p) => ({ ...p, amount: a }))} className="rounded-full px-2.5 py-1 text-xs" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+                  {vnd(a)}
+                </button>
+              ))}
+              {balance > 0 && (
+                <button onClick={() => setPlanForm((p) => ({ ...p, amount: balance }))} className="rounded-full px-2.5 py-1 text-xs" style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--accent)" }}>
+                  Còn lại · {vnd(balance)}
+                </button>
+              )}
+            </div>
+            {/* Transfer-proof image for "Thêm & đã thu" */}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <label className="btn-ghost cursor-pointer px-2.5 py-1.5 text-xs">
+                <Upload size={14} /> {proofBusy ? "Đang tải…" : planProof ? "Đổi ảnh CK" : "Ảnh đã chuyển khoản"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => pickPlanProof(e.target.files?.[0] ?? null)} />
+              </label>
+              {planProof && (
+                <a href={planProof} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs" style={{ color: "var(--text2)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={planProof} alt="proof" className="h-8 w-8 rounded object-cover" style={{ border: "1px solid var(--border)" }} /> đính kèm khi “đã thu”
+                </a>
+              )}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={() => addPlan(false)} disabled={busy === "plan"} className="btn-ghost"><Plus size={15} /> {busy === "plan" ? "Đang thêm…" : "Thêm đợt thu"}</button>
