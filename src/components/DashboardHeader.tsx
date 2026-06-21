@@ -78,7 +78,7 @@ export default function DashboardHeader({
         { href: "/dashboard/studio/calendar", label: "Lịch chụp" },
         { href: "/dashboard/studio/pricing", label: "Bảng giá" },
         { href: "/dashboard/studio/clients", label: "Khách hàng" },
-        { href: appUrl("/dashboard/galleries"), label: "Gallery khách", external: true },
+        { href: "/dashboard/galleries", label: "Gallery khách" },
       ],
     },
     { href: "/dashboard/studio/board", label: "Bảng" },
@@ -133,9 +133,6 @@ export default function DashboardHeader({
       : [
           { href: "/dashboard", label: t("myAlbums") },
           { href: "/dashboard/create", label: t("newAlbum") },
-          ...(profile.role === "admin" || profile.can_galleries
-            ? [{ href: "/dashboard/galleries", label: t("galleries") }]
-            : []),
           { href: "/dashboard/filter", label: t("filterPhotos") },
           { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
           ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web" }] : []),

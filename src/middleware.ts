@@ -13,6 +13,8 @@ const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
 const STUDIO_HOST = process.env.NEXT_PUBLIC_STUDIO_HOST;
 const COMPRESS_PATH = "/dashboard/compress";
 const STUDIO_PATH = "/dashboard/studio";
+// Client delivery galleries are part of the studio module (studio.vieetjk.com).
+const GALLERIES_PATH = "/dashboard/galleries";
 
 // Paths that are allowed to live on the image-tools host.
 function isImgPath(path: string) {
@@ -28,6 +30,7 @@ function isImgPath(path: string) {
 function isStudioPath(path: string) {
   return (
     path.startsWith(STUDIO_PATH) ||
+    path.startsWith(GALLERIES_PATH) ||
     path.startsWith("/c/") ||
     path.startsWith("/crew") ||
     path.startsWith("/login") ||
@@ -77,8 +80,8 @@ export async function middleware(request: NextRequest) {
       if (IMG_HOST && pathname.startsWith(COMPRESS_PATH)) {
         return NextResponse.redirect(new URL(pathname + search, `https://${IMG_HOST}`));
       }
-      // Studio management is centralised on the studio subdomain.
-      if (STUDIO_HOST && pathname.startsWith(STUDIO_PATH)) {
+      // Studio management + client galleries are centralised on the studio subdomain.
+      if (STUDIO_HOST && (pathname.startsWith(STUDIO_PATH) || pathname.startsWith(GALLERIES_PATH))) {
         return NextResponse.redirect(new URL(pathname + search, `https://${STUDIO_HOST}`));
       }
       // App subdomain home = the public "create album" landing + guide.
