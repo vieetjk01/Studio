@@ -83,7 +83,7 @@ on conflict (id) do update set role='admin', is_active=true;`}
       : "app";
 
   const tier = studioTier(effectivePlan(profile.plan, profile.plan_expires_at), profile.role === "admin");
-  const showFooter = kind === "studio" && tier !== "none";
+  const showFooter = tier !== "none";
   const actingRole = profile.studio_owner_id
     ? (profile.studio_role ?? "staff")
     : profile.role === "admin" ? "admin" : "owner";
