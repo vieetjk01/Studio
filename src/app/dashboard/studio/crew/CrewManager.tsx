@@ -77,15 +77,15 @@ export default function CrewManager({
         <div className="card h-fit p-6">
           <h2 className="mb-4 font-serif text-lg font-medium">Thêm thợ</h2>
           <div className="space-y-3">
-            <div>
+            <div className="field">
               <label className="label">Tên</label>
               <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            <div>
+            <div className="field">
               <label className="label">Số điện thoại</label>
               <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
-            <div>
+            <div className="field">
               <label className="label">Vai trò</label>
               <select className="input" value={role} onChange={(e) => setRole(e.target.value as CrewRole)}>
                 {(Object.keys(CREW_ROLE_LABEL) as CrewRole[]).map((k) => (
@@ -93,7 +93,7 @@ export default function CrewManager({
                 ))}
               </select>
             </div>
-            <div>
+            <div className="field">
               <label className="label">Ghi chú</label>
               <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
             </div>

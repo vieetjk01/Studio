@@ -157,11 +157,11 @@ export default function TemplatesManager({
           ) : (
             <div className="card p-6">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div className="field">
                   <label className="label">Tên mẫu</label>
                   <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
-                <div>
+                <div className="field">
                   <label className="label">Loại dịch vụ</label>
                   <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
                     {SHOOT_TYPES.map((k) => (

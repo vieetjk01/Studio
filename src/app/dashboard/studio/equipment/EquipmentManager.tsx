@@ -48,9 +48,9 @@ export default function EquipmentManager({
         <div className="card h-fit p-6">
           <h2 className="mb-4 font-serif text-lg font-medium">Thêm thiết bị</h2>
           <div className="space-y-3">
-            <div><label className="label">Tên</label><input className="input" placeholder="VD: Sony A7IV #1" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
-            <div><label className="label">Loại</label><input className="input" placeholder="Body / Lens / Đèn…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
-            <div><label className="label">Ghi chú</label><input className="input" value={f.note} onChange={(e) => setF((p) => ({ ...p, note: e.target.value }))} /></div>
+            <div className="field"><label className="label">Tên</label><input className="input" placeholder="VD: Sony A7IV #1" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
+            <div className="field"><label className="label">Loại</label><input className="input" placeholder="Body / Lens / Đèn…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
+            <div className="field"><label className="label">Ghi chú</label><input className="input" value={f.note} onChange={(e) => setF((p) => ({ ...p, note: e.target.value }))} /></div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang thêm…" : "Thêm vào sổ"}</button>
           </div>
         </div>

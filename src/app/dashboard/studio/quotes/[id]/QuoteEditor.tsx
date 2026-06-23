@@ -478,7 +478,7 @@ export default function QuoteEditor({
 
 function Field({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <label className={`block ${className}`}>
+    <label className={`field ${className}`}>
       <span className="label">{label}</span>
       {children}
     </label>

@@ -118,53 +118,53 @@ export default function NewContractForm({
         Tạo nhanh rồi thêm hạng mục, giá &amp; photographer ở bước sau.
       </p>
 
-      <div className="card mt-6 space-y-5 p-6">
+      <div className="card mt-6 space-y-4 p-6">
         {templates.length > 0 && (
           <div>
-            <label className="label">Tạo từ mẫu</label>
-            <select className="input" value={templateId} onChange={(e) => applyTemplate(e.target.value)}>
-              <option value="">— Không dùng mẫu —</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.contract_template_items?.length || 0} hạng mục)</option>
-              ))}
-            </select>
-            <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+            <div className="field">
+              <label className="label">Tạo từ mẫu</label>
+              <select className="input" value={templateId} onChange={(e) => applyTemplate(e.target.value)}>
+                <option value="">— Không dùng mẫu —</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t.contract_template_items?.length || 0} hạng mục)</option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
               Chọn mẫu để tự điền hạng mục, giá &amp; điều khoản.
             </p>
           </div>
         )}
-        <div>
+        <div className="field">
           <label className="label">Tên hợp đồng</label>
           <input className="input" placeholder="VD: Phóng sự cưới Anh & Hằng" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">Tên khách hàng</label>
-            <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">SĐT khách (mật khẩu xem HĐ)</label>
-            <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
-          </div>
+        <div className="field">
+          <label className="label">Tên khách hàng</label>
+          <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">Loại dịch vụ</label>
-            <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
-              {SHOOT_TYPES.map((k) => (
-                <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Ngày chụp / quay</label>
-            <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
-          </div>
+        <div className="field">
+          <label className="label">SĐT khách (mật khẩu xem HĐ)</label>
+          <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
+        </div>
+        <div className="field">
+          <label className="label">Loại dịch vụ</label>
+          <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
+            {SHOOT_TYPES.map((k) => (
+              <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label className="label">Ngày chụp / quay</label>
+          <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
         </div>
         <div>
-          <label className="label">Đặt cọc (% giá trị mẫu)</label>
-          <input type="number" min={0} max={100} className="input" value={depositPct} onChange={(e) => setDepositPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} />
-          <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+          <div className="field">
+            <label className="label">Đặt cọc (% giá trị mẫu)</label>
+            <input type="number" min={0} max={100} className="input" value={depositPct} onChange={(e) => setDepositPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} />
+          </div>
+          <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
             Khi dùng mẫu, tự tạo sẵn đợt &ldquo;Cọc {depositPct}%&rdquo; trong mục Thanh toán. Đặt 0 để bỏ qua.
           </p>
         </div>

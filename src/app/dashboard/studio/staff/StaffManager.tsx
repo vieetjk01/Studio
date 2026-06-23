@@ -67,10 +67,10 @@ export default function StaffManager({ initial }: { initial: StaffRow[] }) {
         <div className="card h-fit p-6">
           <h2 className="mb-4 font-serif text-lg font-medium">Tạo nhân viên</h2>
           <div className="space-y-3">
-            <div><label className="label">Họ tên</label><input className="input" value={f.full_name} onChange={(e) => setF((p) => ({ ...p, full_name: e.target.value }))} /></div>
-            <div><label className="label">Email</label><input className="input" value={f.email} onChange={(e) => setF((p) => ({ ...p, email: e.target.value }))} /></div>
-            <div><label className="label">Mật khẩu</label><input className="input" type="text" value={f.password} onChange={(e) => setF((p) => ({ ...p, password: e.target.value }))} /></div>
-            <div>
+            <div className="field"><label className="label">Họ tên</label><input className="input" value={f.full_name} onChange={(e) => setF((p) => ({ ...p, full_name: e.target.value }))} /></div>
+            <div className="field"><label className="label">Email</label><input className="input" value={f.email} onChange={(e) => setF((p) => ({ ...p, email: e.target.value }))} /></div>
+            <div className="field"><label className="label">Mật khẩu</label><input className="input" type="text" value={f.password} onChange={(e) => setF((p) => ({ ...p, password: e.target.value }))} /></div>
+            <div className="field">
               <label className="label">Vai trò</label>
               <select className="input" value={f.role} onChange={(e) => setF((p) => ({ ...p, role: e.target.value }))}>
                 <option value="manager">Quản lý (toàn quyền)</option>

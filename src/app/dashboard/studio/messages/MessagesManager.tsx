@@ -77,8 +77,8 @@ export default function MessagesManager({
           <h2 className="mb-4 font-serif text-lg font-medium">Thêm mẫu</h2>
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="sm:col-span-1"><label className="label">Tiêu đề</label><input className="input" value={f.title} onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))} /></div>
-              <div className="sm:col-span-2"><label className="label">Nội dung</label><textarea className="input min-h-[120px]" value={f.body} onChange={(e) => setF((p) => ({ ...p, body: e.target.value }))} /></div>
+              <div className="field sm:col-span-1"><label className="label">Tiêu đề</label><input className="input" value={f.title} onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))} /></div>
+              <div className="field field-top sm:col-span-2"><label className="label">Nội dung</label><textarea className="input min-h-[120px]" value={f.body} onChange={(e) => setF((p) => ({ ...p, body: e.target.value }))} /></div>
             </div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang lưu…" : "Lưu mẫu"}</button>
             <button onClick={seedSamples} disabled={busy} className="btn-ghost w-full"><Sparkles size={15} /> Thêm 8 mẫu có sẵn</button>

@@ -69,11 +69,11 @@ export default function PackagesManager({
         <div className="card h-fit p-6">
           <h2 className="mb-4 font-serif text-lg font-medium">Tạo thẻ buổi</h2>
           <div className="space-y-3">
-            <div><label className="label">Khách hàng</label><input className="input" value={f.client_name} onChange={(e) => setF((p) => ({ ...p, client_name: e.target.value }))} /></div>
-            <div><label className="label">SĐT</label><input className="input" value={f.client_phone} onChange={(e) => setF((p) => ({ ...p, client_phone: e.target.value }))} /></div>
-            <div><label className="label">Tên gói</label><input className="input" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
+            <div className="field"><label className="label">Khách hàng</label><input className="input" value={f.client_name} onChange={(e) => setF((p) => ({ ...p, client_name: e.target.value }))} /></div>
+            <div className="field"><label className="label">SĐT</label><input className="input" value={f.client_phone} onChange={(e) => setF((p) => ({ ...p, client_phone: e.target.value }))} /></div>
+            <div className="field"><label className="label">Tên gói</label><input className="input" value={f.name} onChange={(e) => setF((p) => ({ ...p, name: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Số buổi</label><input type="number" className="input" value={f.total_sessions} onChange={(e) => setF((p) => ({ ...p, total_sessions: Number(e.target.value) }))} /></div>
+              <div className="field"><label className="label">Số buổi</label><input type="number" className="input" value={f.total_sessions} onChange={(e) => setF((p) => ({ ...p, total_sessions: Number(e.target.value) }))} /></div>
               <div><label className="label">Giá</label><MoneyInput value={f.price} onChange={(n) => setF((p) => ({ ...p, price: n }))} /></div>
             </div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang tạo…" : "Tạo thẻ"}</button>
