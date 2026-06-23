@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/DashboardHeader";
-import { effectivePlan, planProfilePatch } from "@/lib/plans";
+import StudioFooterNav from "@/components/StudioFooterNav";
+import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
 export default async function DashboardLayout({
@@ -81,10 +82,17 @@ on conflict (id) do update set role='admin', is_active=true;`}
       ? "studio"
       : "app";
 
+  const tier = studioTier(effectivePlan(profile.plan, profile.plan_expires_at), profile.role === "admin");
+  const showFooter = kind === "studio" && tier !== "none";
+  const actingRole = profile.studio_owner_id
+    ? (profile.studio_role ?? "staff")
+    : profile.role === "admin" ? "admin" : "owner";
+
   return (
     <div className="min-h-screen">
       <DashboardHeader profile={profile as Profile} kind={kind} />
-      <main className="mx-auto max-w-6xl px-6 py-8 md:px-10">{children}</main>
+      <main className={`mx-auto max-w-6xl px-6 py-8 md:px-10${showFooter ? " pb-24" : ""}`}>{children}</main>
+      {showFooter && <StudioFooterNav tier={tier} role={actingRole} />}
     </div>
   );
 }

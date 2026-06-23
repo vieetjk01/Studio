@@ -160,6 +160,14 @@ export default async function StudioOverview() {
     holder: (profile.pl_bank_holder as string | null) ?? null,
     name: (profile.pl_bank_name as string | null) ?? null,
   };
+
+  // Pre-compute date constants so all three query groups can run in parallel.
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 7);
+  const dueLimit = horizon.toISOString().slice(0, 10);
+
   // Explicit columns + drop cancelled at the DB (less payload than select *).
   let cq = supabase
     .from("studio_contracts")
@@ -169,7 +177,31 @@ export default async function StudioOverview() {
     .eq("owner_id", profile.id)
     .neq("status", "cancelled");
   if (profile.actingRole === "staff") cq = cq.eq("assigned_to", profile.actingUserId);
-  const { data: contracts } = await cq.order("event_date", { ascending: true, nullsFirst: false });
+
+  const [
+    { data: contracts },
+    { data: planRows },
+    { data: payMonth },
+    { count: newBookings },
+    { count: bookingsAll },
+  ] = await Promise.all([
+    cq.order("event_date", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("contract_payment_plan")
+      .select("id, label, amount, due_date, paid, contract:studio_contracts!inner(id, owner_id, title)")
+      .eq("contract.owner_id", profile.id)
+      .eq("paid", false)
+      .not("due_date", "is", null)
+      .lte("due_date", dueLimit)
+      .order("due_date"),
+    supabase
+      .from("contract_payments")
+      .select("amount, contract:studio_contracts!inner(owner_id)")
+      .eq("contract.owner_id", profile.id)
+      .gte("paid_at", monthStart),
+    supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id).eq("status", "new"),
+    supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
+  ]);
 
   type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
   const list = (contracts ?? []) as Array<{
@@ -193,7 +225,6 @@ export default async function StudioOverview() {
     contract_crew: CrewLite[];
   }>;
 
-  const today = new Date().toISOString().slice(0, 10);
   const active = list.filter((c) => c.status !== "cancelled" && c.status !== "completed");
   const upcoming = list
     .filter((c) => c.event_date && c.event_date >= today && c.status !== "cancelled")
@@ -231,33 +262,12 @@ export default async function StudioOverview() {
     .sort((a, b) => (a.delivery_due || "").localeCompare(b.delivery_due || ""));
 
   // Scheduled payment installments due within 7 days (or overdue) & unpaid.
-  const horizon = new Date();
-  horizon.setDate(horizon.getDate() + 7);
-  const dueLimit = horizon.toISOString().slice(0, 10);
-  const { data: planRows } = await supabase
-    .from("contract_payment_plan")
-    .select("id, label, amount, due_date, paid, contract:studio_contracts!inner(id, owner_id, title)")
-    .eq("contract.owner_id", profile.id)
-    .eq("paid", false)
-    .not("due_date", "is", null)
-    .lte("due_date", dueLimit)
-    .order("due_date");
   const duePlan = ((planRows ?? []) as unknown as Array<{
     id: string; label: string; amount: number; due_date: string;
     contract: { id: string; title: string } | null;
   }>);
 
   // ── KPIs ──────────────────────────────────────────────────────
-  const monthStart = `${today.slice(0, 7)}-01`;
-  const [{ data: payMonth }, { count: newBookings }, { count: bookingsAll }] = await Promise.all([
-    supabase
-      .from("contract_payments")
-      .select("amount, contract:studio_contracts!inner(owner_id)")
-      .eq("contract.owner_id", profile.id)
-      .gte("paid_at", monthStart),
-    supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id).eq("status", "new"),
-    supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
-  ]);
   const revenueMonth = sumAmounts((payMonth ?? []) as unknown as { amount: number }[]);
   const notCancelled = list.filter((c) => c.status !== "cancelled");
   const avgValue = notCancelled.length ? Math.round(totalValue / notCancelled.length) : 0;
