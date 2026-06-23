@@ -55,10 +55,10 @@ const D: Record<"vi" | "en", Dict> = {
     pricing: {
       title: "Bảng giá đơn giản, minh bạch", sub: "Chọn gói phù hợp với quy mô studio của bạn.", popular: "Phổ biến nhất",
       plans: [
-        { name: "Free", price: "0₫", period: "/tháng", desc: "Dùng thử miễn phí", cta: "Bắt đầu miễn phí", f: ["5 album mỗi tháng", "Khách chọn ảnh & gửi lại studio (QR + link)", "Tải ảnh cho khách: tắt", "Ghi chú trên ảnh: tắt", "Lọc ảnh: 10 lần / tháng", "Nén ảnh: 5 lần / tháng", "Nén qua Drive: dùng thử 1 lần", "Watermark: chỉ chữ"] },
-        { name: "Basic", price: "50.000₫", period: "/tháng", desc: "Cho studio cá nhân", cta: "Dùng thử Basic", f: ["15 album mỗi tháng", "Cho khách tải ảnh (ZIP / từng ảnh)", "Cho khách ghi chú trên ảnh", "Watermark đầy đủ (logo + nén kèm)", "Lọc ảnh: không giới hạn", "Nén ảnh: không giới hạn", "Nén qua Drive: 5 lần / tháng"] },
+        { name: "Free", price: "0₫", period: "/tháng", desc: "Cho nhiếp ảnh gia mới bắt đầu", cta: "Bắt đầu miễn phí", f: ["5 album mỗi tháng", "Khách chọn ảnh & gửi lại studio (QR + link)", "Tải ảnh cho khách: tắt", "Ghi chú trên ảnh: tắt", "Lọc ảnh: 10 lần / tháng", "Nén ảnh: 5 lần / tháng", "Nén qua Drive: dùng thử 1 lần", "Watermark: chỉ chữ"] },
+        { name: "Basic", price: "50.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia cá nhân", cta: "Dùng thử Basic", f: ["15 album mỗi tháng", "Cho khách tải ảnh (ZIP / từng ảnh)", "Cho khách ghi chú trên ảnh", "Watermark đầy đủ (logo + nén kèm)", "Lọc ảnh: không giới hạn", "Nén ảnh: không giới hạn", "Nén qua Drive: 5 lần / tháng"] },
         { name: "Photographer", price: "100.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia chuyên nghiệp", cta: "Dùng thử Photographer", f: ["50 album mỗi tháng", "Đầy đủ tính năng Basic + full quyền khách hàng", "Nén qua Drive: 15 lần / tháng", "Trang quản lý lịch chụp riêng", "Nhận đặt lịch online (link + QR)", "Bảng giá dịch vụ & danh bạ khách hàng", "Lịch chụp + nhắc lịch", "Website cá nhân riêng + đổi logo", "Tên miền cá nhân (đang xây dựng)"] },
-        { name: "Studio", price: "300.000₫", period: "/tháng", desc: "Cho studio chuyên nghiệp", cta: "Dùng thử Studio", accent: true, f: ["Tất cả tính năng Photographer — không giới hạn", "Album & nén qua Drive không giới hạn", "Trang quản lý studio riêng", "Quản lý hợp đồng & báo giá hạng mục", "Quản lý lịch chụp + nhắc lịch", "Quản lý photographer / cameramen & lương", "Khách xem hợp đồng online & yêu cầu chỉnh sửa", "Hỗ trợ riêng · nhận mọi tính năng nâng cấp"] },
+        { name: "Studio", price: "300.000₫", period: "/tháng", desc: "Cho studio & đội nhóm chuyên nghiệp", cta: "Dùng thử Studio", accent: true, f: ["Tất cả tính năng Photographer — không giới hạn", "Album & nén qua Drive không giới hạn", "Trang quản lý studio riêng", "Quản lý hợp đồng & báo giá hạng mục", "Quản lý lịch chụp + nhắc lịch", "Quản lý photographer / cameramen & lương", "Khách xem hợp đồng online & yêu cầu chỉnh sửa", "Hỗ trợ riêng · nhận mọi tính năng nâng cấp"] },
       ],
     },
     reviews: {
@@ -120,10 +120,10 @@ const D: Record<"vi" | "en", Dict> = {
     pricing: {
       title: "Simple, transparent pricing", sub: "Pick the plan that fits your studio.", popular: "Most popular",
       plans: [
-        { name: "Free", price: "0₫", period: "/mo", desc: "Try for free", cta: "Start free", f: ["5 albums / month", "Client photo selection via QR + link", "Client download: disabled", "Photo notes: disabled", "Filter photos: 10×/mo", "Compress photos: 5×/mo", "Drive compress: 1 trial", "Watermark: text only"] },
-        { name: "Basic", price: "50,000₫", period: "/mo", desc: "For individual studios", cta: "Try Basic", f: ["15 albums / month", "Client photo download (ZIP / single)", "Client photo notes", "Full watermark (logo + compress)", "Filter photos: unlimited", "Compress photos: unlimited", "Drive compress: 5×/mo"] },
+        { name: "Free", price: "0₫", period: "/mo", desc: "For new photographers", cta: "Start free", f: ["5 albums / month", "Client photo selection via QR + link", "Client download: disabled", "Photo notes: disabled", "Filter photos: 10×/mo", "Compress photos: 5×/mo", "Drive compress: 1 trial", "Watermark: text only"] },
+        { name: "Basic", price: "50,000₫", period: "/mo", desc: "For individual photographers", cta: "Try Basic", f: ["15 albums / month", "Client photo download (ZIP / single)", "Client photo notes", "Full watermark (logo + compress)", "Filter photos: unlimited", "Compress photos: unlimited", "Drive compress: 5×/mo"] },
         { name: "Photographer", price: "100,000₫", period: "/mo", desc: "For professional photographers", cta: "Try Photographer", f: ["50 albums / month", "All Basic features + full client access", "Drive compress: 15×/mo", "Dedicated shoot schedule page", "Online booking (link + QR)", "Service pricing & client directory", "Shoot calendar + reminders", "Personal website + custom logo", "Custom domain (coming soon)"] },
-        { name: "Studio", price: "300,000₫", period: "/mo", desc: "For professional studios", cta: "Try Studio", accent: true, f: ["All Photographer features — unlimited", "Unlimited albums & Drive compress", "Dedicated studio management page", "Contract & quote management", "Shoot schedule + reminders", "Manage photographers & pay by contract", "Clients view contracts online", "Priority support · all future features"] },
+        { name: "Studio", price: "300,000₫", period: "/mo", desc: "For studios & professional teams", cta: "Try Studio", accent: true, f: ["All Photographer features — unlimited", "Unlimited albums & Drive compress", "Dedicated studio management page", "Contract & quote management", "Shoot schedule + reminders", "Manage photographers & pay by contract", "Clients view contracts online", "Priority support · all future features"] },
       ],
     },
     reviews: {
@@ -299,20 +299,22 @@ export default function LandingPage() {
             <h2 style={h2}>{L.pricing.title}</h2>
             <p style={sectionSub}>{L.pricing.sub}</p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 18, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18, alignItems: "stretch" }}>
             {L.pricing.plans.map((p) => (
-              <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined }}>
+              <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
                 {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
                 <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4, margin: "14px 0 4px" }}>
                   <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-.03em" }}>{p.price}</span>
                   <span style={{ color: "var(--muted)", fontSize: 15 }}>{p.period}</span>
                 </div>
-                <p style={{ color: "var(--muted)", fontSize: 14, margin: "0 0 20px" }}>{p.desc}</p>
+                <p style={{ color: "var(--muted)", fontSize: 14, margin: "0 0 20px", minHeight: 40 }}>{p.desc}</p>
                 <Link href={loginUrl} style={{ width: "100%", height: 44, border: p.accent ? "none" : "1px solid var(--border)", background: p.accent ? "var(--accent)" : "var(--bg)", color: p.accent ? "var(--accentFg)" : "var(--fg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, cursor: "pointer", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{p.cta}</Link>
-                {p.f.map((line) => (
-                  <div key={line} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--fg)", padding: "6px 0" }}><Check />{line}</div>
-                ))}
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {p.f.map((line) => (
+                    <div key={line} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--fg)", padding: "6px 0" }}><Check />{line}</div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
