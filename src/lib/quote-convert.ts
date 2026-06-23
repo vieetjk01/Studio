@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { nextContractCode, newShareToken } from "@/lib/contract-code";
 import { computeRoundedDeposit } from "@/lib/quote-deposit";
+import { fullClauseText } from "@/lib/contract-clauses";
 
 export type ConvertResult =
   | { ok: true; contract_id: string; contract_token: string }
@@ -72,7 +73,10 @@ export async function convertQuoteToContract(
       deposit,
       status: "draft",
       client_token: token,
-      note: quote.code ? `Tạo từ báo giá ${quote.code}` : null,
+      note: [
+        quote.code ? `Tạo từ báo giá ${quote.code}` : null,
+        fullClauseText(),
+      ].filter(Boolean).join("\n\n"),
     })
     .select("id")
     .single();
@@ -86,9 +90,19 @@ export async function convertQuoteToContract(
   }));
   const { error: iErr } = await db.from("contract_items").insert(rows);
   if (iErr) {
-    // Roll back the empty contract so we don't leave orphans.
     await db.from("studio_contracts").delete().eq("id", contract.id);
     return { ok: false, error: iErr.message };
+  }
+
+  // Auto-create a deposit instalment so the client sees a payment schedule immediately.
+  if (deposit > 0) {
+    const depositPct = Math.round((deposit / total) * 100);
+    await db.from("contract_payment_plan").insert({
+      contract_id: contract.id,
+      label: `Cọc ${depositPct}%`,
+      amount: deposit,
+      position: 0,
+    });
   }
 
   await db

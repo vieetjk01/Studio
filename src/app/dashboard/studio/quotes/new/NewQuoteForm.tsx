@@ -8,7 +8,7 @@ import { nextQuoteCode, newShareToken } from "@/lib/contract-code";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
 import { vnd } from "@/lib/types";
 
-type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean; is_discount: boolean };
+type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean; is_discount: boolean; package_group: string };
 
 export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
   const router = useRouter();
@@ -22,8 +22,10 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
   const [location, setLocation] = useState("");
   const [intro, setIntro] = useState("Cảm ơn bạn đã quan tâm. Dưới đây là báo giá chi tiết — bạn có thể chọn/bỏ các hạng mục tuỳ chọn hoặc gửi yêu cầu chỉnh sửa cho mình.");
   const [items, setItems] = useState<Draft[]>([
-    { name: "", description: "", qty: 1, unit_price: 0, is_optional: false, is_discount: false },
+    { name: "", description: "", qty: 1, unit_price: 0, is_optional: false, is_discount: false, package_group: "" },
   ]);
+  const [bulkDiscountAmount, setBulkDiscountAmount] = useState(0);
+  const [bulkDiscountMinItems, setBulkDiscountMinItems] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,8 +42,8 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
     setItems((arr) => [
       ...arr,
       asDiscount
-        ? { name: "Giảm giá combo", description: "", qty: 1, unit_price: 500000, is_optional: false, is_discount: true }
-        : { name: "", description: "", qty: 1, unit_price: 0, is_optional: true, is_discount: false },
+        ? { name: "Giảm giá combo", description: "", qty: 1, unit_price: 500000, is_optional: false, is_discount: true, package_group: "" }
+        : { name: "", description: "", qty: 1, unit_price: 0, is_optional: true, is_discount: false, package_group: "" },
     ]);
   }
   function remove(idx: number) {
@@ -74,6 +76,8 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           intro: intro.trim() || null,
           client_token: token,
           status: "draft",
+          bulk_discount_amount: bulkDiscountAmount || 0,
+          bulk_discount_min_items: bulkDiscountMinItems || 0,
         })
         .select("id")
         .single();
@@ -87,6 +91,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
         unit_price: it.unit_price || 0,
         is_optional: it.is_optional,
         is_discount: it.is_discount,
+        package_group: it.package_group.trim() || null,
         selected: true,
         position: idx,
       }));
@@ -143,6 +148,18 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
         <Field label="Lời chào / Giới thiệu" className="mt-3">
           <textarea className="input" rows={3} value={intro} onChange={(e) => setIntro(e.target.value)} />
         </Field>
+        <div className="mt-4 rounded-lg p-3" style={{ background: "var(--surface2)" }}>
+          <p className="mb-1 text-xs font-medium" style={{ color: "var(--text2)" }}>Giảm giá khi chọn nhiều hạng mục (tuỳ chọn)</p>
+          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Nếu khách chọn ≥ X hạng mục tuỳ chọn thì tự động giảm thêm Y đồng.</p>
+          <div className="grid gap-2 md:grid-cols-2">
+            <Field label="Số hạng mục tối thiểu">
+              <input type="number" min={0} className="input" value={bulkDiscountMinItems} onChange={(e) => setBulkDiscountMinItems(Number(e.target.value) || 0)} />
+            </Field>
+            <Field label="Số tiền giảm (VND)">
+              <input type="number" min={0} className="input" value={bulkDiscountAmount} onChange={(e) => setBulkDiscountAmount(Number(e.target.value) || 0)} />
+            </Field>
+          </div>
+        </div>
       </section>
 
       <section className="card p-5">
@@ -185,6 +202,9 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
                 </div>
               </div>
               <input className="input mt-2" placeholder="Mô tả ngắn (tuỳ chọn)" value={it.description} onChange={(e) => update(idx, { description: e.target.value })} />
+              {it.is_optional && !it.is_discount && (
+                <input className="input mt-1.5" placeholder="Nhóm gói (VD: goi-co-ban) — để trống nếu không thuộc gói" value={it.package_group} onChange={(e) => update(idx, { package_group: e.target.value })} />
+              )}
               <p className="mt-1 text-right text-xs" style={{ color: "var(--text3)" }}>
                 {it.is_discount ? "Giảm: " : "Thành tiền: "}
                 <b style={{ color: it.is_discount ? "#fb923c" : "var(--text)" }}>

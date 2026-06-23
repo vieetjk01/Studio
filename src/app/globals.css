@@ -156,25 +156,25 @@ body {
     @apply mb-2 block text-[11px] font-medium uppercase tracking-[0.14em];
     color: var(--text3);
   }
-  /* Horizontal field: label sits left of the input on one row (saves vertical
-     space), stacking back to label-on-top only on the narrowest screens. */
+  /* Horizontal field: label on the left, input fills the rest.
+     Uses flex-wrap so on very narrow viewports it stacks gracefully. */
   .field {
-    @apply flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4;
+    @apply flex flex-wrap items-center gap-x-4 gap-y-1.5;
   }
   .field > .label {
-    @apply mb-0 pt-0 sm:w-40 sm:shrink-0;
+    @apply mb-0 w-28 shrink-0;
   }
   .field > .input,
   .field > select.input,
   .field > textarea.input {
-    @apply min-w-0 flex-1;
+    @apply min-w-0 flex-1 basis-40;
   }
-  /* When the input is a textarea, align the label to the top of the box. */
+  /* Textarea variant: align label to the top of the text box. */
   .field.field-top {
-    @apply sm:items-start;
+    @apply items-start;
   }
   .field.field-top > .label {
-    @apply sm:pt-3;
+    @apply pt-3;
   }
   .card {
     @apply rounded-2xl;

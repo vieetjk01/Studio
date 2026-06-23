@@ -43,13 +43,18 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (!itemId) return NextResponse.json({ error: "missing item_id" }, { status: 400 });
     const { data: item } = await db
       .from("quote_items")
-      .select("id, is_optional")
+      .select("id, is_optional, package_group")
       .eq("id", itemId)
       .eq("quote_id", quote.id)
       .maybeSingle();
     if (!item) return NextResponse.json({ error: "item not found" }, { status: 404 });
-    if (!item.is_optional) return NextResponse.json({ error: "Hạng mục bắt buộc." }, { status: 400 });
-    await db.from("quote_items").update({ selected }).eq("id", itemId);
+    if (!item.is_optional && !item.package_group) return NextResponse.json({ error: "Hạng mục bắt buộc." }, { status: 400 });
+    // Package group: toggle all items in the group together.
+    if (item.package_group) {
+      await db.from("quote_items").update({ selected }).eq("quote_id", quote.id).eq("package_group", item.package_group);
+    } else {
+      await db.from("quote_items").update({ selected }).eq("id", itemId);
+    }
     return NextResponse.json({ ok: true });
   }
 

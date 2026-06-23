@@ -702,6 +702,8 @@ export interface StudioQuote {
   contract_id: string | null;
   viewed_at: string | null;
   accepted_at: string | null;
+  bulk_discount_amount: number;
+  bulk_discount_min_items: number;
   created_at: string;
   updated_at: string;
 }
@@ -717,6 +719,7 @@ export interface QuoteItem {
   is_discount: boolean;
   selected: boolean;
   position: number;
+  package_group: string | null;
   created_at: string;
 }
 
