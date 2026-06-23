@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, Cormorant_Garamond } from "next/font/google";
+import { Hanken_Grotesk, Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +15,13 @@ const cormorant = Cormorant_Garamond({
   weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-cormorant",
+});
+
+// Marketing landing page font (mstudo.com homepage).
+const manrope = Manrope({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-manrope",
 });
 
 const DEFAULT_TITLE = "mstudo — Phần mềm quản lý studio ảnh";
@@ -62,7 +69,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className={`${hanken.variable} ${cormorant.variable}`}>
+    <html lang="vi" className={`${hanken.variable} ${cormorant.variable} ${manrope.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         <LangProvider>{children}</LangProvider>
       </body>
