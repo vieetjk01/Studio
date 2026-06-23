@@ -97,7 +97,7 @@ export default function QuoteEditor({
     setBusy(true);
     setErr(null);
     try {
-      const r = await fetch(`/api/quote/${quote.id}/convert`, { method: "POST" });
+      const r = await fetch(`/api/quote-convert/${quote.id}`, { method: "POST" });
       const data = await r.json();
       if (!r.ok || !data.contract_id) throw new Error(data.error || "Tạo hợp đồng thất bại");
       flash("Đã tạo hợp đồng. Đang chuyển trang…");
