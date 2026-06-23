@@ -3,11 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Domain split (set these on Vercel to enable it). When unset (local dev,
 // *.vercel.app previews) the full app is served on one host.
-//   MAIN_HOST  = mstudo.com        -> landing, public sites/showcase,
-//                                     STUDIO MANAGEMENT (/dashboard/studio,
-//                                     galleries) + client portals (/c /q /crew)
-//   APP_HOST   = album.mstudo.com  -> login, album dashboard (/dashboard,
-//                                     create, filter), client selection (/a)
+//   MAIN_HOST  = mstudo.com        -> landing + studio management
+//   APP_HOST   = album.mstudo.com  -> album dashboard, create, filter, /a/
 //   IMG_HOST   = img.mstudo.com    -> image-compress tool
 //   ADMIN_HOST = admin.mstudo.com  -> site administration + settings
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
@@ -18,34 +15,28 @@ const COMPRESS_PATH = "/dashboard/compress";
 const ADMIN_PATH = "/dashboard/admin";
 
 /**
- * Returns the canonical host for a path, or undefined if the path may be
- * served on any host (auth pages, upgrade, site builder, etc.).
+ * Returns the canonical host for a path, or undefined when no forced redirect
+ * is needed (path may be served on whatever host the request arrived at).
+ *
+ * IMPORTANT: we intentionally do NOT force studio paths to mstudo.com via
+ * redirect — that would loop if Vercel has domain aliases configured. Instead
+ * the header links guide users to the right host; the app serves on both.
  */
 function hostForPath(path: string): string | undefined {
-  // Auth pages are shared — no redirect.
+  // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
 
-  // Studio management, galleries, and public client/crew portals → mstudo.com.
-  if (
-    path.startsWith("/dashboard/studio") ||
-    path.startsWith("/dashboard/galleries") ||
-    path.startsWith("/c/") ||
-    path.startsWith("/q/") ||
-    path.startsWith("/crew") ||
-    path.startsWith("/showcase") ||
-    path.startsWith("/album")
-  ) return MAIN_HOST;
-
-  // Admin console → admin.mstudo.com (falls back to APP_HOST if not configured).
+  // Admin console → admin.mstudo.com (or app host if not configured).
   if (path.startsWith(ADMIN_PATH) || path.startsWith("/dashboard/settings")) {
     return ADMIN_HOST || APP_HOST;
   }
 
-  // Image-compress tool → img.mstudo.com (falls back to APP_HOST).
+  // Image-compress tool → img.mstudo.com (or app host).
   if (path.startsWith(COMPRESS_PATH)) return IMG_HOST || APP_HOST;
 
-  // Album-specific paths → album.mstudo.com only.
-  // (Anything else in /dashboard — upgrade, site, etc. — stays on current host.)
+  // Album-only paths: push FROM mstudo.com TO album.mstudo.com.
+  // Everything else (studio, galleries, upgrade, site, client portals…) is
+  // served wherever the user arrives — links guide, not forced redirects.
   if (
     path === "/dashboard" ||
     path.startsWith("/dashboard/create") ||
@@ -61,21 +52,15 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const { pathname, search } = request.nextUrl;
 
-  // ── www → apex redirect ───────────────────────────────────────
-  if (MAIN_HOST && host === `www.${MAIN_HOST}`) {
-    return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`), 301);
-  }
-
   // ── Tenant sites: <subdomain>.mstudo.com → /site/<subdomain> ─────────────
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
-  if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`)) {
+  if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`) && host !== MAIN_HOST) {
     const systemHosts = new Set(
-      [MAIN_HOST, APP_HOST, IMG_HOST, ADMIN_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
+      [APP_HOST, IMG_HOST, ADMIN_HOST].filter(Boolean) as string[]
     );
     if (!systemHosts.has(host)) {
       const sub = host.slice(0, -(`.${MAIN_HOST}`.length));
       if (sub && !sub.includes(".")) {
-        // Public tenant page (single page in v1); ignore deeper paths.
         const url = request.nextUrl.clone();
         url.pathname = `/site/${sub}`;
         return NextResponse.rewrite(url);
@@ -87,15 +72,11 @@ export async function middleware(request: NextRequest) {
   if (MAIN_HOST && APP_HOST && host) {
     // Per-host home pages.
     if (pathname === "/") {
-      // App host home = the public "create album" landing + guide.
       if (host === APP_HOST) return NextResponse.rewrite(new URL("/start", request.url));
-      // Img/Admin hosts have no landing — send to their main tool. Redirect (not
-      // rewrite) so the dashboard auth check can attach ?next= and return here.
       if (IMG_HOST && host === IMG_HOST) return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
       if (ADMIN_HOST && host === ADMIN_HOST) return NextResponse.redirect(new URL(ADMIN_PATH, request.url));
-      // MAIN_HOST `/` = marketing landing — served below.
+      // MAIN_HOST / = marketing landing — fall through.
     } else {
-      // Redirect any path requested on the "wrong" host to its canonical home.
       const target = hostForPath(pathname);
       if (target && target !== host) {
         return NextResponse.redirect(new URL(pathname + search, `https://${target}`));
@@ -105,15 +86,7 @@ export async function middleware(request: NextRequest) {
 
   // ── Dashboard auth + Supabase session refresh ─────────────────
   if (pathname.startsWith("/dashboard")) {
-    // Next.js fires prefetch requests (Next-Router-Prefetch: 1) on Link hover,
-    // before the user clicks. These don't need auth validation — the actual
-    // navigation will enforce auth. Skipping getUser() here saves a Supabase
-    // network round-trip (~200-600ms) on every hover, letting the route cache
-    // warm up before the user even clicks.
     if (request.headers.get("next-router-prefetch") === "1" || request.headers.get("purpose") === "prefetch") {
-      // Check if a session cookie exists. If it does, let the prefetch through
-      // so the RSC payload can be cached. If not, block it (unauthenticated
-      // prefetches would just be wasted work anyway).
       const hasSession = request.cookies.getAll().some(
         (c) => c.name.includes("sb-") && c.name.includes("-auth-token")
       );
@@ -128,7 +101,6 @@ export async function middleware(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        // Share the session cookie across mstudo.com subdomains (album / img).
         ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
         cookies: {
           getAll() {
@@ -172,6 +144,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except static assets and API routes.
   matcher: ["/((?!_next/static|_next/image|favicon.ico|logo-full.png|logo-mark.png|api/).*)"],
 };
