@@ -82,7 +82,11 @@ on conflict (id) do update set role='admin', is_active=true;`}
       ? "studio"
       : "app";
 
-  const tier = studioTier(effectivePlan(profile.plan, profile.plan_expires_at), profile.role === "admin");
+  // Staff belong to a full Studio account, so they inherit the full tier;
+  // otherwise it's derived from the user's own plan (matches DashboardHeader).
+  const tier = profile.studio_owner_id
+    ? "full"
+    : studioTier(effectivePlan(profile.plan, profile.plan_expires_at), profile.role === "admin");
   const showFooter = tier !== "none";
   const actingRole = profile.studio_owner_id
     ? (profile.studio_role ?? "staff")
