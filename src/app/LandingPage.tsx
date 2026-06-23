@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useLang } from "@/lib/i18n";
-import { appUrl } from "@/lib/hosts";
+import { mainUrl } from "@/lib/hosts";
 
 /* ── Bilingual content (ported from the mstudo design) ─────────────────── */
 type Dict = {
@@ -179,7 +179,7 @@ const navLink: CSSProperties = { color: "var(--muted)", textDecoration: "none", 
 export default function LandingPage() {
   const { lang, setLang } = useLang();
   const L = D[lang === "en" ? "en" : "vi"];
-  const loginUrl = appUrl("/login");
+  const loginUrl = mainUrl("/login");
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
   useEffect(() => {

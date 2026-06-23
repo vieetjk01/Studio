@@ -1,49 +1,53 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Domain split (set these on Vercel to enable it):
-//   NEXT_PUBLIC_MAIN_HOST = mstudo.com         -> public profile / showcase
-//   NEXT_PUBLIC_APP_HOST  = album.mstudo.com   -> login / dashboard / selection
-// When unset (local dev, *.vercel.app previews) the full app is served on one host.
+// Domain split (set these on Vercel to enable it). When unset (local dev,
+// *.vercel.app previews) the full app is served on one host.
+//   MAIN_HOST  = mstudo.com        -> landing, public sites/showcase,
+//                                     STUDIO MANAGEMENT (/dashboard/studio,
+//                                     galleries) + client portals (/c /q /crew)
+//   APP_HOST   = album.mstudo.com  -> login, album dashboard (/dashboard,
+//                                     create, filter), client selection (/a)
+//   IMG_HOST   = img.mstudo.com    -> image-compress tool
+//   ADMIN_HOST = admin.mstudo.com  -> site administration + settings
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
-// Image-tools subdomain (img.mstudo.com) — home of the "Nén ảnh" compress tool.
 const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
-// Admin subdomain (admin.mstudo.com) — site administration + settings.
 const ADMIN_HOST = process.env.NEXT_PUBLIC_ADMIN_HOST;
 const COMPRESS_PATH = "/dashboard/compress";
-const STUDIO_PATH = "/dashboard/studio";
 const ADMIN_PATH = "/dashboard/admin";
-const SETTINGS_PATH = "/dashboard/settings";
-const GALLERIES_PATH = "/dashboard/galleries";
 
-// Paths that are allowed to live on the image-tools host.
-function isImgPath(path: string) {
-  return (
-    path === COMPRESS_PATH ||
-    path.startsWith("/login") ||
-    path.startsWith("/auth")
-  );
-}
-
-// Paths allowed on the admin host: site administration, settings, and auth.
-function isAdminPath(path: string) {
-  return (
-    path.startsWith(ADMIN_PATH) ||
-    path.startsWith(SETTINGS_PATH) ||
-    path.startsWith("/login") ||
-    path.startsWith("/auth")
-  );
-}
-
-const APP_PREFIXES = ["/dashboard", "/login", "/a/", "/start", "/auth"];
-const MAIN_PREFIXES = ["/showcase", "/album"];
-
-function isAppPath(path: string) {
-  return APP_PREFIXES.some((p) => path === p || path.startsWith(p));
-}
-function isMainOnlyPath(path: string) {
-  return path === "/" || MAIN_PREFIXES.some((p) => path === p || path.startsWith(p));
+/**
+ * The canonical host a path should be served on, or undefined when it may be
+ * served on whichever host the request arrived at (auth pages, the apex `/`).
+ * Falls back to APP_HOST when an optional host (img/admin) isn't configured.
+ */
+function hostForPath(path: string): string | undefined {
+  // Auth pages are shared across hosts (cookie spans .mstudo.com).
+  if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
+  // Studio management, client galleries + the public client/crew portals.
+  if (
+    path.startsWith("/dashboard/studio") ||
+    path.startsWith("/dashboard/galleries") ||
+    path.startsWith("/c/") ||
+    path.startsWith("/q/") ||
+    path.startsWith("/crew") ||
+    path.startsWith("/showcase") ||
+    path.startsWith("/album")
+  ) {
+    return MAIN_HOST;
+  }
+  // Admin console.
+  if (path.startsWith(ADMIN_PATH) || path.startsWith("/dashboard/settings")) {
+    return ADMIN_HOST || APP_HOST;
+  }
+  // Image-compress tool.
+  if (path.startsWith(COMPRESS_PATH)) return IMG_HOST || APP_HOST;
+  // The album dashboard + client selection + the create-album landing.
+  if (path.startsWith("/dashboard") || path === "/start" || path.startsWith("/a/")) {
+    return APP_HOST;
+  }
+  return undefined;
 }
 
 export async function middleware(request: NextRequest) {
@@ -69,48 +73,20 @@ export async function middleware(request: NextRequest) {
 
   // ── Host-based routing ────────────────────────────────────────
   if (MAIN_HOST && APP_HOST && host) {
-    // App routes requested on the public site -> send to the app subdomain.
-    if (host === MAIN_HOST && isAppPath(pathname)) {
-      return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
-    }
-    if (host === APP_HOST) {
-      // The compress tool is centralised on the image-tools subdomain.
-      if (IMG_HOST && pathname.startsWith(COMPRESS_PATH)) {
-        return NextResponse.redirect(new URL(pathname + search, `https://${IMG_HOST}`));
-      }
-      // Admin + settings are centralised on the admin subdomain.
-      if (ADMIN_HOST && (pathname.startsWith(ADMIN_PATH) || pathname.startsWith(SETTINGS_PATH))) {
-        return NextResponse.redirect(new URL(pathname + search, `https://${ADMIN_HOST}`));
-      }
-      // App subdomain home = the public "create album" landing + guide.
-      if (pathname === "/") {
-        return NextResponse.rewrite(new URL("/start", request.url));
-      }
-      // Marketing pages live on the main site.
-      if (MAIN_PREFIXES.some((p) => pathname.startsWith(p))) {
-        return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
-      }
-    }
-
-    // Image-tools subdomain: only the compress tool + auth live here.
-    if (IMG_HOST && host === IMG_HOST) {
-      if (pathname === "/") {
-        // Redirect (not rewrite) so the dashboard auth check below can attach
-        // ?next=/dashboard/compress and return here after sign-in.
-        return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
-      }
-      if (!isImgPath(pathname)) {
-        return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
-      }
-    }
-
-    // Admin subdomain: only site administration, settings + auth.
-    if (ADMIN_HOST && host === ADMIN_HOST) {
-      if (pathname === "/") {
-        return NextResponse.redirect(new URL(ADMIN_PATH, request.url));
-      }
-      if (!isAdminPath(pathname)) {
-        return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
+    // Per-host home pages.
+    if (pathname === "/") {
+      // App host home = the public "create album" landing + guide.
+      if (host === APP_HOST) return NextResponse.rewrite(new URL("/start", request.url));
+      // Img/Admin hosts have no landing — send to their main tool. Redirect (not
+      // rewrite) so the dashboard auth check can attach ?next= and return here.
+      if (IMG_HOST && host === IMG_HOST) return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
+      if (ADMIN_HOST && host === ADMIN_HOST) return NextResponse.redirect(new URL(ADMIN_PATH, request.url));
+      // MAIN_HOST `/` = marketing landing — served below.
+    } else {
+      // Redirect any path requested on the "wrong" host to its canonical home.
+      const target = hostForPath(pathname);
+      if (target && target !== host) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${target}`));
       }
     }
   }
