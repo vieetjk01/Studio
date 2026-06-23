@@ -120,6 +120,24 @@ export async function middleware(request: NextRequest) {
 
   // ── Dashboard auth + Supabase session refresh ─────────────────
   if (pathname.startsWith("/dashboard")) {
+    // Next.js fires prefetch requests (Next-Router-Prefetch: 1) on Link hover,
+    // before the user clicks. These don't need auth validation — the actual
+    // navigation will enforce auth. Skipping getUser() here saves a Supabase
+    // network round-trip (~200-600ms) on every hover, letting the route cache
+    // warm up before the user even clicks.
+    if (request.headers.get("next-router-prefetch") === "1" || request.headers.get("purpose") === "prefetch") {
+      // Check if a session cookie exists. If it does, let the prefetch through
+      // so the RSC payload can be cached. If not, block it (unauthenticated
+      // prefetches would just be wasted work anyway).
+      const hasSession = request.cookies.getAll().some(
+        (c) => c.name.includes("sb-") && c.name.includes("-auth-token")
+      );
+      if (!hasSession) {
+        return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url));
+      }
+      return NextResponse.next();
+    }
+
     let response = NextResponse.next({ request });
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
