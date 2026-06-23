@@ -85,6 +85,7 @@ export default function DashboardHeader({
     {
       label: "Hợp đồng",
       children: [
+        { href: "/dashboard/studio/quotes", label: "Báo giá" },
         { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
         { href: "/dashboard/studio/production", label: "Xử lý hình ảnh" },
         { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },

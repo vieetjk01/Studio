@@ -1268,6 +1268,96 @@ create policy site_blocks_owner_all on public.site_blocks
   with check (exists (select 1 from public.sites s where s.id = site_id and (s.owner_id = auth.uid() or public.is_admin())));
 
 -- ============================================================================
+-- Customer quotes (báo giá gửi khách trước khi ký hợp đồng)
+-- Studio creates a quote with line items, shares a public /q/[token] link.
+-- Client can check/uncheck optional items, request adjustments, or accept.
+-- On accept, the studio one-clicks "Tạo hợp đồng" to spawn a studio_contracts
+-- row + contract_items copied from the selected quote items.
+-- ============================================================================
+create table if not exists public.studio_quotes (
+  id              uuid primary key default gen_random_uuid(),
+  owner_id        uuid not null references public.profiles (id) on delete cascade,
+  code            text,                                -- BG-2026-001
+  title           text not null default 'Báo giá',
+  client_name     text,
+  client_phone    text,
+  client_email    text,
+  event_date      date,
+  location        text,
+  intro           text,                                -- lời mở đầu / lời chào khách
+  note            text,                                -- ghi chú nội bộ studio
+  deposit_percent integer not null default 30,         -- gợi ý cọc khi chuyển sang HĐ
+  status          text not null default 'draft'
+                    check (status in ('draft','sent','viewed','adjust_requested','accepted','converted','expired','cancelled')),
+  client_token    text not null unique,                -- /q/[token]
+  expires_at      timestamptz,
+  contract_id     uuid references public.studio_contracts (id) on delete set null,
+  viewed_at       timestamptz,
+  accepted_at     timestamptz,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+create index if not exists studio_quotes_owner_idx on public.studio_quotes (owner_id);
+
+drop trigger if exists studio_quotes_set_updated_at on public.studio_quotes;
+create trigger studio_quotes_set_updated_at
+  before update on public.studio_quotes
+  for each row execute function public.set_updated_at();
+
+alter table public.studio_quotes enable row level security;
+drop policy if exists studio_quotes_owner_all on public.studio_quotes;
+create policy studio_quotes_owner_all on public.studio_quotes
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+-- Quote line items. is_optional=false items are required (client can't deselect).
+create table if not exists public.quote_items (
+  id           uuid primary key default gen_random_uuid(),
+  quote_id     uuid not null references public.studio_quotes (id) on delete cascade,
+  name         text not null default '',
+  description  text,
+  qty          integer not null default 1,
+  unit_price   integer not null default 0,             -- VND
+  is_optional  boolean not null default true,          -- false = bắt buộc
+  selected     boolean not null default true,          -- client's pick
+  position     integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+create index if not exists quote_items_quote_idx on public.quote_items (quote_id);
+alter table public.quote_items enable row level security;
+drop policy if exists quote_items_owner_all on public.quote_items;
+create policy quote_items_owner_all on public.quote_items
+  for all using (
+    exists (select 1 from public.studio_quotes q
+            where q.id = quote_id and (q.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_quotes q
+            where q.id = quote_id and (q.owner_id = auth.uid() or public.is_admin()))
+  );
+
+-- Client-submitted adjustment requests on a quote (chat-style messages).
+create table if not exists public.quote_adjustments (
+  id         uuid primary key default gen_random_uuid(),
+  quote_id   uuid not null references public.studio_quotes (id) on delete cascade,
+  author     text not null default 'client' check (author in ('client','studio')),
+  message    text not null,
+  resolved   boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists quote_adjustments_quote_idx on public.quote_adjustments (quote_id, created_at);
+alter table public.quote_adjustments enable row level security;
+drop policy if exists quote_adjustments_owner_all on public.quote_adjustments;
+create policy quote_adjustments_owner_all on public.quote_adjustments
+  for all using (
+    exists (select 1 from public.studio_quotes q
+            where q.id = quote_id and (q.owner_id = auth.uid() or public.is_admin()))
+  ) with check (
+    exists (select 1 from public.studio_quotes q
+            where q.id = quote_id and (q.owner_id = auth.uid() or public.is_admin()))
+  );
+
+
+-- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,
 --     can_zip = true, can_notes = true, monthly_album_limit = null

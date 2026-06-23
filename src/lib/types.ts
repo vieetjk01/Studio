@@ -656,3 +656,76 @@ export function vnd(n: number | null | undefined): string {
   const v = Math.round(n || 0);
   return v.toLocaleString("vi-VN") + "đ";
 }
+
+
+/* ─────────────── Customer quotes (báo giá) ─────────────── */
+export type QuoteStatus =
+  | "draft"
+  | "sent"
+  | "viewed"
+  | "adjust_requested"
+  | "accepted"
+  | "converted"
+  | "expired"
+  | "cancelled";
+
+export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
+  draft: "Nháp",
+  sent: "Đã gửi",
+  viewed: "Khách đã xem",
+  adjust_requested: "Khách yêu cầu chỉnh",
+  accepted: "Khách đồng ý",
+  converted: "Đã tạo hợp đồng",
+  expired: "Hết hạn",
+  cancelled: "Đã hủy",
+};
+
+export interface StudioQuote {
+  id: string;
+  owner_id: string;
+  code: string | null;
+  title: string;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  event_date: string | null;
+  location: string | null;
+  intro: string | null;
+  note: string | null;
+  deposit_percent: number;
+  status: QuoteStatus;
+  client_token: string;
+  expires_at: string | null;
+  contract_id: string | null;
+  viewed_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteItem {
+  id: string;
+  quote_id: string;
+  name: string;
+  description: string | null;
+  qty: number;
+  unit_price: number;
+  is_optional: boolean;
+  selected: boolean;
+  position: number;
+  created_at: string;
+}
+
+export interface QuoteAdjustment {
+  id: string;
+  quote_id: string;
+  author: "client" | "studio";
+  message: string;
+  resolved: boolean;
+  created_at: string;
+}
+
+/** Sum the items the client has currently selected (required items always count). */
+export function quoteSelectedTotal(items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean }[]): number {
+  return items.reduce((s, i) => s + ((i.selected || !i.is_optional) ? (i.qty || 0) * (i.unit_price || 0) : 0), 0);
+}

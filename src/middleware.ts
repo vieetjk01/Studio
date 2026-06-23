@@ -26,12 +26,13 @@ function isImgPath(path: string) {
 }
 
 // Paths allowed on the studio host: the studio dashboard, auth, and the public
-// client-contract (/c/) + crew (/crew) portals.
+// client-contract (/c/) + quote (/q/) + crew (/crew) portals.
 function isStudioPath(path: string) {
   return (
     path.startsWith(STUDIO_PATH) ||
     path.startsWith(GALLERIES_PATH) ||
     path.startsWith("/c/") ||
+    path.startsWith("/q/") ||
     path.startsWith("/crew") ||
     path.startsWith("/login") ||
     path.startsWith("/auth")
