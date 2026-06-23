@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
   if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`) && host !== MAIN_HOST) {
     const systemHosts = new Set(
-      [APP_HOST, IMG_HOST, ADMIN_HOST].filter(Boolean) as string[]
+      [MAIN_HOST, APP_HOST, IMG_HOST, ADMIN_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
     );
     if (!systemHosts.has(host)) {
       const sub = host.slice(0, -(`.${MAIN_HOST}`.length));
