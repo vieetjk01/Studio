@@ -19,10 +19,12 @@ export default function QuoteEditor({
   quote: initialQuote,
   initialItems,
   initialAdjustments,
+  canConvert,
 }: {
   quote: StudioQuote;
   initialItems: QuoteItem[];
   initialAdjustments: QuoteAdjustment[];
+  canConvert: boolean;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -139,10 +141,15 @@ export default function QuoteEditor({
               <Send size={12} /> Đánh dấu đã gửi
             </button>
           )}
-          {quote.status === "accepted" && !quote.contract_id && (
+          {quote.status === "accepted" && !quote.contract_id && canConvert && (
             <button onClick={convertToContract} disabled={busy} className="btn-primary text-xs" data-testid="quote-convert">
               <FileSignature size={12} /> Tạo hợp đồng
             </button>
+          )}
+          {quote.status === "accepted" && !quote.contract_id && !canConvert && (
+            <span className="rounded-md px-2 py-1.5 text-xs" style={{ background: "var(--surface2)", color: "var(--text3)" }} data-testid="quote-convert-upsell">
+              Khách đã đồng ý — nâng cấp gói Studio để tạo hợp đồng
+            </span>
           )}
           {quote.contract_id && (
             <Link href={`/dashboard/studio/contracts/${quote.contract_id}`} className="btn-primary text-xs">

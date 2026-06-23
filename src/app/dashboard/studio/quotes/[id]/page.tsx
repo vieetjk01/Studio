@@ -7,14 +7,14 @@ import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export default async function QuoteDetailPage({ params }: { params: { id: string } }) {
-  const profile = await requireStudio();
+  const profile = await requireStudio("booking");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <div className="card p-8">
-          <h1 className="font-serif text-2xl font-medium">Cần gói Studio</h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Báo giá chỉ dành cho tài khoản gói <b>Studio</b>.</p>
-          <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem gói Studio</a>
+          <h1 className="font-serif text-2xl font-medium">Cần gói Photographer hoặc Studio</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Báo giá dành cho tài khoản gói <b>Photographer</b> trở lên.</p>
+          <a href="/dashboard/upgrade" className="btn-primary mt-5">Nâng cấp gói</a>
         </div>
       </div>
     );
@@ -34,6 +34,7 @@ export default async function QuoteDetailPage({ params }: { params: { id: string
       quote={quote as StudioQuote}
       initialItems={(items ?? []) as QuoteItem[]}
       initialAdjustments={(adjustments ?? []) as QuoteAdjustment[]}
+      canConvert={profile.studioTier === "full"}
     />
   );
 }
