@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") || "/dashboard";
+  const next = searchParams.get("next") || "/dashboard/studio";
   const oauthError = searchParams.get("error");
 
   // Provider-side error (e.g. user cancelled the Google consent screen).

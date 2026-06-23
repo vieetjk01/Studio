@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
+import { appUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
@@ -26,21 +28,6 @@ const STATUS_TONE: Record<ContractStatus, string> = {
   completed: "#7bb38a",
   cancelled: "#c77b7b",
 };
-
-function NotStudio() {
-  return (
-    <div className="mx-auto max-w-lg text-center">
-      <div className="card p-8">
-        <h1 className="font-serif text-2xl font-medium">Cần gói Photographer trở lên</h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-          Trang quản lý dành cho tài khoản gói <b>Photographer</b> (đặt lịch, bảng giá,
-          lịch chụp) trở lên. Gói <b>Studio</b> mở thêm hợp đồng, tài chính & quản lý đội ngũ.
-        </p>
-        <a href="/dashboard/upgrade" className="btn-primary mt-5">Nâng cấp gói</a>
-      </div>
-    </div>
-  );
-}
 
 /** Photographer-plan overview: bookings + upcoming shoots, no contracts/finance. */
 async function BookingOverview({ ownerId }: { ownerId: string }) {
@@ -141,7 +128,9 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
 export default async function StudioOverview() {
   const profile = await requireStudio("booking");
-  if (!profile) return <NotStudio />;
+  // Free/Basic accounts have no studio tier — send them to the album dashboard
+  // (on the app host) instead of the studio workspace.
+  if (!profile) redirect(appUrl("/dashboard"));
 
   const supabase = createClient();
 

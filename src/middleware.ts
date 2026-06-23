@@ -54,6 +54,11 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const { pathname, search } = request.nextUrl;
 
+  // ── www → apex redirect ───────────────────────────────────────
+  if (MAIN_HOST && host === `www.${MAIN_HOST}`) {
+    return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`), 301);
+  }
+
   // ── Tenant sites: <subdomain>.mstudo.com → /site/<subdomain> ─────────────
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
   if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`)) {
