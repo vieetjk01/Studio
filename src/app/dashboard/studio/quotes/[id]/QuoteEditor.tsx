@@ -18,12 +18,12 @@ import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
 
 type EditableQuoteFields = Pick<
   StudioQuote,
-  "title" | "client_name" | "client_phone" | "client_email" | "client_facebook" | "event_date" | "location" | "intro" | "bulk_discount_amount" | "bulk_discount_min_items"
+  "title" | "client_name" | "client_phone" | "client_email" | "client_facebook" | "event_date" | "location" | "intro" | "bulk_discount_amount" | "discount_package_group"
 >;
 
 const FIELD_KEYS: (keyof EditableQuoteFields)[] = [
   "title", "client_name", "client_phone", "client_email", "client_facebook", "event_date", "location", "intro",
-  "bulk_discount_amount", "bulk_discount_min_items",
+  "bulk_discount_amount", "discount_package_group",
 ];
 
 function pickFields(q: StudioQuote): EditableQuoteFields {
@@ -37,7 +37,7 @@ function pickFields(q: StudioQuote): EditableQuoteFields {
     location: q.location,
     intro: q.intro,
     bulk_discount_amount: q.bulk_discount_amount ?? 0,
-    bulk_discount_min_items: q.bulk_discount_min_items ?? 0,
+    discount_package_group: q.discount_package_group ?? null,
   };
 }
 
@@ -259,11 +259,17 @@ export default function QuoteEditor({
 
   const pendingAdj = adjustments.filter((a) => !a.resolved && a.author === "client");
 
-  // Bulk discount computed live (mirrors client view logic).
-  const selectedOptionalCount = items.filter((it) => it.is_optional && it.selected && !it.is_discount).length;
+  // Distinct package groups defined across items (for the discount selector).
+  const packageGroups = Array.from(
+    new Set(items.map((it) => (it.package_group || "").trim()).filter(Boolean)),
+  );
+  // Discount preview (mirrors client view): active when the selected package is
+  // the designated discount package.
+  const selectedPackageGroup = items.find((it) => it.package_group && it.selected)?.package_group ?? null;
   const bulkDiscountActive =
-    (quote.bulk_discount_min_items ?? 0) > 0 &&
-    selectedOptionalCount >= (quote.bulk_discount_min_items ?? 0);
+    !!quote.discount_package_group &&
+    selectedPackageGroup === quote.discount_package_group &&
+    (quote.bulk_discount_amount ?? 0) > 0;
 
   return (
     <div className="space-y-6" data-testid="quote-edit-page">
@@ -404,23 +410,35 @@ export default function QuoteEditor({
           <textarea className="input" rows={3} value={quote.intro || ""} disabled={locked} onChange={(e) => patchLocal({ intro: e.target.value })} />
         </Field>
         <div className="mt-4 rounded-lg p-3" style={{ background: "var(--surface2)" }}>
-          <p className="mb-2 text-xs font-medium" style={{ color: "var(--text2)" }}>Giảm giá khi chọn nhiều hạng mục (tuỳ chọn)</p>
-          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Nếu khách chọn ≥ X hạng mục tuỳ chọn, tự động giảm thêm Y đồng.</p>
+          <p className="mb-2 text-xs font-medium" style={{ color: "var(--text2)" }}>Giảm giá theo gói chỉ định (tuỳ chọn)</p>
+          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
+            Nếu khách chọn đúng gói bạn chỉ định bên dưới, tự động giảm thêm số tiền tương ứng. Đặt nhóm gói cho từng hạng mục ở phần Hạng mục.
+          </p>
           <div className="grid gap-2 md:grid-cols-2">
-            <Field label="Số hạng mục tối thiểu">
-              <input type="number" min={0} className="input" value={quote.bulk_discount_min_items ?? 0} disabled={locked}
-                onChange={(e) => patchLocal({ bulk_discount_min_items: Number(e.target.value) || 0 })} />
+            <Field label="Gói được giảm">
+              <select className="input" value={quote.discount_package_group ?? ""} disabled={locked}
+                onChange={(e) => patchLocal({ discount_package_group: e.target.value || null })}>
+                <option value="">— Không áp dụng —</option>
+                {packageGroups.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Số tiền giảm (VND)">
               <input type="number" min={0} className="input" value={quote.bulk_discount_amount ?? 0} disabled={locked}
                 onChange={(e) => patchLocal({ bulk_discount_amount: Number(e.target.value) || 0 })} />
             </Field>
           </div>
-          {(quote.bulk_discount_min_items ?? 0) > 0 && (
+          {packageGroups.length === 0 && (
+            <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>
+              Chưa có gói nào. Thêm “Nhóm gói” cho các hạng mục tuỳ chọn để tạo gói.
+            </p>
+          )}
+          {quote.discount_package_group && (quote.bulk_discount_amount ?? 0) > 0 && (
             <p className="mt-2 text-xs" style={{ color: bulkDiscountActive ? "#34d399" : "var(--text3)" }}>
               {bulkDiscountActive
-                ? `✓ Đang áp dụng — khách được giảm thêm ${vnd(quote.bulk_discount_amount ?? 0)}`
-                : `Khách chọn ${selectedOptionalCount}/${quote.bulk_discount_min_items} hạng mục tuỳ chọn (chưa đủ để giảm)`}
+                ? `✓ Đang áp dụng — khách được giảm ${vnd(quote.bulk_discount_amount ?? 0)}`
+                : `Khách chưa chọn gói “${quote.discount_package_group}” nên chưa được giảm`}
             </p>
           )}
         </div>
@@ -529,7 +547,7 @@ export default function QuoteEditor({
         <div className="mt-4 flex flex-col items-end gap-1 text-sm" style={{ color: "var(--text2)" }}>
           <p>Tổng hạng mục: {vnd(grossTotal)}</p>
           {discountTotal > 0 && <p style={{ color: "#fb923c" }}>Giảm giá item: −{vnd(discountTotal)}</p>}
-          {bulkDiscountActive && <p style={{ color: "#34d399" }}>Giảm nhiều hạng mục: −{vnd(quote.bulk_discount_amount ?? 0)}</p>}
+          {bulkDiscountActive && <p style={{ color: "#34d399" }}>Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount ?? 0)}</p>}
           <p>
             <b className="text-base text-accent">
               Khách đang chọn: {vnd(bulkDiscountActive ? total - (quote.bulk_discount_amount ?? 0) : total)}

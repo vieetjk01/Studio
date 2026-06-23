@@ -49,9 +49,15 @@ export async function POST(req: Request, { params }: { params: { token: string }
       .maybeSingle();
     if (!item) return NextResponse.json({ error: "item not found" }, { status: 404 });
     if (!item.is_optional && !item.package_group) return NextResponse.json({ error: "Hạng mục bắt buộc." }, { status: 400 });
-    // Package group: toggle all items in the group together.
+    // Package group: packages are mutually exclusive — selecting one deselects
+    // every other package, so the client can only ever have a single package on.
     if (item.package_group) {
-      await db.from("quote_items").update({ selected }).eq("quote_id", quote.id).eq("package_group", item.package_group);
+      if (selected) {
+        await db.from("quote_items").update({ selected: false }).eq("quote_id", quote.id).not("package_group", "is", null);
+        await db.from("quote_items").update({ selected: true }).eq("quote_id", quote.id).eq("package_group", item.package_group);
+      } else {
+        await db.from("quote_items").update({ selected: false }).eq("quote_id", quote.id).eq("package_group", item.package_group);
+      }
     } else {
       await db.from("quote_items").update({ selected }).eq("id", itemId);
     }

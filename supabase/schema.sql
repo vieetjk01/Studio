@@ -1390,3 +1390,8 @@ alter table public.quote_items add column if not exists package_group text null;
 -- Set bulk_discount_min_items = 0 to disable (default).
 alter table public.studio_quotes add column if not exists bulk_discount_amount    bigint not null default 0;
 alter table public.studio_quotes add column if not exists bulk_discount_min_items int    not null default 0;
+
+-- Package-tied discount: packages are mutually exclusive (the client picks one
+-- package). If the client selects the studio's designated package
+-- (discount_package_group), bulk_discount_amount is knocked off the total.
+alter table public.studio_quotes add column if not exists discount_package_group text null;

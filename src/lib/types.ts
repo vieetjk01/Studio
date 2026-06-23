@@ -704,6 +704,7 @@ export interface StudioQuote {
   accepted_at: string | null;
   bulk_discount_amount: number;
   bulk_discount_min_items: number;
+  discount_package_group: string | null;
   created_at: string;
   updated_at: string;
 }

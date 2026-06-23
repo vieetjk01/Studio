@@ -63,13 +63,14 @@ export default function QuoteClientView({
 
   const total = quoteSelectedTotal(items);
 
-  // Bulk discount: applies when >= min_items optional standalone items are selected.
-  const selectedOptionalCount = standaloneItems.filter(
-    (it) => it.is_optional && it.selected && !it.is_discount,
-  ).length;
+  // Which package is currently selected (packages are mutually exclusive).
+  const selectedPackageGroup = items.find((i) => i.package_group && i.selected)?.package_group ?? null;
+
+  // Package-tied discount: applies only when the client picks the studio's
+  // designated package (discount_package_group).
   const bulkDiscountActive =
-    quote.bulk_discount_min_items > 0 &&
-    selectedOptionalCount >= quote.bulk_discount_min_items &&
+    !!quote.discount_package_group &&
+    selectedPackageGroup === quote.discount_package_group &&
     quote.bulk_discount_amount > 0;
   const effectiveTotal = bulkDiscountActive ? total - quote.bulk_discount_amount : total;
   const deposit = computeRoundedDeposit(effectiveTotal);
@@ -82,9 +83,17 @@ export default function QuoteClientView({
   async function toggleItem(it: QuoteItem) {
     if ((!it.is_optional && !it.package_group) || locked) return;
     const next = !it.selected;
-    // If item is in a package group, toggle all group members together.
+    const prevItems = items;
+    // Packages are mutually exclusive: selecting one deselects every other
+    // package. Standalone optional items toggle on their own.
     if (it.package_group) {
-      setItems((arr) => arr.map((i) => i.package_group === it.package_group ? { ...i, selected: next } : i));
+      setItems((arr) =>
+        arr.map((i) => {
+          if (!i.package_group) return i;
+          if (next) return { ...i, selected: i.package_group === it.package_group };
+          return i.package_group === it.package_group ? { ...i, selected: false } : i;
+        }),
+      );
     } else {
       setItems((arr) => arr.map((i) => i.id === it.id ? { ...i, selected: next } : i));
     }
@@ -97,12 +106,7 @@ export default function QuoteClientView({
       });
       if (!r.ok) throw new Error((await r.json()).error || "Lỗi");
     } catch (e) {
-      // Rollback
-      if (it.package_group) {
-        setItems((arr) => arr.map((i) => i.package_group === it.package_group ? { ...i, selected: it.selected } : i));
-      } else {
-        setItems((arr) => arr.map((i) => i.id === it.id ? { ...i, selected: it.selected } : i));
-      }
+      setItems(prevItems); // Rollback to the pre-toggle snapshot.
       setError(e instanceof Error ? e.message : "Lỗi");
     }
   }
@@ -221,7 +225,7 @@ export default function QuoteClientView({
           {packageGroups.size > 0 && (
             <div className="mt-3 space-y-3">
               <p className="text-xs font-medium" style={{ color: "var(--text3)" }}>
-                <Package size={11} className="inline mr-1" /> Chọn gói dịch vụ
+                <Package size={11} className="inline mr-1" /> Chọn 1 gói dịch vụ
               </p>
               {Array.from(packageGroups.entries()).map(([groupName, groupItems]) => {
                 const groupSelected = groupItems.some((i) => i.selected);
@@ -250,6 +254,11 @@ export default function QuoteClientView({
                           {groupSelected && <Check size={11} color="#000" />}
                         </div>
                         <span className="font-medium">{groupName}</span>
+                        {quote.discount_package_group === groupName && quote.bulk_discount_amount > 0 && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
+                            <Tag size={9} className="inline mr-0.5" /> Giảm {vnd(quote.bulk_discount_amount)}
+                          </span>
+                        )}
                       </div>
                       <span className="font-medium" style={{ color: "var(--accent)" }}>{vnd(groupTotal)}</span>
                     </div>
@@ -329,12 +338,12 @@ export default function QuoteClientView({
           <div className="mt-4 space-y-1 border-t pt-4 text-right" style={{ borderColor: "var(--border)" }}>
             {bulkDiscountActive && (
               <p className="text-sm" style={{ color: "#fb923c" }}>
-                🏷️ Giảm giá chọn nhiều hạng mục: −{vnd(quote.bulk_discount_amount)}
+                🏷️ Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount)}
               </p>
             )}
-            {quote.bulk_discount_min_items > 0 && !bulkDiscountActive && !locked && (
+            {quote.discount_package_group && quote.bulk_discount_amount > 0 && !bulkDiscountActive && !locked && (
               <p className="text-xs" style={{ color: "var(--text3)" }}>
-                Chọn thêm {quote.bulk_discount_min_items - selectedOptionalCount} hạng mục tuỳ chọn để được giảm {vnd(quote.bulk_discount_amount)}
+                Chọn gói <b style={{ color: "var(--text2)" }}>{quote.discount_package_group}</b> để được giảm {vnd(quote.bulk_discount_amount)}
               </p>
             )}
             <p className="text-2xl font-medium text-accent" data-testid="quote-client-total">{vnd(effectiveTotal)}</p>

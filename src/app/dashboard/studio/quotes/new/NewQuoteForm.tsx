@@ -25,7 +25,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
     { name: "", description: "", qty: 1, unit_price: 0, is_optional: false, is_discount: false, package_group: "" },
   ]);
   const [bulkDiscountAmount, setBulkDiscountAmount] = useState(0);
-  const [bulkDiscountMinItems, setBulkDiscountMinItems] = useState(0);
+  const [discountPackageGroup, setDiscountPackageGroup] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +34,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
   const total = grossTotal - discountTotal;
   const deposit = computeRoundedDeposit(total);
   const depositPct = depositRatio(total, deposit);
+  const packageGroups = Array.from(new Set(items.map((i) => i.package_group.trim()).filter(Boolean)));
 
   function update(idx: number, patch: Partial<Draft>) {
     setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -77,7 +78,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           client_token: token,
           status: "draft",
           bulk_discount_amount: bulkDiscountAmount || 0,
-          bulk_discount_min_items: bulkDiscountMinItems || 0,
+          discount_package_group: discountPackageGroup.trim() || null,
         })
         .select("id")
         .single();
@@ -149,16 +150,26 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           <textarea className="input" rows={3} value={intro} onChange={(e) => setIntro(e.target.value)} />
         </Field>
         <div className="mt-4 rounded-lg p-3" style={{ background: "var(--surface2)" }}>
-          <p className="mb-1 text-xs font-medium" style={{ color: "var(--text2)" }}>Giảm giá khi chọn nhiều hạng mục (tuỳ chọn)</p>
-          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Nếu khách chọn ≥ X hạng mục tuỳ chọn thì tự động giảm thêm Y đồng.</p>
+          <p className="mb-1 text-xs font-medium" style={{ color: "var(--text2)" }}>Giảm giá theo gói chỉ định (tuỳ chọn)</p>
+          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
+            Đặt “Nhóm gói” cho các hạng mục tuỳ chọn bên dưới để tạo gói (khách chỉ chọn 1 gói). Nếu khách chọn đúng gói chỉ định thì tự động giảm thêm.
+          </p>
           <div className="grid gap-2 md:grid-cols-2">
-            <Field label="Số hạng mục tối thiểu">
-              <input type="number" min={0} className="input" value={bulkDiscountMinItems} onChange={(e) => setBulkDiscountMinItems(Number(e.target.value) || 0)} />
+            <Field label="Gói được giảm">
+              <select className="input" value={discountPackageGroup} onChange={(e) => setDiscountPackageGroup(e.target.value)}>
+                <option value="">— Không áp dụng —</option>
+                {packageGroups.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Số tiền giảm (VND)">
               <input type="number" min={0} className="input" value={bulkDiscountAmount} onChange={(e) => setBulkDiscountAmount(Number(e.target.value) || 0)} />
             </Field>
           </div>
+          {packageGroups.length === 0 && (
+            <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>Chưa có gói nào — thêm “Nhóm gói” cho hạng mục tuỳ chọn để tạo gói.</p>
+          )}
         </div>
       </section>
 
