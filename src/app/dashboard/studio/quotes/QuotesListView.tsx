@@ -54,7 +54,7 @@ export default function QuotesListView({ list: initialList }: { list: QuoteRow[]
         </Link>
       </header>
 
-      {list.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="card p-10 text-center">
           <p style={{ color: "var(--text2)" }}>Chưa có báo giá nào. Bấm <b>“Tạo báo giá mới”</b> để bắt đầu.</p>
         </div>
