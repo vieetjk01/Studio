@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -34,6 +35,10 @@ const TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, full: 2 };
 
 export default function StudioFooterNav({ tier, role }: Props) {
   const pathname = usePathname();
+  // Optimistic highlight: light up the tapped item instantly, before the
+  // server round-trip finishes, so the footer feels responsive on slow nav.
+  const [pending, setPending] = useState<string | null>(null);
+  useEffect(() => setPending(null), [pathname]);
 
   // accountant sees only Tổng quan + Tài chính
   const items = role === "accountant"
@@ -51,11 +56,13 @@ export default function StudioFooterNav({ tier, role }: Props) {
     >
       <div className="flex overflow-x-auto scrollbar-none">
         {items.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard/studio" && pathname.startsWith(item.href));
+          const onPath = pathname === item.href || (item.href !== "/dashboard/studio" && pathname.startsWith(item.href));
+          const active = pending ? pending === item.href : onPath;
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setPending(item.href)}
               className="flex min-w-[4.5rem] flex-col items-center gap-0.5 px-3 py-2.5 text-center transition-colors"
               style={{ color: active ? "var(--gold)" : "var(--text3)" }}
             >
