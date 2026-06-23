@@ -18,14 +18,14 @@ const COMPRESS_PATH = "/dashboard/compress";
 const ADMIN_PATH = "/dashboard/admin";
 
 /**
- * The canonical host a path should be served on, or undefined when it may be
- * served on whichever host the request arrived at (auth pages, the apex `/`).
- * Falls back to APP_HOST when an optional host (img/admin) isn't configured.
+ * Returns the canonical host for a path, or undefined if the path may be
+ * served on any host (auth pages, upgrade, site builder, etc.).
  */
 function hostForPath(path: string): string | undefined {
-  // Auth pages are shared across hosts (cookie spans .mstudo.com).
+  // Auth pages are shared — no redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
-  // Studio management, client galleries + the public client/crew portals.
+
+  // Studio management, galleries, and public client/crew portals → mstudo.com.
   if (
     path.startsWith("/dashboard/studio") ||
     path.startsWith("/dashboard/galleries") ||
@@ -34,19 +34,26 @@ function hostForPath(path: string): string | undefined {
     path.startsWith("/crew") ||
     path.startsWith("/showcase") ||
     path.startsWith("/album")
-  ) {
-    return MAIN_HOST;
-  }
-  // Admin console.
+  ) return MAIN_HOST;
+
+  // Admin console → admin.mstudo.com (falls back to APP_HOST if not configured).
   if (path.startsWith(ADMIN_PATH) || path.startsWith("/dashboard/settings")) {
     return ADMIN_HOST || APP_HOST;
   }
-  // Image-compress tool.
+
+  // Image-compress tool → img.mstudo.com (falls back to APP_HOST).
   if (path.startsWith(COMPRESS_PATH)) return IMG_HOST || APP_HOST;
-  // The album dashboard + client selection + the create-album landing.
-  if (path.startsWith("/dashboard") || path === "/start" || path.startsWith("/a/")) {
-    return APP_HOST;
-  }
+
+  // Album-specific paths → album.mstudo.com only.
+  // (Anything else in /dashboard — upgrade, site, etc. — stays on current host.)
+  if (
+    path === "/dashboard" ||
+    path.startsWith("/dashboard/create") ||
+    path.startsWith("/dashboard/filter") ||
+    path.startsWith("/a/") ||
+    path === "/start"
+  ) return APP_HOST;
+
   return undefined;
 }
 
