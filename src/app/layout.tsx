@@ -17,9 +17,9 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
 });
 
-const DEFAULT_TITLE = "Vieetjk — Photo collection for customers";
+const DEFAULT_TITLE = "mstudo — Phần mềm quản lý studio ảnh";
 const DEFAULT_DESCRIPTION =
-  "Vieetjk · Photo Collection — minimalist dark photo selection for studio clients.";
+  "mstudo · Phần mềm quản lý studio ảnh: hợp đồng, báo giá, đặt lịch, lịch chụp, đội ngũ & tài chính trong một nơi.";
 
 // Browser-tab title / description / favicon are admin-editable (Cài đặt → Trình
 // duyệt). Falls back to the defaults if Supabase isn't reachable or unset.
@@ -43,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    appleWebApp: { capable: true, title: "Vieetjk", statusBarStyle: "black-translucent" },
+    appleWebApp: { capable: true, title: "mstudo", statusBarStyle: "black-translucent" },
     icons: favicon
       ? { icon: favicon, shortcut: favicon, apple: favicon }
       : { apple: "/logo-mark.png" },
