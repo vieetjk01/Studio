@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { effectivePlan, studioTier } from "@/lib/plans";
 import QuoteClientView from "./QuoteClientView";
 import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
 
@@ -25,8 +26,14 @@ export default async function QuoteClientPage({ params }: { params: { token: str
   const [{ data: items }, { data: adjustments }, { data: owner }] = await Promise.all([
     db.from("quote_items").select("*").eq("quote_id", quote.id).order("position"),
     db.from("quote_adjustments").select("*").eq("quote_id", quote.id).order("created_at", { ascending: true }),
-    db.from("profiles").select("full_name, email").eq("id", quote.owner_id).maybeSingle(),
+    db.from("profiles").select("full_name, email, plan, plan_expires_at, role").eq("id", quote.owner_id).maybeSingle(),
   ]);
+
+  // Photographers (booking tier) don't have the contract feature, so we hide
+  // the "tự động tạo hợp đồng" checkbox for their quotes.
+  const studioCanContract = owner
+    ? studioTier(effectivePlan(owner.plan, owner.plan_expires_at), owner.role === "admin") === "full"
+    : false;
 
   return (
     <QuoteClientView
@@ -34,6 +41,7 @@ export default async function QuoteClientPage({ params }: { params: { token: str
       initialItems={(items ?? []) as QuoteItem[]}
       initialAdjustments={(adjustments ?? []) as QuoteAdjustment[]}
       studioName={(owner?.full_name || "Studio") as string}
+      studioCanContract={studioCanContract}
     />
   );
 }

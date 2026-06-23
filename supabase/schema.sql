@@ -1357,6 +1357,14 @@ create policy quote_adjustments_owner_all on public.quote_adjustments
   );
 
 
+-- Quote-specific additions: capture client identity at the accept step.
+alter table public.studio_quotes add column if not exists client_facebook       text;
+alter table public.studio_quotes add column if not exists auto_create_contract  boolean not null default false;
+
+-- Contracts now also keep a Facebook link (auto-filled when spawned from a quote).
+alter table public.studio_contracts add column if not exists client_facebook text;
+
+
 -- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:
 --   update public.profiles set role = 'admin', is_active = true,

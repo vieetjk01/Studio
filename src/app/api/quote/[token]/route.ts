@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { convertQuoteToContract } from "@/lib/quote-convert";
+import { effectivePlan, studioTier } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Public quote actions for a client viewing /q/[token].
- * No auth — the token is the access credential. RLS is bypassed via the
- * service role, but every write is constrained to the quote matching the token.
+ * No auth — the token is the access credential. Service role bypasses RLS, but
+ * every write is scoped to the quote that matches the token.
  *
  * Actions:
  *  - toggle  : flip selected on an optional item
  *  - adjust  : append a client adjustment message + bump status
- *  - accept  : lock the quote as 'accepted'
+ *  - accept  : client fills name / phone / email / facebook, optionally ticks
+ *              "auto-create contract", which (only if the studio is on the
+ *              'full' tier) immediately spawns the contract.
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   const body = await req.json().catch(() => ({}));
@@ -21,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const db = createAdminClient();
   const { data: quote } = await db
     .from("studio_quotes")
-    .select("id, status")
+    .select("id, status, owner_id")
     .eq("client_token", params.token)
     .maybeSingle();
   if (!quote) return NextResponse.json({ error: "Báo giá không tồn tại." }, { status: 404 });
@@ -37,7 +41,6 @@ export async function POST(req: Request, { params }: { params: { token: string }
     const itemId = body.item_id as string | undefined;
     const selected = !!body.selected;
     if (!itemId) return NextResponse.json({ error: "missing item_id" }, { status: 400 });
-    // Guard: only allow toggling items that belong to this quote and are optional.
     const { data: item } = await db
       .from("quote_items")
       .select("id, is_optional")
@@ -65,11 +68,54 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   if (action === "accept") {
+    const clientName = String(body.client_name || "").trim();
+    const clientPhone = String(body.client_phone || "").trim();
+    const clientEmail = String(body.client_email || "").trim();
+    const clientFacebook = String(body.client_facebook || "").trim();
+    const autoCreate = !!body.auto_create_contract;
+
+    if (!clientName) return NextResponse.json({ error: "Vui lòng nhập họ tên." }, { status: 400 });
+    if (!/^[0-9]{9,11}$/.test(clientPhone.replace(/\s+/g, ""))) {
+      return NextResponse.json({ error: "Số điện thoại không hợp lệ (9–11 chữ số)." }, { status: 400 });
+    }
+
+    // 1) Lock the client info + mark accepted.
     await db
       .from("studio_quotes")
-      .update({ status: "accepted", accepted_at: new Date().toISOString() })
+      .update({
+        client_name: clientName,
+        client_phone: clientPhone,
+        client_email: clientEmail || null,
+        client_facebook: clientFacebook || null,
+        auto_create_contract: autoCreate,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+      })
       .eq("id", quote.id);
-    return NextResponse.json({ ok: true });
+
+    // 2) If the client ticked auto-create AND the studio is on the full tier,
+    //    spawn the contract right away. Photographers (booking tier) only get
+    //    the quote acceptance — they don't have the contract feature.
+    if (autoCreate) {
+      const { data: owner } = await db
+        .from("profiles")
+        .select("plan, plan_expires_at, role")
+        .eq("id", quote.owner_id)
+        .maybeSingle();
+      const tier = owner
+        ? studioTier(effectivePlan(owner.plan, owner.plan_expires_at), owner.role === "admin")
+        : "none";
+      if (tier === "full") {
+        const result = await convertQuoteToContract(db, quote.id);
+        if (result.ok) {
+          return NextResponse.json({ ok: true, contract_id: result.contract_id, auto_created: true });
+        }
+        // Conversion failed — still report accept success so the client UI doesn't break.
+        return NextResponse.json({ ok: true, auto_created: false, convert_error: result.error });
+      }
+    }
+
+    return NextResponse.json({ ok: true, auto_created: false });
   }
 
   return NextResponse.json({ error: "unknown action" }, { status: 400 });

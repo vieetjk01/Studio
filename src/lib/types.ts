@@ -688,11 +688,13 @@ export interface StudioQuote {
   client_name: string | null;
   client_phone: string | null;
   client_email: string | null;
+  client_facebook: string | null;
   event_date: string | null;
   location: string | null;
   intro: string | null;
   note: string | null;
   deposit_percent: number;
+  auto_create_contract: boolean;
   status: QuoteStatus;
   client_token: string;
   expires_at: string | null;

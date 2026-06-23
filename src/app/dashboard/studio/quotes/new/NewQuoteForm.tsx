@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Plus, Trash2, Lock, LockOpen, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { nextQuoteCode, newShareToken } from "@/lib/contract-code";
+import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
 import { vnd } from "@/lib/types";
 
 type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean };
@@ -16,10 +17,10 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientFacebook, setClientFacebook] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [location, setLocation] = useState("");
   const [intro, setIntro] = useState("Cảm ơn bạn đã quan tâm. Dưới đây là báo giá chi tiết — bạn có thể chọn/bỏ các hạng mục tuỳ chọn hoặc gửi yêu cầu chỉnh sửa cho mình.");
-  const [depositPercent, setDepositPercent] = useState(30);
   const [items, setItems] = useState<Draft[]>([
     { name: "", description: "", qty: 1, unit_price: 0, is_optional: false },
   ]);
@@ -27,6 +28,8 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const total = items.reduce((s, i) => s + (i.qty || 0) * (i.unit_price || 0), 0);
+  const deposit = computeRoundedDeposit(total);
+  const depositPct = depositRatio(total, deposit);
 
   function update(idx: number, patch: Partial<Draft>) {
     setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -58,10 +61,10 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           client_name: clientName.trim() || null,
           client_phone: clientPhone.trim() || null,
           client_email: clientEmail.trim() || null,
+          client_facebook: clientFacebook.trim() || null,
           event_date: eventDate || null,
           location: location.trim() || null,
           intro: intro.trim() || null,
-          deposit_percent: Math.max(0, Math.min(100, depositPercent || 0)),
           client_token: token,
           status: "draft",
         })
@@ -102,12 +105,15 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
       </header>
 
       <section className="card p-5">
-        <h2 className="text-sm font-medium" style={{ color: "var(--text2)" }}>Thông tin khách hàng</h2>
+        <h2 className="text-sm font-medium" style={{ color: "var(--text2)" }}>Thông tin chung</h2>
+        <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
+          Bạn có thể để trống các ô khách hàng — khách sẽ tự điền khi xác nhận báo giá.
+        </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Field label="Tiêu đề báo giá">
             <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="quote-title" />
           </Field>
-          <Field label="Tên khách hàng">
+          <Field label="Tên khách (nếu đã biết)">
             <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} data-testid="quote-client-name" />
           </Field>
           <Field label="Số điện thoại">
@@ -116,14 +122,14 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           <Field label="Email">
             <input className="input" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" />
           </Field>
+          <Field label="Link Facebook">
+            <input className="input" value={clientFacebook} onChange={(e) => setClientFacebook(e.target.value)} placeholder="https://facebook.com/..." />
+          </Field>
           <Field label="Ngày sự kiện">
             <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
           </Field>
-          <Field label="Địa điểm">
+          <Field label="Địa điểm" className="md:col-span-2">
             <input className="input" value={location} onChange={(e) => setLocation(e.target.value)} />
-          </Field>
-          <Field label="Tỷ lệ cọc đề xuất (%)">
-            <input type="number" min={0} max={100} className="input" value={depositPercent} onChange={(e) => setDepositPercent(Number(e.target.value) || 0)} />
           </Field>
         </div>
         <Field label="Lời chào / Giới thiệu" className="mt-3">
@@ -143,60 +149,29 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           {items.map((it, idx) => (
             <div key={idx} className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }} data-testid={`quote-item-${idx}`}>
               <div className="grid gap-2 md:grid-cols-12">
-                <input
-                  className="input md:col-span-5"
-                  placeholder="Tên hạng mục (vd: Chụp ngày cưới)"
-                  value={it.name}
-                  onChange={(e) => update(idx, { name: e.target.value })}
-                  data-testid={`quote-item-name-${idx}`}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  className="input md:col-span-2"
-                  placeholder="SL"
-                  value={it.qty}
-                  onChange={(e) => update(idx, { qty: Number(e.target.value) || 0 })}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  className="input md:col-span-3"
-                  placeholder="Đơn giá"
-                  value={it.unit_price}
-                  onChange={(e) => update(idx, { unit_price: Number(e.target.value) || 0 })}
-                  data-testid={`quote-item-price-${idx}`}
-                />
+                <input className="input md:col-span-5" placeholder="Tên hạng mục (vd: Chụp ngày cưới)" value={it.name} onChange={(e) => update(idx, { name: e.target.value })} data-testid={`quote-item-name-${idx}`} />
+                <input type="number" min={1} className="input md:col-span-2" placeholder="SL" value={it.qty} onChange={(e) => update(idx, { qty: Number(e.target.value) || 0 })} />
+                <input type="number" min={0} className="input md:col-span-3" placeholder="Đơn giá" value={it.unit_price} onChange={(e) => update(idx, { unit_price: Number(e.target.value) || 0 })} data-testid={`quote-item-price-${idx}`} />
                 <div className="flex items-center gap-1 md:col-span-2">
-                  <button
-                    onClick={() => update(idx, { is_optional: !it.is_optional })}
-                    className="btn-ghost flex-1 px-2 py-1.5 text-xs"
-                    title={it.is_optional ? "Đang tuỳ chọn — bấm để khoá" : "Đang bắt buộc — bấm để mở"}
-                    data-testid={`quote-item-toggle-${idx}`}
-                  >
+                  <button onClick={() => update(idx, { is_optional: !it.is_optional })} className="btn-ghost flex-1 px-2 py-1.5 text-xs" data-testid={`quote-item-toggle-${idx}`}>
                     {it.is_optional ? <LockOpen size={12} /> : <Lock size={12} />}
                     {it.is_optional ? "Tuỳ chọn" : "Bắt buộc"}
                   </button>
-                  <button onClick={() => remove(idx)} className="btn-ghost px-2 py-1.5" title="Xoá">
-                    <Trash2 size={12} />
-                  </button>
+                  <button onClick={() => remove(idx)} className="btn-ghost px-2 py-1.5" title="Xoá"><Trash2 size={12} /></button>
                 </div>
               </div>
-              <input
-                className="input mt-2"
-                placeholder="Mô tả ngắn (tuỳ chọn)"
-                value={it.description}
-                onChange={(e) => update(idx, { description: e.target.value })}
-              />
+              <input className="input mt-2" placeholder="Mô tả ngắn (tuỳ chọn)" value={it.description} onChange={(e) => update(idx, { description: e.target.value })} />
               <p className="mt-1 text-right text-xs" style={{ color: "var(--text3)" }}>
                 Thành tiền: <b style={{ color: "var(--text)" }}>{vnd((it.qty || 0) * (it.unit_price || 0))}</b>
               </p>
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center justify-end gap-3 text-sm">
-          <span style={{ color: "var(--text2)" }}>Tổng tạm tính:</span>
-          <span className="text-lg font-medium text-accent" data-testid="quote-total">{vnd(total)}</span>
+        <div className="mt-4 flex flex-col items-end gap-1 text-sm">
+          <p style={{ color: "var(--text2)" }}>Tổng tạm tính: <span className="text-lg font-medium text-accent" data-testid="quote-total">{vnd(total)}</span></p>
+          <p className="text-xs" style={{ color: "var(--text3)" }}>
+            Cọc đề xuất (~{depositPct.toFixed(0)}%, làm tròn 500K): <b style={{ color: "var(--text2)" }}>{vnd(deposit)}</b>
+          </p>
         </div>
       </section>
 

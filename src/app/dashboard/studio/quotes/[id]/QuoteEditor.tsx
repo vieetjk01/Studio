@@ -14,6 +14,7 @@ import {
   type QuoteItem,
   type QuoteAdjustment,
 } from "@/lib/types";
+import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
 
 export default function QuoteEditor({
   quote: initialQuote,
@@ -38,6 +39,8 @@ export default function QuoteEditor({
   const shareUrl = mainUrl(`/q/${quote.client_token}`);
   const total = quoteSelectedTotal(items);
   const grossTotal = items.reduce((s, i) => s + (i.qty || 0) * (i.unit_price || 0), 0);
+  const deposit = computeRoundedDeposit(total);
+  const depositPct = depositRatio(total, deposit);
   const locked = quote.status === "accepted" || quote.status === "converted";
 
   function flash(text: string) {
@@ -196,14 +199,14 @@ export default function QuoteEditor({
           <Field label="Email">
             <input className="input" type="email" value={quote.client_email || ""} disabled={locked} onChange={(e) => patchQuote({ client_email: e.target.value })} />
           </Field>
+          <Field label="Link Facebook">
+            <input className="input" value={quote.client_facebook || ""} disabled={locked} placeholder="https://facebook.com/..." onChange={(e) => patchQuote({ client_facebook: e.target.value })} />
+          </Field>
           <Field label="Ngày sự kiện">
             <input type="date" className="input" value={quote.event_date || ""} disabled={locked} onChange={(e) => patchQuote({ event_date: e.target.value || null })} />
           </Field>
           <Field label="Địa điểm">
             <input className="input" value={quote.location || ""} disabled={locked} onChange={(e) => patchQuote({ location: e.target.value })} />
-          </Field>
-          <Field label="Tỷ lệ cọc (%)">
-            <input type="number" min={0} max={100} className="input" value={quote.deposit_percent} disabled={locked} onChange={(e) => patchQuote({ deposit_percent: Number(e.target.value) || 0 })} />
           </Field>
         </div>
         <Field label="Lời chào / Giới thiệu" className="mt-3">
@@ -286,7 +289,7 @@ export default function QuoteEditor({
           <p>
             <b className="text-base text-accent">Khách đang chọn: {vnd(total)}</b>
           </p>
-          <p className="text-xs">Cọc đề xuất ({quote.deposit_percent}%): {vnd(Math.round((total * quote.deposit_percent) / 100))}</p>
+          <p className="text-xs">Cọc đề xuất (~{depositPct.toFixed(0)}%, làm tròn 500K): {vnd(deposit)}</p>
         </div>
       </section>
 
