@@ -35,8 +35,6 @@ const TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, full: 2 };
 export default function StudioFooterNav({ tier, role }: Props) {
   const pathname = usePathname();
 
-  if (!pathname.startsWith("/dashboard/studio")) return null;
-
   // accountant sees only Tổng quan + Tài chính
   const items = role === "accountant"
     ? ALL_ITEMS.filter((i) => i.href === "/dashboard/studio" || i.href === "/dashboard/studio/reports")
