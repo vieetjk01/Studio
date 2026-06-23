@@ -1,15 +1,29 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 
+// Friendly Vietnamese label for the ?error=... codes we set in /auth/callback.
+function describeOAuthError(code: string | null): string | null {
+  if (!code) return null;
+  switch (code) {
+    case "oauth":
+      return "Đăng nhập Google thất bại. Vui lòng thử lại.";
+    case "missing_code":
+      return "Không nhận được mã từ Google. Vui lòng thử lại.";
+    case "access_denied":
+      return "Bạn đã hủy cho phép trên Google.";
+    default:
+      return `Đăng nhập Google thất bại: ${decodeURIComponent(code)}`;
+  }
+}
+
 function LoginForm() {
   const { t } = useLang();
-  const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
 
@@ -17,6 +31,13 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Surface OAuth callback errors (?error=...) so the user isn't left wondering
+  // why Google sign-in bounced them back here.
+  useEffect(() => {
+    const msg = describeOAuthError(params.get("error"));
+    if (msg) setError(msg);
+  }, [params]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,8 +76,11 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      router.push(next);
-      router.refresh();
+      // Full reload (not router.push) so the middleware on the next request
+      // definitely sees the freshly set auth cookies. router.push() can race
+      // with the browser persisting the session cookies, which is the classic
+      // "logged in but bounced back to /login" cache bug.
+      window.location.assign(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
       setLoading(false);
