@@ -1,21 +1,34 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { effectivePlan, studioTier, STUDIO_TIER_RANK } from "@/lib/plans";
 
-/** Returns the current admin profile, or null if the caller is not an admin. */
-export async function requireAdmin() {
+/**
+ * Per-request cached auth lookups. React `cache()` dedupes by arguments within
+ * a single server render pass, so middleware → layout → requireStudio() share
+ * ONE `getUser()` round-trip and ONE `profiles` read per id, instead of the
+ * 3× getUser + 2–3× profile queries we used to run on every navigation.
+ */
+export const getSessionUser = cache(async () => {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  return user;
+});
+
+export const getProfileById = cache(async (id: string) => {
+  const supabase = createClient();
+  const { data } = await supabase.from("profiles").select("*").eq("id", id).single();
+  return data;
+});
+
+/** Returns the current admin profile, or null if the caller is not an admin. */
+export async function requireAdmin() {
+  const user = await getSessionUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfileById(user.id);
   if (!profile || profile.role !== "admin" || !profile.is_active) return null;
   return profile;
 }
@@ -35,18 +48,15 @@ export async function requireAdmin() {
  *   "full"    — hợp đồng / tài chính / đội ngũ (Studio only). Default.
  */
 export async function requireStudio(minTier: "booking" | "full" = "full") {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return null;
 
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const me = await getProfileById(user.id);
   if (!me || !me.is_active) return null;
 
   // Staff sub-account: act on the owner's studio (inherits the owner's tier).
   if (me.studio_owner_id) {
-    const { data: owner } = await supabase.from("profiles").select("*").eq("id", me.studio_owner_id).single();
+    const owner = await getProfileById(me.studio_owner_id);
     if (!owner || !owner.is_active) return null;
     const tier = studioTier(effectivePlan(owner.plan, owner.plan_expires_at), owner.role === "admin");
     if (STUDIO_TIER_RANK[tier] < STUDIO_TIER_RANK[minTier]) return null;

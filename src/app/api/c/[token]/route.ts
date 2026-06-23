@@ -52,8 +52,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
     name: ownerObj?.pl_bank_name ?? null,
   };
 
-  // Phone gate: if the studio set a client phone, it must match.
-  if (contract.client_phone && digits(body.phone) !== digits(contract.client_phone)) {
+  // Phone gate (fail-closed): the client's phone is the view password. If the
+  // studio hasn't set one, the portal stays locked — we must never serve a
+  // contract's full details (client info, payments, signatures) to anyone who
+  // merely holds the token.
+  if (!contract.client_phone || digits(body.phone) !== digits(contract.client_phone)) {
     return NextResponse.json({ error: "wrong_phone" }, { status: 401 });
   }
 

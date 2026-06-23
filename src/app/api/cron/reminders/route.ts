@@ -9,8 +9,10 @@ export const dynamic = "force-dynamic";
 // Daily owner digest: shoots tomorrow, instalments due/overdue, late deliveries.
 // Scheduled via vercel.json crons (07:00 VN = 00:00 UTC).
 export async function GET(req: NextRequest) {
+  // Fail-closed: a missing CRON_SECRET must lock the endpoint, not open it —
+  // otherwise anyone could trigger the mass-email digest.
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

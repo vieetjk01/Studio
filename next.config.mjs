@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Tree-shake per-icon imports so navigating studio pages ships less JS.
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "drive.google.com" },

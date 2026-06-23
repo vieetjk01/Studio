@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUser, getProfileById } from "@/lib/auth-guards";
 import DashboardHeader from "@/components/DashboardHeader";
 import StudioFooterNav from "@/components/StudioFooterNav";
 import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
@@ -11,23 +12,16 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) redirect("/login");
 
-  let { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  let profile = await getProfileById(user.id);
 
   // Auto-downgrade an expired paid plan back to free (resets the synced limits).
   if (profile && profile.role !== "admin" && effectivePlan(profile.plan, profile.plan_expires_at) === "free" && profile.plan !== "free") {
     const patch = { ...planProfilePatch("free"), plan_cycle: null, plan_expires_at: null };
-    await supabase.from("profiles").update(patch).eq("id", user.id);
+    await createClient().from("profiles").update(patch).eq("id", user.id);
     profile = { ...profile, ...patch };
   }
 
