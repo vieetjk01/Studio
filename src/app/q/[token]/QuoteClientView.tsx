@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon, Sparkles, FileSignature, ExternalLink, Copy } from "lucide-react";
+import { Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon, Sparkles, FileSignature, ExternalLink, Copy, Tag } from "lucide-react";
 import {
   vnd,
   QUOTE_STATUS_LABEL,
@@ -173,6 +173,7 @@ export default function QuoteClientView({
           <div className="mt-3 space-y-2">
             {items.map((it) => {
               const isOn = !it.is_optional || it.selected;
+              const lineTotal = (it.qty || 0) * (it.unit_price || 0);
               return (
                 <button
                   key={it.id}
@@ -180,8 +181,12 @@ export default function QuoteClientView({
                   disabled={!it.is_optional || locked}
                   className="w-full rounded-lg border p-3 text-left transition"
                   style={{
-                    borderColor: isOn ? "var(--accent)" : "var(--border)",
-                    background: isOn ? "rgba(199,167,107,0.06)" : "transparent",
+                    borderColor: it.is_discount ? "#fb923c66" : isOn ? "var(--accent)" : "var(--border)",
+                    background: it.is_discount
+                      ? "rgba(251,146,60,0.06)"
+                      : isOn
+                      ? "rgba(199,167,107,0.06)"
+                      : "transparent",
                     cursor: it.is_optional && !locked ? "pointer" : "default",
                     opacity: isOn ? 1 : 0.55,
                   }}
@@ -190,16 +195,30 @@ export default function QuoteClientView({
                   <div className="flex items-start gap-3">
                     <div
                       className="mt-0.5 grid h-5 w-5 flex-shrink-0 place-items-center rounded border"
-                      style={{ borderColor: isOn ? "var(--accent)" : "var(--text3)", background: isOn ? "var(--accent)" : "transparent" }}
+                      style={{
+                        borderColor: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "var(--text3)",
+                        background: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "transparent",
+                      }}
                     >
-                      {!it.is_optional ? <Lock size={11} color="#000" /> : isOn ? <Check size={12} color="#000" /> : null}
+                      {it.is_discount ? (
+                        <Tag size={11} color="#000" />
+                      ) : !it.is_optional ? (
+                        <Lock size={11} color="#000" />
+                      ) : isOn ? (
+                        <Check size={12} color="#000" />
+                      ) : null}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{it.name}</p>
+                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : undefined }}>
+                        {it.is_discount && "🏷️ "}
+                        {it.name}
+                      </p>
                       {it.description && <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
                       <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{it.qty} × {vnd(it.unit_price)}</p>
                     </div>
-                    <p className="text-sm font-medium text-accent">{vnd((it.qty || 0) * (it.unit_price || 0))}</p>
+                    <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : "var(--accent)" }}>
+                      {it.is_discount ? "−" : ""}{vnd(lineTotal)}
+                    </p>
                   </div>
                 </button>
               );

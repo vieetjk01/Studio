@@ -38,14 +38,20 @@ export async function convertQuoteToContract(
 
   const { data: items } = await db
     .from("quote_items")
-    .select("name, qty, unit_price, is_optional, selected, position")
+    .select("name, qty, unit_price, is_optional, is_discount, selected, position")
     .eq("quote_id", quote.id)
     .order("position");
 
   const chosen = (items ?? []).filter((it) => !it.is_optional || it.selected);
   if (chosen.length === 0) return { ok: false, error: "Không có hạng mục nào được chọn." };
 
-  const total = chosen.reduce((s, it) => s + (it.qty || 0) * (it.unit_price || 0), 0);
+  // Total = (positive lines) - (discount lines). Discount lines are carried
+  // into contract_items with a negative unit_price so the contract math
+  // stays consistent without a separate column.
+  const total = chosen.reduce((s, it) => {
+    const line = (it.qty || 0) * (it.unit_price || 0);
+    return it.is_discount ? s - line : s + line;
+  }, 0);
   const deposit = computeRoundedDeposit(total);
 
   const code = await nextContractCode(db, quote.owner_id);
@@ -73,9 +79,9 @@ export async function convertQuoteToContract(
   if (cErr || !contract) return { ok: false, error: cErr?.message || "Tạo hợp đồng thất bại" };
   const rows = chosen.map((it, idx) => ({
     contract_id: contract.id,
-    name: it.name,
+    name: it.is_discount ? `🏷️ ${it.name}` : it.name,
     qty: it.qty,
-    unit_price: it.unit_price,
+    unit_price: it.is_discount ? -Math.abs(it.unit_price || 0) : it.unit_price,
     position: idx,
   }));
   const { error: iErr } = await db.from("contract_items").insert(rows);

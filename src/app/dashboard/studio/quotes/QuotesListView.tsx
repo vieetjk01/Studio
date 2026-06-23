@@ -6,7 +6,7 @@ import { vnd, QUOTE_STATUS_LABEL, quoteSelectedTotal, type StudioQuote, type Quo
 import { mainUrl } from "@/lib/hosts";
 
 export type QuoteRow = StudioQuote & {
-  quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean }[];
+  quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount: boolean }[];
   quote_adjustments: { id: string; resolved: boolean }[];
 };
 

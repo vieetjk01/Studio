@@ -1364,6 +1364,11 @@ alter table public.studio_quotes add column if not exists auto_create_contract  
 -- Contracts now also keep a Facebook link (auto-filled when spawned from a quote).
 alter table public.studio_contracts add column if not exists client_facebook text;
 
+-- Mark a quote_item as a discount/combo line: it is subtracted from the total
+-- instead of added. The same row stays in quote_items so the studio can edit
+-- the name (e.g. "Giảm combo cưới"), amount, and whether it is optional.
+alter table public.quote_items add column if not exists is_discount boolean not null default false;
+
 
 -- ============================================================================
 -- Promote your first admin (replace the email), run AFTER signing up once:

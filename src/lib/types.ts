@@ -713,6 +713,7 @@ export interface QuoteItem {
   qty: number;
   unit_price: number;
   is_optional: boolean;
+  is_discount: boolean;
   selected: boolean;
   position: number;
   created_at: string;
@@ -727,7 +728,18 @@ export interface QuoteAdjustment {
   created_at: string;
 }
 
-/** Sum the items the client has currently selected (required items always count). */
-export function quoteSelectedTotal(items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean }[]): number {
-  return items.reduce((s, i) => s + ((i.selected || !i.is_optional) ? (i.qty || 0) * (i.unit_price || 0) : 0), 0);
+/**
+ * Total of the items the client currently has selected. Discount items
+ * (is_discount=true) are subtracted; regular items are added. Required items
+ * (is_optional=false) always count regardless of `selected`.
+ */
+export function quoteSelectedTotal(
+  items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount?: boolean }[]
+): number {
+  return items.reduce((sum, i) => {
+    const active = i.selected || !i.is_optional;
+    if (!active) return sum;
+    const line = (i.qty || 0) * (i.unit_price || 0);
+    return i.is_discount ? sum - line : sum + line;
+  }, 0);
 }
