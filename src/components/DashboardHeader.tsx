@@ -10,7 +10,7 @@ import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
-import { appUrl, imgUrl, studioUrl } from "@/lib/hosts";
+import { appUrl, imgUrl, studioUrl, adminUrl } from "@/lib/hosts";
 import { effectivePlan, studioTier, STUDIO_TIER_RANK, type StudioTier } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
@@ -32,7 +32,7 @@ export default function DashboardHeader({
   kind = "app",
 }: {
   profile: Profile;
-  kind?: "app" | "img" | "studio";
+  kind?: "app" | "img" | "studio" | "admin";
 }) {
   const { t } = useLang();
   const router = useRouter();
@@ -131,6 +131,12 @@ export default function DashboardHeader({
           { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
           { href: appUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
         ]
+      : kind === "admin"
+      ? [
+          { href: "/dashboard/admin", label: t("admin") },
+          { href: "/dashboard/settings", label: t("settings") },
+          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+        ]
       : [
           { href: "/dashboard", label: t("myAlbums") },
           { href: "/dashboard/create", label: t("newAlbum") },
@@ -141,8 +147,8 @@ export default function DashboardHeader({
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),
           ...(profile.role === "admin"
             ? [
-                { href: "/dashboard/admin", label: t("admin") },
-                { href: "/dashboard/settings", label: t("settings") },
+                { href: adminUrl("/dashboard/admin"), label: t("admin"), external: !!process.env.NEXT_PUBLIC_ADMIN_HOST },
+                { href: adminUrl("/dashboard/settings"), label: t("settings"), external: !!process.env.NEXT_PUBLIC_ADMIN_HOST },
               ]
             : []),
         ];

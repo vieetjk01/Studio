@@ -11,8 +11,12 @@ const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
 const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
 // Studio-management subdomain (studio.mstudo.com).
 const STUDIO_HOST = process.env.NEXT_PUBLIC_STUDIO_HOST;
+// Admin subdomain (admin.mstudo.com) — site administration + settings.
+const ADMIN_HOST = process.env.NEXT_PUBLIC_ADMIN_HOST;
 const COMPRESS_PATH = "/dashboard/compress";
 const STUDIO_PATH = "/dashboard/studio";
+const ADMIN_PATH = "/dashboard/admin";
+const SETTINGS_PATH = "/dashboard/settings";
 // Client delivery galleries are part of the studio module (studio.mstudo.com).
 const GALLERIES_PATH = "/dashboard/galleries";
 
@@ -39,6 +43,16 @@ function isStudioPath(path: string) {
   );
 }
 
+// Paths allowed on the admin host: site administration, settings, and auth.
+function isAdminPath(path: string) {
+  return (
+    path.startsWith(ADMIN_PATH) ||
+    path.startsWith(SETTINGS_PATH) ||
+    path.startsWith("/login") ||
+    path.startsWith("/auth")
+  );
+}
+
 const APP_PREFIXES = ["/dashboard", "/login", "/a/", "/start", "/auth"];
 const MAIN_PREFIXES = ["/showcase", "/album"];
 
@@ -57,7 +71,7 @@ export async function middleware(request: NextRequest) {
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
   if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`)) {
     const systemHosts = new Set(
-      [MAIN_HOST, APP_HOST, IMG_HOST, STUDIO_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
+      [MAIN_HOST, APP_HOST, IMG_HOST, STUDIO_HOST, ADMIN_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
     );
     if (!systemHosts.has(host)) {
       const sub = host.slice(0, -(`.${MAIN_HOST}`.length));
@@ -84,6 +98,10 @@ export async function middleware(request: NextRequest) {
       // Studio management + client galleries are centralised on the studio subdomain.
       if (STUDIO_HOST && (pathname.startsWith(STUDIO_PATH) || pathname.startsWith(GALLERIES_PATH))) {
         return NextResponse.redirect(new URL(pathname + search, `https://${STUDIO_HOST}`));
+      }
+      // Admin + settings are centralised on the admin subdomain.
+      if (ADMIN_HOST && (pathname.startsWith(ADMIN_PATH) || pathname.startsWith(SETTINGS_PATH))) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${ADMIN_HOST}`));
       }
       // App subdomain home = the public "create album" landing + guide.
       if (pathname === "/") {
@@ -113,6 +131,16 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(STUDIO_PATH, request.url));
       }
       if (!isStudioPath(pathname)) {
+        return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
+      }
+    }
+
+    // Admin subdomain: only site administration, settings + auth.
+    if (ADMIN_HOST && host === ADMIN_HOST) {
+      if (pathname === "/") {
+        return NextResponse.redirect(new URL(ADMIN_PATH, request.url));
+      }
+      if (!isAdminPath(pathname)) {
         return NextResponse.redirect(new URL(pathname + search, `https://${APP_HOST}`));
       }
     }
