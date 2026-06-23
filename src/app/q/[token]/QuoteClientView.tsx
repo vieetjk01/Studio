@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon, Sparkles } from "lucide-react";
+import { Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon, Sparkles, FileSignature, ExternalLink, Copy } from "lucide-react";
 import {
   vnd,
   QUOTE_STATUS_LABEL,
@@ -11,6 +11,7 @@ import {
   type QuoteAdjustment,
 } from "@/lib/types";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
+import { mainUrl } from "@/lib/hosts";
 
 export default function QuoteClientView({
   quote,
@@ -18,12 +19,14 @@ export default function QuoteClientView({
   initialAdjustments,
   studioName,
   studioCanContract,
+  initialContractToken,
 }: {
   quote: StudioQuote;
   initialItems: QuoteItem[];
   initialAdjustments: QuoteAdjustment[];
   studioName: string;
   studioCanContract: boolean;
+  initialContractToken: string | null;
 }) {
   const [items, setItems] = useState(initialItems);
   const [adjustments, setAdjustments] = useState(initialAdjustments);
@@ -32,7 +35,8 @@ export default function QuoteClientView({
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(quote.status === "accepted" || quote.status === "converted");
-  const [autoContractCreated, setAutoContractCreated] = useState(quote.status === "converted");
+  const [contractToken, setContractToken] = useState<string | null>(initialContractToken);
+  const [copied, setCopied] = useState(false);
 
   // Client-info form (pre-filled with whatever the studio already entered).
   const [clientName, setClientName] = useState(quote.client_name || "");
@@ -117,7 +121,7 @@ export default function QuoteClientView({
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Lỗi");
       setAccepted(true);
-      setAutoContractCreated(!!data.auto_created);
+      if (data.contract_token) setContractToken(data.contract_token);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lỗi");
     } finally {
@@ -326,14 +330,46 @@ export default function QuoteClientView({
             <ShieldCheck size={18} /> {accepting ? "Đang xử lý…" : "Tôi đồng ý với báo giá này"}
           </button>
         ) : accepted ? (
-          <div className="rounded-lg p-5 text-center" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)" }} data-testid="quote-accepted-banner">
-            <Check size={32} className="mx-auto text-green-400" />
-            <p className="mt-2 font-medium text-green-400">Bạn đã đồng ý với báo giá này</p>
-            <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>
-              {autoContractCreated
-                ? `Hợp đồng đã được tạo. ${studioName} sẽ gửi cho bạn ký trong thời gian sớm nhất.`
-                : `${studioName} sẽ liên hệ để gửi hợp đồng. Cảm ơn bạn!`}
-            </p>
+          <div className="rounded-lg p-6 text-center" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)" }} data-testid="quote-accepted-banner">
+            <Check size={36} className="mx-auto text-green-400" />
+            <p className="mt-3 text-lg font-medium text-green-400">Bạn đã đồng ý với báo giá này</p>
+            {contractToken ? (
+              <>
+                <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+                  Hợp đồng đã được tạo tự động. Bấm nút dưới để xem chi tiết và ký xác nhận khi sẵn sàng.
+                </p>
+                <div className="mt-4 flex flex-col items-center gap-2">
+                  <a
+                    href={mainUrl(`/c/${contractToken}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-primary inline-flex items-center gap-2 px-5 py-2.5"
+                    data-testid="contract-view-link"
+                  >
+                    <FileSignature size={16} /> Xem hợp đồng
+                    <ExternalLink size={12} />
+                  </a>
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(mainUrl(`/c/${contractToken}`));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1800);
+                    }}
+                    className="btn-ghost inline-flex items-center gap-1.5 text-xs"
+                    data-testid="contract-copy-link"
+                  >
+                    <Copy size={12} /> {copied ? "Đã copy ✓" : "Copy link hợp đồng để lưu lại"}
+                  </button>
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                    Giữ link này — bạn có thể quay lại xem hợp đồng bất cứ lúc nào.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+                {studioName} sẽ liên hệ để gửi hợp đồng cho bạn. Cảm ơn bạn!
+              </p>
+            )}
           </div>
         ) : (
           <p className="text-center text-sm" style={{ color: "var(--text3)" }}>Báo giá này không thể thao tác.</p>

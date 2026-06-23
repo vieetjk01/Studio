@@ -108,7 +108,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
       if (tier === "full") {
         const result = await convertQuoteToContract(db, quote.id);
         if (result.ok) {
-          return NextResponse.json({ ok: true, contract_id: result.contract_id, auto_created: true });
+          return NextResponse.json({
+            ok: true,
+            contract_id: result.contract_id,
+            contract_token: result.contract_token,
+            auto_created: true,
+          });
         }
         // Conversion failed — still report accept success so the client UI doesn't break.
         return NextResponse.json({ ok: true, auto_created: false, convert_error: result.error });

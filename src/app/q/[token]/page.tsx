@@ -23,10 +23,15 @@ export default async function QuoteClientPage({ params }: { params: { token: str
     await db.from("studio_quotes").update({ status: "viewed", viewed_at: new Date().toISOString() }).eq("id", quote.id);
   }
 
-  const [{ data: items }, { data: adjustments }, { data: owner }] = await Promise.all([
+  const [{ data: items }, { data: adjustments }, { data: owner }, contractRes] = await Promise.all([
     db.from("quote_items").select("*").eq("quote_id", quote.id).order("position"),
     db.from("quote_adjustments").select("*").eq("quote_id", quote.id).order("created_at", { ascending: true }),
     db.from("profiles").select("full_name, email, plan, plan_expires_at, role").eq("id", quote.owner_id).maybeSingle(),
+    // If a contract has already been spawned from this quote (auto-create on a
+    // previous visit), fetch its client_token so we can show the link on reload.
+    quote.contract_id
+      ? db.from("studio_contracts").select("client_token").eq("id", quote.contract_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   // Photographers (booking tier) don't have the contract feature, so we hide
@@ -42,6 +47,7 @@ export default async function QuoteClientPage({ params }: { params: { token: str
       initialAdjustments={(adjustments ?? []) as QuoteAdjustment[]}
       studioName={(owner?.full_name || "Studio") as string}
       studioCanContract={studioCanContract}
+      initialContractToken={contractRes?.data?.client_token ?? null}
     />
   );
 }

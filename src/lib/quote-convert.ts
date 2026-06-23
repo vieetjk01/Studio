@@ -3,7 +3,7 @@ import { nextContractCode, newShareToken } from "@/lib/contract-code";
 import { computeRoundedDeposit } from "@/lib/quote-deposit";
 
 export type ConvertResult =
-  | { ok: true; contract_id: string }
+  | { ok: true; contract_id: string; contract_token: string }
   | { ok: false; error: string };
 
 /**
@@ -60,7 +60,6 @@ export async function convertQuoteToContract(
     .select("id")
     .single();
   if (cErr || !contract) return { ok: false, error: cErr?.message || "Tạo hợp đồng thất bại" };
-
   const rows = chosen.map((it, idx) => ({
     contract_id: contract.id,
     name: it.name,
@@ -80,5 +79,5 @@ export async function convertQuoteToContract(
     .update({ status: "converted", contract_id: contract.id })
     .eq("id", quote.id);
 
-  return { ok: true, contract_id: contract.id };
+  return { ok: true, contract_id: contract.id, contract_token: token };
 }
