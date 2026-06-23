@@ -71,11 +71,9 @@ on conflict (id) do update set role='admin', is_active=true;`}
   // The header shows a focused menu per subdomain: just the compress tool on
   // img.mstudo.com, the studio-management nav on studio.mstudo.com.
   const host = headers().get("host")?.split(":")[0] ?? "";
-  const kind: "app" | "img" | "studio" | "admin" =
+  const kind: "app" | "img" | "admin" =
     process.env.NEXT_PUBLIC_IMG_HOST && host === process.env.NEXT_PUBLIC_IMG_HOST
       ? "img"
-      : process.env.NEXT_PUBLIC_STUDIO_HOST && host === process.env.NEXT_PUBLIC_STUDIO_HOST
-      ? "studio"
       : process.env.NEXT_PUBLIC_ADMIN_HOST && host === process.env.NEXT_PUBLIC_ADMIN_HOST
       ? "admin"
       : "app";

@@ -18,7 +18,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { studioUrl, mainUrl } from "@/lib/hosts";
+import { appUrl, mainUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
@@ -1472,7 +1472,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               {busy === "crew" ? "Đang lưu…" : "Lưu nhân sự & lương"}
             </button>
             <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
-              Thợ tự nhập SĐT tại {studioUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
+              Thợ tự nhập SĐT tại {appUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
             </p>
           </div>
 
