@@ -13,6 +13,7 @@ import {
   type StudioQuote,
   type QuoteItem,
   type QuoteAdjustment,
+  type QuoteStatus,
 } from "@/lib/types";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
 
@@ -188,6 +189,18 @@ export default function QuoteEditor({
     if (error) setErr(error.message);
   }
 
+  async function changeStatus(status: QuoteStatus) {
+    if (status === quote.status) return;
+    // Converting is special — it spawns a contract. Keep that on the dedicated
+    // button so the studio doesn't trigger it accidentally from the dropdown.
+    if (status === "converted") {
+      setErr("Để chuyển sang 'Đã tạo hợp đồng', dùng nút Tạo hợp đồng.");
+      return;
+    }
+    await patchQuoteImmediate({ status });
+    flash(`Đã chuyển trạng thái: ${QUOTE_STATUS_LABEL[status]}`);
+  }
+
   async function addItem(asDiscount: boolean) {
     const position = items.length;
     const { data, error } = await supabase
@@ -289,6 +302,20 @@ export default function QuoteEditor({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text3)" }}>
+            Trạng thái
+            <select
+              className="input py-1.5 text-xs"
+              style={{ width: "auto" }}
+              value={quote.status === "converted" ? "converted" : quote.status}
+              onChange={(e) => changeStatus(e.target.value as QuoteStatus)}
+              data-testid="quote-status-select"
+            >
+              {(Object.keys(QUOTE_STATUS_LABEL) as QuoteStatus[]).map((k) => (
+                <option key={k} value={k} disabled={k === "converted"}>{QUOTE_STATUS_LABEL[k]}</option>
+              ))}
+            </select>
+          </label>
           {!locked && (
             <button
               onClick={saveAll}
