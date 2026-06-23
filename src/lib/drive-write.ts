@@ -61,7 +61,7 @@ export async function createDriveFile(
   name: string,
   blob: Blob
 ): Promise<string> {
-  const boundary = `vieetjk-${Date.now()}-${blob.size}`;
+  const boundary = `mstudo-${Date.now()}-${blob.size}`;
   const metadata = { name, parents: [parentId] };
   const body = new Blob([
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,

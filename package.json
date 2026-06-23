@@ -1,8 +1,8 @@
 {
-  "name": "vieetjk-photo-collection",
+  "name": "mstudo",
   "version": "1.0.0",
   "private": true,
-  "description": "Vieetjk photo collection for customers - minimalist dark photo selection platform",
+  "description": "mstudo - minimalist dark photo selection platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

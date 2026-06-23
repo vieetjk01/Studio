@@ -180,7 +180,7 @@ export interface Selection {
   created_at: string;
 }
 
-// ── Studio module (studio.vieetjk.com) ──────────────────────────────────────
+// ── Studio module (studio.mstudo.com) ──────────────────────────────────────
 
 export type ShootType =
   | "photo"
@@ -639,7 +639,7 @@ export interface SiteBlock {
 export const RESERVED_SUBDOMAINS = new Set([
   "www", "app", "album", "img", "image", "images", "studio", "api", "admin",
   "mail", "smtp", "ftp", "cdn", "static", "assets", "blog", "help", "support",
-  "dashboard", "login", "auth", "vieetjk", "test", "dev", "staging",
+  "dashboard", "login", "auth", "vieetjk", "mstudo", "test", "dev", "staging",
 ]);
 
 /** Sum of a list of payment amounts. */

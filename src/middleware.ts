@@ -2,18 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Domain split (set these on Vercel to enable it):
-//   NEXT_PUBLIC_MAIN_HOST = vieetjk.com         -> public profile / showcase
-//   NEXT_PUBLIC_APP_HOST  = album.vieetjk.com   -> login / dashboard / selection
+//   NEXT_PUBLIC_MAIN_HOST = mstudo.com         -> public profile / showcase
+//   NEXT_PUBLIC_APP_HOST  = album.mstudo.com   -> login / dashboard / selection
 // When unset (local dev, *.vercel.app previews) the full app is served on one host.
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
-// Image-tools subdomain (img.vieetjk.com) — home of the "Nén ảnh" compress tool.
+// Image-tools subdomain (img.mstudo.com) — home of the "Nén ảnh" compress tool.
 const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
-// Studio-management subdomain (studio.vieetjk.com).
+// Studio-management subdomain (studio.mstudo.com).
 const STUDIO_HOST = process.env.NEXT_PUBLIC_STUDIO_HOST;
 const COMPRESS_PATH = "/dashboard/compress";
 const STUDIO_PATH = "/dashboard/studio";
-// Client delivery galleries are part of the studio module (studio.vieetjk.com).
+// Client delivery galleries are part of the studio module (studio.mstudo.com).
 const GALLERIES_PATH = "/dashboard/galleries";
 
 // Paths that are allowed to live on the image-tools host.
@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const { pathname, search } = request.nextUrl;
 
-  // ── Tenant sites: <subdomain>.vieetjk.com → /site/<subdomain> ─────────────
+  // ── Tenant sites: <subdomain>.mstudo.com → /site/<subdomain> ─────────────
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
   if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`)) {
     const systemHosts = new Set(
@@ -143,7 +143,7 @@ export async function middleware(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        // Share the session cookie across vieetjk.com subdomains (album / img).
+        // Share the session cookie across mstudo.com subdomains (album / img).
         ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
         cookies: {
           getAll() {

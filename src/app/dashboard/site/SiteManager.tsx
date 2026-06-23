@@ -327,7 +327,7 @@ export default function SiteManager({
 
         <div className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
           <input className="input h-8 w-32 text-xs" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
-          <span className="text-xs" style={{ color: "var(--text3)" }}>.{mainHost || "vieetjk.com"}</span>
+          <span className="text-xs" style={{ color: "var(--text3)" }}>.{mainHost || "mstudo.com"}</span>
           <label className="flex items-center gap-1 whitespace-nowrap text-xs" style={{ color: "var(--text2)" }}>
             <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} /> Xuất bản
           </label>

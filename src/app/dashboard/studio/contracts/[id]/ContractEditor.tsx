@@ -208,7 +208,7 @@ export default function ContractEditor({
   const productCost = products.reduce((s, p) => s + (Number(p.cost) || 0) * (Number(p.qty) || 1), 0);
   const profit = total - payroll - expenseTotal - productCost;
   const qrInfo = (contract.code || contract.title || "").slice(0, 25);
-  // Unified client portal lives on the main site (vieetjk.com/c/<token>).
+  // Unified client portal lives on the main site (mstudo.com/c/<token>).
   const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
   // Required fields — flagged red until valid. Phone must be 10 digits.
