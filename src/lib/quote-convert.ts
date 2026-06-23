@@ -23,7 +23,18 @@ export async function convertQuoteToContract(
     .eq("id", quoteId)
     .maybeSingle();
   if (!quote) return { ok: false, error: "Báo giá không tồn tại." };
-  if (quote.contract_id) return { ok: true, contract_id: quote.contract_id };
+  if (quote.contract_id) {
+    // Already converted — fetch the contract's share token so callers can link to it.
+    const { data: existing } = await db
+      .from("studio_contracts")
+      .select("client_token")
+      .eq("id", quote.contract_id)
+      .maybeSingle();
+    if (existing?.client_token) {
+      return { ok: true, contract_id: quote.contract_id, contract_token: existing.client_token };
+    }
+    return { ok: false, error: "Hợp đồng đã tạo trước đó nhưng không tìm thấy token." };
+  }
 
   const { data: items } = await db
     .from("quote_items")
