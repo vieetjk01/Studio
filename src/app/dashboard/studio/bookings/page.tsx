@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import type { StudioBooking } from "@/lib/types";
 import BookingsView from "./BookingsView";
 
-export const dynamic = "force-dynamic";
 
 export default async function BookingsPage() {
   const profile = await requireStudio("booking");

@@ -4,7 +4,6 @@ import { fetchAllPhotos } from "@/lib/photos";
 import GalleryEditor from "./GalleryEditor";
 import type { Album, AlbumSource, Photo, Feedback } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const { data } = await createClient().from("albums").select("title").eq("id", params.id).maybeSingle();

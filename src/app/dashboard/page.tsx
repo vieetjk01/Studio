@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import AlbumList from "./AlbumList";
 
-export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = createClient();

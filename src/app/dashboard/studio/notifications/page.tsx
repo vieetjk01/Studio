@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import type { StudioNotification } from "@/lib/types";
 import NotificationsList from "./NotificationsList";
 
-export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
   const profile = await requireStudio();

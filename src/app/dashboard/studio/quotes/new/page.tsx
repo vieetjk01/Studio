@@ -1,7 +1,6 @@
 import { requireStudio } from "@/lib/auth-guards";
 import NewQuoteForm from "./NewQuoteForm";
 
-export const dynamic = "force-dynamic";
 
 export default async function NewQuotePage() {
   const profile = await requireStudio("booking");

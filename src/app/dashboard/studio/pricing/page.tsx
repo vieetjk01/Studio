@@ -5,7 +5,6 @@ import { ALL_SEED } from "@/lib/pricelist-seeds";
 import type { PricelistItem } from "@/lib/types";
 import PricingManager from "./PricingManager";
 
-export const dynamic = "force-dynamic";
 
 export default async function PricingPage() {
   const profile = await requireStudio("booking");

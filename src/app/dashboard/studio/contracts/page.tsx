@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import ContractsListView, { type ContractRow } from "./ContractsListView";
 
-export const dynamic = "force-dynamic";
 
 export default async function ContractsList() {
   const profile = await requireStudio();

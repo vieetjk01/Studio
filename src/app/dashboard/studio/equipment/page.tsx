@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import type { StudioEquipment } from "@/lib/types";
 import EquipmentManager from "./EquipmentManager";
 
-export const dynamic = "force-dynamic";
 
 export default async function EquipmentPage() {
   const profile = await requireStudio();

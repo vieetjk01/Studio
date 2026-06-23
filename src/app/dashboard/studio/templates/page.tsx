@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import TemplatesManager, { type TemplateWithItems } from "./TemplatesManager";
 
-export const dynamic = "force-dynamic";
 
 export default async function TemplatesPage() {
   const profile = await requireStudio();

@@ -4,7 +4,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import SettingsPanel from "./SettingsPanel";
 import type { SiteSettings, Booking, UpgradeRequest, DiscountCode } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const supabase = createClient();

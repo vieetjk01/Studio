@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import ProductionView, { type ProductRow } from "./ProductionView";
 
-export const dynamic = "force-dynamic";
 
 export default async function ProductionPage() {
   const profile = await requireStudio();

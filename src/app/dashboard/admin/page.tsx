@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import AdminPanel from "./AdminPanel";
 import type { Profile } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const supabase = createClient();

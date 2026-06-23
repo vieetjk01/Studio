@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { vnd, CREW_ROLE_LABEL, type CrewRole } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 

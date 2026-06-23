@@ -4,7 +4,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import QuoteEditor from "./QuoteEditor";
 import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 export default async function QuoteDetailPage({ params }: { params: { id: string } }) {
   const profile = await requireStudio("booking");

@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import NewContractForm, { type TemplateOption } from "./NewContractForm";
 
-export const dynamic = "force-dynamic";
 
 export default async function NewContractPage() {
   const profile = await requireStudio();

@@ -11,7 +11,6 @@ import {
   type ContractStatus,
 } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 

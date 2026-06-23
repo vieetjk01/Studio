@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import QuotesListView, { type QuoteRow } from "./QuotesListView";
 
-export const dynamic = "force-dynamic";
 
 export default async function QuotesList() {
   const profile = await requireStudio("booking");

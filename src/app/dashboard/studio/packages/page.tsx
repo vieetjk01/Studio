@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import type { StudioPackage } from "@/lib/types";
 import PackagesManager from "./PackagesManager";
 
-export const dynamic = "force-dynamic";
 
 export default async function PackagesPage() {
   const profile = await requireStudio();

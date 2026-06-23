@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import { LEAD_SOURCE_LABEL, contractTotal, sumAmounts, type StudioExpense } from "@/lib/types";
 import ReportsView, { type PaymentRow, type SalaryRow, type SourceStat } from "./ReportsView";
 
-export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
   const profile = await requireStudio();

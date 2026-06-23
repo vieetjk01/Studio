@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import type { MessageTemplate } from "@/lib/types";
 import MessagesManager from "./MessagesManager";
 
-export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const profile = await requireStudio();

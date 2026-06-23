@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import PayrollView, { type PayrollRow } from "./PayrollView";
 
-export const dynamic = "force-dynamic";
 
 export default async function PayrollPage() {
   const profile = await requireStudio();

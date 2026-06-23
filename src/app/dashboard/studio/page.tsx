@@ -18,8 +18,6 @@ import {
   type CrewRole,
 } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
 const STATUS_TONE: Record<ContractStatus, string> = {
   draft: "var(--text3)",
   sent: "#c7a76b",

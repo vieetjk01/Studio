@@ -3,7 +3,6 @@ import { requireStudio } from "@/lib/auth-guards";
 import { contractTotal, sumAmounts } from "@/lib/types";
 import ClientsView, { type ClientAgg } from "./ClientsView";
 
-export const dynamic = "force-dynamic";
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 

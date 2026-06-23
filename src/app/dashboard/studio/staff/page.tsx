@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import StaffManager, { type StaffRow } from "./StaffManager";
 
-export const dynamic = "force-dynamic";
 
 export default async function StaffPage() {
   const ctx = await requireStudio();

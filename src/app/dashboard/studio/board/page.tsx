@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import BoardView, { type BoardCard } from "./BoardView";
 
-export const dynamic = "force-dynamic";
 
 export default async function BoardPage() {
   const profile = await requireStudio();

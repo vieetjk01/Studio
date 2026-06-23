@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import SelectionsView from "./SelectionsView";
 import type { Album, Photo, Selection } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 export default async function SelectionsPage({
   params,

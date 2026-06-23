@@ -4,7 +4,6 @@ import { mainUrl } from "@/lib/hosts";
 import type { StudioEvent } from "@/lib/types";
 import CalendarView, { type ContractMarker } from "./CalendarView";
 
-export const dynamic = "force-dynamic";
 
 export default async function CalendarPage() {
   const profile = await requireStudio("booking");

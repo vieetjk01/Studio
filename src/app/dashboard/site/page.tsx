@@ -3,7 +3,6 @@ import { effectivePlan } from "@/lib/plans";
 import SiteManager from "./SiteManager";
 import type { Site, SiteBlock } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
 
 export default async function SiteBuilderPage() {
   const supabase = createClient();

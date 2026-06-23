@@ -3,7 +3,6 @@ import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import GalleryCards from "./GalleryCards";
 
-export const dynamic = "force-dynamic";
 
 export default async function GalleriesPage() {
   const supabase = createClient();

@@ -17,7 +17,6 @@ import type {
 } from "@/lib/types";
 import ContractEditor from "./ContractEditor";
 
-export const dynamic = "force-dynamic";
 
 export default async function ContractPage({ params }: { params: { id: string } }) {
   const profile = await requireStudio();
