@@ -47,9 +47,8 @@ export default async function RankingPage() {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Xếp hạng photographer</h1>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Xếp hạng photographer</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Theo số buổi đã nhận &amp; thu nhập từ studio.</p>
       </div>
 

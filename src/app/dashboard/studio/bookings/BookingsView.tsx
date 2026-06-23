@@ -76,9 +76,8 @@ export default function BookingsView({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Đặt lịch online</h1>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Đặt lịch online</h1>
       </div>
 
       {/* Share link */}

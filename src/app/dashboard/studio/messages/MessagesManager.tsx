@@ -67,9 +67,8 @@ export default function MessagesManager({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-8">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Mẫu tin nhắn</h1>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Mẫu tin nhắn</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Lưu sẵn lời nhắn (nhắc lịch, xin đánh giá, nhắc công nợ…) để chép nhanh gửi Zalo/Messenger/email.</p>
       </div>
 

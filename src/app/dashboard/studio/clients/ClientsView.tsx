@@ -65,33 +65,18 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý studio</p>
-          <h1 className="font-serif text-3xl font-medium">Khách hàng</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
-            {clients.length} khách · {returning} khách quay lại (chụp ≥ 2 lần)
-          </p>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium">Khách hàng</h1>
         {clients.length > 0 && (
-          <button onClick={exportCsv} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> CSV</button>
-        )}
-      </div>
-
-      {clients.length === 0 ? (
-        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Chưa có khách hàng nào.</div>
-      ) : (
-        <>
-          <div className="mb-5 flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
+          <>
+            <div className="relative min-w-[160px] flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text3)" }} />
-              <input className="input pl-9" placeholder="Tìm theo tên hoặc SĐT…" value={q} onChange={(e) => setQ(e.target.value)} />
+              <input className="input pl-9" placeholder="Tên hoặc SĐT…" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
             <select
-              className="input shrink-0 w-auto py-2 text-xs"
+              className="input shrink-0 w-auto"
               value={sort}
               onChange={(e) => setSort(e.target.value as "recent" | "value" | "count")}
-              title="Sắp xếp"
             >
               <option value="recent">Gần đây nhất</option>
               <option value="value">Chi nhiều nhất</option>
@@ -104,7 +89,15 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
             >
               <HeartHandshake size={13} className="mr-1 inline" /> Lâu chưa quay lại ({oldCount})
             </button>
-          </div>
+            <button onClick={exportCsv} className="btn-ghost shrink-0 px-3 py-2 text-xs"><Download size={14} /> CSV</button>
+          </>
+        )}
+      </div>
+
+      {clients.length === 0 ? (
+        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Chưa có khách hàng nào.</div>
+      ) : (
+        <>
           {filtered.length === 0 ? (
             <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>Không tìm thấy khách phù hợp.</div>
           ) : (

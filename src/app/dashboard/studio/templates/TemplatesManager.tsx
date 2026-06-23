@@ -116,11 +116,8 @@ export default function TemplatesManager({
           {msg}
         </div>
       )}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý studio</p>
-          <h1 className="font-serif text-3xl font-medium">Mẫu hợp đồng</h1>
-        </div>
+      <div className="mb-4 flex items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium mr-auto">Mẫu hợp đồng</h1>
         <button onClick={createTemplate} disabled={busy} className="btn-primary">
           <Plus size={16} /> Mẫu mới
         </button>

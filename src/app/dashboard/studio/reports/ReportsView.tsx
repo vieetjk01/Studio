@@ -143,11 +143,8 @@ export default function ReportsView({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý studio</p>
-          <h1 className="font-serif text-3xl font-medium">Thu chi &amp; doanh thu</h1>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium mr-auto">Thu chi &amp; doanh thu</h1>
         <div className="flex items-center gap-2">
           <button onClick={exportCsv} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> CSV</button>
           <button onClick={() => move(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>

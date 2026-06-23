@@ -64,9 +64,8 @@ export default function CrewManager({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-8">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Sổ thợ</h1>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Sổ thợ</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
           Lưu photographer / cameramen theo số điện thoại để gán nhanh vào hợp đồng.
           Thợ tự xem việc của mình tại <span style={{ color: "var(--text)" }}>{studioUrl("/crew")}</span>.

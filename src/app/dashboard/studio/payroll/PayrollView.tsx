@@ -64,11 +64,8 @@ export default function PayrollView({ rows }: { rows: PayrollRow[] }) {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý studio</p>
-          <h1 className="font-serif text-3xl font-medium">Bảng lương</h1>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium mr-auto">Bảng lương</h1>
         <select className="input w-auto" value={month} onChange={(e) => setMonth(e.target.value)}>
           {monthOptions().map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>

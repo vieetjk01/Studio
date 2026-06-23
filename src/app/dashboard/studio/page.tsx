@@ -80,11 +80,8 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý lịch chụp</p>
-          <h1 className="font-serif text-3xl font-medium">Tổng quan</h1>
-        </div>
+      <div className="mb-5 flex items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium mr-auto">Tổng quan</h1>
         <Link href="/dashboard/studio/bookings" className="btn-primary">
           <CalendarDays size={16} /> Đặt lịch
         </Link>
@@ -293,11 +290,8 @@ export default async function StudioOverview() {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý studio</p>
-          <h1 className="font-serif text-3xl font-medium">Tổng quan</h1>
-        </div>
+      <div className="mb-5 flex items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium mr-auto">Tổng quan</h1>
         <Link href="/dashboard/studio/contracts/new" className="btn-primary">
           <Plus size={16} /> Hợp đồng mới
         </Link>

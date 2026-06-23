@@ -72,40 +72,32 @@ export default function ContractsListView({ list }: { list: ContractRow[] }) {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="eyebrow mb-1.5">Quản lý studio</p>
-          <h1 className="font-serif text-3xl font-medium">Hợp đồng</h1>
-        </div>
-        <div className="flex gap-2">
-          {list.length > 0 && (
-            <button onClick={exportCsv} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> CSV</button>
-          )}
-          <Link href="/dashboard/studio/contracts/new" className="btn-primary">
-            <Plus size={16} /> Hợp đồng mới
-          </Link>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium mr-auto">Hợp đồng</h1>
+        {list.length > 0 && (
+          <>
+            <div className="relative min-w-[180px] flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text3)" }} />
+              <input
+                className="input pl-9"
+                placeholder="Tìm theo tên, khách, mã, SĐT…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <select className="input w-auto shrink-0" value={status} onChange={(e) => setStatus(e.target.value as "all" | ContractStatus)}>
+              <option value="all">Tất cả</option>
+              {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((k) => (
+                <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
+              ))}
+            </select>
+            <button onClick={exportCsv} className="btn-ghost shrink-0 px-3 py-2 text-xs"><Download size={14} /> CSV</button>
+          </>
+        )}
+        <Link href="/dashboard/studio/contracts/new" className="btn-primary shrink-0">
+          <Plus size={16} /> Hợp đồng mới
+        </Link>
       </div>
-
-      {list.length > 0 && (
-        <div className="mb-5 flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text3)" }} />
-            <input
-              className="input pl-9"
-              placeholder="Tìm theo tên HĐ, khách, mã, SĐT…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <select className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value as "all" | ContractStatus)}>
-            <option value="all">Tất cả trạng thái</option>
-            {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((k) => (
-              <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {list.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">

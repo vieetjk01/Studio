@@ -64,9 +64,8 @@ export default function ProductionView({ initial, staff }: { initial: ProductRow
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-6">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Xử lý hình ảnh</h1>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Xử lý hình ảnh</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Xử lý ảnh, video, in ấn… của mọi hợp đồng — giao việc cho nhân viên &amp; theo dõi tiến độ.</p>
       </div>
 

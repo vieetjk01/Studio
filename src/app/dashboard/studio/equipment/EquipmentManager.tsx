@@ -39,9 +39,8 @@ export default function EquipmentManager({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-8">
-        <p className="eyebrow mb-1.5">Quản lý studio</p>
-        <h1 className="font-serif text-3xl font-medium">Thiết bị</h1>
+      <div className="mb-4">
+        <h1 className="font-serif text-2xl font-medium">Thiết bị</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Máy, lens, đèn… để gán nhanh vào hợp đồng &amp; tránh trùng buổi.</p>
       </div>
 
