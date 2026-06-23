@@ -815,6 +815,10 @@ alter table public.studio_contracts add column if not exists source text; -- fac
 -- Reuse studio_expenses for per-contract costs too (null contract_id = general).
 alter table public.studio_expenses add column if not exists contract_id uuid references public.studio_contracts (id) on delete set null;
 create index if not exists studio_expenses_contract_idx on public.studio_expenses (contract_id);
+-- Whether a per-contract expense is a client-facing surcharge (shown + billed on
+-- the client portal) or an internal-only cost (profit/loss only). Defaults true
+-- to preserve existing billing; uncheck to keep a cost private to the studio.
+alter table public.studio_expenses add column if not exists client_visible boolean not null default true;
 
 -- Prepaid session packages / combo cards (thẻ buổi trả trước) per client.
 create table if not exists public.studio_packages (

@@ -174,7 +174,7 @@ export default function ContractEditor({
   const [tasks, setTasks] = useState<ContractTask[]>(initialTasks);
   const [newTask, setNewTask] = useState("");
   const [expenses, setExpenses] = useState<StudioExpense[]>(initialExpenses);
-  const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today() });
+  const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today(), client_visible: true });
   const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
   const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
@@ -458,7 +458,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     if (!exp.title.trim() || !amount) return;
     const { data, error } = await supabase
       .from("studio_expenses")
-      .insert({ owner_id: contract.owner_id, contract_id: contract.id, title: exp.title.trim(), amount, spent_at: exp.spent_at || today() })
+      .insert({ owner_id: contract.owner_id, contract_id: contract.id, title: exp.title.trim(), amount, spent_at: exp.spent_at || today(), client_visible: exp.client_visible })
       .select("*")
       .single();
     if (error) {
@@ -467,12 +467,16 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     }
     if (data) {
       setExpenses((p) => [data as StudioExpense, ...p]);
-      setExp({ title: "", amount: 0, spent_at: today() });
+      setExp({ title: "", amount: 0, spent_at: today(), client_visible: true });
     }
   }
   async function deleteExpense(id: string) {
     await supabase.from("studio_expenses").delete().eq("id", id);
     setExpenses((p) => p.filter((e) => e.id !== id));
+  }
+  async function toggleExpenseVisible(id: string, client_visible: boolean) {
+    setExpenses((p) => p.map((e) => (e.id === id ? { ...e, client_visible } : e)));
+    await supabase.from("studio_expenses").update({ client_visible }).eq("id", id);
   }
 
   // Quick-pick amounts for the instalment form (VND).
@@ -1236,7 +1240,20 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                       <p className="text-sm font-medium">{vnd(e.amount)} · {e.title}</p>
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>{e.spent_at}</p>
                     </div>
-                    <button onClick={() => deleteExpense(e.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpenseVisible(e.id, !e.client_visible)}
+                        className="rounded-full px-2 py-0.5 text-[10px]"
+                        style={e.client_visible
+                          ? { background: "#c7a76b22", color: "#c7a76b" }
+                          : { background: "var(--surface)", color: "var(--text3)" }}
+                        title={e.client_visible ? "Khách thấy & bị tính vào hóa đơn — bấm để chuyển thành nội bộ" : "Chỉ nội bộ (tính lãi/lỗ) — bấm để hiện cho khách"}
+                      >
+                        {e.client_visible ? "Khách thấy" : "Nội bộ"}
+                      </button>
+                      <button onClick={() => deleteExpense(e.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1246,6 +1263,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <MoneyInput className="input sm:col-span-3" placeholder="Số tiền" value={exp.amount} onChange={(n) => setExp((p) => ({ ...p, amount: n }))} />
               <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
             </div>
+            <label className="mt-3 flex items-center gap-2 text-xs" style={{ color: "var(--text2)" }}>
+              <input type="checkbox" checked={exp.client_visible} onChange={(e) => setExp((p) => ({ ...p, client_visible: e.target.checked }))} />
+              Hiện cho khách &amp; tính vào hóa đơn (bỏ chọn nếu là chi phí nội bộ chỉ để tính lãi/lỗ)
+            </label>
             <button onClick={addExpense} className="btn-ghost mt-3"><Plus size={15} /> Thêm chi phí</button>
             <div className="mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border)" }}>
               <span className="text-sm" style={{ color: "var(--text2)" }}>Tổng chi phí hợp đồng</span>

@@ -457,6 +457,7 @@ export interface StudioExpense {
   category: string | null;
   note: string | null;
   spent_at: string;
+  client_visible: boolean; // shown + billed on the client portal vs internal-only
   created_at: string;
 }
 
