@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") || "/dashboard";
+  const next = searchParams.get("next") || "/dashboard/studio";
   const oauthError = searchParams.get("error");
 
   // Provider-side error (e.g. user cancelled the Google consent screen).
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // Share the session cookie across vieetjk.com subdomains (album/img/studio).
+      // Share the session cookie across mstudo.com subdomains (album/img/studio).
       ...(COOKIE_DOMAIN ? { cookieOptions: { domain: COOKIE_DOMAIN } } : {}),
       cookies: {
         getAll() {

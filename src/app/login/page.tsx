@@ -25,7 +25,9 @@ function describeOAuthError(code: string | null): string | null {
 function LoginForm() {
   const { t } = useLang();
   const params = useSearchParams();
-  const next = params.get("next") || "/dashboard";
+  // Default landing = studio management. Free/Basic accounts (no studio tier)
+  // are redirected on to the album dashboard by the studio page itself.
+  const next = params.get("next") || "/dashboard/studio";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

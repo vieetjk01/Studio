@@ -43,13 +43,24 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (!itemId) return NextResponse.json({ error: "missing item_id" }, { status: 400 });
     const { data: item } = await db
       .from("quote_items")
-      .select("id, is_optional")
+      .select("id, is_optional, package_group")
       .eq("id", itemId)
       .eq("quote_id", quote.id)
       .maybeSingle();
     if (!item) return NextResponse.json({ error: "item not found" }, { status: 404 });
-    if (!item.is_optional) return NextResponse.json({ error: "Hạng mục bắt buộc." }, { status: 400 });
-    await db.from("quote_items").update({ selected }).eq("id", itemId);
+    if (!item.is_optional && !item.package_group) return NextResponse.json({ error: "Hạng mục bắt buộc." }, { status: 400 });
+    // Package group: packages are mutually exclusive — selecting one deselects
+    // every other package, so the client can only ever have a single package on.
+    if (item.package_group) {
+      if (selected) {
+        await db.from("quote_items").update({ selected: false }).eq("quote_id", quote.id).not("package_group", "is", null);
+        await db.from("quote_items").update({ selected: true }).eq("quote_id", quote.id).eq("package_group", item.package_group);
+      } else {
+        await db.from("quote_items").update({ selected: false }).eq("quote_id", quote.id).eq("package_group", item.package_group);
+      }
+    } else {
+      await db.from("quote_items").update({ selected }).eq("id", itemId);
+    }
     return NextResponse.json({ ok: true });
   }
 

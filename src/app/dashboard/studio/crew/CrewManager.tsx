@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { studioUrl } from "@/lib/hosts";
+import { mainUrl } from "@/lib/hosts";
 import { CREW_ROLE_LABEL, type StudioCrew, type CrewRole } from "@/lib/types";
 
 export default function CrewManager({
@@ -68,7 +68,7 @@ export default function CrewManager({
         <h1 className="font-serif text-2xl font-medium">Sổ thợ</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
           Lưu photographer / cameramen theo số điện thoại để gán nhanh vào hợp đồng.
-          Thợ tự xem việc của mình tại <span style={{ color: "var(--text)" }}>{studioUrl("/crew")}</span>.
+          Thợ tự xem việc của mình tại <span style={{ color: "var(--text)" }}>{mainUrl("/crew")}</span>.
         </p>
       </div>
 

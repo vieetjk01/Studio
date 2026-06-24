@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock } from "lucide-react";
+import { redirect } from "next/navigation";
+import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
+import { appUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
@@ -18,25 +20,103 @@ import {
   type CrewRole,
 } from "@/lib/types";
 
-const STATUS_TONE: Record<ContractStatus, string> = {
-  draft: "var(--text3)",
-  sent: "#c7a76b",
-  approved: "#7bb38a",
-  in_progress: "#6ba3c7",
-  completed: "#7bb38a",
-  cancelled: "#c77b7b",
+/* ── Design tokens (ported from the mstudo app mockup) ─────────────────────
+   Status tones with a soft background, matching the green-accent mstudo look.
+   These work on the dark app shell; the accent is the brand green. */
+const TONE = {
+  green: { fg: "#3fb98a", soft: "rgba(63,185,138,.14)" },
+  amber: { fg: "#d6a44a", soft: "rgba(214,164,74,.16)" },
+  red: { fg: "#e0746f", soft: "rgba(224,116,111,.16)" },
+  blue: { fg: "#6fa0ec", soft: "rgba(111,160,236,.16)" },
+  gray: { fg: "var(--text2)", soft: "var(--surface2)" },
+} as const;
+type ToneKey = keyof typeof TONE;
+const ACCENT = TONE.green.fg;
+const ACCENT_SOFT = TONE.green.soft;
+
+function badgeStyle(tone: ToneKey): React.CSSProperties {
+  return {
+    display: "inline-block",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "3px 10px",
+    borderRadius: 999,
+    color: TONE[tone].fg,
+    background: TONE[tone].soft,
+    whiteSpace: "nowrap",
+  };
+}
+
+const STATUS_TONE: Record<ContractStatus, ToneKey> = {
+  draft: "gray",
+  sent: "blue",
+  approved: "green",
+  in_progress: "amber",
+  completed: "green",
+  cancelled: "red",
 };
 
-function NotStudio() {
+/* ── Shared UI bits ──────────────────────────────────────────────────────── */
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  delta,
+  deltaTone = "gray",
+}: {
+  icon: typeof FileText;
+  label: string;
+  value: string;
+  delta?: string;
+  deltaTone?: ToneKey;
+}) {
   return (
-    <div className="mx-auto max-w-lg text-center">
-      <div className="card p-8">
-        <h1 className="font-serif text-2xl font-medium">Cần gói Photographer trở lên</h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-          Trang quản lý dành cho tài khoản gói <b>Photographer</b> (đặt lịch, bảng giá,
-          lịch chụp) trở lên. Gói <b>Studio</b> mở thêm hợp đồng, tài chính & quản lý đội ngũ.
-        </p>
-        <a href="/dashboard/upgrade" className="btn-primary mt-5">Nâng cấp gói</a>
+    <div className="card p-5">
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-medium" style={{ color: "var(--text2)" }}>{label}</span>
+        <span
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ background: ACCENT_SOFT, color: ACCENT }}
+        >
+          <Icon size={16} />
+        </span>
+      </div>
+      <p className="mt-3 font-serif text-[26px] font-medium leading-none">{value}</p>
+      {delta ? (
+        <p className="mt-2 text-xs font-semibold" style={{ color: TONE[deltaTone].fg }}>{delta}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Mini 6-month revenue bar chart, sharing the overview's card look. */
+function RevenueChart({ bars }: { bars: { label: string; value: number }[] }) {
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  return (
+    <div className="card p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 font-serif text-lg font-medium">
+          <TrendingUp size={18} style={{ color: ACCENT }} /> Doanh thu
+        </h2>
+        <span className="text-xs" style={{ color: "var(--text3)" }}>6 tháng gần nhất</span>
+      </div>
+      <div className="flex h-[170px] items-end gap-3 pt-2">
+        {bars.map((b) => (
+          <div key={b.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+            <span className="text-[10px] font-semibold" style={{ color: "var(--text3)" }}>
+              {b.value > 0 ? vnd(b.value).replace("₫", "").trim() : ""}
+            </span>
+            <div
+              className="w-full max-w-[42px] rounded-t-md"
+              style={{
+                height: `${Math.max(4, (b.value / max) * 100)}%`,
+                minHeight: 6,
+                background: b.value > 0 ? ACCENT : "var(--surface2)",
+              }}
+            />
+            <span className="text-[11px] font-semibold" style={{ color: "var(--text2)" }}>{b.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -65,8 +145,8 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
     .sort((a, b) => (a.preferred_date || "").localeCompare(b.preferred_date || ""))
     .slice(0, 8);
 
-  const stats = [
-    { icon: AlertCircle, label: "Đặt lịch mới", value: String(newCount) },
+  const stats: { icon: typeof FileText; label: string; value: string; delta?: string; deltaTone?: ToneKey }[] = [
+    { icon: AlertCircle, label: "Đặt lịch mới", value: String(newCount), delta: newCount > 0 ? "cần xử lý" : undefined, deltaTone: "amber" },
     { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
     { icon: Users, label: "Tổng yêu cầu đặt lịch", value: String(bookings.length) },
   ];
@@ -80,27 +160,26 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-5 flex items-center gap-3">
-        <h1 className="font-serif text-2xl font-medium mr-auto">Tổng quan</h1>
-        <Link href="/dashboard/studio/bookings" className="btn-primary">
+      <div className="mb-1 flex items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
+        <Link href="/dashboard/studio/bookings" className="btn-primary ml-auto">
           <CalendarDays size={16} /> Đặt lịch
         </Link>
       </div>
+      <p className="mb-6 text-[13px]" style={{ color: "var(--text3)" }}>Quản lý lịch chụp & yêu cầu đặt lịch của khách</p>
 
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((s) => (
-          <div key={s.label} className="card p-5">
-            <s.icon size={18} style={{ color: "var(--text3)" }} />
-            <p className="mt-3 font-serif text-2xl font-medium">{s.value}</p>
-            <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>{s.label}</p>
-          </div>
+          <StatCard key={s.label} {...s} />
         ))}
       </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {quickLinks.map((q) => (
-          <Link key={q.href} href={q.href} className="card p-5 transition-colors hover:border-[var(--gold)]">
-            <q.icon size={18} style={{ color: "var(--gold)" }} />
+          <Link key={q.href} href={q.href} className="card p-5 transition-colors hover:border-[var(--border2)]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: ACCENT_SOFT, color: ACCENT }}>
+              <q.icon size={16} />
+            </span>
             <p className="mt-3 font-medium">{q.label}</p>
             <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>{q.desc}</p>
           </Link>
@@ -109,7 +188,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
       <div className="card p-6">
         <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
-          <CalendarDays size={18} style={{ color: "var(--gold)" }} /> Lịch chụp sắp tới
+          <CalendarDays size={18} style={{ color: ACCENT }} /> Lịch chụp sắp tới
         </h2>
         <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
           {upcoming.length > 0 ? `${upcoming.length} buổi chụp đã có ngày` : "Chưa có lịch chụp nào sắp tới"}
@@ -125,7 +204,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm" style={{ color: "var(--gold)" }}>{b.preferred_date}</p>
+                  <p className="text-sm" style={{ color: ACCENT }}>{b.preferred_date}</p>
                   {b.package_price ? <p className="text-[11px]" style={{ color: "var(--text3)" }}>{vnd(b.package_price)}</p> : null}
                 </div>
               </li>
@@ -141,7 +220,9 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
 export default async function StudioOverview() {
   const profile = await requireStudio("booking");
-  if (!profile) return <NotStudio />;
+  // Free/Basic accounts have no studio tier — send them to the album dashboard
+  // (on the app host) instead of the studio workspace.
+  if (!profile) redirect(appUrl("/dashboard"));
 
   const supabase = createClient();
 
@@ -156,12 +237,15 @@ export default async function StudioOverview() {
     name: (profile.pl_bank_name as string | null) ?? null,
   };
 
-  // Pre-compute date constants so all three query groups can run in parallel.
-  const today = new Date().toISOString().slice(0, 10);
+  // Pre-compute date constants so all query groups can run in parallel.
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
   const monthStart = `${today.slice(0, 7)}-01`;
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 7);
   const dueLimit = horizon.toISOString().slice(0, 10);
+  // Start of the 6-month window for the revenue chart (this month minus 5).
+  const chartStart = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10);
 
   // Explicit columns + drop cancelled at the DB (less payload than select *).
   let cq = supabase
@@ -177,6 +261,7 @@ export default async function StudioOverview() {
     { data: contracts },
     { data: planRows },
     { data: payMonth },
+    { data: paySixMonths },
     { count: newBookings },
     { count: bookingsAll },
   ] = await Promise.all([
@@ -194,6 +279,11 @@ export default async function StudioOverview() {
       .select("amount, contract:studio_contracts!inner(owner_id)")
       .eq("contract.owner_id", profile.id)
       .gte("paid_at", monthStart),
+    supabase
+      .from("contract_payments")
+      .select("amount, paid_at, contract:studio_contracts!inner(owner_id)")
+      .eq("contract.owner_id", profile.id)
+      .gte("paid_at", chartStart),
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id).eq("status", "new"),
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
   ]);
@@ -272,42 +362,66 @@ export default async function StudioOverview() {
   // Rough close rate: contracts vs total booking requests received.
   const closeRate = bookingsAll ? Math.min(100, Math.round((notCancelled.length / bookingsAll) * 100)) : null;
 
+  // ── 6-month revenue chart: bucket payments by YYYY-MM ─────────────
+  const sixMonthPays = (paySixMonths ?? []) as unknown as { amount: number; paid_at: string }[];
+  const revBars = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const value = sixMonthPays
+      .filter((p) => (p.paid_at || "").slice(0, 7) === key)
+      .reduce((s, p) => s + (p.amount || 0), 0);
+    return { label: String(d.getMonth() + 1).padStart(2, "0"), value };
+  });
+  // Month-over-month revenue delta for the headline stat.
+  const prevMonthRev = revBars.length >= 2 ? revBars[revBars.length - 2].value : 0;
+  const revDeltaPct = prevMonthRev > 0 ? Math.round(((revenueMonth - prevMonthRev) / prevMonthRev) * 100) : null;
+
+  const stats: { icon: typeof FileText; label: string; value: string; delta?: string; deltaTone?: ToneKey }[] = [
+    {
+      icon: Wallet,
+      label: "Doanh thu tháng này",
+      value: vnd(revenueMonth),
+      delta: revDeltaPct != null ? `${revDeltaPct >= 0 ? "+" : ""}${revDeltaPct}% so với tháng trước` : undefined,
+      deltaTone: (revDeltaPct ?? 0) >= 0 ? "green" : "red",
+    },
+    { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length), delta: `${notCancelled.length} tổng hợp đồng`, deltaTone: "gray" },
+    { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length), delta: `${uniqueClients} khách hàng`, deltaTone: "gray" },
+    {
+      icon: AlertCircle,
+      label: "Yêu cầu sửa đang chờ",
+      value: String(openRequests),
+      delta: openRequests > 0 ? "cần xử lý" : "không có",
+      deltaTone: openRequests > 0 ? "amber" : "gray",
+    },
+  ];
+
   const kpis = [
-    { label: "Doanh thu tháng này", value: vnd(revenueMonth) },
     { label: "Giá trị HĐ trung bình", value: vnd(avgValue) },
-    { label: "Số khách hàng", value: String(uniqueClients) },
+    { label: "Công nợ cần thu", value: vnd(totalDue) },
     closeRate != null
       ? { label: "Tỉ lệ chốt (HĐ/đặt lịch)", value: `${closeRate}%` }
       : { label: "Đặt lịch mới", value: String(newBookings ?? 0) },
   ];
 
-  const stats = [
-    { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length) },
-    { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
-    { icon: Users, label: "Tổng giá trị hợp đồng", value: vnd(totalValue) },
-    { icon: AlertCircle, label: "Yêu cầu sửa đang chờ", value: String(openRequests) },
-  ];
-
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-5 flex items-center gap-3">
-        <h1 className="font-serif text-2xl font-medium mr-auto">Tổng quan</h1>
-        <Link href="/dashboard/studio/contracts/new" className="btn-primary">
+      <div className="mb-1 flex items-center gap-3">
+        <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
+        <Link href="/dashboard/studio/contracts/new" className="btn-primary ml-auto">
           <Plus size={16} /> Hợp đồng mới
         </Link>
       </div>
+      <p className="mb-6 text-[13px]" style={{ color: "var(--text3)" }}>Tổng quan hoạt động studio</p>
 
+      {/* Stat cards */}
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="card p-5">
-            <s.icon size={18} style={{ color: "var(--text3)" }} />
-            <p className="mt-3 font-serif text-2xl font-medium">{s.value}</p>
-            <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>{s.label}</p>
-          </div>
+          <StatCard key={s.label} {...s} />
         ))}
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Secondary KPIs */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {kpis.map((k) => (
           <div key={k.label} className="card p-5">
             <p className="font-serif text-xl font-medium">{k.value}</p>
@@ -316,12 +430,102 @@ export default async function StudioOverview() {
         ))}
       </div>
 
+      {/* Revenue chart + upcoming shoots */}
+      <div className="mb-6 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <RevenueChart bars={revBars} />
+        <div className="card p-6">
+          <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-medium">
+            <CalendarDays size={18} style={{ color: ACCENT }} /> Lịch chụp sắp tới
+          </h2>
+          {upcoming.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có lịch sắp tới.</p>
+          ) : (
+            <ul className="space-y-3">
+              {upcoming.map((c) => {
+                const d = c.event_date ? new Date(c.event_date) : null;
+                return (
+                  <li key={c.id}>
+                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-3">
+                      <div
+                        className="flex h-11 w-11 flex-none flex-col items-center justify-center rounded-xl"
+                        style={{ background: "var(--surface2)" }}
+                      >
+                        <span className="text-[15px] font-bold leading-none">{d ? d.getDate() : "—"}</span>
+                        <span className="text-[10px] font-semibold" style={{ color: "var(--text3)" }}>
+                          {d ? `TH${d.getMonth() + 1}` : ""}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-bold">{c.title}</p>
+                        <p className="text-xs" style={{ color: "var(--text3)" }}>
+                          {(c.event_time || "—")} · {c.client_name || SHOOT_TYPE_LABEL[c.shoot_type]}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <Link href="/dashboard/studio/calendar" className="mt-4 inline-block text-xs hover:underline" style={{ color: ACCENT }}>
+            Xem lịch đầy đủ →
+          </Link>
+        </div>
+      </div>
+
+      {/* Recent contracts table */}
+      <div className="card mb-6 p-6">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-serif text-lg font-medium">Hợp đồng gần đây</h2>
+          <Link href="/dashboard/studio/contracts" className="text-xs hover:underline" style={{ color: ACCENT }}>
+            Tất cả →
+          </Link>
+        </div>
+        {list.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--text3)" }}>
+            Chưa có hợp đồng nào.{" "}
+            <Link href="/dashboard/studio/contracts/new" style={{ color: ACCENT }} className="hover:underline">Tạo ngay</Link>.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[13.5px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
+                  <th className="px-2 py-2.5 font-bold">Mã</th>
+                  <th className="px-2 py-2.5 font-bold">Khách hàng</th>
+                  <th className="px-2 py-2.5 font-bold">Loại</th>
+                  <th className="px-2 py-2.5 font-bold">Giá trị</th>
+                  <th className="px-2 py-2.5 font-bold">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.slice(0, 8).map((c) => (
+                  <tr key={c.id} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td className="px-2 py-3 font-bold font-mono">
+                      <Link href={`/dashboard/studio/contracts/${c.id}`} className="hover:underline">
+                        {c.code || c.id.slice(0, 6)}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">{c.client_name || "—"}</td>
+                    <td className="px-2 py-3" style={{ color: "var(--text2)" }}>{SHOOT_TYPE_LABEL[c.shoot_type]}</td>
+                    <td className="px-2 py-3 font-bold">{vnd(contractTotal(c.contract_items || []))}</td>
+                    <td className="px-2 py-3">
+                      <span style={badgeStyle(STATUS_TONE[c.status])}>{CONTRACT_STATUS_LABEL[c.status]}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Reminders: unsigned + debts + crew awaiting response + late deliveries + due installments */}
       {(unsigned.length > 0 || debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (
         <div className="mb-8 grid gap-6 lg:grid-cols-2">
           {unsigned.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#6ba3c755" }}>
-              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#6ba3c7" }}>
+            <div className="card p-6" style={{ borderColor: "#6fa0ec55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.blue.fg }}>
                 <FileText size={18} /> Hợp đồng chờ khách ký
               </h2>
               <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{unsigned.length} hợp đồng đã gửi nhưng chưa ký</p>
@@ -330,7 +534,7 @@ export default async function StudioOverview() {
                   <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                     <Link href={`/dashboard/studio/contracts/${c.id}`} className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{c.title}</p>
-                      <p className="text-[11px]" style={{ color: days >= 3 ? "#c7a76b" : "var(--text3)" }}>
+                      <p className="text-[11px]" style={{ color: days >= 3 ? TONE.amber.fg : "var(--text3)" }}>
                         {c.client_name || "—"} · đã gửi {days > 0 ? `${days} ngày trước` : "hôm nay"}
                       </p>
                     </Link>
@@ -345,8 +549,8 @@ export default async function StudioOverview() {
             </div>
           )}
           {duePlan.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#c7a76b55" }}>
-              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>
+            <div className="card p-6" style={{ borderColor: "#d6a44a55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.amber.fg }}>
                 <Wallet size={18} /> Sắp đến hạn thu
               </h2>
               <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{duePlan.length} đợt thu trong 7 ngày tới / quá hạn</p>
@@ -356,7 +560,7 @@ export default async function StudioOverview() {
                     <Link href={`/dashboard/studio/contracts/${d.contract?.id}`} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{d.contract?.title || "Hợp đồng"} · {d.label}</p>
-                        <p className="text-[11px]" style={{ color: d.due_date < today ? "#c77b7b" : "var(--text3)" }}>
+                        <p className="text-[11px]" style={{ color: d.due_date < today ? TONE.red.fg : "var(--text3)" }}>
                           {vnd(d.amount)} · hạn {d.due_date}{d.due_date < today ? " · quá hạn" : ""}
                         </p>
                       </div>
@@ -367,8 +571,8 @@ export default async function StudioOverview() {
             </div>
           )}
           {lateDeliveries.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#c77b7b55" }}>
-              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c77b7b" }}>
+            <div className="card p-6" style={{ borderColor: "#e0746f55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.red.fg }}>
                 <Clock size={18} /> Trễ hạn giao ảnh
               </h2>
               <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{lateDeliveries.length} hợp đồng quá hạn giao</p>
@@ -377,7 +581,7 @@ export default async function StudioOverview() {
                   <li key={c.id}>
                     <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                       <p className="truncate text-sm font-medium">{c.title}</p>
-                      <span className="shrink-0 text-[11px]" style={{ color: "#c77b7b" }}>hạn {c.delivery_due}</span>
+                      <span className="shrink-0 text-[11px]" style={{ color: TONE.red.fg }}>hạn {c.delivery_due}</span>
                     </Link>
                   </li>
                 ))}
@@ -385,8 +589,8 @@ export default async function StudioOverview() {
             </div>
           )}
           {debts.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#c7a76b55" }}>
-              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>
+            <div className="card p-6" style={{ borderColor: "#d6a44a55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.amber.fg }}>
                 <Wallet size={18} /> Công nợ cần thu
               </h2>
               <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Tổng còn phải thu: <b style={{ color: "var(--text)" }}>{vnd(totalDue)}</b></p>
@@ -417,8 +621,8 @@ export default async function StudioOverview() {
           )}
 
           {pendingCrew.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#6ba3c755" }}>
-              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#6ba3c7" }}>
+            <div className="card p-6" style={{ borderColor: "#6fa0ec55" }}>
+              <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.blue.fg }}>
                 <UserCheck size={18} /> Thợ chưa phản hồi
               </h2>
               <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>{pendingCrew.length} lời mời đang chờ nhận/từ chối</p>
@@ -441,73 +645,6 @@ export default async function StudioOverview() {
           )}
         </div>
       )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Upcoming */}
-        <div className="card p-6">
-          <h2 className="mb-4 font-serif text-lg font-medium">Lịch chụp sắp tới</h2>
-          {upcoming.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có lịch sắp tới.</p>
-          ) : (
-            <ul className="space-y-2">
-              {upcoming.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/dashboard/studio/contracts/${c.id}`}
-                    className="flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors hover:bg-[var(--surface2)]"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{c.title}</p>
-                      <p className="text-xs" style={{ color: "var(--text3)" }}>
-                        {c.client_name || "—"} · {SHOOT_TYPE_LABEL[c.shoot_type]}
-                      </p>
-                    </div>
-                    <span className="text-xs" style={{ color: "var(--text2)" }}>{c.event_date}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link href="/dashboard/studio/calendar" className="mt-4 inline-block text-xs text-accent hover:underline">
-            Xem lịch đầy đủ →
-          </Link>
-        </div>
-
-        {/* Recent contracts */}
-        <div className="card p-6">
-          <h2 className="mb-4 font-serif text-lg font-medium">Hợp đồng gần đây</h2>
-          {list.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text3)" }}>
-              Chưa có hợp đồng nào.{" "}
-              <Link href="/dashboard/studio/contracts/new" className="text-accent hover:underline">Tạo ngay</Link>.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {list.slice(0, 6).map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/dashboard/studio/contracts/${c.id}`}
-                    className="flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors hover:bg-[var(--surface2)]"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{c.title}</p>
-                      <p className="text-xs" style={{ color: "var(--text3)" }}>
-                        {vnd(contractTotal(c.contract_items || []))}
-                      </p>
-                    </div>
-                    <span className="text-[11px]" style={{ color: STATUS_TONE[c.status] }}>
-                      {CONTRACT_STATUS_LABEL[c.status]}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link href="/dashboard/studio/contracts" className="mt-4 inline-block text-xs text-accent hover:underline">
-            Tất cả hợp đồng →
-          </Link>
-        </div>
-      </div>
 
       {profile.actingRole !== "staff" && (
         <AutoEmailToggle ownerId={profile.id} initial={!!profile.auto_client_emails} />

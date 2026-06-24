@@ -12,7 +12,7 @@ export function createClient() {
   return createBrowserClient(
     SUPABASE_URL,
     SUPABASE_ANON,
-    // Share the session cookie across vieetjk.com subdomains (album / img).
+    // Share the session cookie across mstudo.com subdomains (album / img).
     COOKIE_DOMAIN ? { cookieOptions: { domain: COOKIE_DOMAIN } } : undefined
   );
 }

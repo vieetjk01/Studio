@@ -13,16 +13,18 @@ import {
   type StudioQuote,
   type QuoteItem,
   type QuoteAdjustment,
+  type QuoteStatus,
 } from "@/lib/types";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
 
 type EditableQuoteFields = Pick<
   StudioQuote,
-  "title" | "client_name" | "client_phone" | "client_email" | "client_facebook" | "event_date" | "location" | "intro"
+  "title" | "client_name" | "client_phone" | "client_email" | "client_facebook" | "event_date" | "location" | "intro" | "bulk_discount_amount" | "discount_package_group"
 >;
 
 const FIELD_KEYS: (keyof EditableQuoteFields)[] = [
   "title", "client_name", "client_phone", "client_email", "client_facebook", "event_date", "location", "intro",
+  "bulk_discount_amount", "discount_package_group",
 ];
 
 function pickFields(q: StudioQuote): EditableQuoteFields {
@@ -35,6 +37,8 @@ function pickFields(q: StudioQuote): EditableQuoteFields {
     event_date: q.event_date,
     location: q.location,
     intro: q.intro,
+    bulk_discount_amount: q.bulk_discount_amount ?? 0,
+    discount_package_group: q.discount_package_group ?? null,
   };
 }
 
@@ -80,7 +84,7 @@ export default function QuoteEditor({
   const fieldsDirty = FIELD_KEYS.some((k) => (quote[k] ?? "") !== (savedFields[k] ?? ""));
   const itemsDirty = items.some((it) => {
     const saved = savedItems.find((s) => s.id === it.id);
-    if (!saved) return true; // newly inserted but not yet round-tripped? shouldn't happen
+    if (!saved) return true;
     return (
       it.name !== saved.name ||
       it.description !== saved.description ||
@@ -88,7 +92,8 @@ export default function QuoteEditor({
       it.unit_price !== saved.unit_price ||
       it.is_optional !== saved.is_optional ||
       it.is_discount !== saved.is_discount ||
-      it.position !== saved.position
+      it.position !== saved.position ||
+      (it.package_group ?? "") !== (saved.package_group ?? "")
     );
   });
   const dirty = fieldsDirty || itemsDirty;
@@ -158,6 +163,7 @@ export default function QuoteEditor({
               is_optional: it.is_optional,
               is_discount: it.is_discount,
               position: it.position,
+              package_group: it.package_group || null,
             })
             .eq("id", it.id) as unknown as Promise<{ error: unknown }>,
         );
@@ -181,6 +187,18 @@ export default function QuoteEditor({
     setQuote((q) => ({ ...q, ...patch }));
     const { error } = await supabase.from("studio_quotes").update(patch).eq("id", quote.id);
     if (error) setErr(error.message);
+  }
+
+  async function changeStatus(status: QuoteStatus) {
+    if (status === quote.status) return;
+    // Converting is special — it spawns a contract. Keep that on the dedicated
+    // button so the studio doesn't trigger it accidentally from the dropdown.
+    if (status === "converted") {
+      setErr("Để chuyển sang 'Đã tạo hợp đồng', dùng nút Tạo hợp đồng.");
+      return;
+    }
+    await patchQuoteImmediate({ status });
+    flash(`Đã chuyển trạng thái: ${QUOTE_STATUS_LABEL[status]}`);
   }
 
   async function addItem(asDiscount: boolean) {
@@ -254,6 +272,18 @@ export default function QuoteEditor({
 
   const pendingAdj = adjustments.filter((a) => !a.resolved && a.author === "client");
 
+  // Distinct package groups defined across items (for the discount selector).
+  const packageGroups = Array.from(
+    new Set(items.map((it) => (it.package_group || "").trim()).filter(Boolean)),
+  );
+  // Discount preview (mirrors client view): active when the selected package is
+  // the designated discount package.
+  const selectedPackageGroup = items.find((it) => it.package_group && it.selected)?.package_group ?? null;
+  const bulkDiscountActive =
+    !!quote.discount_package_group &&
+    selectedPackageGroup === quote.discount_package_group &&
+    (quote.bulk_discount_amount ?? 0) > 0;
+
   return (
     <div className="space-y-6" data-testid="quote-edit-page">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -272,6 +302,20 @@ export default function QuoteEditor({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text3)" }}>
+            Trạng thái
+            <select
+              className="input py-1.5 text-xs"
+              style={{ width: "auto" }}
+              value={quote.status === "converted" ? "converted" : quote.status}
+              onChange={(e) => changeStatus(e.target.value as QuoteStatus)}
+              data-testid="quote-status-select"
+            >
+              {(Object.keys(QUOTE_STATUS_LABEL) as QuoteStatus[]).map((k) => (
+                <option key={k} value={k} disabled={k === "converted"}>{QUOTE_STATUS_LABEL[k]}</option>
+              ))}
+            </select>
+          </label>
           {!locked && (
             <button
               onClick={saveAll}
@@ -314,21 +358,49 @@ export default function QuoteEditor({
       {msg && <p className="rounded-md px-3 py-2 text-xs" style={{ background: "#10b98122", color: "#34d399" }}>{msg}</p>}
       {err && <p className="rounded-md px-3 py-2 text-xs" style={{ background: "#ef444422", color: "#fca5a5" }}>{err}</p>}
 
-      {pendingAdj.length > 0 && (
-        <section className="card border-l-4 p-5" style={{ borderLeftColor: "#f59e0b" }} data-testid="quote-adjustments">
-          <h2 className="text-sm font-medium" style={{ color: "#f59e0b" }}>Khách yêu cầu chỉnh sửa ({pendingAdj.length})</h2>
+      {adjustments.length > 0 && (
+        <section className="card p-5" data-testid="quote-adjustments">
+          <h2 className="text-sm font-medium" style={{ color: pendingAdj.length > 0 ? "#f59e0b" : "var(--text2)" }}>
+            Trao đổi với khách {pendingAdj.length > 0 && <span className="ml-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#f59e0b33", color: "#f59e0b" }}>{pendingAdj.length} chưa xử lý</span>}
+          </h2>
           <div className="mt-3 space-y-2">
-            {pendingAdj.map((a) => (
-              <div key={a.id} className="rounded-md p-3" style={{ background: "var(--surface2)" }}>
-                <p className="text-sm whitespace-pre-wrap">{a.message}</p>
-                <div className="mt-2 flex items-center justify-between text-xs" style={{ color: "var(--text3)" }}>
-                  <span>{new Date(a.created_at).toLocaleString("vi-VN")}</span>
-                  <button onClick={() => resolveAdjustment(a.id, true)} className="btn-ghost px-2 py-1 text-xs">
-                    <Check size={10} /> Đã xử lý
-                  </button>
+            {adjustments.map((a) => {
+              const isPending = !a.resolved && a.author === "client";
+              return (
+                <div
+                  key={a.id}
+                  className="rounded-md p-3"
+                  style={{
+                    background: isPending ? "rgba(245,158,11,0.07)" : "var(--surface2)",
+                    border: isPending ? "1px solid rgba(245,158,11,0.3)" : "1px solid transparent",
+                    opacity: a.resolved ? 0.55 : 1,
+                  }}
+                >
+                  <div className="mb-1 flex items-center gap-2 text-[10px]" style={{ color: "var(--text3)" }}>
+                    <span className="font-medium" style={{ color: a.author === "client" ? "#f59e0b" : "var(--text2)" }}>
+                      {a.author === "client" ? "Khách" : "Studio"}
+                    </span>
+                    <span>{new Date(a.created_at).toLocaleString("vi-VN")}</span>
+                    {a.resolved && <span className="rounded-full px-1.5 py-0.5 text-[9px]" style={{ background: "rgba(52,211,153,0.15)", color: "#34d399" }}>Đã xử lý</span>}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{a.message}</p>
+                  {isPending && (
+                    <div className="mt-2 flex justify-end">
+                      <button onClick={() => resolveAdjustment(a.id, true)} className="btn-ghost px-2 py-1 text-xs">
+                        <Check size={10} /> Đánh dấu đã xử lý
+                      </button>
+                    </div>
+                  )}
+                  {a.resolved && (
+                    <div className="mt-2 flex justify-end">
+                      <button onClick={() => resolveAdjustment(a.id, false)} className="btn-ghost px-2 py-1 text-xs" style={{ color: "var(--text3)" }}>
+                        <X size={10} /> Bỏ đánh dấu
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -364,6 +436,39 @@ export default function QuoteEditor({
         <Field label="Lời chào / Giới thiệu" className="mt-3">
           <textarea className="input" rows={3} value={quote.intro || ""} disabled={locked} onChange={(e) => patchLocal({ intro: e.target.value })} />
         </Field>
+        <div className="mt-4 rounded-lg p-3" style={{ background: "var(--surface2)" }}>
+          <p className="mb-2 text-xs font-medium" style={{ color: "var(--text2)" }}>Giảm giá theo gói chỉ định (tuỳ chọn)</p>
+          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
+            Nếu khách chọn đúng gói bạn chỉ định bên dưới, tự động giảm thêm số tiền tương ứng. Đặt nhóm gói cho từng hạng mục ở phần Hạng mục.
+          </p>
+          <div className="grid gap-2 md:grid-cols-2">
+            <Field label="Gói được giảm">
+              <select className="input" value={quote.discount_package_group ?? ""} disabled={locked}
+                onChange={(e) => patchLocal({ discount_package_group: e.target.value || null })}>
+                <option value="">— Không áp dụng —</option>
+                {packageGroups.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Số tiền giảm (VND)">
+              <input type="number" min={0} className="input" value={quote.bulk_discount_amount ?? 0} disabled={locked}
+                onChange={(e) => patchLocal({ bulk_discount_amount: Number(e.target.value) || 0 })} />
+            </Field>
+          </div>
+          {packageGroups.length === 0 && (
+            <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>
+              Chưa có gói nào. Thêm “Nhóm gói” cho các hạng mục tuỳ chọn để tạo gói.
+            </p>
+          )}
+          {quote.discount_package_group && (quote.bulk_discount_amount ?? 0) > 0 && (
+            <p className="mt-2 text-xs" style={{ color: bulkDiscountActive ? "#34d399" : "var(--text3)" }}>
+              {bulkDiscountActive
+                ? `✓ Đang áp dụng — khách được giảm ${vnd(quote.bulk_discount_amount ?? 0)}`
+                : `Khách chưa chọn gói “${quote.discount_package_group}” nên chưa được giảm`}
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="card p-5">
@@ -443,6 +548,15 @@ export default function QuoteEditor({
                 placeholder="Mô tả (tuỳ chọn)"
                 onChange={(e) => patchItemLocal(it.id, { description: e.target.value })}
               />
+              {it.is_optional && !it.is_discount && (
+                <input
+                  className="input mt-1.5"
+                  value={it.package_group || ""}
+                  disabled={locked}
+                  placeholder="Nhóm gói (VD: goi-co-ban) — để trống nếu không thuộc gói"
+                  onChange={(e) => patchItemLocal(it.id, { package_group: e.target.value })}
+                />
+              )}
               <p className="mt-1 flex items-center justify-between text-xs" style={{ color: "var(--text3)" }}>
                 <span>
                   {it.is_optional ? (it.selected ? "✓ Khách đã chọn" : "✗ Khách bỏ chọn") : "Bắt buộc"}
@@ -459,9 +573,12 @@ export default function QuoteEditor({
         </div>
         <div className="mt-4 flex flex-col items-end gap-1 text-sm" style={{ color: "var(--text2)" }}>
           <p>Tổng hạng mục: {vnd(grossTotal)}</p>
-          {discountTotal > 0 && <p style={{ color: "#fb923c" }}>Giảm giá: −{vnd(discountTotal)}</p>}
+          {discountTotal > 0 && <p style={{ color: "#fb923c" }}>Giảm giá item: −{vnd(discountTotal)}</p>}
+          {bulkDiscountActive && <p style={{ color: "#34d399" }}>Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount ?? 0)}</p>}
           <p>
-            <b className="text-base text-accent">Khách đang chọn: {vnd(total)}</b>
+            <b className="text-base text-accent">
+              Khách đang chọn: {vnd(bulkDiscountActive ? total - (quote.bulk_discount_amount ?? 0) : total)}
+            </b>
           </p>
           <p className="text-xs">Cọc đề xuất (~{depositPct.toFixed(0)}%, làm tròn 500K): {vnd(deposit)}</p>
         </div>

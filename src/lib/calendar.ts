@@ -47,8 +47,8 @@ export function googleCalendarUrl(ev: CalEvent): string {
 export function icsContent(ev: CalEvent, dtstamp: Date): string {
   const { start, timed } = parseStart(ev.date, ev.time);
   const esc = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Vieetjk//Studio//VI", "BEGIN:VEVENT"];
-  lines.push(`UID:${ymd(start)}-${Math.abs(hashCode(ev.title))}@vieetjk`);
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Mstudo//Studio//VI", "BEGIN:VEVENT"];
+  lines.push(`UID:${ymd(start)}-${Math.abs(hashCode(ev.title))}@mstudo`);
   lines.push(`DTSTAMP:${stamp(dtstamp)}`);
   if (timed) {
     const end = new Date(start.getTime() + (ev.durationMins ?? 120) * 60000);

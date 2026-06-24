@@ -10,7 +10,7 @@ const ymd = (s: string) => s.replace(/-/g, "");
 const esc = (s: string) => (s || "").replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
 
 function vevent(uid: string, date: string, time: string | null, summary: string, location: string | null, desc: string | null, now: Date) {
-  const lines = ["BEGIN:VEVENT", `UID:${uid}@vieetjk`, `DTSTAMP:${stamp(now)}`];
+  const lines = ["BEGIN:VEVENT", `UID:${uid}@mstudo`, `DTSTAMP:${stamp(now)}`];
   const mt = (time || "").match(/(\d{1,2}):(\d{2})/);
   if (mt) {
     const start = `${ymd(date)}T${pad(+mt[1])}${pad(+mt[2])}00`;

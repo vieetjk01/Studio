@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon, Sparkles, FileSignature, ExternalLink, Copy, Tag } from "lucide-react";
+import {
+  Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon,
+  Sparkles, FileSignature, ExternalLink, Copy, Tag, ChevronDown, ChevronUp, Package,
+} from "lucide-react";
 import {
   vnd,
   QUOTE_STATUS_LABEL,
@@ -38,7 +41,6 @@ export default function QuoteClientView({
   const [contractToken, setContractToken] = useState<string | null>(initialContractToken);
   const [copied, setCopied] = useState(false);
 
-  // Client-info form (pre-filled with whatever the studio already entered).
   const [clientName, setClientName] = useState(quote.client_name || "");
   const [clientPhone, setClientPhone] = useState(quote.client_phone || "");
   const [clientEmail, setClientEmail] = useState(quote.client_email || "");
@@ -46,18 +48,55 @@ export default function QuoteClientView({
   const [autoCreate, setAutoCreate] = useState(studioCanContract);
 
   const locked = accepted || quote.status === "cancelled" || quote.status === "expired";
+
+  // Separate items into package groups and standalone items.
+  const packageGroups = new Map<string, QuoteItem[]>();
+  const standaloneItems: QuoteItem[] = [];
+  for (const it of items) {
+    if (it.package_group) {
+      if (!packageGroups.has(it.package_group)) packageGroups.set(it.package_group, []);
+      packageGroups.get(it.package_group)!.push(it);
+    } else {
+      standaloneItems.push(it);
+    }
+  }
+
   const total = quoteSelectedTotal(items);
-  const deposit = computeRoundedDeposit(total);
-  const depositPct = depositRatio(total, deposit);
+
+  // Which package is currently selected (packages are mutually exclusive).
+  const selectedPackageGroup = items.find((i) => i.package_group && i.selected)?.package_group ?? null;
+
+  // Package-tied discount: applies only when the client picks the studio's
+  // designated package (discount_package_group).
+  const bulkDiscountActive =
+    !!quote.discount_package_group &&
+    selectedPackageGroup === quote.discount_package_group &&
+    quote.bulk_discount_amount > 0;
+  const effectiveTotal = bulkDiscountActive ? total - quote.bulk_discount_amount : total;
+  const deposit = computeRoundedDeposit(effectiveTotal);
+  const depositPct = depositRatio(effectiveTotal, deposit);
 
   const phoneDigits = clientPhone.replace(/\s+/g, "");
   const phoneValid = /^[0-9]{9,11}$/.test(phoneDigits);
   const formValid = clientName.trim().length > 0 && phoneValid;
 
   async function toggleItem(it: QuoteItem) {
-    if (!it.is_optional || locked) return;
+    if ((!it.is_optional && !it.package_group) || locked) return;
     const next = !it.selected;
-    setItems((arr) => arr.map((i) => (i.id === it.id ? { ...i, selected: next } : i)));
+    const prevItems = items;
+    // Packages are mutually exclusive: selecting one deselects every other
+    // package. Standalone optional items toggle on their own.
+    if (it.package_group) {
+      setItems((arr) =>
+        arr.map((i) => {
+          if (!i.package_group) return i;
+          if (next) return { ...i, selected: i.package_group === it.package_group };
+          return i.package_group === it.package_group ? { ...i, selected: false } : i;
+        }),
+      );
+    } else {
+      setItems((arr) => arr.map((i) => i.id === it.id ? { ...i, selected: next } : i));
+    }
     setError(null);
     try {
       const r = await fetch(`/api/quote/${quote.client_token}`, {
@@ -67,7 +106,7 @@ export default function QuoteClientView({
       });
       if (!r.ok) throw new Error((await r.json()).error || "Lỗi");
     } catch (e) {
-      setItems((arr) => arr.map((i) => (i.id === it.id ? { ...i, selected: it.selected } : i)));
+      setItems(prevItems); // Rollback to the pre-toggle snapshot.
       setError(e instanceof Error ? e.message : "Lỗi");
     }
   }
@@ -97,7 +136,7 @@ export default function QuoteClientView({
     if (locked || !formValid) return;
     const confirmMsg =
       `Xác nhận đồng ý báo giá này?\n\n` +
-      `Tổng tiền: ${vnd(total)}\n` +
+      `Tổng tiền: ${vnd(effectiveTotal)}\n` +
       `Cọc đề xuất: ${vnd(deposit)}\n` +
       (autoCreate && studioCanContract
         ? "✅ Studio sẽ TỰ ĐỘNG tạo hợp đồng cho bạn ngay sau khi xác nhận.\n"
@@ -132,6 +171,14 @@ export default function QuoteClientView({
   return (
     <main className="min-h-screen px-4 py-8 md:px-6 md:py-12" data-testid="quote-client-page">
       <div className="mx-auto max-w-3xl space-y-6">
+
+        {/* Locked banner */}
+        {locked && !accepted && (
+          <div className="rounded-lg px-4 py-3 text-sm" style={{ background: "rgba(107,163,199,0.1)", border: "1px solid rgba(107,163,199,0.3)", color: "var(--text2)" }}>
+            Báo giá này đã {quote.status === "cancelled" ? "bị huỷ" : "hết hạn"} và không thể thay đổi.
+          </div>
+        )}
+
         <header className="text-center">
           <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text3)" }}>{studioName}</p>
           <h1 className="mt-2 font-serif text-3xl font-medium md:text-4xl">{quote.title}</h1>
@@ -165,73 +212,148 @@ export default function QuoteClientView({
           </section>
         )}
 
+        {/* Items section */}
         <section className="card p-5">
           <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>Hạng mục báo giá</h2>
-          <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
-            Bấm vào hạng mục có ô vuông để chọn/bỏ. Hạng mục khoá <Lock size={10} className="inline" /> là bắt buộc.
-          </p>
-          <div className="mt-3 space-y-2">
-            {items.map((it) => {
-              const isOn = !it.is_optional || it.selected;
-              const lineTotal = (it.qty || 0) * (it.unit_price || 0);
-              return (
-                <button
-                  key={it.id}
-                  onClick={() => toggleItem(it)}
-                  disabled={!it.is_optional || locked}
-                  className="w-full rounded-lg border p-3 text-left transition"
-                  style={{
-                    borderColor: it.is_discount ? "#fb923c66" : isOn ? "var(--accent)" : "var(--border)",
-                    background: it.is_discount
-                      ? "rgba(251,146,60,0.06)"
-                      : isOn
-                      ? "rgba(199,167,107,0.06)"
-                      : "transparent",
-                    cursor: it.is_optional && !locked ? "pointer" : "default",
-                    opacity: isOn ? 1 : 0.55,
-                  }}
-                  data-testid={`quote-item-${it.id}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="mt-0.5 grid h-5 w-5 flex-shrink-0 place-items-center rounded border"
-                      style={{
-                        borderColor: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "var(--text3)",
-                        background: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "transparent",
-                      }}
-                    >
-                      {it.is_discount ? (
-                        <Tag size={11} color="#000" />
-                      ) : !it.is_optional ? (
-                        <Lock size={11} color="#000" />
-                      ) : isOn ? (
-                        <Check size={12} color="#000" />
-                      ) : null}
+          {!locked && (
+            <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
+              Bấm vào hạng mục có ô vuông để chọn/bỏ. Hạng mục khoá <Lock size={10} className="inline" /> là bắt buộc.
+            </p>
+          )}
+
+          {/* Package groups */}
+          {packageGroups.size > 0 && (
+            <div className="mt-3 space-y-3">
+              <p className="text-xs font-medium" style={{ color: "var(--text3)" }}>
+                <Package size={11} className="inline mr-1" /> Chọn 1 gói dịch vụ
+              </p>
+              {Array.from(packageGroups.entries()).map(([groupName, groupItems]) => {
+                const groupSelected = groupItems.some((i) => i.selected);
+                const groupTotal = groupItems.reduce((s, i) => s + (i.qty || 0) * (i.unit_price || 0), 0);
+                return (
+                  <button
+                    key={groupName}
+                    onClick={() => toggleItem(groupItems[0])}
+                    disabled={locked}
+                    className="w-full rounded-xl border-2 p-4 text-left transition"
+                    style={{
+                      borderColor: groupSelected ? "var(--accent)" : "var(--border)",
+                      background: groupSelected ? "rgba(199,167,107,0.06)" : "transparent",
+                      cursor: locked ? "default" : "pointer",
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full border-2"
+                          style={{
+                            borderColor: groupSelected ? "var(--accent)" : "var(--border)",
+                            background: groupSelected ? "var(--accent)" : "transparent",
+                          }}
+                        >
+                          {groupSelected && <Check size={11} color="#000" />}
+                        </div>
+                        <span className="font-medium">{groupName}</span>
+                        {quote.discount_package_group === groupName && quote.bulk_discount_amount > 0 && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
+                            <Tag size={9} className="inline mr-0.5" /> Giảm {vnd(quote.bulk_discount_amount)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-medium" style={{ color: "var(--accent)" }}>{vnd(groupTotal)}</span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : undefined }}>
-                        {it.is_discount && "🏷️ "}
-                        {it.name}
+                    <ul className="mt-2 space-y-0.5 pl-7 text-xs" style={{ color: "var(--text3)" }}>
+                      {groupItems.map((gi) => (
+                        <li key={gi.id}>• {gi.name}{gi.description ? ` — ${gi.description}` : ""} ({gi.qty} × {vnd(gi.unit_price)})</li>
+                      ))}
+                    </ul>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Standalone items */}
+          {standaloneItems.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {packageGroups.size > 0 && (
+                <p className="text-xs font-medium" style={{ color: "var(--text3)" }}>Hạng mục riêng lẻ</p>
+              )}
+              {standaloneItems.map((it) => {
+                const isOn = !it.is_optional || it.selected;
+                const lineTotal = (it.qty || 0) * (it.unit_price || 0);
+                return (
+                  <button
+                    key={it.id}
+                    onClick={() => toggleItem(it)}
+                    disabled={!it.is_optional || locked}
+                    className="w-full rounded-lg border p-3 text-left transition"
+                    style={{
+                      borderColor: it.is_discount ? "#fb923c66" : isOn ? "var(--accent)" : "var(--border)",
+                      background: it.is_discount
+                        ? "rgba(251,146,60,0.06)"
+                        : isOn
+                        ? "rgba(199,167,107,0.06)"
+                        : "transparent",
+                      cursor: it.is_optional && !locked ? "pointer" : "default",
+                      opacity: isOn ? 1 : 0.55,
+                    }}
+                    data-testid={`quote-item-${it.id}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="mt-0.5 grid h-5 w-5 flex-shrink-0 place-items-center rounded border"
+                        style={{
+                          borderColor: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "var(--text3)",
+                          background: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "transparent",
+                        }}
+                      >
+                        {it.is_discount ? (
+                          <Tag size={11} color="#000" />
+                        ) : !it.is_optional ? (
+                          <Lock size={11} color="#000" />
+                        ) : isOn ? (
+                          <Check size={12} color="#000" />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : undefined }}>
+                          {it.is_discount && "🏷️ "}
+                          {it.name}
+                        </p>
+                        {it.description && <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
+                        <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{it.qty} × {vnd(it.unit_price)}</p>
+                      </div>
+                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : "var(--accent)" }}>
+                        {it.is_discount ? "−" : ""}{vnd(lineTotal)}
                       </p>
-                      {it.description && <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
-                      <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{it.qty} × {vnd(it.unit_price)}</p>
                     </div>
-                    <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : "var(--accent)" }}>
-                      {it.is_discount ? "−" : ""}{vnd(lineTotal)}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Total */}
           <div className="mt-4 space-y-1 border-t pt-4 text-right" style={{ borderColor: "var(--border)" }}>
-            <p className="text-2xl font-medium text-accent" data-testid="quote-client-total">{vnd(total)}</p>
+            {bulkDiscountActive && (
+              <p className="text-sm" style={{ color: "#fb923c" }}>
+                🏷️ Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount)}
+              </p>
+            )}
+            {quote.discount_package_group && quote.bulk_discount_amount > 0 && !bulkDiscountActive && !locked && (
+              <p className="text-xs" style={{ color: "var(--text3)" }}>
+                Chọn gói <b style={{ color: "var(--text2)" }}>{quote.discount_package_group}</b> để được giảm {vnd(quote.bulk_discount_amount)}
+              </p>
+            )}
+            <p className="text-2xl font-medium text-accent" data-testid="quote-client-total">{vnd(effectiveTotal)}</p>
             <p className="text-xs" style={{ color: "var(--text3)" }}>
               Cọc đề xuất (~{depositPct.toFixed(0)}%, làm tròn 500K): <b style={{ color: "var(--text2)" }}>{vnd(deposit)}</b>
             </p>
           </div>
         </section>
 
+        {/* Adjustment request (only when not locked) */}
         {!locked && (
           <section className="card p-5" data-testid="quote-adjust-section">
             <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>
@@ -254,9 +376,10 @@ export default function QuoteClientView({
           </section>
         )}
 
+        {/* Adjustment history */}
         {adjustments.length > 0 && (
           <section className="card p-5">
-            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>Trao đổi</h2>
+            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>Trao đổi với studio</h2>
             <div className="mt-3 space-y-2">
               {adjustments.map((a) => (
                 <div
@@ -274,6 +397,7 @@ export default function QuoteClientView({
           </section>
         )}
 
+        {/* Client info form (only when not locked) */}
         {!locked && (
           <section className="card p-5" data-testid="quote-accept-form">
             <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>
@@ -284,23 +408,10 @@ export default function QuoteClientView({
             </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <ClientField icon={<UserIcon size={14} />} label="Họ và tên *">
-                <input
-                  className="input"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Nguyễn Văn A"
-                  data-testid="accept-name"
-                />
+                <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nguyễn Văn A" data-testid="accept-name" />
               </ClientField>
               <ClientField icon={<Phone size={14} />} label="Số điện thoại *">
-                <input
-                  className="input"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="0901234567"
-                  inputMode="numeric"
-                  data-testid="accept-phone"
-                />
+                <input className="input" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="0901234567" inputMode="numeric" data-testid="accept-phone" />
                 {clientPhone && !phoneValid && (
                   <p className="mt-1 text-[11px] text-red-400">SĐT phải có 9–11 chữ số.</p>
                 )}
@@ -319,7 +430,7 @@ export default function QuoteClientView({
                   type="checkbox"
                   checked={autoCreate}
                   onChange={(e) => setAutoCreate(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-current"
+                  className="mt-0.5 h-4 w-4"
                   style={{ accentColor: "var(--accent)" }}
                   data-testid="accept-auto-create"
                 />
@@ -349,46 +460,59 @@ export default function QuoteClientView({
             <ShieldCheck size={18} /> {accepting ? "Đang xử lý…" : "Tôi đồng ý với báo giá này"}
           </button>
         ) : accepted ? (
-          <div className="rounded-lg p-6 text-center" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)" }} data-testid="quote-accepted-banner">
-            <Check size={36} className="mx-auto text-green-400" />
-            <p className="mt-3 text-lg font-medium text-green-400">Bạn đã đồng ý với báo giá này</p>
-            {contractToken ? (
-              <>
-                <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-                  Hợp đồng đã được tạo tự động. Bấm nút dưới để xem chi tiết và ký xác nhận khi sẵn sàng.
-                </p>
-                <div className="mt-4 flex flex-col items-center gap-2">
-                  <a
-                    href={mainUrl(`/c/${contractToken}`)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-primary inline-flex items-center gap-2 px-5 py-2.5"
-                    data-testid="contract-view-link"
-                  >
-                    <FileSignature size={16} /> Xem hợp đồng
-                    <ExternalLink size={12} />
-                  </a>
-                  <button
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(mainUrl(`/c/${contractToken}`));
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1800);
-                    }}
-                    className="btn-ghost inline-flex items-center gap-1.5 text-xs"
-                    data-testid="contract-copy-link"
-                  >
-                    <Copy size={12} /> {copied ? "Đã copy ✓" : "Copy link hợp đồng để lưu lại"}
-                  </button>
-                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
-                    Giữ link này — bạn có thể quay lại xem hợp đồng bất cứ lúc nào.
+          <div className="space-y-3">
+            <div className="rounded-lg p-6 text-center" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)" }} data-testid="quote-accepted-banner">
+              <Check size={36} className="mx-auto text-green-400" />
+              <p className="mt-3 text-lg font-medium text-green-400">Bạn đã đồng ý với báo giá này</p>
+              {contractToken ? (
+                <>
+                  <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+                    Hợp đồng đã được tạo tự động. Bấm nút dưới để xem chi tiết và ký xác nhận khi sẵn sàng.
                   </p>
-                </div>
-              </>
-            ) : (
-              <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-                {studioName} sẽ liên hệ để gửi hợp đồng cho bạn. Cảm ơn bạn!
+                  <div className="mt-4 flex flex-col items-center gap-2">
+                    <a
+                      href={mainUrl(`/c/${contractToken}`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-primary inline-flex items-center gap-2 px-5 py-2.5"
+                      data-testid="contract-view-link"
+                    >
+                      <FileSignature size={16} /> Xem hợp đồng
+                      <ExternalLink size={12} />
+                    </a>
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(mainUrl(`/c/${contractToken}`));
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1800);
+                      }}
+                      className="btn-ghost inline-flex items-center gap-1.5 text-xs"
+                      data-testid="contract-copy-link"
+                    >
+                      <Copy size={12} /> {copied ? "Đã copy ✓" : "Copy link hợp đồng để lưu lại"}
+                    </button>
+                    <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                      Giữ link này — bạn có thể quay lại xem hợp đồng bất cứ lúc nào.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+                  {studioName} sẽ liên hệ để gửi hợp đồng cho bạn. Cảm ơn bạn!
+                </p>
+              )}
+            </div>
+            {/* Reference contract notice */}
+            <div className="rounded-lg px-4 py-3 text-sm" style={{ background: "rgba(199,167,107,0.08)", border: "1px solid rgba(199,167,107,0.25)" }}>
+              <p className="font-medium" style={{ color: "var(--accent)" }}>
+                <FileSignature size={14} className="inline mr-1.5" />
+                Lưu ý về hợp đồng
               </p>
-            )}
+              <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>
+                Hợp đồng tạo tự động từ báo giá này là <b>hợp đồng tham khảo</b>.
+                Studio sẽ chỉnh sửa đầy đủ các điều khoản, thông tin chi tiết và gửi lại để bạn xem xét và ký chính thức.
+              </p>
+            </div>
           </div>
         ) : (
           <p className="text-center text-sm" style={{ color: "var(--text3)" }}>Báo giá này không thể thao tác.</p>

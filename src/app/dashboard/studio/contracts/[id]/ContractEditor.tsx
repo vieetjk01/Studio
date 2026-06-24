@@ -18,7 +18,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { studioUrl, mainUrl } from "@/lib/hosts";
+import { mainUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
@@ -208,7 +208,7 @@ export default function ContractEditor({
   const productCost = products.reduce((s, p) => s + (Number(p.cost) || 0) * (Number(p.qty) || 1), 0);
   const profit = total - payroll - expenseTotal - productCost;
   const qrInfo = (contract.code || contract.title || "").slice(0, 25);
-  // Unified client portal lives on the main site (vieetjk.com/c/<token>).
+  // Unified client portal lives on the main site (mstudo.com/c/<token>).
   const shareUrl = mainUrl(`/c/${contract.client_token}`);
 
   // Required fields — flagged red until valid. Phone must be 10 digits.
@@ -226,6 +226,17 @@ export default function ContractEditor({
     if (f.code.trim()) return;
     const code = await nextContractCode(supabase, contract.owner_id);
     set("code", code);
+  }
+
+  // Quick status switch — persists immediately without the full-save gate
+  // (signature + required fields). Lets the studio move a contract through its
+  // lifecycle (Nháp → Đã gửi → … → Hoàn thành) in one click.
+  async function changeStatus(status: ContractStatus) {
+    if (status === f.status) return;
+    set("status", status);
+    const { error } = await supabase.from("studio_contracts").update({ status }).eq("id", contract.id);
+    toast(error ? `Lỗi: ${error.message}` : `Trạng thái: ${CONTRACT_STATUS_LABEL[status]}`);
+    if (!error) router.refresh();
   }
 
   // ── Save contract fields ───────────────────────────────────────
@@ -727,7 +738,21 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           <p className="eyebrow mb-1.5">{SHOOT_TYPE_LABEL[f.shoot_type]}{f.code ? ` · ${f.code}` : ""}</p>
           <h1 className="font-serif text-3xl font-medium">{f.title || "Hợp đồng"}</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-start gap-2">
+          <label className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text3)" }}>
+            Trạng thái
+            <select
+              className="input py-2 text-xs"
+              style={{ width: "auto" }}
+              value={f.status}
+              onChange={(e) => changeStatus(e.target.value as ContractStatus)}
+              data-testid="contract-status-select"
+            >
+              {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((k) => (
+                <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
+              ))}
+            </select>
+          </label>
           <div className="flex flex-col items-end">
             <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary px-4 py-2 text-xs">
               <Check size={14} /> {busy === "contract" ? "Đang lưu…" : "Lưu hợp đồng"}
@@ -1447,7 +1472,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               {busy === "crew" ? "Đang lưu…" : "Lưu nhân sự & lương"}
             </button>
             <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
-              Thợ tự nhập SĐT tại {studioUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
+              Thợ tự nhập SĐT tại {mainUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
             </p>
           </div>
 

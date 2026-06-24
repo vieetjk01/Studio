@@ -13,7 +13,7 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key",
     {
-      // Share the session cookie across vieetjk.com subdomains (album / img).
+      // Share the session cookie across mstudo.com subdomains (album / img).
       ...(COOKIE_DOMAIN ? { cookieOptions: { domain: COOKIE_DOMAIN } } : {}),
       cookies: {
         getAll() {

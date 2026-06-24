@@ -72,7 +72,7 @@ export const ADMIN_LIMITS: PlanLimits = PLAN_LIMITS.studio;
 
 /**
  * Studio-module access level a plan unlocks:
- *   none    — no access to studio.vieetjk.com
+ *   none    — no access to studio.mstudo.com
  *   booking — đặt lịch, bảng giá, lịch chụp, khách hàng (gói Photographer)
  *   full    — booking + hợp đồng, tài chính, đội ngũ (gói Studio / admin)
  */
@@ -159,7 +159,7 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
     "50 album mỗi tháng",
     "Đầy đủ tính năng gói Basic + full quyền khách hàng",
     "Nén qua Google Drive (Picker): 15 lần / tháng",
-    "Trang quản lý lịch chụp riêng (studio.vieetjk.com)",
+    "Trang quản lý lịch chụp riêng (studio.mstudo.com)",
     "Nhận đặt lịch online (link + QR cho khách)",
     "Bảng giá dịch vụ & danh bạ khách hàng",
     "Lịch chụp + nhắc lịch",
@@ -169,7 +169,7 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
   studio: [
     "Tất cả tính năng gói Photographer — không giới hạn",
     "Album & nén qua Drive không giới hạn",
-    "Trang quản lý studio riêng (studio.vieetjk.com)",
+    "Trang quản lý studio riêng (studio.mstudo.com)",
     "Quản lý hợp đồng & báo giá hạng mục cho khách",
     "Quản lý lịch chụp + nhắc lịch",
     "Quản lý photographer / cameramen & lương theo hợp đồng",

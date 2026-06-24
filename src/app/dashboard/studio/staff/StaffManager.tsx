@@ -59,7 +59,7 @@ export default function StaffManager({ initial }: { initial: StaffRow[] }) {
       <div className="mb-4">
         <h1 className="font-serif text-2xl font-medium">Nhân viên</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
-          Tạo tài khoản cho nhân viên. Họ đăng nhập tại studio.vieetjk.com bằng email/mật khẩu bạn đặt.
+          Tạo tài khoản cho nhân viên. Họ đăng nhập tại studio.mstudo.com bằng email/mật khẩu bạn đặt.
         </p>
       </div>
 

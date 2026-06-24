@@ -10,7 +10,7 @@ import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
-import { appUrl, imgUrl, studioUrl } from "@/lib/hosts";
+import { appUrl, imgUrl, adminUrl, mainUrl } from "@/lib/hosts";
 import { effectivePlan, studioTier, STUDIO_TIER_RANK, type StudioTier } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
@@ -32,7 +32,7 @@ export default function DashboardHeader({
   kind = "app",
 }: {
   profile: Profile;
-  kind?: "app" | "img" | "studio";
+  kind?: "app" | "img" | "admin";
 }) {
   const { t } = useLang();
   const router = useRouter();
@@ -111,6 +111,7 @@ export default function DashboardHeader({
       ],
     },
     { href: appUrl("/dashboard"), label: t("myAlbums"), external: true, tier: "booking" },
+    ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web riêng", tier: "booking" as const }] : []),
   ];
 
   // Visibility: by tier (Photographer only sees booking-tier items), then by
@@ -123,6 +124,10 @@ export default function DashboardHeader({
     return true;
   });
 
+  // Show studio nav when browsing any studio path (regardless of host).
+  const isOnStudio =
+    pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/galleries");
+
   // Build the link set for this host. Cross-host links use absolute URLs.
   const links: NavLink[] =
     kind === "img"
@@ -131,18 +136,24 @@ export default function DashboardHeader({
           { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
           { href: appUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
         ]
+      : kind === "admin"
+      ? [
+          { href: "/dashboard/admin", label: t("admin") },
+          { href: "/dashboard/settings", label: t("settings") },
+          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+        ]
       : [
           { href: "/dashboard", label: t("myAlbums") },
           { href: "/dashboard/create", label: t("newAlbum") },
           { href: "/dashboard/filter", label: t("filterPhotos") },
           { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
           ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web" }] : []),
-          ...(hasStudio ? [{ href: studioUrl("/dashboard/studio"), label: tier === "full" ? "Studio" : "Quản lý", external: true }] : []),
+          ...(hasStudio ? [{ href: mainUrl("/dashboard/studio"), label: tier === "full" ? "Studio" : "Quản lý", external: !!process.env.NEXT_PUBLIC_MAIN_HOST }] : []),
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),
           ...(profile.role === "admin"
             ? [
-                { href: "/dashboard/admin", label: t("admin") },
-                { href: "/dashboard/settings", label: t("settings") },
+                { href: adminUrl("/dashboard/admin"), label: t("admin"), external: !!process.env.NEXT_PUBLIC_ADMIN_HOST },
+                { href: adminUrl("/dashboard/settings"), label: t("settings"), external: !!process.env.NEXT_PUBLIC_ADMIN_HOST },
               ]
             : []),
         ];
@@ -192,20 +203,20 @@ export default function DashboardHeader({
     <header className="sticky top-0 z-20 border-b border-ink-800 bg-ink-950/80 px-6 py-4 backdrop-blur md:px-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Brand href={kind === "img" ? "/" : kind === "studio" ? "/dashboard/studio" : "/dashboard"} />
+          <Brand href={kind === "img" ? "/" : isOnStudio ? "/dashboard/studio" : "/dashboard"} />
           <nav className="hidden items-center gap-x-5 gap-y-1.5 md:flex md:flex-wrap">
-            {kind === "studio"
+            {isOnStudio
               ? studioVisible.map((item) => (isGroup(item) ? renderGroup(item) : renderLink(item)))
               : links.map((l) => renderLink(l))}
           </nav>
         </div>
         <div className="flex items-center gap-3 md:gap-4">
-          {kind === "studio" && (
+          {isOnStudio && (
             <div className="hidden sm:block">
               <StudioSearch />
             </div>
           )}
-          {kind === "studio" && <NotificationBell />}
+          {isOnStudio && <NotificationBell />}
           <span className="hidden text-xs text-accent-muted sm:inline">
             {profile.full_name || profile.email}
             {profile.role === "admin" && (
@@ -232,7 +243,7 @@ export default function DashboardHeader({
       {/* Mobile dropdown menu */}
       {menuOpen && (
         <nav className="mt-3 grid gap-1 border-t border-ink-800 pt-3 md:hidden">
-          {kind === "studio"
+          {isOnStudio
             ? studioVisible.map((item) =>
                 isGroup(item) ? (
                   <div key={item.label} className="py-1.5">
