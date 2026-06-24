@@ -176,6 +176,89 @@ const sectionSub: CSSProperties = { color: "var(--muted)", fontSize: 17, lineHei
 const cardBase: CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 16, padding: 26 };
 const navLink: CSSProperties = { color: "var(--muted)", textDecoration: "none", fontSize: 14.5, fontWeight: 500 };
 
+/* Recreation of the studio dashboard, used as the hero preview. Pure markup so
+   it stays crisp at any size and follows the landing light/dark theme. */
+function DashboardPreview() {
+  const green = "var(--accent)";
+  const card: CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 14 };
+  const nav = ["Tổng quan", "Đặt lịch KH", "Lịch chụp", "Bảng giá", "Khách hàng", "Thu chi", "Quản lý thợ"];
+  const stats = [
+    { v: "128,5Mđ", k: "Doanh thu tháng", s: "+12,4% so tháng trước" },
+    { v: "34", k: "Đơn mới", s: "+6 tuần này" },
+    { v: "18", k: "Buổi chụp", s: "5 buổi tuần này" },
+    { v: "5", k: "HĐ chờ ký", s: "cần xử lý" },
+  ];
+  const bars = [34, 52, 44, 62, 78, 86];
+  const orders = [
+    { c: "Nguyễn Minh Anh", s: "Chụp cưới", t: "25.000.000đ", st: "Đã thanh toán", ok: true },
+    { c: "Trần Hoàng Long", s: "Kỷ yếu", t: "8.500.000đ", st: "Đặt cọc", ok: false },
+    { c: "Lê Thu Hà", s: "Chân dung", t: "3.200.000đ", st: "Đã thanh toán", ok: true },
+  ];
+  return (
+    <div style={{ display: "flex", height: "clamp(300px,40vw,460px)", fontSize: 11, color: "var(--fg)", background: "var(--bg)" }}>
+      {/* sidebar */}
+      <div style={{ width: "22%", minWidth: 120, borderRight: "1px solid var(--border)", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+          <span style={{ width: 20, height: 20, borderRadius: 6, background: green, color: "var(--accentFg)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12 }}>m</span>
+          <span style={{ fontWeight: 800 }}>mstudo</span>
+        </div>
+        {nav.map((n, i) => (
+          <div key={n} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 8px", borderRadius: 7, background: i === 0 ? "var(--accentSoft)" : "transparent", color: i === 0 ? green : "var(--muted)", fontWeight: i === 0 ? 700 : 500 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 3, background: i === 0 ? green : "var(--border)" }} />
+            {n}
+          </div>
+        ))}
+      </div>
+      {/* main */}
+      <div style={{ flex: 1, padding: 14, overflow: "hidden" }}>
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 12 }}>Tổng quan</div>
+        {/* stat cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 12 }}>
+          {stats.map((s) => (
+            <div key={s.k} style={card}>
+              <div style={{ color: "var(--muted)", fontSize: 10 }}>{s.k}</div>
+              <div style={{ fontWeight: 800, fontSize: 16, margin: "4px 0 2px" }}>{s.v}</div>
+              <div style={{ color: green, fontSize: 9 }}>{s.s}</div>
+            </div>
+          ))}
+        </div>
+        {/* chart + list */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 10 }}>
+          <div style={{ ...card, display: "flex", flexDirection: "column" }}>
+            <div style={{ color: "var(--muted)", fontSize: 10, marginBottom: 8 }}>Doanh thu · 6 tháng</div>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 6, height: 86 }}>
+              {bars.map((h, i) => (
+                <div key={i} style={{ flex: 1, height: `${h}%`, background: green, opacity: 0.55 + i * 0.07, borderRadius: "4px 4px 0 0" }} />
+              ))}
+            </div>
+          </div>
+          <div style={card}>
+            <div style={{ color: "var(--muted)", fontSize: 10, marginBottom: 8 }}>Lịch chụp sắp tới</div>
+            {[["24", "Chụp cưới · Anh & Hà"], ["25", "Kỷ yếu lớp 12A"], ["26", "Chân dung doanh nhân"]].map(([d, t]) => (
+              <div key={d} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontWeight: 800, color: green, fontSize: 13 }}>{d}</span>
+                <span style={{ color: "var(--muted)" }}>{t}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* recent orders */}
+        <div style={{ ...card, marginTop: 10 }}>
+          <div style={{ color: "var(--muted)", fontSize: 10, marginBottom: 8 }}>Đơn hàng gần đây</div>
+          {orders.map((o) => (
+            <div key={o.c} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr auto", gap: 8, alignItems: "center", padding: "5px 0", borderTop: "1px solid var(--border)" }}>
+              <span>{o.c}</span>
+              <span style={{ color: "var(--muted)" }}>{o.s}</span>
+              <span style={{ fontWeight: 700 }}>{o.t}</span>
+              <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 999, background: "var(--accentSoft)", color: o.ok ? green : "var(--muted)" }}>{o.st}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const { lang, setLang } = useLang();
   const L = D[lang === "en" ? "en" : "vi"];
@@ -258,9 +341,8 @@ export default function LandingPage() {
               {[0, 1, 2].map((i) => <span key={i} style={{ width: 11, height: 11, borderRadius: "50%", background: "var(--border)" }} />)}
               <span style={{ marginLeft: 12, fontSize: 12, color: "var(--muted)", fontFamily: "ui-monospace,monospace" }}>app.mstudo.com/dashboard</span>
             </div>
-            <div style={{ height: "clamp(280px,38vw,440px)", backgroundImage: "repeating-linear-gradient(135deg,var(--surface2) 0,var(--surface2) 12px,transparent 12px,transparent 24px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontFamily: "ui-monospace,monospace", fontSize: 13, color: "var(--muted)", background: "var(--bg)", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)" }}>{L.hero.shot}</span>
-            </div>
+            <DashboardPreview />
+            <span style={{ display: "none" }}>{L.hero.shot}</span>
           </div>
         </section>
 

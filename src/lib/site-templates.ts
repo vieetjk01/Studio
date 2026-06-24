@@ -36,6 +36,36 @@ export const EMPTY_INTAKE: SiteIntake = {
 const img = (seed: string, w = 1600, h = 900) => `https://picsum.photos/seed/${seed}/${w}/${h}`;
 
 /**
+ * Thumbnail tĩnh cho mỗi mẫu — vẽ bằng SVG đúng theo bảng màu / phông / bo góc
+ * của chính mẫu đó, nên ảnh xem trước luôn khớp với giao diện thật và không phụ
+ * thuộc dịch vụ ảnh bên ngoài.
+ */
+function makeThumb(t: SiteTheme, label: string): string {
+  const bg = t.bg || "#111";
+  const text = t.text || "#eee";
+  const accent = t.accent || "#c7a76b";
+  const serif = t.font !== "sans";
+  const family = serif ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
+  const r = t.radius === "sharp" ? 0 : 12;
+  const center = t.heroAlign !== "left";
+  const titleX = center ? 300 : 40;
+  const anchor = center ? "middle" : "start";
+  const underlineX = center ? 230 : 40;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='380' viewBox='0 0 600 380'>
+  <rect width='600' height='380' fill='${bg}'/>
+  <rect x='40' y='28' width='88' height='9' rx='4' fill='${accent}'/>
+  <rect x='452' y='28' width='108' height='9' rx='4' fill='${text}' opacity='0.28'/>
+  <text x='${titleX}' y='168' font-family='${family}' font-size='46' font-style='${serif ? "italic" : "normal"}' fill='${text}' text-anchor='${anchor}'>${label}</text>
+  <rect x='${underlineX}' y='192' width='140' height='7' rx='3.5' fill='${accent}'/>
+  <rect x='${center ? 180 : 40}' y='214' width='${center ? 240 : 300}' height='6' rx='3' fill='${text}' opacity='0.30'/>
+  <rect x='40' y='258' width='168' height='92' rx='${r}' fill='${accent}' opacity='0.20'/>
+  <rect x='216' y='258' width='168' height='92' rx='${r}' fill='${text}' opacity='0.12'/>
+  <rect x='392' y='258' width='168' height='92' rx='${r}' fill='${accent}' opacity='0.14'/>
+</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
  * Điền thông tin người dùng vào các khối của mẫu. Chỉ ghi đè khi người dùng có
  * nhập (field không rỗng) — còn lại giữ nguyên nội dung mẫu để trang vẫn đẹp.
  */
@@ -91,13 +121,12 @@ export function intakeHasContent(i: SiteIntake): boolean {
  * 5 mẫu giao diện sẵn — mỗi mẫu là theme (màu + bố cục) + các khối có nội dung
  * mẫu. Người dùng đổi màu, sửa nội dung, thêm/bớt khối tuỳ ý sau khi áp dụng.
  */
-export const SITE_TEMPLATES: SiteTemplate[] = [
+const RAW_TEMPLATES: Omit<SiteTemplate, "thumb">[] = [
   // 1) Sang trọng — fine-art wedding (Maison): nền tối, vàng champagne, serif.
   {
     key: "maison",
     name: "Sang trọng",
     tag: "Áo cưới cao cấp · nền tối, vàng champagne",
-    thumb: img("vk-maison", 600, 380),
     theme: { mode: "dark", accent: "#a08850", bg: "#16140f", text: "#ece6d8", font: "serif", heroAlign: "center", galleryCols: 4, radius: "sharp", heroSize: "large", contentWidth: "compact" },
     blocks: [
       { type: "hero", config: { heading: "", subheading: "Khoảnh khắc vĩnh cửu · Studio áo cưới cao cấp", image: img("vk-maison-hero") } },
@@ -118,7 +147,6 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     key: "vintage",
     name: "Hoài niệm",
     tag: "Chất film cổ điển · tông nâu ấm, giấy ngà",
-    thumb: img("vk-vintage", 600, 380),
     theme: { mode: "light", accent: "#9c5a36", bg: "#ece3d2", text: "#3c3326", font: "serif", heroAlign: "left", galleryCols: 3, radius: "sharp", heroSize: "large" },
     blocks: [
       { type: "hero", config: { heading: "", subheading: "Tình yêu, kể bằng chất phim hoài niệm", image: img("vk-vintage-hero") } },
@@ -138,7 +166,6 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     key: "flora",
     name: "Lãng mạn",
     tag: "Pastel hồng ngọt ngào · bo tròn mềm mại",
-    thumb: img("vk-flora", 600, 380),
     theme: { mode: "light", accent: "#c98a92", bg: "#fbf4f3", text: "#4a3a3e", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded", heroSize: "medium" },
     blocks: [
       { type: "hero", config: { heading: "", subheading: "Yêu thương nở hoa · Studio áo cưới lãng mạn", image: img("vk-flora-hero") } },
@@ -157,7 +184,6 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     key: "story",
     name: "Câu chuyện",
     tag: "Nhiếp ảnh gia cá nhân · editorial ấm",
-    thumb: img("vk-story", 600, 380),
     theme: { mode: "light", accent: "#a6552f", bg: "#f8f5f0", text: "#241f1a", font: "serif", heroAlign: "left", galleryCols: 3, radius: "sharp", heroSize: "medium" },
     blocks: [
       { type: "hero", config: { heading: "", subheading: "Mỗi bức ảnh là một câu chuyện", image: img("vk-story-hero") } },
@@ -176,7 +202,6 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     key: "editorial",
     name: "Hiện đại",
     tag: "Editorial thanh lịch · vàng nâu, hiện đại",
-    thumb: img("vk-editorial", 600, 380),
     theme: { mode: "light", accent: "#9a7b53", bg: "#f4f1ec", text: "#211d18", font: "serif", heroAlign: "left", galleryCols: 3, radius: "rounded", heroSize: "large" },
     blocks: [
       { type: "hero", config: { heading: "", subheading: "Ngày của hai ta · Studio áo cưới hiện đại", image: img("vk-editorial-hero") } },
@@ -191,3 +216,8 @@ export const SITE_TEMPLATES: SiteTemplate[] = [
     ],
   },
 ];
+
+export const SITE_TEMPLATES: SiteTemplate[] = RAW_TEMPLATES.map((t) => ({
+  ...t,
+  thumb: makeThumb(t.theme, t.name),
+}));
