@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Link as LinkIcon, Copy, Check, Phone, FilePlus, Archive } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -13,10 +13,12 @@ import { vnd, type StudioBooking } from "@/lib/types";
 export default function BookingsView({
   ownerId,
   token,
+  tokenSaved = true,
   initial,
 }: {
   ownerId: string;
   token: string;
+  tokenSaved?: boolean;
   initial: StudioBooking[];
 }) {
   const router = useRouter();
@@ -24,7 +26,14 @@ export default function BookingsView({
   const [list, setList] = useState<StudioBooking[]>(initial);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const bookingUrl = mainUrl(`/book/${token}`);
+  // Public share link. Default to the canonical host (mainUrl) for SSR, but once
+  // mounted prefer the host the owner is actually on (e.g. www.mstudo.com) so the
+  // shared link always points to a host that serves the app — avoids a 404 when
+  // the apex (mstudo.com) isn't configured as a Vercel domain.
+  const [bookingUrl, setBookingUrl] = useState(() => mainUrl(`/book/${token}`));
+  useEffect(() => {
+    setBookingUrl(`${window.location.origin}/book/${token}`);
+  }, [token]);
 
   async function archive(id: string) {
     await supabase.from("studio_bookings").update({ status: "archived" }).eq("id", id);
@@ -79,6 +88,20 @@ export default function BookingsView({
       <div className="mb-4">
         <h1 className="font-serif text-2xl font-medium">Đặt lịch online</h1>
       </div>
+
+      {/* Warn if the token couldn't be persisted — the public link would 404. */}
+      {!tokenSaved && (
+        <div className="card mb-4 p-4" style={{ borderColor: "rgba(224,116,111,.5)" }}>
+          <p className="text-sm font-medium" style={{ color: "#e0746f" }}>
+            Không lưu được mã đặt lịch vào cơ sở dữ liệu.
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>
+            Link bên dưới sẽ báo &quot;không hợp lệ&quot; khi khách mở. Vui lòng kiểm tra biến môi trường
+            <code className="mx-1">SUPABASE_SERVICE_ROLE_KEY</code> trên Vercel và cột
+            <code className="mx-1">booking_token</code> trong bảng <code>profiles</code>.
+          </p>
+        </div>
+      )}
 
       {/* Share link */}
       <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">

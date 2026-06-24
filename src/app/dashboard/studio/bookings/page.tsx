@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStudio } from "@/lib/auth-guards";
 import type { StudioBooking } from "@/lib/types";
 import BookingsView from "./BookingsView";
@@ -19,11 +20,21 @@ export default async function BookingsPage() {
 
   const supabase = createClient();
 
-  // Ensure the studio has a public booking token.
+  // Ensure the studio has a public booking token. Write + read it back with the
+  // service-role client (same client the public /book page uses) so the link we
+  // show is guaranteed to resolve — avoids RLS edge cases silently dropping the
+  // write and producing a "Link không hợp lệ" 404 for the customer.
   let token = profile.booking_token as string | null;
+  let tokenSaved = true;
   if (!token) {
+    const admin = createAdminClient();
     token = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "");
-    await supabase.from("profiles").update({ booking_token: token }).eq("id", profile.id);
+    const { error } = await admin.from("profiles").update({ booking_token: token }).eq("id", profile.id);
+    if (error) tokenSaved = false;
+    // Read back to confirm it persisted (and to pick up any pre-existing token).
+    const { data: row } = await admin.from("profiles").select("booking_token").eq("id", profile.id).maybeSingle();
+    if (row?.booking_token) token = row.booking_token as string;
+    else tokenSaved = false;
   }
 
   const { data } = await supabase
@@ -33,5 +44,5 @@ export default async function BookingsPage() {
     .neq("status", "archived")
     .order("created_at", { ascending: false });
 
-  return <BookingsView ownerId={profile.id} token={token} initial={(data ?? []) as StudioBooking[]} />;
+  return <BookingsView ownerId={profile.id} token={token} tokenSaved={tokenSaved} initial={(data ?? []) as StudioBooking[]} />;
 }
