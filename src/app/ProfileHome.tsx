@@ -84,15 +84,16 @@ export default function ProfileHome({
   const contactRef = useRef<HTMLDivElement>(null);
 
   // Light/dark theme for the public homepage (persisted per visitor).
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Defaults to light (matches the marketing homepage look).
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   useEffect(() => {
     const stored = window.localStorage.getItem("vk_home_theme");
-    const next = stored === "light" ? "light" : "dark";
+    const next = stored === "dark" ? "dark" : "light";
     setTheme(next);
     document.documentElement.dataset.theme = next;
-    // Other routes are dark-only — restore dark when leaving the homepage.
+    // Restore the light default when leaving the homepage.
     return () => {
-      document.documentElement.dataset.theme = "dark";
+      document.documentElement.dataset.theme = "light";
     };
   }, []);
   function toggleTheme() {

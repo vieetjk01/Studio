@@ -3,24 +3,25 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  /* Obsidian design tokens (mirrors the Vieetjk Gallery design) */
-  --bg: #0a0a0c;
-  --bg2: #0f0f12;
-  --surface: #141417;
-  --surface2: #1c1c20;
-  --border: rgba(255, 255, 255, 0.09);
-  --border2: rgba(255, 255, 255, 0.18);
-  --text: #f4f3f1;
-  --text2: rgba(244, 243, 241, 0.6);
-  --text3: rgba(244, 243, 241, 0.36);
-  --accent: #f4f3f1;
-  --accentInk: #0a0a0c;
-  --gold: #e8c57c;
+  color-scheme: light;
+  /* Light by default — matches the marketing homepage (mstudo.com) look.
+     Dark is opt-in via data-theme="dark" on <html>. */
+  --bg: #f7f6f3;
+  --bg2: #efeee9;
+  --surface: #ffffff;
+  --surface2: #f1f0ec;
+  --border: rgba(0, 0, 0, 0.10);
+  --border2: rgba(0, 0, 0, 0.20);
+  --text: #1a1a1c;
+  --text2: rgba(26, 26, 28, 0.62);
+  --text3: rgba(26, 26, 28, 0.42);
+  --accent: #1a1a1c;
+  --accentInk: #f7f6f3;
+  --gold: #b8893a;
   --logo: #c0151a;
 }
 
-/* Light theme — opt-in via data-theme="light" on <html> (homepage toggle). */
+/* Explicit light alias — anything that still sets data-theme="light" stays light. */
 :root[data-theme="light"] {
   color-scheme: light;
   --bg: #f7f6f3;
@@ -35,6 +36,24 @@
   --accent: #1a1a1c;
   --accentInk: #f7f6f3;
   --gold: #b8893a;
+  --logo: #c0151a;
+}
+
+/* Dark theme — opt-in via data-theme="dark" (Obsidian design tokens). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0a0c;
+  --bg2: #0f0f12;
+  --surface: #141417;
+  --surface2: #1c1c20;
+  --border: rgba(255, 255, 255, 0.09);
+  --border2: rgba(255, 255, 255, 0.18);
+  --text: #f4f3f1;
+  --text2: rgba(244, 243, 241, 0.6);
+  --text3: rgba(244, 243, 241, 0.36);
+  --accent: #f4f3f1;
+  --accentInk: #0a0a0c;
+  --gold: #e8c57c;
   --logo: #c0151a;
 }
 

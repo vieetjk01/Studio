@@ -118,13 +118,14 @@ export default function StudioShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
 
   // Restore the studio theme preference (separate from the album shell).
+  // Defaults to light (matches the marketing homepage look).
   useEffect(() => {
     const stored = window.localStorage.getItem("studio_theme");
     if (stored === "light" || stored === "dark") setTheme(stored);

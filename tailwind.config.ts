@@ -34,7 +34,7 @@ const config: Config = {
         strong: "rgba(255,255,255,0.18)",
       },
       fontFamily: {
-        sans: ["var(--font-hanken)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        sans: ["var(--font-manrope)", "var(--font-hanken)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         serif: ["var(--font-cormorant)", "Georgia", "serif"],
       },
       animation: {
