@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 
@@ -108,7 +109,10 @@ function LoginForm() {
     <main className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-5 md:px-10">
         <Brand />
-        <LanguageSwitcher />
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex flex-1 items-center justify-center px-6">

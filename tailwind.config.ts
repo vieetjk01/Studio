@@ -5,33 +5,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Obsidian palette (from the Vieetjk Gallery design)
-        bg: "#0a0a0c",
-        bg2: "#0f0f12",
-        surface: "#141417",
-        surface2: "#1c1c20",
+        // Theme-aware tokens — these follow the CSS variables so they switch
+        // automatically between the light (default) and dark themes.
+        bg: "var(--bg)",
+        bg2: "var(--bg2)",
+        surface: "var(--surface)",
+        surface2: "var(--surface2)",
         ink: {
-          950: "#0a0a0c",
-          900: "#0f0f12",
-          850: "#141417",
-          800: "#1c1c20",
-          700: "#26262d",
-          600: "#33333c",
+          950: "var(--bg)",
+          900: "var(--bg2)",
+          850: "var(--surface)",
+          800: "var(--surface2)",
+          700: "var(--surface2)",
+          600: "var(--border2)",
         },
         // text tokens
-        fg: "#f4f3f1",
+        fg: "var(--text)",
         accent: {
-          DEFAULT: "#f4f3f1", // silver-white
-          muted: "rgba(244,243,241,0.60)",
-          faint: "rgba(244,243,241,0.36)",
-          ink: "#0a0a0c",
-          gold: "#E8C57C", // champagne accent
+          DEFAULT: "var(--accent)",
+          muted: "var(--text2)",
+          faint: "var(--text3)",
+          ink: "var(--accentInk)",
+          gold: "var(--gold)",
         },
-        logo: "#C0151A", // red play triangle
+        logo: "var(--logo)",
       },
       borderColor: {
-        subtle: "rgba(255,255,255,0.09)",
-        strong: "rgba(255,255,255,0.18)",
+        subtle: "var(--border)",
+        strong: "var(--border2)",
       },
       fontFamily: {
         sans: ["var(--font-manrope)", "var(--font-hanken)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],

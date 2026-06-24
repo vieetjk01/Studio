@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, ChevronDown } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import { useLang } from "@/lib/i18n";
@@ -226,6 +227,7 @@ export default function DashboardHeader({
             )}
           </span>
           <LanguageSwitcher />
+          <ThemeToggle />
           <button onClick={signOut} className="btn-ghost px-3 py-1.5 text-xs">
             {t("logout")}
           </button>

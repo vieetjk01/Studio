@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useLang } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 import { mainUrl } from "@/lib/hosts";
 
 /* ── Bilingual content (ported from the mstudo design) ─────────────────── */
@@ -264,16 +265,7 @@ export default function LandingPage() {
   const L = D[lang === "en" ? "en" : "vi"];
   const loginUrl = mainUrl("/login");
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  useEffect(() => {
-    const stored = window.localStorage.getItem("mstudo_theme");
-    if (stored === "dark") setTheme("dark");
-  }, []);
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    window.localStorage.setItem("mstudo_theme", next);
-  };
+  const { theme, toggle: toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
   const [openFaq, setOpenFaq] = useState<number>(0);

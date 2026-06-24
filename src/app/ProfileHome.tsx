@@ -27,6 +27,7 @@ import {
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLang } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 import { thumbnailUrl } from "@/lib/drive";
 import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import PackageCompare from "@/components/PackageCompare";
@@ -83,25 +84,8 @@ export default function ProfileHome({
   const { t } = useLang();
   const contactRef = useRef<HTMLDivElement>(null);
 
-  // Light/dark theme for the public homepage (persisted per visitor).
-  // Defaults to light (matches the marketing homepage look).
-  const [theme, setTheme] = useState<"dark" | "light">("light");
-  useEffect(() => {
-    const stored = window.localStorage.getItem("vk_home_theme");
-    const next = stored === "dark" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    // Restore the light default when leaving the homepage.
-    return () => {
-      document.documentElement.dataset.theme = "light";
-    };
-  }, []);
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    window.localStorage.setItem("vk_home_theme", next);
-    document.documentElement.dataset.theme = next;
-  }
+  // App-wide light/dark theme (shared across every page).
+  const { theme, toggle: toggleTheme } = useTheme();
 
   // Priced packages grouped by list (Cưới / Đính hôn) — all packages compared as columns.
   const priced = pricelist.filter((p) => p.price > 0);

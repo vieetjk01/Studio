@@ -14,6 +14,7 @@ import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
 import { createClient } from "@/lib/supabase/client";
+import { useTheme } from "@/lib/theme";
 import type { Profile } from "@/lib/types";
 
 type StudioTier = "none" | "booking" | "full";
@@ -118,25 +119,11 @@ export default function StudioShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
-
-  // Restore the studio theme preference (separate from the album shell).
-  // Defaults to light (matches the marketing homepage look).
-  useEffect(() => {
-    const stored = window.localStorage.getItem("studio_theme");
-    if (stored === "light" || stored === "dark") setTheme(stored);
-  }, []);
-  function toggleTheme() {
-    setTheme((p) => {
-      const next = p === "dark" ? "light" : "dark";
-      window.localStorage.setItem("studio_theme", next);
-      return next;
-    });
-  }
 
   async function signOut() {
     const supabase = createClient();
