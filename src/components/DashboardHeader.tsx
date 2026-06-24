@@ -111,6 +111,7 @@ export default function DashboardHeader({
       ],
     },
     { href: appUrl("/dashboard"), label: t("myAlbums"), external: true, tier: "booking" },
+    ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web riêng", tier: "booking" as const }] : []),
   ];
 
   // Visibility: by tier (Photographer only sees booking-tier items), then by

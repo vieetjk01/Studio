@@ -7,8 +7,8 @@ import { mainUrl } from "@/lib/hosts";
 
 /* ── Bilingual content (ported from the mstudo design) ─────────────────── */
 type Dict = {
-  nav: { features: string; guide: string; pricing: string; faq: string; about: string; login: string; start: string };
-  hero: { badge: string; title: string; sub: string; ctaPrimary: string; ctaSecondary: string; note: string; shot: string };
+  nav: { features: string; guide: string; pricing: string; faq: string; about: string; login: string; start: string; website: string };
+  hero: { badge: string; title: string; sub: string; ctaPrimary: string; ctaSecondary: string; ctaWebsite: string; note: string; shot: string };
   feat: { title: string; sub: string; cards: { t: string; d: string }[] };
   guide: { title: string; sub: string; steps: { t: string; d: string }[] };
   pricing: {
@@ -23,12 +23,12 @@ type Dict = {
 
 const D: Record<"vi" | "en", Dict> = {
   vi: {
-    nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", login: "Đăng nhập", start: "Bắt đầu miễn phí" },
+    nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", login: "Đăng nhập", start: "Bắt đầu miễn phí", website: "Tạo trang web riêng" },
     hero: {
       badge: "Phần mềm quản lý studio chụp ảnh",
       title: "Giải pháp quản lý studio toàn diện",
       sub: "mstudo giúp studio nhiếp ảnh quản lý lịch hẹn, đơn hàng, tài chính và nhân sự — tất cả trong một nền tảng duy nhất.",
-      ctaPrimary: "Bắt đầu miễn phí", ctaSecondary: "Xem hướng dẫn",
+      ctaPrimary: "Bắt đầu miễn phí", ctaSecondary: "Xem hướng dẫn", ctaWebsite: "Tạo trang web riêng",
       note: "Miễn phí 14 ngày · Không cần thẻ tín dụng", shot: "[ Ảnh chụp màn hình bảng điều khiển ]",
     },
     feat: {
@@ -88,12 +88,12 @@ const D: Record<"vi" | "en", Dict> = {
     footer: { copy: "© 2026 mstudo. Mọi quyền được bảo lưu." },
   },
   en: {
-    nav: { features: "Features", guide: "Guide", pricing: "Pricing", faq: "FAQ", about: "About", login: "Log in", start: "Start free" },
+    nav: { features: "Features", guide: "Guide", pricing: "Pricing", faq: "FAQ", about: "About", login: "Log in", start: "Start free", website: "Build your website" },
     hero: {
       badge: "Studio management software for photographers",
       title: "All-in-one studio management",
       sub: "mstudo helps photography studios manage bookings, orders, finances and staff — all in one platform.",
-      ctaPrimary: "Start for free", ctaSecondary: "See how it works",
+      ctaPrimary: "Start for free", ctaSecondary: "See how it works", ctaWebsite: "Build your website",
       note: "14-day free trial · No credit card required", shot: "[ Dashboard screenshot ]",
     },
     feat: {
@@ -225,6 +225,10 @@ export default function LandingPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" /></svg>
               )}
             </button>
+            <Link href={`${loginUrl}?next=/dashboard/site`} style={{ ...ghostBtn, gap: 6 }} className="ms-website-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z" /></svg>
+              {L.nav.website}
+            </Link>
             <Link href={loginUrl} style={ghostBtn} className="ms-login-btn">{L.nav.login}</Link>
             <Link href={loginUrl} style={primaryBtn}>{L.nav.start}</Link>
           </div>
@@ -241,7 +245,11 @@ export default function LandingPage() {
           <p style={{ fontSize: "clamp(17px,1.9vw,20px)", lineHeight: 1.6, color: "var(--muted)", maxWidth: 620, margin: "22px auto 0", textWrap: "pretty" as never }}>{L.hero.sub}</p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 34 }}>
             <Link href={loginUrl} style={{ ...primaryBtn, height: 50, padding: "0 26px", borderRadius: 11, fontSize: 16, boxShadow: "var(--shadow)" }}>{L.hero.ctaPrimary}</Link>
-            <a href="#guide" style={{ ...ghostBtn, height: 50, padding: "0 26px", background: "var(--surface)", borderRadius: 11, fontSize: 16, fontWeight: 700 }}>{L.hero.ctaSecondary}</a>
+            <Link href={`${loginUrl}?next=/dashboard/site`} style={{ ...ghostBtn, height: 50, padding: "0 26px", background: "var(--surface)", borderRadius: 11, fontSize: 16, fontWeight: 700, gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z" /></svg>
+              {L.hero.ctaWebsite}
+            </Link>
+            <a href="#guide" style={{ ...ghostBtn, height: 50, padding: "0 26px", background: "transparent", borderRadius: 11, fontSize: 15, fontWeight: 600 }}>{L.hero.ctaSecondary}</a>
           </div>
           <p style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 18 }}>{L.hero.note}</p>
 
