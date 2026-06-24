@@ -260,6 +260,70 @@ function DashboardPreview() {
   );
 }
 
+/* ── Contact / Feedback section ───────────────────────────────────────────── */
+function ContactSection() {
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.message.trim()) return;
+    setState("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      setState(res.ok ? "done" : "error");
+    } catch {
+      setState("error");
+    }
+  }
+
+  const wrap = { maxWidth: 1120, margin: "0 auto", padding: "0 24px" };
+  const inp: CSSProperties = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--fg)", fontFamily: "inherit", fontSize: 14.5, outline: "none", boxSizing: "border-box" as const };
+
+  return (
+    <section id="contact" style={{ padding: "80px 0", background: "var(--surface)" }}>
+      <div style={{ ...wrap }}>
+        <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>Liên hệ & góp ý</p>
+          <h2 style={{ fontSize: "clamp(26px,3.5vw,38px)", fontWeight: 800, lineHeight: 1.15, marginBottom: 12 }}>Bạn có câu hỏi hoặc góp ý?</h2>
+          <p style={{ color: "var(--muted)", fontSize: 16, marginBottom: 36 }}>Chúng tôi luôn lắng nghe — hãy nhắn tin và chúng tôi sẽ phản hồi sớm nhất có thể.</p>
+
+          {state === "done" ? (
+            <div style={{ padding: "28px 24px", borderRadius: 14, background: "color-mix(in srgb, var(--accent) 10%, transparent)", color: "var(--accent)", fontWeight: 600, fontSize: 15 }}>
+              ✓ Cảm ơn bạn! Chúng tôi sẽ phản hồi sớm.
+            </div>
+          ) : (
+            <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>Tên *</label>
+                  <input required style={inp} value={form.name} placeholder="Nguyễn Văn A" onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>Email (tuỳ chọn)</label>
+                  <input type="email" style={inp} value={form.email} placeholder="email@example.com" onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>Nội dung *</label>
+                <textarea required rows={4} style={{ ...inp, resize: "vertical", minHeight: 110 }} value={form.message} placeholder="Câu hỏi, góp ý, hoặc phản hồi của bạn…" onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
+              </div>
+              {state === "error" && <p style={{ color: "#e0746f", fontSize: 13 }}>Gửi thất bại, vui lòng thử lại.</p>}
+              <button type="submit" disabled={state === "sending"} style={{ height: 46, border: "none", background: "var(--accent)", color: "var(--accentFg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                {state === "sending" ? "Đang gửi…" : "Gửi góp ý"}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const { lang, setLang } = useLang();
   const L = D[lang === "en" ? "en" : "vi"];
@@ -288,6 +352,7 @@ export default function LandingPage() {
             <a href="#pricing" style={navLink}>{L.nav.pricing}</a>
             <a href="#faq" style={navLink}>{L.nav.faq}</a>
             <a href="#about" style={navLink}>{L.nav.about}</a>
+            <a href="#contact" style={navLink}>Liên hệ</a>
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
             <button onClick={() => setLang(lang === "vi" ? "en" : "vi")} style={{ ...ghostBtn, gap: 6, padding: "0 12px", fontSize: 13, letterSpacing: ".02em" }}>
@@ -455,6 +520,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* CONTACT / FEEDBACK */}
+        <ContactSection />
 
         {/* FOOTER */}
         <footer style={{ background: "var(--bg)" }}>

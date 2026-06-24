@@ -1,63 +1,121 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Inbox, Crown, Tag, Trash2, Plus, Shuffle, Check } from "lucide-react";
-import { useLang } from "@/lib/i18n";
-import type { SiteSettings, Booking, UpgradeRequest, DiscountCode } from "@/lib/types";
+import {
+  Save, Tag, Trash2, Plus, Shuffle, Check, Crown, MessageSquare,
+  Globe, LayoutTemplate, BadgeDollarSign, Settings2, ChevronDown, ChevronRight,
+} from "lucide-react";
+import type { SiteSettings, UpgradeRequest, DiscountCode } from "@/lib/types";
 
-const SERVICE_LABEL: Record<string, string> = {
-  wedding: "Đám cưới",
-  event: "Sự kiện",
-  sports: "Thể thao",
-  other: "Khác",
-};
+/* ── Types ─────────────────────────────────────────────────────────────────── */
+export interface Feedback {
+  id: string;
+  name: string;
+  email: string | null;
+  message: string;
+  handled: boolean;
+  created_at: string;
+}
 
-const EMPTY: Partial<SiteSettings> = {
-  profile_name: "Vieetjk",
-  profile_role: "Nhiếp ảnh gia cưới & chân dung · Studio",
-  profile_location: "Hà Nội · Việt Nam",
-  profile_bio: "",
-  profile_avatar_url: "",
-  profile_cover_url: "",
-  stat_years: 8,
-  contact_phone: "",
-  contact_email: "",
-  contact_instagram: "",
-  contact_facebook: "",
-  contact_tiktok: "",
-  contact_youtube: "",
-  contact_address: "",
-  contact_hours: "",
-};
+/* ── Section toggle helper ──────────────────────────────────────────────────── */
+function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 p-5 text-left"
+        style={{ borderBottom: open ? "1px solid var(--border)" : "none" }}
+      >
+        <Icon size={16} style={{ color: "var(--brand, var(--gold))" }} />
+        <span className="flex-1 text-sm font-semibold">{title}</span>
+        {open ? <ChevronDown size={16} style={{ color: "var(--text3)" }} /> : <ChevronRight size={16} style={{ color: "var(--text3)" }} />}
+      </button>
+      {open && <div className="p-5 space-y-4">{children}</div>}
+    </div>
+  );
+}
 
+/* ── Field helpers ──────────────────────────────────────────────────────────── */
+function Field({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      {children}
+      {note && <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>{note}</p>}
+    </div>
+  );
+}
+
+function Input({ value, onChange, placeholder, type = "text" }: { value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  return (
+    <input
+      type={type}
+      className="input"
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
+function Textarea({ value, onChange, placeholder, rows = 3 }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
+  return (
+    <textarea
+      className="input resize-y"
+      style={{ minHeight: rows * 28 }}
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────────────────────── */
 export default function SettingsPanel({
   settings,
-  bookings,
+  feedbacks: initialFeedbacks,
   upgrades,
   codes: initialCodes,
 }: {
   settings: SiteSettings | null;
-  bookings: Booking[];
+  feedbacks: Feedback[];
   upgrades: UpgradeRequest[];
   codes: DiscountCode[];
 }) {
-  const { t } = useLang();
-  const [form, setForm] = useState<Partial<SiteSettings>>(settings ?? EMPTY);
-  const [featuredText, setFeaturedText] = useState((settings?.featured_images ?? []).join("\n"));
+  const [form, setForm] = useState<Partial<SiteSettings>>(settings ?? {});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // Discount codes
+  const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+  const str = (k: keyof SiteSettings) => ((form[k] ?? "") as string);
+
+  // ── Feedback ─────────────────────────────────────────────────────────────
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>(initialFeedbacks);
+  const [upgradeRows, setUpgradeRows] = useState<UpgradeRequest[]>(upgrades);
+
+  async function handleFeedback(action: "handled" | "delete", id: string, handled?: boolean) {
+    setFeedbacks((r) => action === "delete" ? r.filter((x) => x.id !== id) : r.map((x) => x.id === id ? { ...x, handled: !!handled } : x));
+    await fetch("/api/admin/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "feedback", action, id, handled }),
+    });
+  }
+  async function handleUpgrade(action: "handled" | "delete", id: string, handled?: boolean) {
+    setUpgradeRows((r) => action === "delete" ? r.filter((x) => x.id !== id) : r.map((x) => x.id === id ? { ...x, handled: !!handled } : x));
+    await fetch("/api/admin/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "upgrade", action, id, handled }),
+    });
+  }
+
+  // ── Discount codes ────────────────────────────────────────────────────────
   const [codes, setCodes] = useState<DiscountCode[]>(initialCodes);
-  const [newCode, setNewCode] = useState<{ code: string; percent: number; plan: string; cycle: string; uses: "1" | "many"; expires: string; trial: number }>({
-    code: "",
-    percent: 10,
-    plan: "",
-    cycle: "",
-    uses: "many",
-    expires: "",
-    trial: 0,
-  });
+  const [newCode, setNewCode] = useState({ code: "", percent: 10, plan: "", cycle: "", uses: "many" as "1" | "many", expires: "", trial: 0 });
 
   function randomCode() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -65,406 +123,269 @@ export default function SettingsPanel({
     for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
     setNewCode((n) => ({ ...n, code: s }));
   }
-
   async function addCode() {
     const code = newCode.code.trim().toUpperCase();
     if (!code) return;
     const res = await fetch("/api/admin/discount-codes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create",
-        code,
-        percent: newCode.percent,
-        plan: newCode.plan || null,
-        cycle: newCode.cycle || null,
-        max_uses: newCode.uses === "1" ? 1 : null,
-        expires_at: newCode.expires || null,
-        trial_days: newCode.trial || null,
-      }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create", code, percent: newCode.percent, plan: newCode.plan || null, cycle: newCode.cycle || null, max_uses: newCode.uses === "1" ? 1 : null, expires_at: newCode.expires || null, trial_days: newCode.trial || null }),
     });
     const data = await res.json();
-    if (res.ok && data.code) {
-      setCodes((c) => [data.code, ...c]);
-      setNewCode({ code: "", percent: 10, plan: "", cycle: "", uses: "many", expires: "", trial: 0 });
-    } else {
-      setMsg(data.error?.includes("duplicate") ? "Mã đã tồn tại" : t("error"));
-      setTimeout(() => setMsg(null), 2500);
-    }
+    if (res.ok && data.code) { setCodes((c) => [data.code, ...c]); setNewCode({ code: "", percent: 10, plan: "", cycle: "", uses: "many", expires: "", trial: 0 }); }
+    else { setMsg(data.error?.includes("duplicate") ? "Mã đã tồn tại" : "Lỗi"); setTimeout(() => setMsg(null), 2500); }
   }
   async function deleteCode(id: string) {
     setCodes((c) => c.filter((x) => x.id !== id));
-    await fetch("/api/admin/discount-codes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", id }),
-    });
+    await fetch("/api/admin/discount-codes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
   }
 
-  // Manage booking / upgrade requests.
-  const [bookingRows, setBookingRows] = useState<Booking[]>(bookings);
-  const [upgradeRows, setUpgradeRows] = useState<UpgradeRequest[]>(upgrades);
-
-  async function manageRequest(kind: "booking" | "upgrade", action: "handled" | "delete", id: string, handled?: boolean) {
-    if (kind === "booking") {
-      setBookingRows((r) => (action === "delete" ? r.filter((x) => x.id !== id) : r.map((x) => (x.id === id ? { ...x, handled: !!handled } : x))));
-    } else {
-      setUpgradeRows((r) => (action === "delete" ? r.filter((x) => x.id !== id) : r.map((x) => (x.id === id ? { ...x, handled: !!handled } : x))));
-    }
-    await fetch("/api/admin/requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind, action, id, handled }),
-    });
-  }
-
-  function set<K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) {
-    setForm((f) => ({ ...f, [k]: v }));
-  }
-
+  // ── Save ──────────────────────────────────────────────────────────────────
   async function save() {
     setSaving(true);
-    const featured_images = featuredText.split("\n").map((s) => s.trim()).filter(Boolean);
     const res = await fetch("/api/admin/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, featured_images }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
     });
     setSaving(false);
-    setMsg(res.ok ? t("saved") : t("error"));
+    setMsg(res.ok ? "Đã lưu" : "Lỗi");
     setTimeout(() => setMsg(null), 2500);
   }
 
-  const field = (
-    key: keyof SiteSettings,
-    label: string,
-    opts?: { textarea?: boolean; placeholder?: string }
-  ) => (
-    <div>
-      <label className="label">{label}</label>
-      {opts?.textarea ? (
-        <textarea
-          className="input min-h-[90px] resize-y"
-          value={(form[key] as string) ?? ""}
-          placeholder={opts.placeholder}
-          onChange={(e) => set(key, e.target.value as never)}
-        />
-      ) : (
-        <input
-          className="input"
-          value={(form[key] as string | number) ?? ""}
-          placeholder={opts?.placeholder}
-          onChange={(e) => set(key, e.target.value as never)}
-        />
-      )}
-    </div>
+  const SaveBtn = ({ label = "Lưu thay đổi" }: { label?: string }) => (
+    <button onClick={save} disabled={saving} className="btn-primary gap-2">
+      <Save size={14} /> {saving ? "Đang lưu…" : label}
+    </button>
   );
 
   return (
-    <div className="animate-[vkFade_.5s_ease_both]">
-      <h1 className="mb-8 font-serif text-3xl font-medium">{t("settings")}</h1>
-
-      {msg && (
-        <div className="mb-6 rounded-md px-4 py-2 text-sm" style={{ background: "color-mix(in srgb, var(--gold) 12%, transparent)", color: "var(--gold)" }}>
-          {msg}
+    <div className="animate-[vkFade_.5s_ease_both] space-y-6 pb-16">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">Cài đặt hệ thống</h1>
+          <p className="mt-0.5 text-sm" style={{ color: "var(--text2)" }}>Quản lý nội dung trang mstudo.com và cấu hình hệ thống</p>
         </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Profile */}
-        <div className="card space-y-4 p-6">
-          <h2 className="text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-            Hồ sơ trang chủ
-          </h2>
-          {field("profile_name", "Tên hiển thị")}
-          {field("profile_role", "Vai trò / nghề")}
-          {field("profile_location", "Địa điểm")}
-          {field("profile_bio", "Giới thiệu", { textarea: true })}
-          {field("profile_avatar_url", "Link ảnh đại diện", { placeholder: "https://…" })}
-          {field("profile_cover_url", "Link ảnh bìa", { placeholder: "https://…" })}
-          {field("stat_years", "Số năm kinh nghiệm")}
-          <div>
-            <label className="label">Hình ảnh nổi bật (mỗi dòng 1 link)</label>
-            <textarea
-              className="input min-h-[120px] resize-y"
-              value={featuredText}
-              onChange={(e) => setFeaturedText(e.target.value)}
-              placeholder={"Dán link ảnh hoặc link Google Drive, mỗi dòng một ảnh.\nhttps://drive.google.com/file/d/FILE_ID/view"}
-            />
-            <p className="mt-1 text-[12px]" style={{ color: "var(--text3)" }}>
-              Hiển thị ở mục “Hình ảnh nổi bật” trên trang chủ (không lấy từ album).
-            </p>
-          </div>
-        </div>
-
-        {/* Contact */}
-        <div className="card space-y-4 p-6">
-          <h2 className="text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-            Thông tin liên hệ
-          </h2>
-          {field("contact_phone", "Điện thoại")}
-          {field("contact_email", "Email")}
-          {field("contact_instagram", "Instagram")}
-          {field("contact_facebook", "Facebook", { placeholder: "facebook.com/vieetjk" })}
-          {field("contact_tiktok", "TikTok", { placeholder: "@vieetjk" })}
-          {field("contact_youtube", "YouTube", { placeholder: "youtube.com/@vieetjk" })}
-          {field("contact_address", "Địa chỉ studio")}
-          {field("contact_hours", "Giờ làm việc")}
-          <button onClick={save} disabled={saving} className="btn-primary w-full">
-            <Save size={15} /> {saving ? t("saving") : t("save")}
-          </button>
-        </div>
+        {msg && (
+          <span className="rounded-full px-4 py-1.5 text-sm font-medium" style={{ background: "color-mix(in srgb, var(--s-green, var(--gold)) 14%, transparent)", color: "var(--s-green, var(--gold))" }}>
+            {msg}
+          </span>
+        )}
       </div>
 
-      {/* Browser tab / SEO */}
-      <div className="mt-8 card space-y-4 p-6">
-        <h2 className="text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-          Thanh tab trình duyệt &amp; SEO
-        </h2>
+      {/* ── 1. Trang chủ mstudo.com ─────────────────────────────────────── */}
+      <Section title="Nội dung trang chủ mstudo.com" icon={Globe}>
+        <p className="text-[12px]" style={{ color: "var(--text3)" }}>Nội dung hiển thị trực tiếp trên trang marketing <strong>mstudo.com</strong>.</p>
         <div className="grid gap-4 lg:grid-cols-2">
-          {field("site_title", "Tiêu đề trang (tab trình duyệt)", { placeholder: "Vieetjk — Studio ảnh cưới" })}
-          {field("favicon_url", "Logo trên tab (favicon URL)", { placeholder: "https://… .png / .ico" })}
+          <Field label="Khẩu hiệu chính (Hero title)">
+            <Textarea value={str("landing_hero_title")} onChange={(v) => set("landing_hero_title" as keyof SiteSettings, v as never)} placeholder="Phần mềm quản lý studio ảnh — toàn diện & đẹp" />
+          </Field>
+          <Field label="Mô tả ngắn (Hero subtitle)">
+            <Textarea value={str("landing_hero_sub")} onChange={(v) => set("landing_hero_sub" as keyof SiteSettings, v as never)} placeholder="Hợp đồng, đặt lịch, tài chính, đội ngũ trong một nơi…" />
+          </Field>
+          <Field label="Badge / nhãn nhỏ trên hero" note='Ví dụ: "Phần mềm quản lý studio ảnh"'>
+            <Input value={str("landing_hero_badge")} onChange={(v) => set("landing_hero_badge" as keyof SiteSettings, v as never)} placeholder="Phần mềm quản lý studio ảnh" />
+          </Field>
+          <Field label="Ghi chú nhỏ dưới nút CTA" note='Ví dụ: "Miễn phí 7 ngày, không cần thẻ"'>
+            <Input value={str("landing_hero_note")} onChange={(v) => set("landing_hero_note" as keyof SiteSettings, v as never)} placeholder="Miễn phí 7 ngày, không cần thẻ" />
+          </Field>
         </div>
-        {field("site_description", "Mô tả trang (SEO)", { textarea: true, placeholder: "Mô tả ngắn hiển thị khi chia sẻ link / trên Google." })}
-        <div className="flex items-center gap-3">
-          {form.favicon_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.favicon_url as string} alt="favicon" className="h-8 w-8 rounded" style={{ border: "1px solid var(--border)" }} />
-          ) : null}
-          <p className="text-[12px]" style={{ color: "var(--text3)" }}>
-            Ảnh vuông (vd 64×64 hoặc 512×512), định dạng PNG/ICO. Để trống để dùng logo mặc định.
-          </p>
-        </div>
-        <button onClick={save} disabled={saving} className="btn-primary w-full sm:w-auto">
-          <Save size={15} /> {saving ? t("saving") : "Lưu thông tin trình duyệt"}
-        </button>
-      </div>
+        <SaveBtn label="Lưu nội dung trang chủ" />
+      </Section>
 
-      {/* Plans & pricing */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="card space-y-4 p-6">
-          <h2 className="text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-            Gói &amp; giá (VND)
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {field("price_basic_month", "Basic / tháng")}
-            {field("price_basic_year", "Basic / năm")}
-            {field("price_photographer_month", "Photographer / tháng")}
-            {field("price_photographer_year", "Photographer / năm")}
-            {field("price_studio_month", "Studio / tháng")}
-            {field("price_studio_year", "Studio / năm")}
-            {field("basic_discount_percent", "Giảm giá Basic (%)")}
-            {field("photographer_discount_percent", "Giảm giá Photographer (%)")}
-            {field("studio_discount_percent", "Giảm giá Studio (%)")}
-            {field("studio_promo_percent", "Ưu đãi Studio/năm (%)")}
-          </div>
-          <p className="text-[12px]" style={{ color: "var(--text3)" }}>
-            Giá &amp; giảm giá hiển thị trên trang Nâng cấp. Nhập số tiền theo VND (vd 50000).
-          </p>
-          <button onClick={save} disabled={saving} className="btn-primary w-full">
-            <Save size={15} /> {saving ? t("saving") : "Lưu gói & giá"}
+      {/* ── 2. SEO & Browser ────────────────────────────────────────────── */}
+      <Section title="Trình duyệt & SEO" icon={Settings2}>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Tiêu đề tab trình duyệt">
+            <Input value={str("site_title")} onChange={(v) => set("site_title", v)} placeholder="mstudo — Phần mềm quản lý studio ảnh" />
+          </Field>
+          <Field label="Favicon (URL hình vuông .png / .ico)">
+            <Input value={str("favicon_url")} onChange={(v) => set("favicon_url", v)} placeholder="https://…/logo.png" />
+          </Field>
+        </div>
+        <Field label="Mô tả SEO (hiển thị khi chia sẻ link / Google)">
+          <Textarea value={str("site_description")} onChange={(v) => set("site_description", v)} placeholder="mstudo · Phần mềm quản lý studio ảnh: hợp đồng, báo giá, đặt lịch…" />
+        </Field>
+        {form.favicon_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={form.favicon_url as string} alt="favicon" className="h-10 w-10 rounded" style={{ border: "1px solid var(--border)" }} />
+        )}
+        <SaveBtn label="Lưu SEO" />
+      </Section>
+
+      {/* ── 3. Gói & giá ────────────────────────────────────────────────── */}
+      <Section title="Gói & giá (VND)" icon={BadgeDollarSign}>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          {([
+            ["price_basic_month", "Basic / tháng"],
+            ["price_basic_year", "Basic / năm"],
+            ["price_photographer_month", "Photographer / tháng"],
+            ["price_photographer_year", "Photographer / năm"],
+            ["price_studio_month", "Studio / tháng"],
+            ["price_studio_year", "Studio / năm"],
+          ] as [keyof SiteSettings, string][]).map(([k, label]) => (
+            <Field key={k} label={label}>
+              <Input type="number" value={(form[k] as number) ?? 0} onChange={(v) => set(k, Number(v) as never)} placeholder="0" />
+            </Field>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {([
+            ["basic_discount_percent", "Giảm Basic (%)"],
+            ["photographer_discount_percent", "Giảm Photographer (%)"],
+            ["studio_discount_percent", "Giảm Studio (%)"],
+            ["studio_promo_percent", "Ưu đãi Studio/năm (%)"],
+          ] as [keyof SiteSettings, string][]).map(([k, label]) => (
+            <Field key={k} label={label}>
+              <Input type="number" value={(form[k] as number) ?? 0} onChange={(v) => set(k, Math.max(0, Math.min(100, Number(v))) as never)} />
+            </Field>
+          ))}
+        </div>
+        <SaveBtn label="Lưu gói & giá" />
+      </Section>
+
+      {/* ── 4. Mã giảm giá ──────────────────────────────────────────────── */}
+      <Section title="Mã giảm giá" icon={Tag}>
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="Mã">
+            <div className="flex gap-1.5">
+              <input className="input" value={newCode.code} placeholder="VD: TET2026" onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
+              <button onClick={randomCode} type="button" className="btn-ghost px-2.5" title="Tạo ngẫu nhiên"><Shuffle size={14} /></button>
+            </div>
+          </Field>
+          <Field label="%"><input type="number" min={0} max={100} className="input w-16" value={newCode.percent} onChange={(e) => setNewCode({ ...newCode, percent: Number(e.target.value) })} /></Field>
+          <Field label="Gói">
+            <select className="input w-28" value={newCode.plan} onChange={(e) => setNewCode({ ...newCode, plan: e.target.value })}>
+              <option value="">Mọi gói</option>
+              <option value="basic">Basic</option>
+              <option value="photographer">Photographer</option>
+              <option value="studio">Studio</option>
+            </select>
+          </Field>
+          <Field label="Chu kỳ">
+            <select className="input w-24" value={newCode.cycle} onChange={(e) => setNewCode({ ...newCode, cycle: e.target.value })}>
+              <option value="">Mọi kỳ</option>
+              <option value="month">Tháng</option>
+              <option value="year">Năm</option>
+            </select>
+          </Field>
+          <Field label="Lượt dùng">
+            <select className="input w-28" value={newCode.uses} onChange={(e) => setNewCode({ ...newCode, uses: e.target.value as "1" | "many" })}>
+              <option value="many">Nhiều lần</option>
+              <option value="1">1 lần</option>
+            </select>
+          </Field>
+          <Field label="Dùng thử (ngày)">
+            <input type="number" min={0} className="input w-24" value={newCode.trial} onChange={(e) => setNewCode({ ...newCode, trial: Math.max(0, Number(e.target.value) || 0) })} />
+          </Field>
+          <Field label="Hạn dùng">
+            <input type="date" className="input w-36" value={newCode.expires} onChange={(e) => setNewCode({ ...newCode, expires: e.target.value })} />
+          </Field>
+          <button onClick={addCode} className="btn-primary self-end"><Plus size={14} /> Thêm mã</button>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => { randomCode(); setNewCode((n) => ({ ...n, plan: "studio", trial: 1, percent: 0, uses: "many" })); }}
+            className="text-[12px] underline underline-offset-2" style={{ color: "var(--brand, var(--gold))" }}>
+            Tạo nhanh mã dùng thử Studio 1 ngày
           </button>
         </div>
-
-        {/* Discount codes */}
-        <div className="card space-y-4 p-6">
-          <h2 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide" style={{ color: "var(--text2)" }}>
-            <Tag size={15} /> Mã giảm giá
-          </h2>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[120px] flex-1">
-              <label className="label">Mã</label>
-              <div className="flex gap-1.5">
-                <input className="input" value={newCode.code} placeholder="VD: TET2026" onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
-                <button onClick={randomCode} type="button" className="btn-ghost whitespace-nowrap px-2.5" title="Tạo mã ngẫu nhiên"><Shuffle size={14} /></button>
-              </div>
-            </div>
-            <div className="w-16">
-              <label className="label">%</label>
-              <input type="number" min={0} max={100} className="input" value={newCode.percent} onChange={(e) => setNewCode({ ...newCode, percent: Number(e.target.value) })} />
-            </div>
-            <div className="w-28">
-              <label className="label">Gói</label>
-              <select className="input" value={newCode.plan} onChange={(e) => setNewCode({ ...newCode, plan: e.target.value })}>
-                <option value="">Mọi gói</option>
-                <option value="basic">Basic</option>
-                <option value="photographer">Photographer</option>
-                <option value="studio">Studio</option>
-              </select>
-            </div>
-            <div className="w-24">
-              <label className="label">Chu kỳ</label>
-              <select className="input" value={newCode.cycle} onChange={(e) => setNewCode({ ...newCode, cycle: e.target.value })}>
-                <option value="">Mọi kỳ</option>
-                <option value="month">Tháng</option>
-                <option value="year">Năm</option>
-              </select>
-            </div>
-            <div className="w-28">
-              <label className="label">Lượt dùng</label>
-              <select className="input" value={newCode.uses} onChange={(e) => setNewCode({ ...newCode, uses: e.target.value as "1" | "many" })}>
-                <option value="many">Nhiều lần</option>
-                <option value="1">1 lần</option>
-              </select>
-            </div>
-            <div className="w-28">
-              <label className="label">Dùng thử (ngày)</label>
-              <input type="number" min={0} className="input" value={newCode.trial} onChange={(e) => setNewCode({ ...newCode, trial: Math.max(0, Number(e.target.value) || 0) })} />
-            </div>
-            <div className="w-36">
-              <label className="label">Hạn dùng (tuỳ chọn)</label>
-              <input type="date" className="input" value={newCode.expires} onChange={(e) => setNewCode({ ...newCode, expires: e.target.value })} />
-            </div>
-            <button onClick={addCode} className="btn-primary"><Plus size={15} /> Thêm</button>
-          </div>
-          <p className="text-[12px]" style={{ color: "var(--text3)" }}>
-            “Dùng thử (ngày)” &gt; 0 → mã kích hoạt gói ngay cho khách trong N ngày (tự phục vụ, không cần duyệt).{" "}
-            <button type="button" onClick={() => { randomCode(); setNewCode((n) => ({ ...n, plan: "studio", trial: 1, percent: 0, uses: "many" })); }} className="text-accent hover:underline">
-              Tạo nhanh mã dùng thử Studio 1 ngày
-            </button>
-          </p>
-          {codes.length === 0 ? (
-            <p className="text-[13px]" style={{ color: "var(--text3)" }}>Chưa có mã giảm giá.</p>
-          ) : (
-            <div className="divide-y rounded-lg" style={{ border: "1px solid var(--border)", borderColor: "var(--border)" }}>
-              {codes.map((c) => (
-                <div key={c.id} className="flex items-center gap-3 px-3 py-2 text-[13px]">
-                  <span className="font-mono font-medium" style={{ color: "var(--text)" }}>{c.code}</span>
-                  {c.trial_days ? (
-                    <span style={{ color: "var(--accent)" }}>dùng thử {c.trial_days} ngày</span>
-                  ) : (
-                    <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>
-                  )}
-                  <span style={{ color: "var(--text3)" }}>
-                    {c.plan ? c.plan : "mọi gói"}
-                    {c.cycle ? ` · ${c.cycle === "year" ? "năm" : "tháng"}` : ""}
-                  </span>
-                  <span style={{ color: "var(--text3)" }}>
-                    {c.max_uses == null ? `đã dùng ${c.used_count}` : `${c.used_count}/${c.max_uses}`}
-                  </span>
-                  {c.expires_at && (
-                    <span style={{ color: new Date(c.expires_at).getTime() < Date.now() ? "#f87171" : "var(--text3)" }}>
-                      HH {new Date(c.expires_at).toLocaleDateString()}
-                    </span>
-                  )}
-                  <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }} title="Xoá">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bookings */}
-      <div className="mt-8">
-        <h2 className="mb-4 flex items-center gap-2 font-serif text-2xl font-medium">
-          <Inbox size={20} /> Yêu cầu đặt lịch ({bookingRows.length})
-        </h2>
-        {bookingRows.length === 0 ? (
-          <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>
-            Chưa có yêu cầu đặt lịch nào.
-          </div>
+        {codes.length === 0 ? (
+          <p className="text-[13px]" style={{ color: "var(--text3)" }}>Chưa có mã nào.</p>
         ) : (
-          <div className="card divide-y" style={{ borderColor: "var(--border)" }}>
-            {bookingRows.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center gap-4 p-4" style={{ opacity: b.handled ? 0.55 : 1 }}>
-                <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 16%, transparent)", color: "var(--gold)" }}>
-                  {SERVICE_LABEL[b.service] ?? b.service}
-                </span>
-                <div className="min-w-0">
-                  <div className="font-medium">{b.name}</div>
-                  <div className="text-xs" style={{ color: "var(--text2)" }}>
-                    {b.phone}
-                    {b.date ? ` · ${b.date}` : ""}
-                  </div>
-                </div>
-                {b.note && (
-                  <p className="min-w-0 flex-1 truncate text-sm" style={{ color: "var(--text2)" }} title={b.note}>
-                    {b.note}
-                  </p>
-                )}
-                <span className="ml-auto text-xs" style={{ color: "var(--text3)" }}>
-                  {new Date(b.created_at).toLocaleString()}
-                </span>
-                <button
-                  onClick={() => manageRequest("booking", "handled", b.id, !b.handled)}
-                  className="rounded-md p-1.5"
-                  style={{ color: b.handled ? "var(--gold)" : "var(--text3)" }}
-                  title={b.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã xử lý"}
-                >
-                  <Check size={16} />
-                </button>
-                <button onClick={() => manageRequest("booking", "delete", b.id)} className="rounded-md p-1.5 text-red-400" title="Xoá">
-                  <Trash2 size={15} />
-                </button>
+          <div className="divide-y rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            {codes.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 text-[13px]">
+                <span className="font-mono font-semibold" style={{ color: "var(--text)" }}>{c.code}</span>
+                {c.trial_days ? <span style={{ color: "var(--s-green, var(--gold))" }}>dùng thử {c.trial_days} ngày</span>
+                  : <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>}
+                <span style={{ color: "var(--text3)" }}>{c.plan ?? "mọi gói"}{c.cycle ? ` · ${c.cycle === "year" ? "năm" : "tháng"}` : ""}</span>
+                <span style={{ color: "var(--text3)" }}>{c.max_uses == null ? `đã dùng ${c.used_count}` : `${c.used_count}/${c.max_uses}`}</span>
+                {c.expires_at && <span style={{ color: new Date(c.expires_at).getTime() < Date.now() ? "#f87171" : "var(--text3)" }}>HH {new Date(c.expires_at).toLocaleDateString("vi-VN")}</span>}
+                <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }}><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Section>
 
-      {/* Upgrade requests */}
-      <div className="mt-8">
-        <h2 className="mb-4 flex items-center gap-2 font-serif text-2xl font-medium">
-          <Crown size={20} /> Yêu cầu nâng cấp ({upgradeRows.length})
-        </h2>
-        {upgradeRows.length === 0 ? (
-          <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>
-            Chưa có yêu cầu nâng cấp nào.
-          </div>
+      {/* ── 5. Góp ý / Liên hệ ─────────────────────────────────────────── */}
+      <Section title={`Góp ý & liên hệ (${feedbacks.length})`} icon={MessageSquare}>
+        {feedbacks.length === 0 ? (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--text3)" }}>Chưa có tin nhắn nào.</p>
         ) : (
-          <div className="card divide-y" style={{ borderColor: "var(--border)" }}>
-            {upgradeRows.map((u) => (
-              <div key={u.id} className="flex flex-wrap items-center gap-4 p-4" style={{ opacity: u.handled ? 0.55 : 1 }}>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 font-medium">
-                    {u.email ?? u.user_id}
-                    {u.phone && (
-                      <span className="text-[12px] font-normal" style={{ color: "var(--text2)" }}>📞 {u.phone}</span>
-                    )}
-                    {u.plan && (
-                      <span className="rounded px-2 py-0.5 text-[11px] uppercase" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>
-                        {u.plan}{u.cycle ? ` · ${u.cycle === "year" ? "năm" : "tháng"}` : ""}
-                      </span>
-                    )}
-                    {u.amount != null && (
-                      <span className="text-[12px] font-semibold" style={{ color: "var(--gold)" }}>
-                        {u.amount.toLocaleString("vi-VN")}đ
-                      </span>
-                    )}
-                    {u.discount_code && (
-                      <span className="rounded px-2 py-0.5 font-mono text-[11px]" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
-                        {u.discount_code}
-                      </span>
-                    )}
-                  </div>
-                  {u.note && (
-                    <p className="text-xs" style={{ color: "var(--text2)" }} title={u.note}>
-                      {u.note}
+          <div className="space-y-2">
+            {feedbacks.map((f) => (
+              <div key={f.id} className="rounded-xl p-4" style={{ background: "var(--surface2)", opacity: f.handled ? 0.55 : 1 }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm">{f.name}
+                      {f.email && <span className="ml-2 font-normal text-[12px]" style={{ color: "var(--text3)" }}>{f.email}</span>}
                     </p>
-                  )}
+                    <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>{f.message}</p>
+                    <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>{new Date(f.created_at).toLocaleString("vi-VN")}</p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => handleFeedback("handled", f.id, !f.handled)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: f.handled ? "var(--s-green, var(--gold))" : "var(--text3)" }} title={f.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã đọc"}>
+                      <Check size={15} />
+                    </button>
+                    <button onClick={() => handleFeedback("delete", f.id)} className="rounded-lg p-2 text-red-400" style={{ background: "var(--surface)" }} title="Xoá">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <span className="ml-auto text-xs" style={{ color: "var(--text3)" }}>
-                  {new Date(u.created_at).toLocaleString()}
-                </span>
-                <button
-                  onClick={() => manageRequest("upgrade", "handled", u.id, !u.handled)}
-                  className="rounded-md p-1.5"
-                  style={{ color: u.handled ? "var(--gold)" : "var(--text3)" }}
-                  title={u.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã xử lý"}
-                >
-                  <Check size={16} />
-                </button>
-                <button onClick={() => manageRequest("upgrade", "delete", u.id)} className="rounded-md p-1.5 text-red-400" title="Xoá">
-                  <Trash2 size={15} />
-                </button>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Section>
+
+      {/* ── 6. Yêu cầu nâng cấp ────────────────────────────────────────── */}
+      <Section title={`Yêu cầu nâng cấp (${upgradeRows.length})`} icon={Crown}>
+        {upgradeRows.length === 0 ? (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--text3)" }}>Chưa có yêu cầu nào.</p>
+        ) : (
+          <div className="space-y-2">
+            {upgradeRows.map((u) => (
+              <div key={u.id} className="rounded-xl p-4" style={{ background: "var(--surface2)", opacity: u.handled ? 0.55 : 1 }}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 font-semibold text-sm">
+                      {u.email ?? u.user_id}
+                      {u.phone && <span className="font-normal text-[12px]" style={{ color: "var(--text2)" }}>📞 {u.phone}</span>}
+                      {u.plan && <span className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>{u.plan}{u.cycle ? ` · ${u.cycle === "year" ? "năm" : "tháng"}` : ""}</span>}
+                      {u.amount != null && <span className="text-[12px] font-semibold" style={{ color: "var(--gold)" }}>{u.amount.toLocaleString("vi-VN")}đ</span>}
+                      {u.discount_code && <span className="rounded px-2 py-0.5 font-mono text-[11px]" style={{ background: "var(--surface)", color: "var(--text2)" }}>{u.discount_code}</span>}
+                    </div>
+                    {u.note && <p className="text-xs mt-0.5" style={{ color: "var(--text2)" }}>{u.note}</p>}
+                    <p className="text-[11px] mt-0.5" style={{ color: "var(--text3)" }}>{new Date(u.created_at).toLocaleString("vi-VN")}</p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => handleUpgrade("handled", u.id, !u.handled)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: u.handled ? "var(--s-green, var(--gold))" : "var(--text3)" }}>
+                      <Check size={15} />
+                    </button>
+                    <button onClick={() => handleUpgrade("delete", u.id)} className="rounded-lg p-2 text-red-400" style={{ background: "var(--surface)" }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {/* ── 7. Quản lý người dùng (link nhanh) ─────────────────────────── */}
+      <Section title="Quản lý nhanh" icon={LayoutTemplate}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { href: "/dashboard/admin", label: "Quản trị người dùng", desc: "Xem, cấp quyền, kích hoạt/khóa tài khoản" },
+            { href: "/dashboard/upgrade", label: "Trang nâng cấp (preview)", desc: "Xem gói hiển thị với người dùng" },
+          ].map((l) => (
+            <a key={l.href} href={l.href} className="block rounded-xl p-4 transition-colors hover:opacity-80" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+              <p className="font-semibold text-sm">{l.label}</p>
+              <p className="mt-0.5 text-[12px]" style={{ color: "var(--text3)" }}>{l.desc}</p>
+            </a>
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }

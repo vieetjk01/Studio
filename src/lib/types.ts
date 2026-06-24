@@ -101,6 +101,10 @@ export interface SiteSettings {
   studio_promo_percent: number;
   studio_discount_percent: number;
   photographer_discount_percent: number;
+  landing_hero_title: string | null;
+  landing_hero_sub: string | null;
+  landing_hero_badge: string | null;
+  landing_hero_note: string | null;
   updated_at: string;
 }
 

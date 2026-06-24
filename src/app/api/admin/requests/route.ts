@@ -10,13 +10,13 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const { kind, action, id, handled } = (await req.json().catch(() => ({}))) as {
-    kind?: "booking" | "upgrade";
+    kind?: "booking" | "upgrade" | "feedback";
     action?: "handled" | "delete";
     id?: string;
     handled?: boolean;
   };
 
-  const table = kind === "upgrade" ? "upgrade_requests" : kind === "booking" ? "bookings" : null;
+  const table = kind === "upgrade" ? "upgrade_requests" : kind === "feedback" ? "feedbacks" : kind === "booking" ? "bookings" : null;
   if (!table || !id) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
   const db = createAdminClient();

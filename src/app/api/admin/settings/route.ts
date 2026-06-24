@@ -23,6 +23,11 @@ const FIELDS = [
   "site_title",
   "site_description",
   "favicon_url",
+  // Editable landing page content
+  "landing_hero_title",
+  "landing_hero_sub",
+  "landing_hero_badge",
+  "landing_hero_note",
 ] as const;
 
 /** Update the studio profile / contact settings. Admin only. */
