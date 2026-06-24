@@ -23,13 +23,13 @@ type Dict = {
 
 const D: Record<"vi" | "en", Dict> = {
   vi: {
-    nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", login: "Đăng nhập", start: "Bắt đầu miễn phí", website: "Tạo trang web riêng" },
+    nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", login: "Đăng nhập", start: "Bắt đầu miễn phí", website: "Website riêng" },
     hero: {
       badge: "Phần mềm quản lý studio chụp ảnh",
       title: "Giải pháp quản lý studio toàn diện",
       sub: "mstudo giúp studio nhiếp ảnh quản lý lịch hẹn, đơn hàng, tài chính và nhân sự — tất cả trong một nền tảng duy nhất.",
-      ctaPrimary: "Bắt đầu miễn phí", ctaSecondary: "Xem hướng dẫn", ctaWebsite: "Tạo trang web riêng",
-      note: "Miễn phí 14 ngày · Không cần thẻ tín dụng", shot: "[ Ảnh chụp màn hình bảng điều khiển ]",
+      ctaPrimary: "Bắt đầu miễn phí", ctaSecondary: "Xem hướng dẫn", ctaWebsite: "Website riêng",
+      note: "Miễn phí 7 ngày ko cần thẻ", shot: "[ Ảnh chụp màn hình bảng điều khiển ]",
     },
     feat: {
       title: "Mọi thứ studio cần, trong một nơi",
@@ -229,8 +229,7 @@ export default function LandingPage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z" /></svg>
               {L.nav.website}
             </Link>
-            <Link href={loginUrl} style={ghostBtn} className="ms-login-btn">{L.nav.login}</Link>
-            <Link href={loginUrl} style={primaryBtn}>{L.nav.start}</Link>
+            <Link href={loginUrl} style={primaryBtn} className="ms-start-btn">{L.nav.start}</Link>
           </div>
         </div>
       </header>

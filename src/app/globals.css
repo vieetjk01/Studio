@@ -234,7 +234,8 @@ body {
   }
 }
 @media (max-width: 560px) {
-  .mstudo-landing .ms-login-btn {
+  .mstudo-landing .ms-start-btn,
+  .mstudo-landing .ms-website-btn {
     display: none !important;
   }
 }
