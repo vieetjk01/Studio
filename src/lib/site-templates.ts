@@ -3,168 +3,191 @@ import type { SiteTheme, SiteBlockType } from "@/lib/types";
 export type SiteTemplate = {
   key: string;
   name: string;
-  thumb: string; // preview image for the picker
+  tag: string;          // one-line description shown under the name
+  thumb: string;        // preview image for the picker
   theme: SiteTheme;
   blocks: { type: SiteBlockType; config: Record<string, unknown> }[];
+};
+
+/**
+ * Thông tin người dùng nhập 1 lần ở form "Bắt đầu nhanh". Khi chọn mẫu, các
+ * thông tin này được điền tự động vào các khối tương ứng để người dùng gần như
+ * không phải chỉnh sửa gì thêm.
+ */
+export type SiteIntake = {
+  brand: string;       // tên studio / thương hiệu (tiêu đề hero)
+  tagline: string;     // câu giới thiệu ngắn (dưới hero)
+  about: string;       // đoạn giới thiệu về studio
+  services: string;    // mỗi dòng: "Tên dịch vụ | mô tả"
+  stats: string;       // mỗi dòng: "Con số | nhãn"
+  email: string;
+  address: string;
+  facebook: string;
+  instagram: string;
+  ctaText: string;     // câu kêu gọi đặt lịch
+};
+
+export const EMPTY_INTAKE: SiteIntake = {
+  brand: "", tagline: "", about: "", services: "", stats: "",
+  email: "", address: "", facebook: "", instagram: "", ctaText: "",
 };
 
 // Stable sample photos so a fresh site looks complete (users replace later).
 const img = (seed: string, w = 1600, h = 900) => `https://picsum.photos/seed/${seed}/${w}/${h}`;
 
-/** One-click starter templates: theme (colours + layout) + blocks with sample content. */
+/**
+ * Điền thông tin người dùng vào các khối của mẫu. Chỉ ghi đè khi người dùng có
+ * nhập (field không rỗng) — còn lại giữ nguyên nội dung mẫu để trang vẫn đẹp.
+ */
+export function personalizeBlocks(
+  blocks: { type: SiteBlockType; config: Record<string, unknown> }[],
+  intake: SiteIntake,
+): { type: SiteBlockType; config: Record<string, unknown> }[] {
+  const has = (v: string) => typeof v === "string" && v.trim().length > 0;
+  return blocks.map((b) => {
+    const config = { ...b.config };
+    switch (b.type) {
+      case "hero":
+        if (has(intake.brand)) config.heading = intake.brand;
+        if (has(intake.tagline)) config.subheading = intake.tagline;
+        break;
+      case "about":
+        if (has(intake.about)) config.text = intake.about;
+        break;
+      case "services":
+        if (has(intake.services)) config.items = intake.services;
+        break;
+      case "stats":
+        if (has(intake.stats)) config.items = intake.stats;
+        break;
+      case "contact":
+        if (has(intake.email)) config.email = intake.email;
+        if (has(intake.address)) config.address = intake.address;
+        break;
+      case "map":
+        if (has(intake.address)) config.address = intake.address;
+        break;
+      case "social":
+        if (has(intake.facebook)) config.facebook = intake.facebook;
+        if (has(intake.instagram)) config.instagram = intake.instagram;
+        break;
+      case "cta":
+        if (has(intake.ctaText)) config.text = intake.ctaText;
+        break;
+      case "quote":
+        if (has(intake.brand)) config.author = intake.brand;
+        break;
+    }
+    return { type: b.type, config };
+  });
+}
+
+/** True nếu người dùng đã nhập ít nhất 1 thông tin. */
+export function intakeHasContent(i: SiteIntake): boolean {
+  return Object.values(i).some((v) => typeof v === "string" && v.trim().length > 0);
+}
+
+/**
+ * 5 mẫu giao diện sẵn — mỗi mẫu là theme (màu + bố cục) + các khối có nội dung
+ * mẫu. Người dùng đổi màu, sửa nội dung, thêm/bớt khối tuỳ ý sau khi áp dụng.
+ */
 export const SITE_TEMPLATES: SiteTemplate[] = [
+  // 1) Sang trọng — fine-art wedding (Maison): nền tối, vàng champagne, serif.
   {
-    key: "home",
-    name: "Như trang chủ",
-    thumb: img("vk-home", 600, 380),
-    theme: { mode: "dark", accent: "#c7a76b", bg: "#0b0b0d", text: "#ececec", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded", navPosition: "top", heroSize: "medium", contentWidth: "compact" },
+    key: "maison",
+    name: "Sang trọng",
+    tag: "Áo cưới cao cấp · nền tối, vàng champagne",
+    thumb: img("vk-maison", 600, 380),
+    theme: { mode: "dark", accent: "#a08850", bg: "#16140f", text: "#ece6d8", font: "serif", heroAlign: "center", galleryCols: 4, radius: "sharp", heroSize: "large", contentWidth: "compact" },
     blocks: [
-      { type: "hero", config: { heading: "", subheading: "Nhiếp ảnh gia cưới & chân dung · Studio", image: img("vk-home-hero") } },
-      { type: "stats", config: { items: "8 năm | Kinh nghiệm\n300+ | Album\n100% | Khách hài lòng" } },
-      { type: "gallery", config: { heading: "Bộ sưu tập nổi bật" } },
-      { type: "pricing", config: { heading: "Bảng giá dịch vụ" } },
-      { type: "testimonials", config: { heading: "Khách hàng nói gì" } },
-      { type: "contact", config: { heading: "Liên hệ & đặt lịch" } },
-    ],
-  },
-  {
-    key: "classic",
-    name: "Cổ điển",
-    thumb: img("vk-classic", 600, 380),
-    theme: { mode: "dark", accent: "#c7a76b", bg: "#0c0c0d", text: "#ececec", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Nhiếp ảnh cưới & chân dung", image: img("vk-classic-hero") } },
-      { type: "about", config: { heading: "Về tôi", text: "Mình kể chuyện qua từng khung hình.\nMỗi buổi chụp là một kỷ niệm được lưu giữ trọn vẹn.", image: img("vk-classic-about", 800, 600) } },
+      { type: "hero", config: { heading: "", subheading: "Khoảnh khắc vĩnh cửu · Studio áo cưới cao cấp", image: img("vk-maison-hero") } },
+      { type: "quote", config: { text: "Một đám cưới đẹp không nằm ở sự cầu kỳ, mà ở những ánh nhìn chân thật được giữ lại mãi mãi.", author: "Maison Atelier" } },
+      { type: "services", config: { heading: "Dịch vụ", items: "Chụp ngày cưới | Trọn vẹn ngày trọng đại theo phong cách phóng sự nhẹ nhàng, không dàn dựng.\nPre-wedding | Buổi chụp đôi tại studio hoặc ngoại cảnh, định hình phong cách riêng.\nAlbum & in ấn | Album thủ công bìa vải, in fine-art lưu giữ chất lượng qua thời gian." } },
       { type: "gallery", config: { heading: "Bộ sưu tập" } },
-      { type: "pricing", config: { heading: "Bảng giá" } },
-      { type: "testimonials", config: { heading: "Khách hàng nói gì" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
-    ],
-  },
-  {
-    key: "minimal",
-    name: "Tối giản",
-    thumb: img("vk-minimal", 600, 380),
-    theme: { mode: "light", accent: "#111111", bg: "#ffffff", text: "#161616", font: "sans", heroAlign: "left", galleryCols: 3, radius: "sharp" },
-    blocks: [
-      { type: "hero", config: { heading: "", image: img("vk-minimal-hero") } },
-      { type: "gallery", config: { heading: "Tác phẩm" } },
-      { type: "about", config: { heading: "Giới thiệu", text: "Phong cách tối giản, tập trung vào cảm xúc thật.", image: img("vk-minimal-about", 800, 600) } },
-      { type: "contact", config: { heading: "Liên hệ" } },
-    ],
-  },
-  {
-    key: "magazine",
-    name: "Tạp chí",
-    thumb: img("vk-magazine", 600, 380),
-    theme: { mode: "light", accent: "#a8763a", bg: "#f6f3ee", text: "#211c16", font: "serif", heroAlign: "left", galleryCols: 2, radius: "rounded" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Câu chuyện qua ống kính", image: img("vk-mag-hero") } },
-      { type: "about", config: { heading: "Câu chuyện", text: "Mỗi bộ ảnh là một câu chuyện riêng.", image: img("vk-mag-about", 800, 600) } },
-      { type: "gallery", config: { heading: "Album nổi bật" } },
-      { type: "services", config: { heading: "Dịch vụ", items: "Chụp cưới | Phóng sự trọn ngày\nPrewedding | Concept theo yêu cầu\nChụp gia đình | Studio & ngoại cảnh" } },
+      { type: "about", config: { heading: "Về studio", text: "Thành lập năm 2014, chúng tôi là studio áo cưới chuyên dòng ảnh fine-art.\nMỗi năm chỉ nhận một số lượng giới hạn để dành trọn tâm sức cho từng cặp đôi.", image: img("vk-maison-about", 800, 600) } },
+      { type: "stats", config: { items: "2014 | Năm thành lập\n300+ | Cặp đôi\n100% | Khách hài lòng" } },
       { type: "testimonials", config: { heading: "Cảm nhận" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
+      { type: "cta", config: { heading: "Hãy kể cho chúng tôi câu chuyện của bạn", text: "Đặt lịch tư vấn cho mùa cưới 2026.", button: "Đặt lịch tư vấn" } },
+      { type: "contact", config: { heading: "Liên hệ", email: "hello@studio.vn", address: "24 Lê Lợi, Quận 1, TP.HCM" } },
+      { type: "map", config: { heading: "Ghé studio", address: "24 Lê Lợi, Quận 1, TP.HCM" } },
     ],
   },
+
+  // 2) Hoài niệm — film/vintage: tông nâu rust, giấy ngà, serif cổ điển.
   {
-    key: "bold",
-    name: "Hiện đại",
-    thumb: img("vk-bold", 600, 380),
-    theme: { mode: "dark", accent: "#e0b85c", bg: "#0a0a0f", text: "#f2f2f4", font: "sans", heroAlign: "center", galleryCols: 4, radius: "rounded" },
+    key: "vintage",
+    name: "Hoài niệm",
+    tag: "Chất film cổ điển · tông nâu ấm, giấy ngà",
+    thumb: img("vk-vintage", 600, 380),
+    theme: { mode: "light", accent: "#9c5a36", bg: "#ece3d2", text: "#3c3326", font: "serif", heroAlign: "left", galleryCols: 3, radius: "sharp", heroSize: "large" },
     blocks: [
-      { type: "hero", config: { heading: "", subheading: "Khoảnh khắc đáng nhớ", image: img("vk-bold-hero") } },
-      { type: "stats", config: { items: "8 năm | Kinh nghiệm\n300+ | Album đã chụp\n100% | Khách hài lòng" } },
-      { type: "gallery", config: { heading: "Portfolio" } },
-      { type: "pricing", config: { heading: "Gói dịch vụ" } },
-      { type: "social", config: { heading: "Theo dõi" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
+      { type: "hero", config: { heading: "", subheading: "Tình yêu, kể bằng chất phim hoài niệm", image: img("vk-vintage-hero") } },
+      { type: "quote", config: { text: "Những khung hình ấm áp, hạt mịn — tựa như ký ức được giữ trong ngăn kéo.", author: "Hồi Niệm Studio" } },
+      { type: "services", config: { heading: "Dịch vụ", items: "Chụp phim ngày cưới | Máy phim 35mm & medium format, tráng rọi thủ công giữ trọn sắc độ ấm.\nPre-wedding hoài cổ | Bối cảnh vintage, trang phục và đạo cụ gợi nhớ một thời đã qua.\nAlbum bọc da | Album bìa da thật khâu tay, ảnh in fine-art lưu giữ hàng chục năm." } },
+      { type: "gallery", config: { heading: "Khung kỷ niệm" } },
+      { type: "about", config: { heading: "Về studio", text: "Từ năm 1998, chúng tôi giữ nguyên cách chụp film truyền thống — tráng rọi thủ công trong phòng tối ngay tại studio.\nMột không gian nhỏ ấm cúng giữa lòng phố cổ.", image: img("vk-vintage-about", 800, 600) } },
+      { type: "testimonials", config: { heading: "Cảm nhận" } },
+      { type: "cta", config: { heading: "Lưu giữ ngày của bạn trên thước phim", text: "Hẹn buổi chụp cùng chúng tôi.", button: "Hẹn buổi chụp" } },
+      { type: "contact", config: { heading: "Liên hệ", email: "hello@studio.vn", address: "12 Hàng Bạc, Hoàn Kiếm, Hà Nội" } },
+      { type: "map", config: { heading: "Ghé studio", address: "12 Hàng Bạc, Hoàn Kiếm, Hà Nội" } },
     ],
   },
+
+  // 3) Lãng mạn — pastel hồng, Cormorant serif, bo tròn, dịu dàng.
   {
-    key: "film",
-    name: "Chất film",
-    thumb: img("vk-film", 600, 380),
-    theme: { mode: "dark", accent: "#d8a25e", bg: "#14110d", text: "#ece4d6", font: "serif", heroAlign: "left", galleryCols: 3, radius: "sharp" },
+    key: "flora",
+    name: "Lãng mạn",
+    tag: "Pastel hồng ngọt ngào · bo tròn mềm mại",
+    thumb: img("vk-flora", 600, 380),
+    theme: { mode: "light", accent: "#c98a92", bg: "#fbf4f3", text: "#4a3a3e", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded", heroSize: "medium" },
     blocks: [
-      { type: "hero", config: { heading: "", subheading: "Tông màu film hoài niệm", image: img("vk-film-hero") } },
-      { type: "about", config: { heading: "Về tôi", text: "Chụp bằng cảm xúc, giữ lại nét mộc mạc.", image: img("vk-film-about", 800, 600) } },
-      { type: "gallery", config: { heading: "Bộ sưu tập" } },
-      { type: "pricing", config: { heading: "Bảng giá" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
-    ],
-  },
-  {
-    key: "studio",
-    name: "Studio đầy đủ",
-    thumb: img("vk-studio", 600, 380),
-    theme: { mode: "dark", accent: "#b9935a", bg: "#11100e", text: "#efece6", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Dịch vụ chụp & quay trọn gói", image: img("vk-studio-hero") } },
-      { type: "gallery", config: { heading: "Album nổi bật" } },
-      { type: "pricing", config: { heading: "Các gói dịch vụ" } },
-      { type: "video", config: { heading: "Highlight", url: "" } },
-      { type: "testimonials", config: { heading: "Cảm nhận khách hàng" } },
-      { type: "faq", config: { heading: "Câu hỏi thường gặp", items: "Đặt cọc bao nhiêu? | Studio giữ lịch khi cọc 30%.\nKhi nào nhận ảnh? | Ảnh chỉnh giao trong 15–20 ngày." } },
-      { type: "social", config: { heading: "Theo dõi" } },
-      { type: "contact", config: { heading: "Liên hệ & đặt lịch" } },
-    ],
-  },
-  {
-    key: "side-minimal",
-    name: "Tối giản · menu trái",
-    thumb: img("vk-side", 600, 380),
-    theme: { mode: "light", accent: "#1a1a1a", bg: "#fbfbfa", text: "#1a1a1a", font: "sans", heroAlign: "left", galleryCols: 3, radius: "sharp", navPosition: "left", heroSize: "small" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Nhiếp ảnh tối giản", image: img("vk-side-hero") } },
-      { type: "gallery", config: { heading: "Tác phẩm" } },
-      { type: "about", config: { heading: "Giới thiệu", text: "Ít chi tiết thừa — chỉ còn cảm xúc.", image: img("vk-side-about", 800, 600) } },
-      { type: "services", config: { heading: "Dịch vụ", items: "Chân dung | Studio & ngoại cảnh\nSự kiện | Phóng sự\nThương mại | Sản phẩm" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
-    ],
-  },
-  {
-    key: "mono-dark",
-    name: "Tối thanh lịch",
-    thumb: img("vk-mono", 600, 380),
-    theme: { mode: "dark", accent: "#eaeaea", bg: "#0b0b0b", text: "#eaeaea", font: "sans", heroAlign: "center", galleryCols: 4, radius: "sharp", navPosition: "top", heroSize: "small" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Đen trắng · tinh tế", image: img("vk-mono-hero") } },
-      { type: "gallery", config: { heading: "Portfolio" } },
-      { type: "stats", config: { items: "10 năm | Kinh nghiệm\n500+ | Dự án" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
-    ],
-  },
-  {
-    key: "team-studio",
-    name: "Studio & Đội ngũ",
-    thumb: img("vk-team", 600, 380),
-    theme: { mode: "dark", accent: "#cba24c", bg: "#0e0d0b", text: "#efebe2", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Ekip chụp & quay chuyên nghiệp", image: img("vk-team-hero") } },
-      { type: "stats", config: { items: "8 năm | Kinh nghiệm\n12 | Thành viên\n500+ | Dự án" } },
-      { type: "gallery", config: { heading: "Tác phẩm tiêu biểu" } },
-      { type: "team", config: { heading: "Đội ngũ của chúng tôi", items: `Minh Anh | Photographer | ${img("vk-team1", 400, 400)}\nQuốc Bảo | Quay phim | ${img("vk-team2", 400, 400)}\nThu Hà | Trang điểm | ${img("vk-team3", 400, 400)}\nĐức Long | Hậu kỳ | ${img("vk-team4", 400, 400)}` } },
-      { type: "quote", config: { text: "Chúng tôi không chỉ chụp ảnh — chúng tôi kể lại câu chuyện ngày trọng đại của bạn.", author: "Vieetjk Studio" } },
-      { type: "pricing", config: { heading: "Các gói dịch vụ" } },
-      { type: "cta", config: { heading: "Đặt lịch buổi chụp của bạn", text: "Liên hệ ngay để giữ ngày đẹp và nhận tư vấn miễn phí.", button: "Đặt lịch ngay" } },
-      { type: "map", config: { heading: "Ghé studio", address: "Hồ Gươm, Hà Nội" } },
-      { type: "contact", config: { heading: "Liên hệ" } },
-    ],
-  },
-  {
-    key: "landing",
-    name: "Landing đặt lịch",
-    thumb: img("vk-landing", 600, 380),
-    theme: { mode: "light", accent: "#b07a36", bg: "#faf7f2", text: "#1f1a14", font: "serif", heroAlign: "center", galleryCols: 3, radius: "rounded", heroSize: "large" },
-    blocks: [
-      { type: "hero", config: { heading: "", subheading: "Lưu giữ khoảnh khắc đẹp nhất", image: img("vk-landing-hero") } },
-      { type: "quote", config: { text: "Mỗi tấm ảnh là một kỷ niệm không thể quay lại.", author: "" } },
-      { type: "gallery", config: { heading: "Khoảnh khắc đẹp" } },
-      { type: "services", config: { heading: "Dịch vụ", items: "Chụp cưới | Phóng sự trọn ngày\nPrewedding | Concept theo yêu cầu\nGia đình | Studio & ngoại cảnh" } },
+      { type: "hero", config: { heading: "", subheading: "Yêu thương nở hoa · Studio áo cưới lãng mạn", image: img("vk-flora-hero") } },
+      { type: "quote", config: { text: "Tình yêu là khu vườn, và ngày cưới là mùa hoa rực rỡ nhất.", author: "Flora" } },
+      { type: "services", config: { heading: "Dịch vụ", items: "Chụp ngày cưới | Phóng sự nhẹ nhàng, bắt trọn từng cảm xúc ngọt ngào của ngày trọng đại.\nPre-wedding | Buổi chụp đôi với hoa tươi và bối cảnh lãng mạn theo mùa.\nAlbum & hoa | Album bìa vải pastel kèm thiết kế hoa tươi riêng cho cặp đôi." } },
+      { type: "gallery", config: { heading: "Khoảnh khắc ngọt ngào" } },
+      { type: "about", config: { heading: "Về studio", text: "Flora là studio áo cưới theo phong cách lãng mạn, ngọt ngào.\nChúng tôi yêu hoa tươi, ánh sáng mềm và những cảm xúc dịu dàng trong từng khung hình.", image: img("vk-flora-about", 800, 600) } },
       { type: "testimonials", config: { heading: "Khách hàng nói gì" } },
-      { type: "cta", config: { heading: "Sẵn sàng cho buổi chụp?", text: "Đặt lịch hôm nay để nhận ưu đãi.", button: "Đặt lịch" } },
-      { type: "contact", config: { heading: "Liên hệ & đặt lịch" } },
+      { type: "cta", config: { heading: "Hãy để chúng tôi kể chuyện tình của bạn", text: "Đặt lịch tư vấn miễn phí.", button: "Đặt lịch tư vấn" } },
+      { type: "contact", config: { heading: "Liên hệ", email: "hello@studio.vn", address: "56 Phan Xích Long, Phú Nhuận, TP.HCM" } },
+    ],
+  },
+
+  // 4) Câu chuyện — nhiếp ảnh gia cá nhân, editorial ấm, bố cục lệch trái.
+  {
+    key: "story",
+    name: "Câu chuyện",
+    tag: "Nhiếp ảnh gia cá nhân · editorial ấm",
+    thumb: img("vk-story", 600, 380),
+    theme: { mode: "light", accent: "#a6552f", bg: "#f8f5f0", text: "#241f1a", font: "serif", heroAlign: "left", galleryCols: 3, radius: "sharp", heroSize: "medium" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Mỗi bức ảnh là một câu chuyện", image: img("vk-story-hero") } },
+      { type: "about", config: { heading: "Về tôi", text: "Tôi cầm máy lần đầu năm 16 tuổi với chiếc máy phim của bố. Từ đó, nhiếp ảnh trở thành cách tôi nhìn và hiểu thế giới.\nHôm nay, tôi chụp chân dung, cưới và những dự án cá nhân — luôn đặt cảm xúc thật lên trên mọi kỹ thuật.", image: img("vk-story-about", 800, 600) } },
+      { type: "services", config: { heading: "Dịch vụ", items: "Chân dung cá nhân | Buổi chụp 2 giờ, định hình phong cách riêng của bạn.\nChụp cưới kể chuyện | Phóng sự trọn ngày theo dòng cảm xúc tự nhiên.\nDự án cá nhân | Đồng hành cùng bạn trong các dự án sáng tạo riêng." } },
+      { type: "gallery", config: { heading: "Tác phẩm" } },
+      { type: "quote", config: { text: "Tôi đi tìm những khoảnh khắc thật của con người và lưu giữ chúng.", author: "" } },
+      { type: "cta", config: { heading: "Kể câu chuyện của bạn", text: "Còn vài lịch trống cho mùa cuối năm 2026.", button: "Liên hệ với tôi" } },
+      { type: "social", config: { heading: "Theo dõi", facebook: "", instagram: "" } },
+      { type: "contact", config: { heading: "Liên hệ", email: "hello@studio.vn", address: "27 Trần Phú, Hải Châu, Đà Nẵng" } },
+    ],
+  },
+
+  // 5) Hiện đại — editorial, Bodoni-ish serif, vàng nâu, bố cục lệch.
+  {
+    key: "editorial",
+    name: "Hiện đại",
+    tag: "Editorial thanh lịch · vàng nâu, hiện đại",
+    thumb: img("vk-editorial", 600, 380),
+    theme: { mode: "light", accent: "#9a7b53", bg: "#f4f1ec", text: "#211d18", font: "serif", heroAlign: "left", galleryCols: 3, radius: "rounded", heroSize: "large" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Ngày của hai ta · Studio áo cưới hiện đại", image: img("vk-editorial-hero") } },
+      { type: "quote", config: { text: "Một bức ảnh đẹp không kể lại sự kiện — nó giữ lại cảm xúc.", author: "Vows Studio" } },
+      { type: "gallery", config: { heading: "Bộ sưu tập" } },
+      { type: "services", config: { heading: "Dịch vụ", items: "Chụp ngày cưới | Phóng sự trọn ngày, bắt trọn từng cảm xúc thật khi nó diễn ra.\nPre-wedding | Buổi chụp đôi theo concept hiện đại, định hình phong cách riêng.\nAlbum thiết kế | Album layout tinh giản, in fine-art lưu giữ chất lượng qua thời gian." } },
+      { type: "about", config: { heading: "Về studio", text: "Thành lập năm 2017, chúng tôi theo đuổi phong cách cưới hiện đại, tinh giản.\nMỗi cặp đôi nhận một bộ ảnh và album được thiết kế riêng, chỉn chu đến từng chi tiết.", image: img("vk-editorial-about", 800, 600) } },
+      { type: "testimonials", config: { heading: "Cảm nhận" } },
+      { type: "cta", config: { heading: "Cùng kể câu chuyện của bạn", text: "Đặt lịch tư vấn cho mùa cưới 2026.", button: "Đặt lịch tư vấn" } },
+      { type: "social", config: { heading: "Theo dõi", facebook: "", instagram: "" } },
+      { type: "contact", config: { heading: "Liên hệ", email: "studio@vows.vn", address: "88 Hai Bà Trưng, Hoàn Kiếm, Hà Nội" } },
     ],
   },
 ];

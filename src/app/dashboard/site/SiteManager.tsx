@@ -11,7 +11,21 @@ import {
   type SiteBlockType,
   type SiteTheme,
 } from "@/lib/types";
-import { SITE_TEMPLATES } from "@/lib/site-templates";
+import { SITE_TEMPLATES, EMPTY_INTAKE, personalizeBlocks, type SiteIntake } from "@/lib/site-templates";
+
+// Các trường của form "Bắt đầu nhanh" — nhập 1 lần, tự điền vào mẫu khi áp dụng.
+const INTAKE_FIELDS: { key: keyof SiteIntake; label: string; placeholder: string; area?: boolean }[] = [
+  { key: "brand", label: "Tên studio / thương hiệu", placeholder: "VD: Maison Studio" },
+  { key: "tagline", label: "Câu giới thiệu ngắn (hiện dưới tên)", placeholder: "VD: Nhiếp ảnh cưới & chân dung" },
+  { key: "about", label: "Giới thiệu về bạn / studio", placeholder: "Vài câu về phong cách, kinh nghiệm…", area: true },
+  { key: "services", label: "Dịch vụ — mỗi dòng: Tên | mô tả", placeholder: "Chụp cưới | Phóng sự trọn ngày\nPre-wedding | Concept theo yêu cầu", area: true },
+  { key: "stats", label: "Con số nổi bật — mỗi dòng: Số | nhãn", placeholder: "8 năm | Kinh nghiệm\n300+ | Album", area: true },
+  { key: "email", label: "Email liên hệ", placeholder: "hello@studio.vn" },
+  { key: "address", label: "Địa chỉ studio (hiện bản đồ)", placeholder: "24 Lê Lợi, Quận 1, TP.HCM" },
+  { key: "facebook", label: "Facebook (URL)", placeholder: "https://facebook.com/studio" },
+  { key: "instagram", label: "Instagram (URL)", placeholder: "https://instagram.com/studio" },
+  { key: "ctaText", label: "Câu kêu gọi đặt lịch", placeholder: "Liên hệ ngay để giữ ngày đẹp." },
+];
 
 const BLOCK_TYPES: SiteBlockType[] = ["hero", "gallery", "about", "pricing", "testimonials", "services", "stats", "team", "quote", "cta", "logos", "video", "social", "faq", "map", "contact"];
 
@@ -163,6 +177,22 @@ export default function SiteManager({
   const [previewKey, setPreviewKey] = useState(0);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [previewTpl, setPreviewTpl] = useState<string | null>(null);
+  // Form "Bắt đầu nhanh" — lưu ở localStorage để nhớ giữa các lần vào.
+  const [intake, setIntake] = useState<SiteIntake>(() => {
+    if (typeof window === "undefined") return EMPTY_INTAKE;
+    try {
+      const raw = window.localStorage.getItem(`vk_site_intake_${site.id}`);
+      return raw ? { ...EMPTY_INTAKE, ...JSON.parse(raw) } : EMPTY_INTAKE;
+    } catch { return EMPTY_INTAKE; }
+  });
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  function setIntakeField(key: keyof SiteIntake, value: string) {
+    setIntake((p) => {
+      const next = { ...p, [key]: value };
+      try { window.localStorage.setItem(`vk_site_intake_${site.id}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
   const refreshPreview = () => setPreviewKey((k) => k + 1);
   const mode = theme.mode || "dark";
   function setMode(m: "light" | "dark") {
@@ -304,14 +334,16 @@ export default function SiteManager({
   async function applyTemplate(key: string) {
     const tpl = SITE_TEMPLATES.find((t) => t.key === key);
     if (!tpl) return;
-    if (blocks.length && !confirm("Áp dụng mẫu sẽ đổi màu sắc và thêm các khối của mẫu vào trang. Tiếp tục?")) return;
+    if (blocks.length && !confirm("Áp dụng mẫu sẽ xoá các khối hiện tại và thay bằng mẫu mới (đã điền thông tin của bạn). Tiếp tục?")) return;
     setTheme(tpl.theme);
     await supabase.from("sites").update({ theme: tpl.theme }).eq("id", site.id);
-    const base = blocks.length;
-    const rows = tpl.blocks.map((b, i) => ({ site_id: site.id, type: b.type, position: base + i, config: b.config }));
+    // Thay toàn bộ khối cũ bằng khối của mẫu, đã điền sẵn thông tin người dùng.
+    await supabase.from("site_blocks").delete().eq("site_id", site.id);
+    const built = personalizeBlocks(tpl.blocks, intake);
+    const rows = built.map((b, i) => ({ site_id: site.id, type: b.type, position: i, config: b.config }));
     const { data } = await supabase.from("site_blocks").insert(rows).select("*");
-    if (data) setBlocks((p) => [...p, ...(data as SiteBlock[])]);
-    toast("Đã áp dụng mẫu.");
+    setBlocks(data ? (data as SiteBlock[]) : []);
+    toast("Đã áp dụng mẫu và điền thông tin của bạn.");
     refreshPreview();
   }
 
@@ -369,10 +401,46 @@ export default function SiteManager({
             </ul>
           </div>
 
-          {/* Step 1: pick a template */}
+          {/* Step 1: quick-start intake form */}
           <div className="card p-5">
-            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 1. Chọn mẫu</h2>
-            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Bấm ảnh để <b>xem trước trang hoàn chỉnh</b>, rồi “Dùng”. Nội dung &amp; ảnh là mẫu, bạn đổi sau.</p>
+            <button onClick={() => setIntakeOpen((v) => !v)} className="flex w-full items-center gap-2 text-left">
+              <Wand2 size={16} />
+              <h2 className="mr-auto font-serif text-lg font-medium">1. Nhập thông tin</h2>
+              <span className="text-xs" style={{ color: "var(--text3)" }}>{intakeOpen ? "Thu gọn" : "Mở"}</span>
+            </button>
+            <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>Nhập 1 lần — khi chọn mẫu ở bước 2, thông tin sẽ <b>tự điền vào trang</b> nên bạn gần như không phải sửa gì.</p>
+            {intakeOpen && (
+              <div className="mt-3 space-y-3">
+                {INTAKE_FIELDS.map((f) => (
+                  <div key={f.key}>
+                    <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text2)" }}>{f.label}</label>
+                    {f.area ? (
+                      <textarea
+                        className="input w-full text-sm"
+                        rows={3}
+                        placeholder={f.placeholder}
+                        value={intake[f.key]}
+                        onChange={(e) => setIntakeField(f.key, e.target.value)}
+                      />
+                    ) : (
+                      <input
+                        className="input h-9 w-full text-sm"
+                        placeholder={f.placeholder}
+                        value={intake[f.key]}
+                        onChange={(e) => setIntakeField(f.key, e.target.value)}
+                      />
+                    )}
+                  </div>
+                ))}
+                <p className="text-[11px]" style={{ color: "var(--text3)" }}>Để trống trường nào thì mẫu giữ nội dung mẫu cho trường đó.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Step 2: pick a template */}
+          <div className="card p-5">
+            <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium"><Sparkles size={16} /> 2. Chọn mẫu</h2>
+            <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Bấm ảnh để <b>xem trước trang hoàn chỉnh</b>, rồi “Dùng” để áp dụng (kèm thông tin bạn vừa nhập).</p>
             <div className="grid grid-cols-2 gap-2">
               {SITE_TEMPLATES.map((tp) => (
                 <div key={tp.key} className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
@@ -381,18 +449,21 @@ export default function SiteManager({
                     <img src={tp.thumb} alt={tp.name} className="aspect-[3/2] w-full object-cover" />
                     <span className="absolute bottom-1 right-1 rounded px-1.5 py-0.5 text-[9px]" style={{ background: "rgba(0,0,0,.6)", color: "#fff" }}><Eye size={9} className="mr-0.5 inline" />Xem</span>
                   </button>
-                  <div className="flex items-center justify-between gap-1 p-2">
-                    <span className="truncate text-xs font-medium">{tp.name} <span style={{ color: "var(--text3)" }}>· {tp.theme.mode === "light" ? "Sáng" : "Tối"}</span></span>
-                    <button onClick={() => applyTemplate(tp.key)} className="btn-primary shrink-0 px-2 py-0.5 text-[10px]">Dùng</button>
+                  <div className="p-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="truncate text-xs font-medium">{tp.name} <span style={{ color: "var(--text3)" }}>· {tp.theme.mode === "light" ? "Sáng" : "Tối"}</span></span>
+                      <button onClick={() => applyTemplate(tp.key)} className="btn-primary shrink-0 px-2 py-0.5 text-[10px]">Dùng</button>
+                    </div>
+                    <p className="mt-0.5 truncate text-[10px]" style={{ color: "var(--text3)" }}>{tp.tag}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Step 2: look & feel */}
+          {/* Step 3: look & feel */}
           <div className="card p-5">
-            <h2 className="mb-1 font-serif text-lg font-medium">2. Giao diện</h2>
+            <h2 className="mb-1 font-serif text-lg font-medium">3. Giao diện</h2>
             <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>Không cần rành thiết kế — chọn một <b>bảng màu có sẵn</b> bên dưới.</p>
             <div className="mb-4 grid grid-cols-4 gap-2">
               {PALETTES.map((p) => {
@@ -503,9 +574,9 @@ export default function SiteManager({
             </details>
           </div>
 
-          {/* Step 3: content blocks */}
+          {/* Step 4: content blocks */}
           <div className="card p-5">
-            <h2 className="mb-1 font-serif text-lg font-medium">3. Nội dung</h2>
+            <h2 className="mb-1 font-serif text-lg font-medium">4. Nội dung</h2>
             <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}><b>Kéo</b> khối thả vào danh sách dưới (hoặc bấm để thêm). Kéo <GripVertical size={12} className="inline" /> để đổi thứ tự.</p>
             <div className="mb-4 flex flex-wrap gap-1.5">
               {BLOCK_TYPES.map((tp) => (
