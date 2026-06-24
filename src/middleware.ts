@@ -26,9 +26,12 @@ function hostForPath(path: string): string | undefined {
   // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
 
-  // Admin console → admin.mstudo.com (or app host if not configured).
+  // Admin console + settings: serve on whatever host the user arrived at.
+  // (We used to force a redirect to admin.mstudo.com, but that made admin
+  // unreachable whenever that subdomain wasn't configured. The pages are
+  // role-guarded server-side, so serving them anywhere is safe.)
   if (path.startsWith(ADMIN_PATH) || path.startsWith("/dashboard/settings")) {
-    return ADMIN_HOST || APP_HOST;
+    return undefined;
   }
 
   // Image-compress tool → img.mstudo.com (or app host).
