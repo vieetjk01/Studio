@@ -1380,3 +1380,18 @@ alter table public.quote_items add column if not exists is_discount boolean not 
 --     can_zip = true, can_notes = true, monthly_album_limit = null
 --   where email = 'you@example.com';
 -- ============================================================================
+
+-- Package grouping for quote items: items with the same package_group string
+-- form a selectable bundle. The client picks the whole bundle at once.
+alter table public.quote_items add column if not exists package_group text null;
+
+-- Automatic bulk-select discount: when the client picks >= bulk_discount_min_items
+-- optional items, knock bulk_discount_amount off the total.
+-- Set bulk_discount_min_items = 0 to disable (default).
+alter table public.studio_quotes add column if not exists bulk_discount_amount    bigint not null default 0;
+alter table public.studio_quotes add column if not exists bulk_discount_min_items int    not null default 0;
+
+-- Package-tied discount: packages are mutually exclusive (the client picks one
+-- package). If the client selects the studio's designated package
+-- (discount_package_group), bulk_discount_amount is knocked off the total.
+alter table public.studio_quotes add column if not exists discount_package_group text null;
