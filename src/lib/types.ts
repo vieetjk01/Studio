@@ -122,19 +122,6 @@ export interface DiscountCode {
   created_at: string;
 }
 
-export type BookingService = "wedding" | "event" | "sports" | "other";
-
-export interface Booking {
-  id: string;
-  service: BookingService;
-  name: string;
-  phone: string;
-  date: string | null;
-  note: string | null;
-  handled: boolean;
-  created_at: string;
-}
-
 export interface UpgradeRequest {
   id: string;
   user_id: string | null;
