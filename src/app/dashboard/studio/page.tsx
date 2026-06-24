@@ -407,23 +407,51 @@ export default async function StudioOverview() {
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-1 flex items-center gap-3">
         <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
-        <Link href="/dashboard/studio/contracts/new" className="btn-primary ml-auto">
+        <Link href="/dashboard/studio/contracts/new" className="btn-primary ml-auto hidden sm:inline-flex">
           <Plus size={16} /> Hợp đồng mới
         </Link>
       </div>
-      <p className="mb-6 text-[13px]" style={{ color: "var(--text3)" }}>Tổng quan hoạt động studio</p>
+      <p className="mb-4 text-[13px]" style={{ color: "var(--text3)" }}>Tổng quan hoạt động studio</p>
 
-      {/* Stat cards */}
-      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Mobile quick actions — prominent tappable shortcuts */}
+      <div className="mb-5 grid grid-cols-3 gap-3 sm:hidden">
+        <Link
+          href="/dashboard/studio/contracts/new"
+          className="flex flex-col items-center gap-2 rounded-2xl py-4 text-center text-xs font-bold"
+          style={{ background: "var(--brand)", color: "var(--brandFg)" }}
+        >
+          <Plus size={22} />
+          Tạo HĐ
+        </Link>
+        <Link
+          href="/dashboard/studio/bookings"
+          className="flex flex-col items-center gap-2 rounded-2xl py-4 text-center text-xs font-bold"
+          style={{ background: "var(--surface2)", color: "var(--text)" }}
+        >
+          <Clock size={22} />
+          Đặt lịch
+        </Link>
+        <Link
+          href="/dashboard/studio/calendar"
+          className="flex flex-col items-center gap-2 rounded-2xl py-4 text-center text-xs font-bold"
+          style={{ background: "var(--surface2)", color: "var(--text)" }}
+        >
+          <CalendarDays size={22} />
+          Lịch chụp
+        </Link>
+      </div>
+
+      {/* Stat cards — 1 col on mobile, 2 on sm, 4 on lg */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />
         ))}
       </div>
 
-      {/* Secondary KPIs */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Secondary KPIs — horizontal scroll on mobile */}
+      <div className="mb-6 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
         {kpis.map((k) => (
-          <div key={k.label} className="card p-5">
+          <div key={k.label} className="card shrink-0 basis-44 p-4 sm:basis-auto sm:p-5">
             <p className="font-serif text-xl font-medium">{k.value}</p>
             <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>{k.label}</p>
           </div>

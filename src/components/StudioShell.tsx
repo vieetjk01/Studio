@@ -7,6 +7,7 @@ import {
   LayoutDashboard, CalendarDays, Clock, Users, Wallet, FileText, FileEdit,
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
+  Menu, X as XIcon,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -118,6 +119,10 @@ export default function StudioShell({
   const router = useRouter();
   const pathname = usePathname();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Close drawer on route change
+  useEffect(() => { setDrawerOpen(false); }, [pathname]);
 
   // Restore the studio theme preference (separate from the album shell).
   useEffect(() => {
@@ -164,6 +169,112 @@ export default function StudioShell({
   return (
     <div className="studio-shell" data-theme={theme} style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
+
+        {/* ── Mobile drawer overlay ──────────────────────────────── */}
+        {drawerOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            onClick={() => setDrawerOpen(false)}
+          />
+        )}
+
+        {/* ── Mobile slide-in drawer ─────────────────────────────── */}
+        <div
+          className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-y-auto px-3 pb-8 pt-4 transition-transform duration-300 lg:hidden"
+          style={{
+            background: "var(--surface)",
+            borderRight: "1px solid var(--border)",
+            transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
+          }}
+        >
+          {/* Drawer header */}
+          <div className="mb-4 flex items-center gap-2.5 px-2">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-[15px] font-extrabold"
+              style={{ background: "var(--brand)", color: "var(--brandFg)" }}
+            >
+              m
+            </span>
+            <span className="text-[18px] font-extrabold tracking-tight">mstudo</span>
+            <span
+              className="rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+              style={{ color: "var(--brand)", background: "var(--brandSoft)" }}
+            >
+              {tier === "full" ? "STUDIO" : "PRO"}
+            </span>
+            <button
+              onClick={() => setDrawerOpen(false)}
+              className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg"
+              style={{ background: "var(--surface2)", color: "var(--text2)" }}
+            >
+              <XIcon size={16} />
+            </button>
+          </div>
+
+          {/* User info strip */}
+          <div
+            className="mb-4 flex items-center gap-3 rounded-xl px-3 py-3"
+            style={{ background: "var(--surface2)" }}
+          >
+            <span
+              className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm font-bold"
+              style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+            >
+              {initials}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{profile.full_name || profile.email}</p>
+              <p className="truncate text-[11px]" style={{ color: "var(--text3)" }}>{profile.email}</p>
+            </div>
+          </div>
+
+          {/* Nav groups */}
+          {visibleGroups.map((g) => (
+            <div key={g.label} className="mt-2">
+              <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text3)" }}>
+                {g.label}
+              </p>
+              {g.items.map((it) => {
+                const active = isActive(it.href);
+                return (
+                  <Link
+                    key={it.href}
+                    href={it.href}
+                    className="mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+                    style={{
+                      color: active ? "var(--brand)" : "var(--text)",
+                      background: active ? "var(--brandSoft)" : "transparent",
+                    }}
+                  >
+                    <it.icon size={18} style={{ flex: "none" }} />
+                    {it.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Drawer footer actions */}
+          <div className="mt-auto pt-6 flex flex-col gap-2">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+              style={{ background: "var(--surface2)", color: "var(--text2)" }}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {theme === "dark" ? "Giao diện sáng" : "Giao diện tối"}
+            </button>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+              style={{ background: "rgba(224,116,111,.1)", color: "#e0746f" }}
+            >
+              <LogOut size={18} />
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+
         {/* ── Sidebar (desktop) ─────────────────────────────────── */}
         <aside
           className="sticky top-0 hidden h-screen flex-col gap-1 overflow-y-auto px-3 pb-24 pt-4 lg:flex"
@@ -215,47 +326,62 @@ export default function StudioShell({
         <div className="flex min-w-0 flex-col">
           {/* Topbar */}
           <header
-            className="sticky top-0 z-30 flex items-center gap-3 px-5 py-3 backdrop-blur"
+            className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 backdrop-blur sm:px-5"
             style={{ background: "color-mix(in srgb, var(--surface) 88%, transparent)", borderBottom: "1px solid var(--border)" }}
           >
-            <div className="min-w-0">
-              <h1 className="truncate text-[18px] font-extrabold tracking-tight">{title}</h1>
-              {sub ? <p className="truncate text-[12.5px]" style={{ color: "var(--text3)" }}>{sub}</p> : null}
+            {/* Mobile: hamburger */}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex h-9 w-9 flex-none items-center justify-center rounded-lg lg:hidden"
+              style={{ background: "var(--surface2)", color: "var(--text)" }}
+              aria-label="Mở menu"
+            >
+              <Menu size={18} />
+            </button>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-[17px] font-extrabold tracking-tight sm:text-[18px]">{title}</h1>
+              {sub ? <p className="hidden truncate text-[12px] sm:block" style={{ color: "var(--text3)" }}>{sub}</p> : null}
             </div>
-            <div className="ml-auto flex items-center gap-2">
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Search: tablet+ */}
               <div className="hidden sm:block">
                 <StudioSearch />
               </div>
               <NotificationBell />
-              <LanguageSwitcher />
-              <button
-                onClick={toggleTheme}
-                aria-label="theme"
-                className="flex h-9 w-9 items-center justify-center rounded-lg"
-                style={{ border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}
-              >
-                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-              <span
-                className="hidden h-9 w-9 items-center justify-center rounded-full text-xs font-bold sm:flex"
-                style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
-                title={profile.full_name || profile.email || ""}
-              >
-                {initials}
-              </span>
-              <button
-                onClick={signOut}
-                aria-label="Đăng xuất"
-                className="flex h-9 w-9 items-center justify-center rounded-lg"
-                style={{ border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}
-              >
-                <LogOut size={16} />
-              </button>
+              {/* Language + theme: desktop only (in drawer on mobile) */}
+              <div className="hidden lg:flex lg:items-center lg:gap-1.5">
+                <LanguageSwitcher />
+                <button
+                  onClick={toggleTheme}
+                  aria-label="theme"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg"
+                  style={{ border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}
+                >
+                  {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold"
+                  style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+                  title={profile.full_name || profile.email || ""}
+                >
+                  {initials}
+                </span>
+                <button
+                  onClick={signOut}
+                  aria-label="Đăng xuất"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg"
+                  style={{ border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
             </div>
           </header>
 
           {/* Page content */}
-          <main className="px-4 pb-24 pt-5 sm:px-6 lg:pb-10">{children}</main>
+          <main className="px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
         </div>
       </div>
 
