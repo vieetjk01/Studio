@@ -239,6 +239,74 @@ body {
   }
 }
 
+/* ── Studio app shell — mstudo green theme (ported from mstudo-app mockup) ──
+   Scoped tokens so the studio workspace gets its own green-accent look with a
+   light/dark toggle, independent of the dark-only album shell. Every studio
+   sub-page re-themes automatically because it reads the same --surface/--text/…
+   tokens; only their values change inside .studio-shell. */
+.studio-shell {
+  /* dark (default) */
+  --bg: #0a0c10;
+  --bg2: #0f1217;
+  --surface: #14171d;
+  --surface2: #1b1f26;
+  --border: #242a32;
+  --border2: #2f3640;
+  --text: #eef1f4;
+  --text2: #9aa1ab;
+  --text3: rgba(154, 161, 171, 0.62);
+  --accent: #eef1f4;
+  --accentInk: #06120c;
+  --gold: #3fb98a; /* the app's accent slot → brand green (footers, links) */
+  --brand: #3fb98a;
+  --brandFg: #06120c;
+  --brandSoft: rgba(63, 185, 138, 0.14);
+  --s-green: #3fb98a;
+  --s-greenS: rgba(63, 185, 138, 0.16);
+  --s-amber: #d6a44a;
+  --s-amberS: rgba(214, 164, 74, 0.16);
+  --s-red: #e0746f;
+  --s-redS: rgba(224, 116, 111, 0.16);
+  --s-blue: #6fa0ec;
+  --s-blueS: rgba(111, 160, 236, 0.16);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+.studio-shell[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f8;
+  --bg2: #eef0f3;
+  --surface: #ffffff;
+  --surface2: #eef0f3;
+  --border: #e6e8ec;
+  --border2: #d8dce2;
+  --text: #14171c;
+  --text2: #5b616b;
+  --text3: rgba(91, 97, 107, 0.78);
+  --accent: #14171c;
+  --accentInk: #ffffff;
+  --gold: #1f9d63;
+  --brand: #1f9d63;
+  --brandFg: #ffffff;
+  --brandSoft: rgba(31, 157, 99, 0.1);
+  --s-green: #1f9d63;
+  --s-greenS: rgba(31, 157, 99, 0.12);
+  --s-amber: #c08a1e;
+  --s-amberS: rgba(192, 138, 30, 0.14);
+  --s-red: #cc4b4b;
+  --s-redS: rgba(204, 75, 75, 0.13);
+  --s-blue: #2f6fd0;
+  --s-blueS: rgba(47, 111, 208, 0.13);
+}
+/* Primary actions inside the studio shell are brand-green, not silver. */
+.studio-shell .btn-primary {
+  background: var(--brand);
+  color: var(--brandFg);
+}
+.studio-shell,
+.studio-shell * {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
 /* Print: only the contract document (.print-doc) shows, on white A4. */
 @media print {
   body {

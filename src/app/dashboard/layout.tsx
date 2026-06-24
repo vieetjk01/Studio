@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, getProfileById } from "@/lib/auth-guards";
-import DashboardHeader from "@/components/DashboardHeader";
-import StudioFooterNav from "@/components/StudioFooterNav";
+import DashboardChrome from "@/components/DashboardChrome";
 import NavProgress from "@/components/NavProgress";
 import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
@@ -93,9 +92,15 @@ on conflict (id) do update set role='admin', is_active=true;`}
       <Suspense fallback={null}>
         <NavProgress />
       </Suspense>
-      <DashboardHeader profile={profile as Profile} kind={kind} />
-      <main className={`mx-auto max-w-6xl px-6 py-8 md:px-10${showFooter ? " pb-24" : ""}`}>{children}</main>
-      {showFooter && <StudioFooterNav tier={tier} role={actingRole} />}
+      <DashboardChrome
+        profile={profile as Profile}
+        kind={kind}
+        tier={tier}
+        role={actingRole}
+        showFooter={showFooter}
+      >
+        {children}
+      </DashboardChrome>
     </div>
   );
 }
