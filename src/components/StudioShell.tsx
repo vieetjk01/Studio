@@ -372,6 +372,18 @@ export default function StudioShell({
             </div>
           ))}
 
+          <div className="mt-2.5">
+            <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text3)" }}>
+              Tài khoản
+            </p>
+            {(() => { const active = isActive("/dashboard/connections"); return (
+              <Link href="/dashboard/connections" className="mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors" style={{ color: active ? "var(--brand)" : "var(--text)", background: active ? "var(--brandSoft)" : "transparent" }}>
+                <Link2 size={18} style={{ flex: "none" }} />
+                Kết nối Calendar
+              </Link>
+            ); })()}
+          </div>
+
           {role === "admin" && (
             <div className="mt-2.5">
               <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text3)" }}>
