@@ -104,6 +104,7 @@ export default function ContractEditor({
   bank,
   sameDayContracts,
   pricelist,
+  initialClientProofs,
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -126,6 +127,7 @@ export default function ContractEditor({
   bank: BankInfo;
   sameDayContracts: { id: string; title: string; client_name: string | null }[];
   pricelist: { name: string; price: number; unit: string | null }[];
+  initialClientProofs: { id: string; url: string; note: string | null; uploaded_at: string }[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -177,6 +179,7 @@ export default function ContractEditor({
   const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today(), client_visible: true });
   const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
+  const [clientProofs, setClientProofs] = useState(initialClientProofs);
   const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
   const [proofBusy, setProofBusy] = useState(false);
   const [products, setProducts] = useState<ContractProduct[]>(initialProducts);
@@ -1258,6 +1261,26 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
             )}
           </div>
+
+          {/* Client payment proofs */}
+          {clientProofs.length > 0 && (
+            <div className="card p-6">
+              <h2 className="mb-1 font-serif text-lg font-medium">Ảnh chuyển khoản từ khách</h2>
+              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Khách hàng đã gửi {clientProofs.length} ảnh xác nhận thanh toán.</p>
+              <div className="flex flex-wrap gap-3">
+                {clientProofs.map((p: { id: string; url: string; note: string | null; uploaded_at: string }) => (
+                  <div key={p.id} className="flex flex-col items-center gap-1">
+                    <a href={p.url} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt="CK" className="h-24 w-24 rounded-xl object-cover" style={{ border: "1px solid var(--border)" }} />
+                    </a>
+                    <p className="text-[11px]" style={{ color: "var(--text3)" }}>{p.uploaded_at.slice(0, 10)}</p>
+                    {p.note && <p className="max-w-[96px] truncate text-[11px]" style={{ color: "var(--text2)" }}>{p.note}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Per-contract expenses */}
           <div className="card p-6">

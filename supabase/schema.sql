@@ -1106,6 +1106,22 @@ create index if not exists contract_payments_contract_idx on public.contract_pay
 -- Optional proof-of-transfer image (uploaded to the payment-proofs bucket).
 alter table public.contract_payments add column if not exists proof_url text;
 
+-- Client-submitted payment proof images (uploaded via the public contract portal).
+create table if not exists public.contract_client_proofs (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  url         text not null,
+  note        text,
+  uploaded_at timestamptz not null default now()
+);
+create index if not exists contract_client_proofs_contract_idx on public.contract_client_proofs (contract_id);
+alter table public.contract_client_proofs enable row level security;
+drop policy if exists contract_client_proofs_owner on public.contract_client_proofs;
+create policy contract_client_proofs_owner on public.contract_client_proofs
+  for all using (
+    exists (select 1 from public.studio_contracts c where c.id = contract_id and c.owner_id = auth.uid())
+  );
+
 -- Misc studio expenses (chi phí khác ngoài lương) for the monthly report.
 create table if not exists public.studio_expenses (
   id         uuid primary key default gen_random_uuid(),

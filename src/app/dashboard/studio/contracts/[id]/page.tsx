@@ -125,6 +125,13 @@ export default async function ContractPage({ params }: { params: { id: string } 
     .gt("price", 0)
     .order("position");
 
+  // Client payment proofs.
+  const { data: clientProofs } = await supabase
+    .from("contract_client_proofs")
+    .select("id, url, note, uploaded_at")
+    .eq("contract_id", params.id)
+    .order("uploaded_at", { ascending: false });
+
   // Same-day scheduling: other non-cancelled contracts on this contract's date.
   let sameDayContracts: { id: string; title: string; client_name: string | null }[] = [];
   if (contract.event_date) {
@@ -166,6 +173,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       initialQuoteOptions={(quoteOptions ?? []) as ContractQuoteOption[]}
       staffList={(staffList ?? []) as { id: string; full_name: string | null; email: string }[]}
       canAssign={canAssign}
+      initialClientProofs={(clientProofs ?? []) as { id: string; url: string; note: string | null; uploaded_at: string }[]}
     />
   );
 }

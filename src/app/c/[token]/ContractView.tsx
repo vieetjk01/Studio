@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package } from "lucide-react";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package, Upload } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
@@ -117,6 +117,8 @@ export default function ContractView({ token }: { token: string }) {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [bank, setBank] = useState<BankInfo>({ bin: null, account: null, holder: null, name: null });
   const [paidReported, setPaidReported] = useState(false);
+  const [proofUploading, setProofUploading] = useState(false);
+  const [proofUrls, setProofUrls] = useState<string[]>([]);
   const [qr, setQr] = useState("");
   const [lang, setLang] = useState<Lang>("vi");
   const t = (k: keyof typeof TR.vi) => TR[lang][k];
@@ -228,6 +230,19 @@ export default function ContractView({ token }: { token: string }) {
       body: JSON.stringify({ action: "paid", phone }),
     });
     if (res.ok) setPaidReported(true);
+  }
+
+  async function uploadProof(file: File) {
+    setProofUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`/api/c/${token}/proof`, { method: "POST", body: form });
+    if (res.ok) {
+      const { url } = await res.json();
+      setProofUrls((p) => [...p, url]);
+      setPaidReported(true);
+    }
+    setProofUploading(false);
   }
 
   async function chooseQuote(optionId: string) {
@@ -525,14 +540,37 @@ export default function ContractView({ token }: { token: string }) {
               ) : (
                 <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
               )}
-              <div className="mt-3">
-                {paidReported ? (
+              <div className="mt-3 space-y-2">
+                {paidReported && (
                   <p className="text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã gửi thông báo, studio sẽ đối soát." : "Sent — the studio will reconcile."}</p>
-                ) : (
-                  <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
-                    {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
-                  </button>
                 )}
+                {proofUrls.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {proofUrls.map((u) => (
+                      <a key={u} href={u} target="_blank" rel="noreferrer">
+                        <img src={u} alt="proof" className="h-16 w-16 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {!paidReported && (
+                    <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
+                      {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
+                    </button>
+                  )}
+                  <label className="btn-ghost flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm" style={{ opacity: proofUploading ? 0.6 : 1 }}>
+                    <Upload size={14} />
+                    {proofUploading ? (lang === "vi" ? "Đang tải…" : "Uploading…") : (lang === "vi" ? "Gửi ảnh chuyển khoản" : "Upload transfer proof")}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={proofUploading}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f); e.target.value = ""; }}
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           )}
