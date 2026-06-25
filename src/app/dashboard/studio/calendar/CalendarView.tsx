@@ -51,6 +51,8 @@ export default function CalendarView({
   const [cursor, setCursor] = useState({ year: y, month: mIdx - 1 });
   const [events, setEvents] = useState<StudioEvent[]>(initialEvents);
   const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<"month" | "week">("month");
+  const [weekAnchor, setWeekAnchor] = useState(todayStr); // any date inside the displayed week
 
   // add-note form
   const [title, setTitle] = useState("");
@@ -69,6 +71,28 @@ export default function CalendarView({
     while (cells.length % 7 !== 0) cells.push(null);
     return cells;
   }, [cursor]);
+
+  // Mon–Sun days of the week containing weekAnchor.
+  const weekDays = useMemo(() => {
+    const [wy, wm, wd] = weekAnchor.split("-").map(Number);
+    const base = new Date(wy, wm - 1, wd);
+    const startWd = (base.getDay() + 6) % 7; // Mon=0
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - startWd);
+    return Array.from({ length: 7 }, (_, i) => {
+      const dt = new Date(monday);
+      dt.setDate(monday.getDate() + i);
+      return ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    });
+  }, [weekAnchor]);
+
+  function moveWeek(delta: number) {
+    setSelected(null);
+    const [wy, wm, wd] = weekAnchor.split("-").map(Number);
+    const dt = new Date(wy, wm - 1, wd);
+    dt.setDate(dt.getDate() + delta * 7);
+    setWeekAnchor(ymd(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+  }
 
   function eventsOn(dateStr: string) {
     return events.filter((e) => e.event_date === dateStr);
@@ -145,8 +169,23 @@ export default function CalendarView({
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-medium">Lịch chụp &amp; ghi chú</h1>
+        <div className="flex rounded-lg p-0.5" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+          {(["month", "week"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={{
+                background: view === v ? "var(--brand, var(--accent))" : "transparent",
+                color: view === v ? "var(--brandFg, #06120c)" : "var(--text2)",
+              }}
+            >
+              {v === "month" ? "Tháng" : "Tuần"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {feedUrl && (
@@ -170,6 +209,16 @@ export default function CalendarView({
         </div>
       )}
 
+      {view === "week" ? (
+        <WeekView
+          weekDays={weekDays}
+          todayStr={todayStr}
+          eventsOn={eventsOn}
+          contractsOn={contractsOn}
+          moveWeek={moveWeek}
+          onDelEvent={delEvent}
+        />
+      ) : (
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Calendar */}
         <div className="card p-5 lg:col-span-2">
@@ -326,6 +375,99 @@ export default function CalendarView({
             )}
           </div>
         </div>
+      </div>
+      )}
+    </div>
+  );
+}
+
+function WeekView({
+  weekDays,
+  todayStr,
+  eventsOn,
+  contractsOn,
+  moveWeek,
+  onDelEvent,
+}: {
+  weekDays: string[];
+  todayStr: string;
+  eventsOn: (d: string) => StudioEvent[];
+  contractsOn: (d: string) => ContractMarker[];
+  moveWeek: (delta: number) => void;
+  onDelEvent: (id: string) => void;
+}) {
+  const first = weekDays[0];
+  const last = weekDays[6];
+  return (
+    <div className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-serif text-lg font-medium">
+          {first.slice(8)}/{first.slice(5, 7)} – {last.slice(8)}/{last.slice(5, 7)}/{last.slice(0, 4)}
+        </h2>
+        <div className="flex gap-2">
+          <button onClick={() => moveWeek(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>
+          <button onClick={() => moveWeek(1)} className="btn-ghost p-2"><ChevronRight size={16} /></button>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
+        {weekDays.map((dateStr, i) => {
+          const evs = eventsOn(dateStr);
+          const cons = contractsOn(dateStr);
+          const isToday = dateStr === todayStr;
+          return (
+            <div
+              key={dateStr}
+              className="flex flex-col rounded-xl p-2.5"
+              style={{
+                background: isToday ? "var(--surface2)" : "transparent",
+                border: isToday ? "1px solid var(--brand, var(--accent))" : "1px solid var(--border)",
+                minHeight: 120,
+              }}
+            >
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text3)" }}>{WD[i]}</span>
+                <span className="text-sm font-medium" style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{dateStr.slice(8)}/{dateStr.slice(5, 7)}</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {cons.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/dashboard/studio/contracts/${c.id}`}
+                    className="rounded-lg px-2 py-1.5 text-[11px] leading-snug"
+                    style={{ background: "color-mix(in srgb,#c7a76b 16%,transparent)", borderLeft: "2px solid #c7a76b" }}
+                  >
+                    <p className="flex items-center gap-1 font-medium">
+                      <Camera size={11} style={{ color: "#c7a76b", flex: "none" }} />
+                      <span className="truncate">{c.event_time ? `${c.event_time} · ` : ""}{c.title}</span>
+                    </p>
+                    {c.client_name && <p style={{ color: "var(--text3)" }}>{c.client_name}</p>}
+                    <p style={{ color: "var(--text3)" }}>{SHOOT_TYPE_LABEL[c.shoot_type] || c.shoot_type}</p>
+                    {c.location && <p className="truncate" style={{ color: "var(--text3)" }}>📍 {c.location}</p>}
+                  </Link>
+                ))}
+                {evs.map((e) => (
+                  <div
+                    key={e.id}
+                    className="group flex items-start justify-between gap-1 rounded-lg px-2 py-1.5 text-[11px] leading-snug"
+                    style={{ background: "color-mix(in srgb,#6ba3c7 16%,transparent)", borderLeft: "2px solid #6ba3c7" }}
+                  >
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1 font-medium">
+                        {e.remind ? <Bell size={10} style={{ color: "#6ba3c7", flex: "none" }} /> : <BellOff size={10} style={{ color: "var(--text3)", flex: "none" }} />}
+                        <span className="truncate">{e.event_time ? `${e.event_time} · ` : ""}{e.title}</span>
+                      </p>
+                      {e.note && <p style={{ color: "var(--text3)" }}>{e.note}</p>}
+                    </div>
+                    <button onClick={() => onDelEvent(e.id)} className="opacity-0 transition-opacity group-hover:opacity-100" style={{ color: "var(--text3)" }}><Trash2 size={12} /></button>
+                  </div>
+                ))}
+                {evs.length + cons.length === 0 && (
+                  <span className="text-[11px]" style={{ color: "var(--text3)" }}>—</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
