@@ -182,7 +182,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     db.from("contract_payments").select("id, amount, kind, paid_at").eq("contract_id", contract.id).order("paid_at", { ascending: false }),
     db.from("studio_events").select("id, title, event_date, event_time, note").eq("contract_id", contract.id).order("event_date"),
     db.from("contract_quote_options").select("id, name, price, description, position").eq("contract_id", contract.id).order("position"),
-    db.from("contract_payment_plan").select("id, label, amount, due_date, paid").eq("contract_id", contract.id).order("position"),
+    db.from("contract_payment_plan").select("id, label, amount, due_date, paid, paid_at").eq("contract_id", contract.id).order("position"),
     db.from("studio_expenses").select("id, title, amount, category, spent_at").eq("contract_id", contract.id).eq("client_visible", true).order("spent_at", { ascending: false }),
     db.from("contract_tasks").select("id, label, done, position").eq("contract_id", contract.id).order("position"),
     db.from("contract_products").select("id, name, qty, cost, status, position").eq("contract_id", contract.id).order("position"),

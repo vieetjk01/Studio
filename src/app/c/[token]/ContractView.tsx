@@ -49,7 +49,7 @@ type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
 type Milestone = { id: string; title: string; event_date: string; event_time: string | null; note: string | null };
 type QuoteOption = { id: string; name: string; price: number; description: string | null };
-type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean };
+type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean; paid_at: string | null };
 type ExpenseRow = { id: string; title: string; amount: number; category: string | null; spent_at: string };
 type TaskRow = { id: string; label: string; done: boolean };
 type ProductRow = { id: string; name: string; qty: number; cost: number; status: string };
@@ -503,77 +503,76 @@ export default function ContractView({ token }: { token: string }) {
             <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Đã thanh toán / cọc" : "Paid / deposit"}</dt><dd style={{ color: "#7bb38a" }}>− {vnd(collected)}</dd></div>
             <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</dd></div>
           </dl>
-          {payments.length > 0 && (
-            <ul className="mt-3 space-y-1 text-xs" style={{ color: "var(--text3)" }}>
-              {payments.map((p) => (
-                <li key={p.id} className="flex justify-between">
-                  <span>{PAYMENT_KIND_LABEL[p.kind]} · {p.paid_at}</span>
-                  <span>{vnd(p.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {balance > 0 && (
+          {/* Payment plan — all instalments */}
+          {plan.length > 0 && (
             <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-              <p className="text-sm font-medium">{lang === "vi" ? "Thanh toán / chuyển khoản" : "Payment"}</p>
-              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Bấm vào nút bên dưới để hiện mã QR chuyển khoản." : "Tap a button below to reveal the transfer QR."}</p>
-              {bank.account ? (
-                <>
-                  {/* Plain-text bank details so the client can copy them manually */}
-                  <div className="mb-3 rounded-lg p-3 text-xs space-y-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-                    {bank.name && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Ngân hàng" : "Bank"}:</span><span className="font-medium">{bank.name}</span></div>}
-                    <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Số tài khoản" : "Account"}:</span><span className="font-medium tracking-wider">{bank.account}</span></div>
-                    {bank.holder && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Chủ tài khoản" : "Holder"}:</span><span className="font-medium uppercase">{bank.holder}</span></div>}
-                  </div>
-                  {bank.bin && (
-                    <div className="flex flex-wrap gap-2">
-                      {plan.filter((p) => !p.paid && p.amount > 0).length > 0 ? (
-                        plan.filter((p) => !p.paid && p.amount > 0).map((p) => (
-                          <VietQRButton key={p.id} bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${p.label} · ${vnd(p.amount)}`} />
-                        ))
-                      ) : (
-                        <VietQRButton bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${lang === "vi" ? "Thanh toán" : "Pay"} · ${vnd(balance)}`} />
-                      )}
+              <p className="mb-3 text-sm font-medium">{lang === "vi" ? "Kế hoạch thanh toán" : "Payment schedule"}</p>
+              <ul className="space-y-2">
+                {plan.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--surface2)" }}>
+                    <div>
+                      <p className="font-medium">{p.label} · {vnd(p.amount)}</p>
+                      <p className="text-[11px]" style={{ color: p.paid ? "#7bb38a" : "var(--text3)" }}>
+                        {p.paid
+                          ? `✓ ${lang === "vi" ? "Đã thanh toán" : "Paid"}${p.paid_at ? ` · ${p.paid_at.slice(0, 10)}` : ""}`
+                          : p.due_date
+                            ? `${lang === "vi" ? "Hạn" : "Due"}: ${p.due_date}`
+                            : lang === "vi" ? "Chưa thanh toán" : "Pending"}
+                      </p>
                     </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
-              )}
-              <div className="mt-3 space-y-2">
-                {paidReported && (
-                  <p className="text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã gửi thông báo, studio sẽ đối soát." : "Sent — the studio will reconcile."}</p>
-                )}
-                {proofUrls.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {proofUrls.map((u) => (
-                      <a key={u} href={u} target="_blank" rel="noreferrer">
-                        <img src={u} alt="proof" className="h-16 w-16 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
-                      </a>
-                    ))}
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {!paidReported && (
-                    <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
-                      {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
-                    </button>
-                  )}
-                  <label className="btn-ghost flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm" style={{ opacity: proofUploading ? 0.6 : 1 }}>
-                    <Upload size={14} />
-                    {proofUploading ? (lang === "vi" ? "Đang tải…" : "Uploading…") : (lang === "vi" ? "Gửi ảnh chuyển khoản" : "Upload transfer proof")}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={proofUploading}
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f); e.target.value = ""; }}
-                    />
-                  </label>
-                </div>
-              </div>
+                    {!p.paid && bank.bin && (
+                      <VietQRButton bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label="QR" />
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
+
+          {/* Bank info + upload proof */}
+          <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium">{lang === "vi" ? "Thông tin chuyển khoản" : "Bank transfer"}</p>
+            {bank.account ? (
+              <div className="mb-3 rounded-lg p-3 text-xs space-y-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                {bank.name && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Ngân hàng" : "Bank"}:</span><span className="font-medium">{bank.name}</span></div>}
+                <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Số tài khoản" : "Account"}:</span><span className="font-medium tracking-wider">{bank.account}</span></div>
+                {bank.holder && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Chủ tài khoản" : "Holder"}:</span><span className="font-medium uppercase">{bank.holder}</span></div>}
+              </div>
+            ) : (
+              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
+            )}
+
+            {/* Uploaded proofs */}
+            {proofUrls.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Ảnh chuyển khoản đã gửi:" : "Transfer proofs sent:"}</p>
+                <div className="flex flex-wrap gap-2">
+                  {proofUrls.map((u) => (
+                    <a key={u} href={u} target="_blank" rel="noreferrer">
+                      <img src={u} alt="proof" className="h-16 w-16 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {!paidReported && (
+                <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
+                  {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
+                </button>
+              )}
+              {paidReported && (
+                <p className="py-2 text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã thông báo, studio sẽ đối soát." : "Notified — studio will reconcile."}</p>
+              )}
+              <label className="btn-ghost flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm" style={{ opacity: proofUploading ? 0.6 : 1 }}>
+                <Upload size={14} />
+                {proofUploading ? (lang === "vi" ? "Đang tải…" : "Uploading…") : (lang === "vi" ? "Gửi ảnh chuyển khoản" : "Upload proof")}
+                <input type="file" accept="image/*" className="hidden" disabled={proofUploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f); e.target.value = ""; }} />
+              </label>
+            </div>
+          </div>
         </div>
 
         {/* Surcharges / extra costs */}
