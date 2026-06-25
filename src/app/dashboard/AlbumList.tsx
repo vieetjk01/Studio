@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2 } from "lucide-react";
+import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { createClient } from "@/lib/supabase/client";
@@ -28,9 +28,14 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
       <PlanUsage />
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-light text-accent">{t("myAlbums")}</h1>
-        <Link href="/dashboard/create" className="btn-primary">
-          <Plus size={16} /> {t("newAlbum")}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/site" className="btn-ghost">
+            <Globe size={16} /> Website riêng
+          </Link>
+          <Link href="/dashboard/create" className="btn-primary">
+            <Plus size={16} /> {t("newAlbum")}
+          </Link>
+        </div>
       </div>
 
       {albums.length === 0 ? (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp } from "lucide-react";
+import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { appUrl } from "@/lib/hosts";
@@ -162,7 +162,10 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-1 flex items-center gap-3">
         <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
-        <Link href="/dashboard/studio/bookings" className="btn-primary ml-auto">
+        <Link href="/dashboard/site" className="btn-ghost ml-auto">
+          <Globe size={16} /> Website riêng
+        </Link>
+        <Link href="/dashboard/studio/bookings" className="btn-primary">
           <CalendarDays size={16} /> Đặt lịch
         </Link>
       </div>
@@ -407,7 +410,10 @@ export default async function StudioOverview() {
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-1 flex items-center gap-3">
         <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
-        <Link href="/dashboard/studio/contracts/new" className="btn-primary ml-auto hidden sm:inline-flex">
+        <Link href="/dashboard/site" className="btn-ghost ml-auto hidden sm:inline-flex">
+          <Globe size={16} /> Website riêng
+        </Link>
+        <Link href="/dashboard/studio/contracts/new" className="btn-primary hidden sm:inline-flex">
           <Plus size={16} /> Hợp đồng mới
         </Link>
       </div>

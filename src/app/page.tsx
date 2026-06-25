@@ -1,7 +1,37 @@
-import LandingPage from "./LandingPage";
+import LandingPage, { type LandingPricing } from "./LandingPage";
+import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-static";
+// Read pricing/discounts fresh so admin changes show on the homepage immediately.
+export const revalidate = 0;
 
-export default function HomePage() {
-  return <LandingPage />;
+export default async function HomePage() {
+  let pricing: LandingPricing | undefined;
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("site_settings")
+      .select(
+        "price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent"
+      )
+      .eq("id", 1)
+      .maybeSingle();
+    if (data) {
+      pricing = {
+        basicMonth: data.price_basic_month,
+        basicYear: data.price_basic_year,
+        photographerMonth: data.price_photographer_month,
+        photographerYear: data.price_photographer_year,
+        studioMonth: data.price_studio_month,
+        studioYear: data.price_studio_year,
+        basicDiscount: data.basic_discount_percent ?? 0,
+        photographerDiscount: data.photographer_discount_percent ?? 0,
+        studioDiscount: data.studio_discount_percent ?? 0,
+        studioPromo: data.studio_promo_percent ?? 0,
+      };
+    }
+  } catch {
+    // Fall back to the static prices baked into LandingPage.
+  }
+
+  return <LandingPage pricing={pricing} />;
 }
