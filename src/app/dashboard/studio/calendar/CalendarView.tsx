@@ -247,22 +247,28 @@ export default function CalendarView({
                 <button
                   key={i}
                   onClick={() => setSelected(dateStr)}
-                  className="flex min-h-[58px] flex-col items-center rounded-lg p-1.5 text-sm transition-colors"
+                  className="flex min-h-[72px] flex-col items-stretch rounded-lg p-1.5 text-sm transition-colors"
                   style={{
                     background: isSel ? "var(--surface2)" : "transparent",
                     border: isToday ? "1px solid var(--border2)" : "1px solid transparent",
                   }}
                 >
-                  <span style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{d}</span>
-                  <span className="text-[9px] leading-none" style={{ color: "var(--text3)" }}>{lunarCellLabel(dateStr)}</span>
-                  <span className="mt-1 flex flex-wrap justify-center gap-0.5">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <span style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{d}</span>
+                    <span className="text-[9px] leading-none" style={{ color: "var(--text3)" }}>{lunarCellLabel(dateStr)}</span>
+                  </div>
+                  <div className="mt-1 flex flex-col gap-0.5 text-left">
                     {cons.map((c) => (
-                      <span key={c.id} className="h-1.5 w-1.5 rounded-full" style={{ background: "#c7a76b" }} />
+                      <span key={c.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#c7a76b 18%,transparent)", color: "var(--text2)" }} title={c.title}>
+                        {c.event_time ? `${c.event_time} ` : ""}{c.client_name || c.title}
+                      </span>
                     ))}
                     {evs.map((e) => (
-                      <span key={e.id} className="h-1.5 w-1.5 rounded-full" style={{ background: "#6ba3c7" }} />
+                      <span key={e.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#6ba3c7 18%,transparent)", color: "var(--text2)" }} title={e.title}>
+                        {e.title}
+                      </span>
                     ))}
-                  </span>
+                  </div>
                   {has && <span className="sr-only">có lịch</span>}
                 </button>
               );
@@ -442,6 +448,9 @@ function WeekView({
                     </p>
                     {c.client_name && <p style={{ color: "var(--text3)" }}>{c.client_name}</p>}
                     <p style={{ color: "var(--text3)" }}>{SHOOT_TYPE_LABEL[c.shoot_type] || c.shoot_type}</p>
+                    {c.contract_items.length > 0 && (
+                      <p style={{ color: "var(--text2)" }}>📦 {c.contract_items.map((it) => `${it.name}${it.qty > 1 ? ` x${it.qty}` : ""}`).join(", ")}</p>
+                    )}
                     {c.location && <p className="truncate" style={{ color: "var(--text3)" }}>📍 {c.location}</p>}
                   </Link>
                 ))}
