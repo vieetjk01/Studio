@@ -1,0 +1,9 @@
+<svg width="360" height="96" viewBox="0 0 360 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="mstudo">
+  <rect x="8" y="16" width="64" height="64" rx="17" fill="#3fb98a"></rect>
+  <rect x="20" y="34" width="40" height="36" rx="7" stroke="#06120c" stroke-width="3.8" fill="none"></rect>
+  <path d="M20 44h40" stroke="#06120c" stroke-width="3.8"></path>
+  <path d="M30 31v7M50 31v7" stroke="#06120c" stroke-width="3.8" stroke-linecap="round"></path>
+  <circle cx="40" cy="56" r="7.2" stroke="#06120c" stroke-width="3.6" fill="none"></circle>
+  <circle cx="40" cy="56" r="2" fill="#06120c"></circle>
+  <text x="90" y="61" font-family="&#39;Manrope&#39;,system-ui,sans-serif" font-size="42" font-weight="800" letter-spacing="-1.4" fill="#eef1f4">mstudo</text>
+</svg>

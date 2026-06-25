@@ -1,22 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useTheme } from "@/lib/theme";
 
 export default function Brand({ href = "/" }: { href?: string }) {
+  const { theme } = useTheme();
   return (
-    <Link href={href} className="flex items-center gap-3">
+    <Link href={href} className="flex items-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/logo-full.png"
-        alt="TJK · Vieetjk"
-        className="h-[34px] w-auto object-contain"
+        src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"}
+        alt="mstudo"
+        className="h-[38px] w-auto object-contain"
       />
-      <span
-        className="self-center text-[10px] uppercase tracking-[0.26em]"
-        style={{ color: "var(--text3)" }}
-      >
-        Photo · Collection
-      </span>
     </Link>
   );
 }

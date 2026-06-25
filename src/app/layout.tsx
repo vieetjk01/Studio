@@ -54,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
     appleWebApp: { capable: true, title: "mstudo", statusBarStyle: "black-translucent" },
     icons: favicon
       ? { icon: favicon, shortcut: favicon, apple: favicon }
-      : { apple: "/logo-mark.png" },
+      : { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/logo-mark.svg" },
   };
 }
 

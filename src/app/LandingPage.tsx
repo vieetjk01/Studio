@@ -200,7 +200,8 @@ function DashboardPreview() {
       {/* sidebar */}
       <div style={{ width: "22%", minWidth: 120, borderRight: "1px solid var(--border)", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-          <span style={{ width: 20, height: 20, borderRadius: 6, background: green, color: "var(--accentFg)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12 }}>m</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.svg" alt="mstudo" style={{ width: 20, height: 20 }} />
           <span style={{ fontWeight: 800 }}>mstudo</span>
         </div>
         {nav.map((n, i) => (
@@ -342,9 +343,9 @@ export default function LandingPage() {
       {/* NAV */}
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "color-mix(in srgb,var(--bg) 86%,transparent)", backdropFilter: "saturate(180%) blur(12px)", borderBottom: "1px solid var(--border)" }}>
         <div style={{ ...wrap, height: 68, display: "flex", alignItems: "center", gap: 28 }}>
-          <a href="#top" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", color: "var(--fg)" }}>
-            <span style={{ width: 26, height: 26, borderRadius: 8, background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--accentFg)", fontWeight: 800, fontSize: 15 }}>m</span>
-            <span style={{ fontWeight: 800, fontSize: 19, letterSpacing: "-.02em" }}>mstudo</span>
+          <a href="#top" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"} alt="mstudo" style={{ height: 38, width: "auto" }} />
           </a>
           <nav style={{ display: "flex", gap: 26, marginLeft: 8 }} className="ms-nav">
             <a href="#features" style={navLink}>{L.nav.features}</a>
@@ -527,10 +528,10 @@ export default function LandingPage() {
         {/* FOOTER */}
         <footer style={{ background: "var(--bg)" }}>
           <div style={{ ...wrap, padding: "48px 24px", display: "flex", flexWrap: "wrap", gap: 24, alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ width: 24, height: 24, borderRadius: 7, background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--accentFg)", fontWeight: 800, fontSize: 14 }}>m</span>
-              <span style={{ fontWeight: 800, fontSize: 17 }}>mstudo</span>
-              <span style={{ color: "var(--muted)", fontSize: 13.5, marginLeft: 8 }}>{L.hero.badge}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"} alt="mstudo" style={{ height: 32, width: "auto" }} />
+              <span style={{ color: "var(--muted)", fontSize: 13.5 }}>{L.hero.badge}</span>
             </div>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>{L.footer.copy}</span>
           </div>

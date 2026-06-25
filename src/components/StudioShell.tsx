@@ -177,13 +177,8 @@ export default function StudioShell({
         >
           {/* Drawer header */}
           <div className="mb-4 flex items-center gap-2.5 px-2">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-[15px] font-extrabold"
-              style={{ background: "var(--brand)", color: "var(--brandFg)" }}
-            >
-              m
-            </span>
-            <span className="text-[18px] font-extrabold tracking-tight">mstudo</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"} alt="mstudo" className="h-8 w-auto" />
             <span
               className="rounded-md px-1.5 py-0.5 text-[10px] font-bold"
               style={{ color: "var(--brand)", background: "var(--brandSoft)" }}
@@ -297,13 +292,8 @@ export default function StudioShell({
           style={{ background: "var(--surface)", borderRight: "1px solid var(--border)" }}
         >
           <Link href="/dashboard/studio" className="mb-3 flex items-center gap-2.5 px-2 py-1">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-[15px] font-extrabold"
-              style={{ background: "var(--brand)", color: "var(--brandFg)" }}
-            >
-              m
-            </span>
-            <span className="text-[18px] font-extrabold tracking-tight">mstudo</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"} alt="mstudo" className="h-8 w-auto" />
             <span
               className="ml-auto rounded-md px-1.5 py-0.5 text-[10px] font-bold"
               style={{ color: "var(--brand)", background: "var(--brandSoft)" }}
