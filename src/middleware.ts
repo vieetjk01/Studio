@@ -80,7 +80,12 @@ export async function middleware(request: NextRequest) {
       // MAIN_HOST / = marketing landing — fall through.
     } else {
       const target = hostForPath(pathname);
-      if (target && target !== host) {
+      // Treat the apex and its www. variant as the SAME host, so we never
+      // bounce between mstudo.com ⇄ www.mstudo.com (Vercel canonicalises one
+      // to the other, which would cause an infinite redirect loop).
+      const sameAsMain =
+        target === MAIN_HOST && (host === MAIN_HOST || host === `www.${MAIN_HOST}`);
+      if (target && target !== host && !sameAsMain) {
         return NextResponse.redirect(new URL(pathname + search, `https://${target}`));
       }
     }
