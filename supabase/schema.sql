@@ -1409,8 +1409,10 @@ create table if not exists public.affiliate_codes (
   created_at  timestamptz not null default now()
 );
 alter table public.affiliate_codes enable row level security;
+drop policy if exists affiliate_codes_owner on public.affiliate_codes;
 create policy affiliate_codes_owner on public.affiliate_codes
   for all using (user_id = auth.uid());
+drop policy if exists affiliate_codes_admin on public.affiliate_codes;
 create policy affiliate_codes_admin on public.affiliate_codes
   for all using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
 
@@ -1432,8 +1434,10 @@ create table if not exists public.affiliate_commissions (
   paid_at             timestamptz
 );
 alter table public.affiliate_commissions enable row level security;
+drop policy if exists affiliate_commissions_owner on public.affiliate_commissions;
 create policy affiliate_commissions_owner on public.affiliate_commissions
   for select using (referrer_id = auth.uid());
+drop policy if exists affiliate_commissions_admin on public.affiliate_commissions;
 create policy affiliate_commissions_admin on public.affiliate_commissions
   for all using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
 
