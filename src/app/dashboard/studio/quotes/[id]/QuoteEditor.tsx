@@ -249,6 +249,18 @@ export default function QuoteEditor({
     flash("Đã hủy báo giá.");
   }
 
+  async function deleteQuote() {
+    if (!confirm("Xoá báo giá này? Mọi hạng mục sẽ bị xoá theo.")) return;
+    setBusy(true);
+    const { error } = await supabase.from("studio_quotes").delete().eq("id", quote.id);
+    if (error) {
+      setBusy(false);
+      setErr(`Lỗi: ${error.message}`);
+      return;
+    }
+    router.push("/dashboard/studio/quotes");
+  }
+
   async function convertToContract() {
     if (!confirm(`Tạo hợp đồng từ báo giá này?\n\nTổng tiền: ${vnd(total)}\nCọc đề xuất: ${vnd(deposit)}`)) return;
     setBusy(true);
@@ -351,6 +363,11 @@ export default function QuoteEditor({
             <Link href={`/dashboard/studio/contracts/${quote.contract_id}`} className="btn-primary text-xs">
               <FileSignature size={12} /> Mở hợp đồng
             </Link>
+          )}
+          {quote.status === "cancelled" && (
+            <button onClick={deleteQuote} disabled={busy} className="btn-danger px-3 py-2 text-xs">
+              <Trash2 size={12} /> Xoá
+            </button>
           )}
         </div>
       </header>

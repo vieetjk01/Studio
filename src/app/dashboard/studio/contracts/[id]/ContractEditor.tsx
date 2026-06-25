@@ -823,9 +823,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           <button onClick={duplicateContract} disabled={busy === "dup"} className="btn-ghost px-3 py-2 text-xs">
             <Copy size={14} /> {busy === "dup" ? "Đang sao…" : "Nhân bản"}
           </button>
-          <button onClick={deleteContract} disabled={busy === "delete"} className="btn-danger px-3 py-2 text-xs">
-            <Trash2 size={14} /> Xoá
-          </button>
+          {f.status === "cancelled" && (
+            <button onClick={deleteContract} disabled={busy === "delete"} className="btn-danger px-3 py-2 text-xs">
+              <Trash2 size={14} /> Xoá
+            </button>
+          )}
         </div>
       </div>
 
