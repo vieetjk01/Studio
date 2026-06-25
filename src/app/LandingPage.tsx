@@ -337,7 +337,6 @@ export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z" /></svg>
               {L.hero.ctaWebsite}
             </Link>
-            <a href="#guide" style={{ ...ghostBtn, height: 50, padding: "0 26px", background: "transparent", borderRadius: 11, fontSize: 15, fontWeight: 600 }}>{L.hero.ctaSecondary}</a>
           </div>
           <p style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 18 }}>{L.hero.note}</p>
 
