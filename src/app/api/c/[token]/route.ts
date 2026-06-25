@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
+import { sendPushToOwner } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   // Record an in-app notification; when `mail` is set, also email the owner.
   async function notify(kind: string, message: string, mail = false) {
     await db.from("studio_notifications").insert({ owner_id: cOwnerId, contract_id: cId, kind, message });
+    await sendPushToOwner(cOwnerId, { title: "mstudo", body: message, url: `/dashboard/studio/contracts/${cId}`, tag: `contract-${cId}` });
     if (mail && ownerObj?.email) {
       const host = process.env.NEXT_PUBLIC_STUDIO_HOST;
       const link = host ? `https://${host}/dashboard/studio/contracts/${cId}` : "";

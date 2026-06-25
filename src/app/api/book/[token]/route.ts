@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendPushToOwner } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +42,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const bookMsg = `Yêu cầu đặt lịch mới từ ${body.name.trim()}${pkgName ? ` · ${pkgName}` : ""}${body.preferred_date ? ` · ${body.preferred_date}` : ""}`;
   await db.from("studio_notifications").insert({
     owner_id: owner.id,
     contract_id: null,
     kind: "info",
-    message: `Yêu cầu đặt lịch mới từ ${body.name.trim()}${pkgName ? ` · ${pkgName}` : ""}${body.preferred_date ? ` · ${body.preferred_date}` : ""}`,
+    message: bookMsg,
   });
+  await sendPushToOwner(owner.id, { title: "Đặt lịch mới", body: bookMsg, url: "/dashboard/studio/bookings", tag: "booking" });
 
   return NextResponse.json({ ok: true });
 }

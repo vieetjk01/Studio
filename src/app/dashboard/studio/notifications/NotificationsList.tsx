@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import PushToggle from "@/components/PushToggle";
 import type { StudioNotification, NotificationKind } from "@/lib/types";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
@@ -45,6 +46,10 @@ export default function NotificationsList({ initial }: { initial: StudioNotifica
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-4">
         <h1 className="font-serif text-2xl font-medium">Thông báo</h1>
+      </div>
+
+      <div className="mb-5">
+        <PushToggle />
       </div>
 
       {items.length === 0 ? (

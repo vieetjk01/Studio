@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendPushToOwner } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -62,12 +63,14 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const ct = (row as unknown as { contract: { owner_id: string; title: string } | null }).contract;
     if (ct?.owner_id) {
+      const crewMsg = `${row.name || phone} đã ${body.status === "accepted" ? "nhận" : "từ chối"} buổi “${ct.title}”`;
       await db.from("studio_notifications").insert({
         owner_id: ct.owner_id,
         contract_id: null,
         kind: body.status === "accepted" ? "crew_accepted" : "crew_declined",
-        message: `${row.name || phone} đã ${body.status === "accepted" ? "nhận" : "từ chối"} buổi “${ct.title}”`,
+        message: crewMsg,
       });
+      await sendPushToOwner(ct.owner_id, { title: "Phản hồi từ thợ", body: crewMsg, url: "/dashboard/studio/team", tag: "crew" });
     }
     return NextResponse.json({ ok: true });
   }
