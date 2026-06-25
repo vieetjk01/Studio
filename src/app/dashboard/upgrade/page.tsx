@@ -36,25 +36,57 @@ const DEFAULT_PRICES: Prices = {
 
 // Feature comparison rows. boolean -> ✓/✗ ; string -> text.
 type Cmp = string | boolean;
-const COMPARE: { label: string; free: Cmp; basic: Cmp; photographer: Cmp; studio: Cmp }[] = [
+
+// Section headers rendered as a divider row inside the table.
+type CmpRow =
+  | { section: string }
+  | { label: string; free: Cmp; basic: Cmp; photographer: Cmp; studio: Cmp };
+
+const COMPARE: CmpRow[] = [
+  { section: "Album & ảnh" },
   { label: "Album / tháng", free: "5", basic: "15", photographer: "50", studio: "∞" },
-  { label: "Khách tải ảnh (ZIP)", free: false, basic: true, photographer: true, studio: true },
+  { label: "Khách chọn ảnh (QR + link)", free: true, basic: true, photographer: true, studio: true },
+  { label: "Cho khách tải ảnh (ZIP)", free: false, basic: true, photographer: true, studio: true },
   { label: "Ghi chú trên ảnh", free: false, basic: true, photographer: true, studio: true },
-  { label: "Watermark", free: "Chỉ chữ", basic: "Logo + nén", photographer: "Logo + nén", studio: "Logo + nén" },
-  { label: "Lọc ảnh", free: "10 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
-  { label: "Nén ảnh (máy / link)", free: "5 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
-  { label: "Nén qua Drive (Picker)", free: "1 lần", basic: "5 / tháng", photographer: "15 / tháng", studio: "∞" },
-  { label: "Gallery giao khách", free: false, basic: false, photographer: true, studio: true },
-  { label: "Website / tên miền riêng", free: false, basic: false, photographer: "Đang xây dựng", studio: "Đang xây dựng" },
-  { label: "Đặt lịch · bảng giá · lịch chụp", free: false, basic: false, photographer: true, studio: true },
-  { label: "Hợp đồng · tài chính · quản lý đội", free: false, basic: false, photographer: false, studio: true },
+  { label: "Gallery bàn giao khách", free: false, basic: false, photographer: true, studio: true },
+
+  { section: "Watermark & xử lý ảnh" },
+  { label: "Watermark chữ", free: true, basic: true, photographer: true, studio: true },
+  { label: "Watermark logo + nén kèm", free: false, basic: true, photographer: true, studio: true },
+  { label: "Lọc ảnh AI", free: "10 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
+  { label: "Nén ảnh (máy + link Drive)", free: "5 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
+  { label: "Nén qua Google Drive (Picker)", free: "1 lần", basic: "5 / tháng", photographer: "15 / tháng", studio: "∞" },
+
+  { section: "Website" },
+  { label: "Trình tạo website portfolio", free: "Xem trước", basic: "Xem trước", photographer: true, studio: true },
+  { label: "Xuất bản website", free: false, basic: false, photographer: true, studio: true },
+  { label: "Tùy chỉnh giao diện & nội dung", free: false, basic: false, photographer: true, studio: true },
+  { label: "Tên miền cá nhân .com", free: false, basic: false, photographer: "Sắp ra mắt", studio: "Sắp ra mắt" },
+
+  { section: "Quản lý studio" },
+  { label: "Nhận đặt lịch online (link + QR)", free: false, basic: false, photographer: true, studio: true },
+  { label: "Bảng giá dịch vụ", free: false, basic: false, photographer: true, studio: true },
+  { label: "Danh bạ khách hàng", free: false, basic: false, photographer: true, studio: true },
+  { label: "Lịch chụp theo tuần + nhắc lịch", free: false, basic: false, photographer: true, studio: true },
+  { label: "Quản lý hợp đồng & báo giá", free: false, basic: false, photographer: false, studio: true },
+  { label: "Hợp đồng online (ký & chỉnh sửa)", free: false, basic: false, photographer: false, studio: true },
+  { label: "Tài chính — thu chi · công nợ · lương", free: false, basic: false, photographer: false, studio: true },
+  { label: "Quản lý đội ngũ & xếp hạng", free: false, basic: false, photographer: false, studio: true },
+  { label: "Thiết bị & tiến độ sản xuất", free: false, basic: false, photographer: false, studio: true },
+  { label: "Báo cáo doanh thu & tỉ lệ chốt", free: false, basic: false, photographer: false, studio: true },
+
+  { section: "Hỗ trợ & nâng cấp" },
+  { label: "Trải nghiệm Studio 1 ngày miễn phí", free: true, basic: true, photographer: true, studio: false },
+  { label: "Hỗ trợ riêng qua Zalo / email", free: false, basic: false, photographer: false, studio: true },
+  { label: "Nhận miễn phí tính năng nâng cấp", free: false, basic: false, photographer: false, studio: true },
 ];
 
 const COMING_SOON = [
   "Tên miền cá nhân (.com riêng)",
-  "Cổng thanh toán tự động",
-  "Upload ảnh trực tiếp lên website",
-  "Ứng dụng di động cho studio",
+  "Cổng thanh toán & hóa đơn tự động",
+  "Upload ảnh trực tiếp lên website portfolio",
+  "App di động cho studio (iOS & Android)",
+  "Tích hợp Google Calendar / iCal",
 ];
 
 export default function UpgradePage() {
@@ -346,26 +378,41 @@ export default function UpgradePage() {
 
       {/* Feature comparison */}
       <div className="mt-8 card overflow-x-auto p-0">
-        <table className="w-full text-[13.5px]">
+        <table className="w-full text-[13px]">
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              <th className="px-4 py-3 text-left font-medium" style={{ color: "var(--text2)" }}>So sánh tính năng</th>
-              <th className="px-4 py-3 text-center font-medium">Miễn phí</th>
-              <th className="px-4 py-3 text-center font-medium">Basic</th>
-              <th className="px-4 py-3 text-center font-medium">Photographer</th>
-              <th className="px-4 py-3 text-center font-medium" style={{ color: "var(--gold)" }}>Studio</th>
+              <th className="px-4 py-3 text-left font-medium" style={{ color: "var(--text2)", minWidth: 200 }}>So sánh tính năng</th>
+              <th className="px-3 py-3 text-center font-medium" style={{ minWidth: 84 }}>Miễn phí</th>
+              <th className="px-3 py-3 text-center font-medium" style={{ minWidth: 84 }}>Basic</th>
+              <th className="px-3 py-3 text-center font-medium" style={{ minWidth: 110 }}>Photographer</th>
+              <th className="px-3 py-3 text-center font-medium" style={{ color: "var(--gold)", minWidth: 84 }}>Studio</th>
             </tr>
           </thead>
           <tbody>
-            {COMPARE.map((row, i) => (
-              <tr key={row.label} style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}>
-                <td className="px-4 py-2.5" style={{ color: "var(--text2)" }}>{row.label}</td>
-                <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.free)}</div></td>
-                <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.basic)}</div></td>
-                <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.photographer)}</div></td>
-                <td className="px-4 py-2.5"><div className="flex justify-center">{cellOf(row.studio)}</div></td>
-              </tr>
-            ))}
+            {COMPARE.map((row, i) => {
+              if ("section" in row) {
+                return (
+                  <tr key={row.section}>
+                    <td
+                      colSpan={5}
+                      className="px-4 pb-1.5 pt-4 text-[11px] font-bold uppercase tracking-wider"
+                      style={{ color: "var(--gold)", borderTop: i === 0 ? "none" : "1px solid var(--border)", background: "color-mix(in srgb, var(--gold) 6%, transparent)" }}
+                    >
+                      {row.section}
+                    </td>
+                  </tr>
+                );
+              }
+              return (
+                <tr key={row.label} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td className="px-4 py-2" style={{ color: "var(--text2)" }}>{row.label}</td>
+                  <td className="px-3 py-2"><div className="flex justify-center">{cellOf(row.free)}</div></td>
+                  <td className="px-3 py-2"><div className="flex justify-center">{cellOf(row.basic)}</div></td>
+                  <td className="px-3 py-2"><div className="flex justify-center">{cellOf(row.photographer)}</div></td>
+                  <td className="px-3 py-2"><div className="flex justify-center">{cellOf(row.studio)}</div></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
