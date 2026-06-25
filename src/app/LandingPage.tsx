@@ -417,6 +417,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* CONTACT / FEEDBACK */}
+        <ContactSection />
+
         {/* ABOUT */}
         <section id="about" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
           <div style={{ ...wrap, padding: "72px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 44, alignItems: "center" }}>
@@ -434,9 +437,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-        {/* CONTACT / FEEDBACK */}
-        <ContactSection />
 
         {/* FOOTER */}
         <footer style={{ background: "var(--bg)" }}>

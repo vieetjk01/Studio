@@ -18,28 +18,22 @@ const ADMIN_PATH = "/dashboard/admin";
  * Returns the canonical host for a path, or undefined when no forced redirect
  * is needed (path may be served on whatever host the request arrived at).
  *
- * IMPORTANT: we intentionally do NOT force studio paths to mstudo.com via
- * redirect — that would loop if Vercel has domain aliases configured. Instead
- * the header links guide users to the right host; the app serves on both.
+ * Domain split intent:
+ *   mstudo.com        → marketing landing + the WHOLE studio management app
+ *                       (studio dashboard, contracts, calendar, galleries,
+ *                       clients, settings, admin, …)
+ *   album.mstudo.com  → ONLY the album-creation / photo-filter tool
+ *   img.mstudo.com    → image-compress tool
  */
 function hostForPath(path: string): string | undefined {
   // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
 
-  // Admin console + settings: serve on whatever host the user arrived at.
-  // (We used to force a redirect to admin.mstudo.com, but that made admin
-  // unreachable whenever that subdomain wasn't configured. The pages are
-  // role-guarded server-side, so serving them anywhere is safe.)
-  if (path.startsWith(ADMIN_PATH) || path.startsWith("/dashboard/settings")) {
-    return undefined;
-  }
-
   // Image-compress tool → img.mstudo.com (or app host).
   if (path.startsWith(COMPRESS_PATH)) return IMG_HOST || APP_HOST;
 
-  // Album-only paths: push FROM mstudo.com TO album.mstudo.com.
-  // Everything else (studio, galleries, upgrade, site, client portals…) is
-  // served wherever the user arrives — links guide, not forced redirects.
+  // Album-only paths live on album.mstudo.com: the album dashboard, album
+  // creation, photo filter and the public album viewer.
   if (
     path === "/dashboard" ||
     path.startsWith("/dashboard/create") ||
@@ -47,6 +41,11 @@ function hostForPath(path: string): string | undefined {
     path.startsWith("/a/") ||
     path === "/start"
   ) return APP_HOST;
+
+  // Everything else under /dashboard is the studio management app → force it
+  // onto the MAIN host so studio never runs on album.mstudo.com. Admin/settings
+  // included (they're role-guarded server-side).
+  if (path.startsWith("/dashboard")) return MAIN_HOST;
 
   return undefined;
 }
