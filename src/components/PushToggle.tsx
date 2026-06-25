@@ -15,7 +15,25 @@ function urlBase64ToUint8Array(base64String: string) {
   return out;
 }
 
-type State = "unsupported" | "default" | "denied" | "subscribed" | "loading";
+type State = "unsupported" | "default" | "denied" | "subscribed" | "loading" | "ios-install";
+
+// iOS (iPhone/iPad). iPadOS reports as MacIntel with touch points.
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+// True when the app was opened from the Home Screen icon (PWA standalone).
+function isStandalone() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
 
 // Reject if a promise doesn't settle in time, so the UI never hangs on "loading".
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -31,6 +49,10 @@ export default function PushToggle() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // On iPhone/iPad, Web Push works ONLY when the app is opened from the Home
+    // Screen icon (standalone). In a Safari tab the Push API is hidden entirely,
+    // so detect this first and give precise instructions instead of "unsupported".
+    if (isIOS() && !isStandalone()) { setState("ios-install"); return; }
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !VAPID_PUBLIC) {
       setState("unsupported");
       return;
@@ -116,6 +138,26 @@ export default function PushToggle() {
       setErr(e instanceof Error ? e.message : "Không tắt được thông báo");
       setState("subscribed");
     }
+  }
+
+  if (state === "ios-install") {
+    return (
+      <div className="card p-4 text-sm" style={{ color: "var(--text2)" }}>
+        <div className="mb-2 flex items-center gap-2 font-semibold">
+          <Bell size={18} style={{ color: "var(--text2)" }} />
+          Bật thông báo trên iPhone
+        </div>
+        <p className="mb-2 text-xs" style={{ color: "var(--text3)" }}>
+          iPhone chỉ cho phép thông báo đẩy khi mở từ icon ngoài màn hình chính (cần iOS 16.4 trở lên):
+        </p>
+        <ol className="ml-4 list-decimal space-y-1 text-xs" style={{ color: "var(--text2)" }}>
+          <li>Mở trang này trong <b>Safari</b>, bấm nút Chia sẻ (ô vuông có mũi tên ↑).</li>
+          <li>Chọn <b>“Thêm vào MH chính” / “Add to Home Screen”</b>.</li>
+          <li><b>Đóng Safari</b>, mở app mstudo từ <b>icon ngoài màn hình chính</b>.</li>
+          <li>Vào lại trang Thông báo và bấm <b>“Bật thông báo”</b>.</li>
+        </ol>
+      </div>
+    );
   }
 
   if (state === "unsupported") {
