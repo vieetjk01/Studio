@@ -264,6 +264,7 @@ export default function StudioShell({
               Tài khoản
             </p>
             {[
+              { href: "/dashboard/account", label: "Cài đặt tài khoản", icon: UserCircle },
               { href: "/dashboard/connections", label: "Kết nối Calendar", icon: Link2 },
             ].map((it) => {
               const active = isActive(it.href);
