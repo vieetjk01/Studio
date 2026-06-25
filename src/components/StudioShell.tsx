@@ -7,9 +7,10 @@ import {
   LayoutDashboard, CalendarDays, Clock, Users, Wallet, FileText, FileEdit,
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
-  Menu, X as XIcon, ShieldCheck, Settings,
+  Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { appUrl, imgUrl } from "@/lib/hosts";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
@@ -26,7 +27,8 @@ type Item = {
   label: string;
   icon: typeof LayoutDashboard;
   minTier: StudioTier;
-  roles?: string[] | null; // allowed studio roles (null = everyone with the tier)
+  roles?: string[] | null;
+  external?: boolean; // opens in new tab / uses <a> instead of Link
 };
 type Group = { label: string; items: Item[] };
 
@@ -81,6 +83,16 @@ const GROUPS: Group[] = [
       { href: "/dashboard/studio/messages", label: "Mẫu tin", icon: MessageSquare, minTier: "full" },
     ],
   },
+  {
+    label: "Công cụ",
+    items: [
+      { href: appUrl("/dashboard"), label: "Thư viện album", icon: ImageIcon, minTier: "booking", external: true },
+      { href: appUrl("/dashboard/create"), label: "Tạo album", icon: Plus, minTier: "booking", external: true },
+      { href: appUrl("/dashboard/filter"), label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking", external: true },
+      { href: imgUrl("/dashboard/compress"), label: "Nén ảnh", icon: Archive, minTier: "booking", external: true },
+      { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },
+    ],
+  },
 ];
 
 // Page titles + subtitles keyed by route prefix (longest match wins).
@@ -105,6 +117,9 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/ranking", "Xếp hạng", "Xếp hạng đội ngũ"],
   ["/dashboard/studio/messages", "Mẫu tin", "Mẫu tin nhắn"],
   ["/dashboard/studio", "Tổng quan", "Tổng quan hoạt động studio"],
+  ["/dashboard/site", "Website riêng", "Trang web portfolio cá nhân"],
+  ["/dashboard/upgrade", "Nâng cấp gói", "Gói dịch vụ & bảng giá"],
+  ["/dashboard/settings", "Cài đặt", "Cài đặt hệ thống"],
 ];
 
 export default function StudioShell({
@@ -220,16 +235,15 @@ export default function StudioShell({
               </p>
               {g.items.map((it) => {
                 const active = isActive(it.href);
-                return (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className="mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
-                    style={{
-                      color: active ? "var(--brand)" : "var(--text)",
-                      background: active ? "var(--brandSoft)" : "transparent",
-                    }}
-                  >
+                const cls = "mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors";
+                const style = { color: active ? "var(--brand)" : "var(--text)", background: active ? "var(--brandSoft)" : "transparent" };
+                return it.external ? (
+                  <a key={it.href} href={it.href} className={cls} style={style}>
+                    <it.icon size={18} style={{ flex: "none" }} />
+                    {it.label}
+                  </a>
+                ) : (
+                  <Link key={it.href} href={it.href} className={cls} style={style}>
                     <it.icon size={18} style={{ flex: "none" }} />
                     {it.label}
                   </Link>
@@ -311,16 +325,15 @@ export default function StudioShell({
               </p>
               {g.items.map((it) => {
                 const active = isActive(it.href);
-                return (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className="mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors"
-                    style={{
-                      color: active ? "var(--brand)" : "var(--text)",
-                      background: active ? "var(--brandSoft)" : "transparent",
-                    }}
-                  >
+                const cls = "mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors";
+                const style = { color: active ? "var(--brand)" : "var(--text)", background: active ? "var(--brandSoft)" : "transparent" };
+                return it.external ? (
+                  <a key={it.href} href={it.href} className={cls} style={style}>
+                    <it.icon size={18} style={{ flex: "none" }} />
+                    {it.label}
+                  </a>
+                ) : (
+                  <Link key={it.href} href={it.href} className={cls} style={style}>
                     <it.icon size={18} style={{ flex: "none" }} />
                     {it.label}
                   </Link>
