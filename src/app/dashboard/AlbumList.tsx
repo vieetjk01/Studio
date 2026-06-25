@@ -7,6 +7,7 @@ import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
+import StudioTrialButton from "@/components/StudioTrialButton";
 
 interface AlbumRow {
   id: string;
@@ -20,13 +21,13 @@ interface AlbumRow {
   selections: { count: number }[];
 }
 
-export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
+export default function AlbumList({ albums, showTrial = false, trialUsed = false }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean }) {
   const { t } = useLang();
 
   return (
     <div className="animate-fade-in">
       <PlanUsage />
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-light text-accent">{t("myAlbums")}</h1>
         <div className="flex items-center gap-2">
           <Link href="/dashboard/site" className="btn-ghost">
@@ -37,6 +38,18 @@ export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
           </Link>
         </div>
       </div>
+
+      {showTrial && (
+        <div className="mb-6 card p-4 flex flex-col sm:flex-row sm:items-center gap-3" style={{ borderColor: "rgba(214,164,74,.4)", background: "rgba(214,164,74,.06)" }}>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" style={{ color: "#d6a44a" }}>Trải nghiệm gói Studio miễn phí 1 ngày</p>
+            <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>Hợp đồng, lịch chụp, quản lý khách hàng và toàn bộ tính năng Studio trong 24 giờ.</p>
+          </div>
+          <div className="shrink-0">
+            <StudioTrialButton used={trialUsed} />
+          </div>
+        </div>
+      )}
 
       {albums.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { appUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
+import StudioTrialButton from "@/components/StudioTrialButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
 import AutoEmailToggle from "@/components/AutoEmailToggle";
@@ -127,6 +128,15 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
   const supabase = createClient();
   const today = new Date().toISOString().slice(0, 10);
 
+  // Check if user already used the Studio trial
+  const { data: trialRed } = await supabase
+    .from("discount_redemptions")
+    .select("id")
+    .eq("user_id", ownerId)
+    .eq("code", "TRIAL_STUDIO_1D")
+    .maybeSingle();
+  const trialUsed = !!trialRed;
+
   const { data } = await supabase
     .from("studio_bookings")
     .select("id, name, phone, service, preferred_date, package_name, package_price, status, created_at")
@@ -187,6 +197,20 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
             <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>{q.desc}</p>
           </Link>
         ))}
+      </div>
+
+      {/* Upgrade to Studio CTA */}
+      <div className="mb-6 card p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ borderColor: "rgba(214,164,74,.4)", background: "rgba(214,164,74,.06)" }}>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium" style={{ color: "#d6a44a" }}>Nâng cấp lên Studio</p>
+          <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>
+            Mở khóa quản lý hợp đồng, tài chính, đội ngũ và toàn bộ tính năng studio chuyên nghiệp.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <StudioTrialButton used={trialUsed} />
+          <Link href="/dashboard/upgrade" className="btn-primary text-sm">Xem gói Studio</Link>
+        </div>
       </div>
 
       <div className="card p-6">

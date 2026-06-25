@@ -13,18 +13,8 @@ export default async function SiteBuilderPage() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   const plan = profile ? effectivePlan(profile.plan, profile.plan_expires_at) : "free";
-  const allowed = profile?.role === "admin" || plan === "photographer" || plan === "studio";
-  if (!allowed) {
-    return (
-      <div className="mx-auto max-w-lg text-center">
-        <div className="card p-8">
-          <h1 className="font-serif text-2xl font-medium">Cần gói Photographer trở lên</h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Trang web portfolio riêng dành cho tài khoản gói <b>Photographer</b> hoặc <b>Studio</b>.</p>
-          <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem các gói</a>
-        </div>
-      </div>
-    );
-  }
+  const isAdmin = profile?.role === "admin";
+  const canPublish = isAdmin || plan === "photographer" || plan === "studio";
 
   let { data: site } = await supabase.from("sites").select("*").eq("owner_id", user.id).maybeSingle();
   if (!site) {
@@ -42,7 +32,8 @@ export default async function SiteBuilderPage() {
       initialBlocks={(blocks ?? []) as SiteBlock[]}
       albums={(albums ?? []) as { id: string; slug: string; title: string; cover_url: string | null }[]}
       plan={plan}
-      isAdmin={profile?.role === "admin"}
+      isAdmin={isAdmin}
+      canPublish={canPublish}
       mainHost={process.env.NEXT_PUBLIC_MAIN_HOST || ""}
     />
   );

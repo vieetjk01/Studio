@@ -156,6 +156,7 @@ export default function SiteManager({
   albums,
   plan,
   isAdmin,
+  canPublish,
   mainHost,
 }: {
   site: Site;
@@ -163,6 +164,7 @@ export default function SiteManager({
   albums: AlbumLite[];
   plan: string;
   isAdmin: boolean;
+  canPublish: boolean;
   mainHost: string;
 }) {
   const supabase = createClient();
@@ -360,9 +362,15 @@ export default function SiteManager({
         <div className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
           <input className="input h-8 w-32 text-xs" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
           <span className="text-xs" style={{ color: "var(--text3)" }}>.{mainHost || "mstudo.com"}</span>
-          <label className="flex items-center gap-1 whitespace-nowrap text-xs" style={{ color: "var(--text2)" }}>
-            <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} /> Xuất bản
-          </label>
+          {canPublish ? (
+            <label className="flex items-center gap-1 whitespace-nowrap text-xs" style={{ color: "var(--text2)" }}>
+              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} /> Xuất bản
+            </label>
+          ) : (
+            <a href="/dashboard/upgrade" className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold" style={{ background: "var(--brand)", color: "var(--brandFg)" }}>
+              Nâng cấp để xuất bản
+            </a>
+          )}
         </div>
         <button onClick={saveSite} disabled={busy} className="btn-primary px-3 py-2 text-xs"><Check size={14} /> {busy ? "Đang lưu…" : "Lưu & cập nhật"}</button>
 

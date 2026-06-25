@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, getProfileById } from "@/lib/auth-guards";
 import DashboardChrome from "@/components/DashboardChrome";
 import NavProgress from "@/components/NavProgress";
+import TrialExpiredBanner from "@/components/TrialExpiredBanner";
 import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
@@ -18,6 +19,14 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   let profile = await getProfileById(user.id);
+
+  // Detect expired trial BEFORE the downgrade resets the plan column.
+  const trialJustExpired =
+    profile?.role !== "admin" &&
+    profile?.plan_cycle === "trial" &&
+    profile?.plan !== "free" &&
+    effectivePlan(profile?.plan, profile?.plan_expires_at) === "free";
+  const expiredTrialPlan = trialJustExpired ? (profile!.plan as string) : null;
 
   // Auto-downgrade an expired paid plan back to free (resets the synced limits).
   if (profile && profile.role !== "admin" && effectivePlan(profile.plan, profile.plan_expires_at) === "free" && profile.plan !== "free") {
@@ -92,6 +101,7 @@ on conflict (id) do update set role='admin', is_active=true;`}
       <Suspense fallback={null}>
         <NavProgress />
       </Suspense>
+      {expiredTrialPlan && <TrialExpiredBanner expiredPlan={expiredTrialPlan} />}
       <DashboardChrome
         profile={profile as Profile}
         kind={kind}
