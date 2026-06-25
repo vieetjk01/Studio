@@ -178,6 +178,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
         <Link href="/dashboard/studio/bookings" className="btn-primary">
           <CalendarDays size={16} /> Đặt lịch
         </Link>
+
       </div>
       <p className="mb-6 text-[13px]" style={{ color: "var(--text3)" }}>Quản lý lịch chụp & yêu cầu đặt lịch của khách</p>
 
@@ -189,7 +190,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {quickLinks.map((q) => (
-          <Link key={q.href} href={q.href} className="card p-5 transition-colors hover:border-[var(--border2)]">
+          <Link key={q.href} href={q.href} className="card card-interactive p-5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: ACCENT_SOFT, color: ACCENT }}>
               <q.icon size={16} />
             </span>

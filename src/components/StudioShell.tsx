@@ -14,6 +14,7 @@ import { appUrl, imgUrl } from "@/lib/hosts";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
+import MobileSearch from "@/components/MobileSearch";
 import InstallPwaButton from "@/components/InstallPwaButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
@@ -452,7 +453,8 @@ export default function StudioShell({
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Search: tablet+ */}
+              {/* Search: full overlay on mobile, inline on tablet+ */}
+              <MobileSearch />
               <div className="hidden sm:block">
                 <StudioSearch />
               </div>
