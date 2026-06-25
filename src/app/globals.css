@@ -4,19 +4,18 @@
 
 :root {
   color-scheme: light;
-  /* Light by default — matches the marketing homepage (mstudo.com) look.
-     Dark is opt-in via data-theme="dark" on <html>. */
-  --bg: #f7f6f3;
-  --bg2: #efeee9;
-  --surface: #ffffff;
-  --surface2: #f1f0ec;
-  --border: rgba(0, 0, 0, 0.10);
-  --border2: rgba(0, 0, 0, 0.20);
-  --text: #1a1a1c;
-  --text2: rgba(26, 26, 28, 0.62);
-  --text3: rgba(26, 26, 28, 0.42);
-  --accent: #1a1a1c;
-  --accentInk: #f7f6f3;
+  /* Light — warm off-white to reduce eye strain (no pure #fff). */
+  --bg: #f4f3f0;
+  --bg2: #eceae4;
+  --surface: #f9f8f5;
+  --surface2: #edecea;
+  --border: rgba(0, 0, 0, 0.09);
+  --border2: rgba(0, 0, 0, 0.17);
+  --text: #18181a;
+  --text2: rgba(24, 24, 26, 0.65);
+  --text3: rgba(24, 24, 26, 0.40);
+  --accent: #18181a;
+  --accentInk: #f4f3f0;
   --gold: #b8893a;
   --logo: #c0151a;
 }
@@ -24,17 +23,17 @@
 /* Explicit light alias — anything that still sets data-theme="light" stays light. */
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f7f6f3;
-  --bg2: #efeee9;
-  --surface: #ffffff;
-  --surface2: #f1f0ec;
-  --border: rgba(0, 0, 0, 0.10);
-  --border2: rgba(0, 0, 0, 0.20);
-  --text: #1a1a1c;
-  --text2: rgba(26, 26, 28, 0.62);
-  --text3: rgba(26, 26, 28, 0.42);
-  --accent: #1a1a1c;
-  --accentInk: #f7f6f3;
+  --bg: #f4f3f0;
+  --bg2: #eceae4;
+  --surface: #f9f8f5;
+  --surface2: #edecea;
+  --border: rgba(0, 0, 0, 0.09);
+  --border2: rgba(0, 0, 0, 0.17);
+  --text: #18181a;
+  --text2: rgba(24, 24, 26, 0.65);
+  --text3: rgba(24, 24, 26, 0.40);
+  --accent: #18181a;
+  --accentInk: #f4f3f0;
   --gold: #b8893a;
   --logo: #c0151a;
 }
@@ -75,22 +74,38 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-::selection {
-  background: rgba(255, 255, 255, 0.18);
+/* Text selection — theme-aware so it's visible in both light and dark. */
+:root[data-theme="dark"] ::selection,
+:root[data-theme="dark"] ::selection {
+  background: rgba(255, 255, 255, 0.20);
+  color: inherit;
+}
+:root:not([data-theme="dark"]) ::selection {
+  background: rgba(24, 24, 26, 0.14);
+  color: inherit;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-::-webkit-scrollbar-thumb {
+/* Light theme scrollbar */
+:root:not([data-theme="dark"]) ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.14);
+  border-radius: 8px;
+}
+:root:not([data-theme="dark"]) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.24);
+}
+/* Dark theme scrollbar */
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 8px;
 }
-::-webkit-scrollbar-thumb:hover {
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.22);
 }
 

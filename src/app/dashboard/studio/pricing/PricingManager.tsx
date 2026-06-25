@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X, Home, GripVertical } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
+import LogoUpload from "@/components/LogoUpload";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
 import { BANKS } from "@/lib/banks";
 import { VietQR } from "@/components/VietQR";
@@ -41,6 +42,42 @@ export default function PricingManager({
   const [edit, setEdit] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [note, setNote] = useState({ name: "", description: "" });
   const [dragId, setDragId] = useState<string | null>(null);
+  // Custom list types (beyond the built-in 2). Stored in localStorage + synced to profiles.
+  const [customLists, setCustomLists] = useState<{ key: string; label: string; title: string }[]>([]);
+  const [newListName, setNewListName] = useState("");
+  const [showNewList, setShowNewList] = useState(false);
+
+  // Load custom lists from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`pl_custom_lists_${ownerId}`);
+      if (raw) setCustomLists(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [ownerId]);
+
+  const allLists = [...PRICE_LISTS, ...customLists];
+
+  function saveCustomLists(next: typeof customLists) {
+    setCustomLists(next);
+    localStorage.setItem(`pl_custom_lists_${ownerId}`, JSON.stringify(next));
+  }
+
+  function addCustomList() {
+    const label = newListName.trim();
+    if (!label) return;
+    const key = label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    if (allLists.some((l) => l.key === key)) return;
+    const entry = { key, label, title: `Bảng giá ${label}` };
+    saveCustomLists([...customLists, entry]);
+    setActiveList(key);
+    setNewListName("");
+    setShowNewList(false);
+  }
+
+  function removeCustomList(key: string) {
+    saveCustomLists(customLists.filter((l) => l.key !== key));
+    if (activeList === key) setActiveList(PRICE_LISTS[0].key);
+  }
 
   function startEdit(it: PricelistItem) {
     setEditId(it.id);
@@ -69,6 +106,13 @@ export default function PricingManager({
     setSavedAppear(true);
     setTimeout(() => setSavedAppear(false), 1500);
   }
+
+  // Unique categories from the current list for quick-select datalist
+  const categoryOptions = [...new Set(
+    list
+      .filter((it) => (it.list_key || "cuoi") === activeList && it.category)
+      .map((it) => it.category as string)
+  )];
 
   const visible = list.filter((it) => (it.list_key || "cuoi") === activeList);
   const pkgs = visible.filter((it) => it.price > 0).sort((a, b) => a.position - b.position);
@@ -169,24 +213,59 @@ export default function PricingManager({
       </div>
 
       {/* List tabs */}
-      <div className="mb-6 flex gap-2">
-        {PRICE_LISTS.map((l) => (
-          <button
-            key={l.key}
-            onClick={() => setActiveList(l.key)}
-            className="rounded-full px-4 py-2 text-sm font-medium"
-            style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)" }}
-          >
-            Bảng giá {l.label}
-          </button>
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        {allLists.map((l) => (
+          <div key={l.key} className="relative flex items-center">
+            <button
+              onClick={() => setActiveList(l.key)}
+              className="rounded-full px-4 py-2 text-sm font-medium"
+              style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: customLists.some(c => c.key === l.key) ? 28 : undefined }}
+            >
+              Bảng giá {l.label}
+            </button>
+            {customLists.some((c) => c.key === l.key) && (
+              <button
+                onClick={() => removeCustomList(l.key)}
+                className="absolute right-1 flex h-5 w-5 items-center justify-center rounded-full"
+                style={{ color: "var(--text3)" }}
+                title="Xoá loại bảng giá"
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
         ))}
+
+        {/* Add new list type */}
+        {showNewList ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              className="input h-9 w-36 rounded-full px-3 text-sm"
+              placeholder="Tên loại mới…"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addCustomList(); if (e.key === "Escape") setShowNewList(false); }}
+            />
+            <button onClick={addCustomList} className="btn-primary rounded-full px-3 py-1.5 text-xs"><Check size={13} /></button>
+            <button onClick={() => setShowNewList(false)} className="btn-ghost rounded-full px-3 py-1.5 text-xs"><X size={13} /></button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowNewList(true)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium"
+            style={{ border: "1px dashed var(--border2)", color: "var(--text3)" }}
+          >
+            <Plus size={13} /> Thêm loại mới
+          </button>
+        )}
       </div>
 
       {listUrl && (
         <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
           <LinkIcon size={16} style={{ color: "var(--text3)" }} />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {PRICE_LISTS.find((l) => l.key === activeList)?.label} gửi khách</p>
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {allLists.find((l) => l.key === activeList)?.label} gửi khách</p>
             <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{listUrl}</p>
           </div>
           <a href={listUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">Xem thử</a>
@@ -256,8 +335,11 @@ export default function PricingManager({
             </div>
           ))}
           <div className="field">
-            <label className="label">Logo (URL)</label>
-            <input className="input" placeholder="https://… .png" value={ap.pl_logo_url} onChange={(e) => setAp((p) => ({ ...p, pl_logo_url: e.target.value }))} />
+            <LogoUpload
+              ownerId={ownerId}
+              value={ap.pl_logo_url}
+              onChange={(url) => setAp((p) => ({ ...p, pl_logo_url: url }))}
+            />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -283,7 +365,19 @@ export default function PricingManager({
               <div><label className="label">Giá</label><MoneyInput value={f.price} onChange={(n) => setF((p) => ({ ...p, price: n }))} /></div>
               <div className="field"><label className="label">Đơn vị</label><input className="input" placeholder="/ gói" value={f.unit} onChange={(e) => setF((p) => ({ ...p, unit: e.target.value }))} /></div>
             </div>
-            <div className="field"><label className="label">Nhóm</label><input className="input" placeholder="Gói chụp / Gói quay…" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} /></div>
+            <div className="field">
+              <label className="label">Nhóm</label>
+              <input
+                className="input"
+                placeholder="Gói chụp / Gói quay…"
+                value={f.category}
+                list="category-options"
+                onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))}
+              />
+              <datalist id="category-options">
+                {categoryOptions.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
             <div className="field field-top"><label className="label">Mô tả (mỗi dòng 1 ý)</label><textarea className="input min-h-[70px]" value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} /></div>
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang thêm…" : "Thêm vào bảng giá"}</button>
           </div>
@@ -292,8 +386,8 @@ export default function PricingManager({
         <div className="lg:col-span-2 space-y-6">
           {visible.length === 0 ? (
             <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
-              <p>Bảng giá {PRICE_LISTS.find((l) => l.key === activeList)?.label} đang trống.</p>
-              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {PRICE_LISTS.find((l) => l.key === activeList)?.label}</button>
+              <p>Bảng giá {allLists.find((l) => l.key === activeList)?.label} đang trống.</p>
+              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {allLists.find((l) => l.key === activeList)?.label}</button>
             </div>
           ) : (
             <>

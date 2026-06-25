@@ -4,6 +4,16 @@ import PricelistPoster from "@/components/PricelistPoster";
 import type { PricelistItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function buildLists(allItems: PricelistItem[]) {
+  const builtIn = PRICE_LISTS.filter((l) => allItems.some((i) => (i.list_key || "cuoi") === l.key));
+  const builtInKeys = new Set(PRICE_LISTS.map((l) => l.key));
+  const customKeys = [...new Set(allItems.map((i) => i.list_key || "cuoi"))].filter((k) => !builtInKeys.has(k));
+  const custom = customKeys.map((k) => ({ key: k, label: k, title: `Bảng giá ${k}` }));
+  const combined = [...builtIn, ...custom];
+  return combined.length ? combined : PRICE_LISTS.slice(0, 1);
+}
 
 export default async function PublicPricelist({ params, searchParams }: { params: { token: string }; searchParams?: { list?: string } }) {
   const db = createAdminClient();
@@ -32,13 +42,10 @@ export default async function PublicPricelist({ params, searchParams }: { params
     .order("position");
   const allItems = (data ?? []) as PricelistItem[];
 
-  const available = PRICE_LISTS.filter((l) => allItems.some((i) => (i.list_key || "cuoi") === l.key));
-  const lists = available.length ? available : PRICE_LISTS.slice(0, 1);
+  const lists = buildLists(allItems);
   const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
 
-  // Poster appearance is optional — read it defensively so a not-yet-migrated DB
-  // (missing pl_bg/pl_text/… columns) never breaks the public price list.
   let theme: { bg?: string | null; text?: string | null; accent?: string | null; logo?: string | null } | undefined;
   const { data: th } = await db
     .from("profiles")
