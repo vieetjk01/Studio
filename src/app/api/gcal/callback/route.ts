@@ -11,17 +11,17 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(mainUrl(`/dashboard/settings?gcal=error&msg=${encodeURIComponent(error)}`));
+    return NextResponse.redirect(mainUrl(`/dashboard/connections?gcal=error&msg=${encodeURIComponent(error)}`));
   }
   if (!code || !state) {
-    return NextResponse.redirect(mainUrl("/dashboard/settings?gcal=error&msg=missing_params"));
+    return NextResponse.redirect(mainUrl("/dashboard/connections?gcal=error&msg=missing_params"));
   }
 
   try {
     await connectGoogleCalendar(state, code);
-    return NextResponse.redirect(mainUrl("/dashboard/settings?gcal=connected"));
+    return NextResponse.redirect(mainUrl("/dashboard/connections?gcal=connected"));
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "unknown";
-    return NextResponse.redirect(mainUrl(`/dashboard/settings?gcal=error&msg=${encodeURIComponent(msg)}`));
+    return NextResponse.redirect(mainUrl(`/dashboard/connections?gcal=error&msg=${encodeURIComponent(msg)}`));
   }
 }
