@@ -54,6 +54,14 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const { pathname, search } = request.nextUrl;
 
+  // ── Canonical host: www.mstudo.com → mstudo.com ──────────────────────────
+  // The apex (mstudo.com) is the canonical main domain. Send www → apex so we
+  // have one source of truth for cookies/sessions. (Make sure Vercel itself
+  // does NOT add an opposite apex → www redirect, or the two would loop.)
+  if (MAIN_HOST && host === `www.${MAIN_HOST}`) {
+    return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
+  }
+
   // ── Tenant sites: <subdomain>.mstudo.com → /site/<subdomain> ─────────────
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
   if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`) && host !== MAIN_HOST) {
