@@ -252,7 +252,16 @@ export default function UpgradePage() {
     );
 
   return (
-    <div className="animate-[vkFade_.5s_ease_both]">
+    <div
+      className="animate-[vkFade_.5s_ease_both]"
+      style={{
+        // Sync the upgrade page with the brand-green identity used across the
+        // studio workspace & landing (instead of the album shell's gold/silver).
+        ["--gold" as string]: "var(--brand, #3fb98a)",
+        ["--accent" as string]: "var(--brand, #3fb98a)",
+        ["--accentInk" as string]: "var(--brandFg, #06120c)",
+      } as React.CSSProperties}
+    >
       <div className="mb-8">
         <p className="eyebrow mb-1.5">Gói dịch vụ</p>
         <h1 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Nâng cấp gói</h1>

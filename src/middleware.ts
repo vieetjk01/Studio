@@ -79,6 +79,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ── Main workspace is the studio dashboard ───────────────────────────────
+  // On mstudo.com the studio management app is the user's home, so the bare
+  // /dashboard goes to /dashboard/studio instead of bouncing to the album host.
+  // (Free/Basic accounts have no studio tier — StudioOverview sends them on to
+  // the album dashboard, so there's no loop.) Album host keeps /dashboard = albums.
+  if (MAIN_HOST && host === MAIN_HOST && pathname === "/dashboard") {
+    return NextResponse.redirect(new URL("/dashboard/studio", request.url));
+  }
+
   // ── Host-based routing ────────────────────────────────────────
   if (MAIN_HOST && APP_HOST && host) {
     // Per-host home pages.

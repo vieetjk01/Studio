@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, LayoutDashboard } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -111,7 +111,16 @@ export default function DashboardHeader({
           : []),
       ],
     },
-    { href: appUrl("/dashboard"), label: t("myAlbums"), external: true, tier: "booking" },
+    {
+      label: "Công cụ",
+      tier: "booking",
+      children: [
+        { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+        { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
+        { href: appUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
+        { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
+      ],
+    },
     ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web riêng", tier: "booking" as const }] : []),
   ];
 
@@ -129,8 +138,21 @@ export default function DashboardHeader({
   const isOnStudio =
     pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/galleries");
 
+  // Album / filter / compress grouped under one "Công cụ" dropdown for studio &
+  // photographer plans (keeps the album bar tidy now that studio is the home).
+  const appToolsGroup: NavGroup = {
+    label: "Công cụ",
+    children: [
+      { href: "/dashboard", label: t("myAlbums") },
+      { href: "/dashboard/create", label: t("newAlbum") },
+      { href: "/dashboard/filter", label: t("filterPhotos") },
+      { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
+    ],
+  };
+
   // Build the link set for this host. Cross-host links use absolute URLs.
-  const links: NavLink[] =
+  // The "Quản lý" (studio) entry is rendered as a separate button, not here.
+  const links: (NavLink | NavGroup)[] =
     kind === "img"
       ? [
           { href: "/dashboard/compress", label: t("compressPhotos") },
@@ -144,12 +166,17 @@ export default function DashboardHeader({
           { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
         ]
       : [
-          { href: "/dashboard", label: t("myAlbums") },
-          { href: "/dashboard/create", label: t("newAlbum") },
-          { href: "/dashboard/filter", label: t("filterPhotos") },
-          { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
+          // Studio/photographer: collapse the photo tools into one menu.
+          // Free/basic: keep them flat for quick access.
+          ...(hasStudio
+            ? [appToolsGroup]
+            : [
+                { href: "/dashboard", label: t("myAlbums") },
+                { href: "/dashboard/create", label: t("newAlbum") },
+                { href: "/dashboard/filter", label: t("filterPhotos") },
+                { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
+              ]),
           ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web" }] : []),
-          ...(hasStudio ? [{ href: mainUrl("/dashboard/studio"), label: tier === "full" ? "Studio" : "Quản lý", external: !!process.env.NEXT_PUBLIC_MAIN_HOST }] : []),
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),
           ...(profile.role === "admin"
             ? [
@@ -208,10 +235,20 @@ export default function DashboardHeader({
           <nav className="hidden items-center gap-x-5 gap-y-1.5 md:flex md:flex-wrap">
             {isOnStudio
               ? studioVisible.map((item) => (isGroup(item) ? renderGroup(item) : renderLink(item)))
-              : links.map((l) => renderLink(l))}
+              : links.map((l) => (isGroup(l) ? renderGroup(l) : renderLink(l)))}
           </nav>
         </div>
         <div className="flex items-center gap-3 md:gap-4">
+          {/* Separate management button so studio/photographer users can jump to
+              the studio workspace from the album & other pages at a glance. */}
+          {hasStudio && !isOnStudio && (
+            <a
+              href={mainUrl("/dashboard/studio")}
+              className="btn-primary hidden px-3 py-1.5 text-xs sm:inline-flex"
+            >
+              <LayoutDashboard size={14} /> {tier === "full" ? "Quản lý Studio" : "Quản lý"}
+            </a>
+          )}
           {isOnStudio && (
             <div className="hidden sm:block">
               <StudioSearch />
@@ -258,11 +295,34 @@ export default function DashboardHeader({
                   <div key={item.href} className="py-1.5">{renderLink(item, () => setMenuOpen(false))}</div>
                 )
               )
-            : links.map((l) => (
-                <div key={l.href} className="py-1.5">
-                  {renderLink(l, () => setMenuOpen(false))}
-                </div>
-              ))}
+            : (
+              <>
+                {hasStudio && (
+                  <a
+                    href={mainUrl("/dashboard/studio")}
+                    onClick={() => setMenuOpen(false)}
+                    className="mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold"
+                    style={{ background: "var(--brand, var(--accent))", color: "var(--brandFg, var(--accentInk))" }}
+                  >
+                    <LayoutDashboard size={15} /> {tier === "full" ? "Quản lý Studio" : "Quản lý"}
+                  </a>
+                )}
+                {links.map((l) =>
+                  isGroup(l) ? (
+                    <div key={l.label} className="py-1.5">
+                      <p className="mb-1 text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>{l.label}</p>
+                      <div className="grid gap-1.5 pl-3">
+                        {l.children.map((c) => renderLink(c, () => setMenuOpen(false)))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={l.href} className="py-1.5">
+                      {renderLink(l, () => setMenuOpen(false))}
+                    </div>
+                  )
+                )}
+              </>
+            )}
         </nav>
       )}
     </header>
