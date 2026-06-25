@@ -30,9 +30,13 @@ export default function PushToggle() {
     if (Notification.permission === "denied") { setState("denied"); return; }
 
     // Check whether this device is already subscribed.
-    navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => setState(sub ? "subscribed" : "default"))
+    // Use getRegistration() instead of .ready so we don't hang if no SW is registered yet.
+    navigator.serviceWorker.getRegistration("/sw.js")
+      .then(async (reg) => {
+        if (!reg) { setState("default"); return; }
+        const sub = await reg.pushManager.getSubscription();
+        setState(sub ? "subscribed" : "default");
+      })
       .catch(() => setState("default"));
   }, []);
 
