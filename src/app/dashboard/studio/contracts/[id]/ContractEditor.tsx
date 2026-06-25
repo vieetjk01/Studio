@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -262,6 +262,39 @@ export default function ContractEditor({
   const total = contractTotal(items);
   const collected = sumAmounts(payments);
   const balance = total - collected;
+
+  // Default deposit = 25% of contract total, rounded to nearest 500k (min 500k).
+  const depositOf = (t: number) => (t > 0 ? Math.max(500_000, Math.round((t * 0.25) / 500_000) * 500_000) : 0);
+  const depositAmt = depositOf(total);
+  const creatingDeposit = useRef(false);
+  const prevTotal = useRef(total);
+
+  // Auto-create the default "Cọc hợp đồng" instalment once the contract has a value.
+  useEffect(() => {
+    if (total <= 0 || plan.length > 0 || creatingDeposit.current) return;
+    creatingDeposit.current = true;
+    (async () => {
+      const { data } = await supabase
+        .from("contract_payment_plan")
+        .insert({ contract_id: contract.id, label: "Cọc hợp đồng", amount: depositAmt, position: 0 })
+        .select("*")
+        .single();
+      if (data) setPlan((p) => (p.length === 0 ? [data as ContractPaymentPlan] : p));
+      creatingDeposit.current = false;
+    })();
+  }, [total, plan.length, depositAmt, contract.id, supabase]);
+
+  // Keep the deposit synced to the item total — until studio edits it or marks it paid.
+  useEffect(() => {
+    if (prevTotal.current === total) return;
+    const oldDeposit = depositOf(prevTotal.current);
+    prevTotal.current = total;
+    const dep = plan.find((p) => p.label === "Cọc hợp đồng" && !p.paid);
+    if (dep && dep.amount === oldDeposit && dep.amount !== depositAmt) {
+      setPlan((p) => p.map((x) => (x.id === dep.id ? { ...x, amount: depositAmt } : x)));
+      supabase.from("contract_payment_plan").update({ amount: depositAmt }).eq("id", dep.id);
+    }
+  }, [total, plan, depositAmt, supabase]);
   const payroll = crew.reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const paidPayroll = crew.filter((c) => c.paid).reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const expenseTotal = expenses.reduce((s, e) => s + (e.amount || 0), 0);
@@ -1217,9 +1250,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   className="btn-ghost text-xs"
-                  onClick={() => setPlanForm({ label: "Cọc hợp đồng", amount: Math.max(500_000, Math.round(total * 0.25 / 500_000) * 500_000), due_date: "" })}
+                  onClick={() => setPlanForm({ label: "Cọc hợp đồng", amount: depositAmt, due_date: "" })}
                 >
-                  Cọc 25% · {vnd(Math.max(500_000, Math.round(total * 0.25 / 500_000) * 500_000))}
+                  Cọc 25% · {vnd(depositAmt)}
                 </button>
               </div>
             )}
