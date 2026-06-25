@@ -128,7 +128,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
   // Client payment proofs.
   const { data: clientProofs } = await supabase
     .from("contract_client_proofs")
-    .select("id, url, note, uploaded_at")
+    .select("id, url, note, uploaded_at, plan_id")
     .eq("contract_id", params.id)
     .order("uploaded_at", { ascending: false });
 
@@ -173,7 +173,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       initialQuoteOptions={(quoteOptions ?? []) as ContractQuoteOption[]}
       staffList={(staffList ?? []) as { id: string; full_name: string | null; email: string }[]}
       canAssign={canAssign}
-      initialClientProofs={(clientProofs ?? []) as { id: string; url: string; note: string | null; uploaded_at: string }[]}
+      initialClientProofs={(clientProofs ?? []) as { id: string; url: string; note: string | null; uploaded_at: string; plan_id: string | null }[]}
     />
   );
 }

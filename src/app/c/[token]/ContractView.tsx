@@ -119,6 +119,7 @@ export default function ContractView({ token }: { token: string }) {
   const [paidReported, setPaidReported] = useState(false);
   const [proofUploading, setProofUploading] = useState(false);
   const [proofUrls, setProofUrls] = useState<string[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
   const [qr, setQr] = useState("");
   const [lang, setLang] = useState<Lang>("vi");
   const t = (k: keyof typeof TR.vi) => TR[lang][k];
@@ -232,10 +233,11 @@ export default function ContractView({ token }: { token: string }) {
     if (res.ok) setPaidReported(true);
   }
 
-  async function uploadProof(file: File) {
+  async function uploadProof(file: File, planId?: string) {
     setProofUploading(true);
     const form = new FormData();
     form.append("file", file);
+    if (planId) form.append("plan_id", planId);
     const res = await fetch(`/api/c/${token}/proof`, { method: "POST", body: form });
     if (res.ok) {
       const { url } = await res.json();
@@ -556,6 +558,20 @@ export default function ContractView({ token }: { token: string }) {
               </div>
             )}
 
+            {/* Select which instalment the proof belongs to */}
+            {plan.filter((p) => !p.paid).length > 0 && (
+              <select
+                className="input mb-2 text-sm"
+                value={selectedPlanId}
+                onChange={(e) => setSelectedPlanId(e.target.value)}
+              >
+                <option value="">{lang === "vi" ? "— Chọn đợt thanh toán —" : "— Select instalment —"}</option>
+                {plan.filter((p) => !p.paid).map((p) => (
+                  <option key={p.id} value={p.id}>{p.label} · {vnd(p.amount)}</option>
+                ))}
+              </select>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {!paidReported && (
                 <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
@@ -569,7 +585,7 @@ export default function ContractView({ token }: { token: string }) {
                 <Upload size={14} />
                 {proofUploading ? (lang === "vi" ? "Đang tải…" : "Uploading…") : (lang === "vi" ? "Gửi ảnh chuyển khoản" : "Upload proof")}
                 <input type="file" accept="image/*" className="hidden" disabled={proofUploading}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f); e.target.value = ""; }} />
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f, selectedPlanId || undefined); e.target.value = ""; }} />
               </label>
             </div>
           </div>

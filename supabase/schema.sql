@@ -1115,6 +1115,7 @@ create table if not exists public.contract_client_proofs (
   uploaded_at timestamptz not null default now()
 );
 create index if not exists contract_client_proofs_contract_idx on public.contract_client_proofs (contract_id);
+alter table public.contract_client_proofs add column if not exists plan_id uuid references public.contract_payment_plan(id) on delete set null;
 alter table public.contract_client_proofs enable row level security;
 drop policy if exists contract_client_proofs_owner on public.contract_client_proofs;
 create policy contract_client_proofs_owner on public.contract_client_proofs

@@ -33,10 +33,12 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const { data: { publicUrl } } = db.storage.from("payment-proofs").getPublicUrl(path);
 
   const note = (form.get("note") as string | null) || null;
+  const planId = (form.get("plan_id") as string | null) || null;
   await db.from("contract_client_proofs").insert({
     contract_id: contract.id,
     url: publicUrl,
     note,
+    plan_id: planId,
   });
 
   // Notify owner

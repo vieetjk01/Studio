@@ -87,15 +87,6 @@ export default function NewContractForm({
         .map((i, idx) => ({ contract_id: data.id, name: i.name, qty: i.qty, unit_price: i.unit_price, position: idx }));
       await supabase.from("contract_items").insert(rows);
     }
-    // Auto-create deposit: 20% of template total, minimum 500,000 VND.
-    const tplTotal = tpl?.contract_template_items?.reduce((s, i) => s + (i.qty || 0) * (i.unit_price || 0), 0) || 0;
-    const depositAmount = tplTotal > 0 ? Math.max(500_000, Math.round((tplTotal * 20) / 100)) : 500_000;
-    await supabase.from("contract_payment_plan").insert({
-      contract_id: data.id,
-      label: "Cọc 20%",
-      amount: depositAmount,
-      position: 0,
-    });
     // Default post-production checklist.
     if (addChecklist) {
       await supabase.from("contract_tasks").insert(

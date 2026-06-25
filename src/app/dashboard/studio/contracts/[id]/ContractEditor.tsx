@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -127,7 +127,7 @@ export default function ContractEditor({
   bank: BankInfo;
   sameDayContracts: { id: string; title: string; client_name: string | null }[];
   pricelist: { name: string; price: number; unit: string | null }[];
-  initialClientProofs: { id: string; url: string; note: string | null; uploaded_at: string }[];
+  initialClientProofs: { id: string; url: string; note: string | null; uploaded_at: string; plan_id: string | null }[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -179,6 +179,14 @@ export default function ContractEditor({
   const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today(), client_visible: true });
   const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
+  const planSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  function autosavePlan(id: string, patch: Partial<ContractPaymentPlan>) {
+    setPlan((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    clearTimeout(planSaveTimers.current[id]);
+    planSaveTimers.current[id] = setTimeout(async () => {
+      await supabase.from("contract_payment_plan").update(patch).eq("id", id);
+    }, 600);
+  }
   const [clientProofs, setClientProofs] = useState(initialClientProofs);
   const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
   const [proofBusy, setProofBusy] = useState(false);
@@ -598,6 +606,17 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
       if (payment) setPayments((p) => [payment as ContractPayment, ...p]);
       await supabase.from("contract_payment_plan").update({ paid: true, paid_at: nowIso, payment_id: pid }).eq("id", it.id);
       setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: true, paid_at: nowIso, payment_id: pid } : x)));
+      // Compute updated plan
+      const updatedPlan = plan.map((x) => (x.id === it.id ? { ...x, paid: true } : x));
+      const stillUnpaid = updatedPlan.filter((x) => !x.paid);
+      const newBalance = total - updatedPlan.reduce((s, x) => (x.paid ? s + x.amount : s), 0) - (payments.filter(p2 => !updatedPlan.some(pl => pl.payment_id === p2.id)).reduce((s, p2) => s + p2.amount, 0));
+      if (stillUnpaid.length === 0 && newBalance > 0) {
+        const { data: next } = await supabase
+          .from("contract_payment_plan")
+          .insert({ contract_id: contract.id, label: "Thanh toán toàn bộ hợp đồng", amount: newBalance, position: plan.length + 1 })
+          .select("*").single();
+        if (next) setPlan((p) => [...p, next as ContractPaymentPlan]);
+      }
     }
   }
   async function deletePlan(it: ContractPaymentPlan) {
@@ -1134,15 +1153,43 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   const overdue = !it.paid && it.due_date && it.due_date < todayStr;
                   const linked = it.payment_id ? payments.find((p) => p.id === it.payment_id) : undefined;
                   return (
-                    <li key={it.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                      <div>
-                        <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
-                        <p className="text-[11px]" style={{ color: overdue ? "#c77b7b" : it.paid ? "#7bb38a" : "var(--text3)" }}>
-                          {it.paid
-                            ? `Đã thu${it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}`
-                            : `${it.due_date ? `hạn ${it.due_date}` : "không hạn"}${overdue ? " · quá hạn" : ""}`}
-                        </p>
-                      </div>
+                    <li key={it.id} className="rounded-xl px-3 py-2.5 space-y-2" style={{ background: "var(--surface2)" }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-1.5 min-w-0">
+                          {it.paid ? (
+                            <>
+                              <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
+                              <p className="text-[11px]" style={{ color: "#7bb38a" }}>✓ Đã thu{it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}</p>
+                            </>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              <input
+                                className="input h-8 text-sm font-medium flex-1 min-w-[120px]"
+                                value={it.label}
+                                onChange={(e) => autosavePlan(it.id, { label: e.target.value })}
+                              />
+                              <MoneyInput
+                                className="input h-8 text-sm w-32"
+                                value={it.amount}
+                                onChange={(n) => autosavePlan(it.id, { amount: n })}
+                              />
+                              <input
+                                type="date"
+                                className="input h-8 text-sm w-36"
+                                value={it.due_date ?? ""}
+                                onChange={(e) => autosavePlan(it.id, { due_date: e.target.value || null })}
+                              />
+                              {overdue && <span className="text-[11px] self-center" style={{ color: "#c77b7b" }}>quá hạn</span>}
+                            </div>
+                          )}
+                          {/* Client proofs for this instalment */}
+                          {clientProofs.filter((cp) => cp.plan_id === it.id).map((cp) => (
+                            <a key={cp.id} href={cp.url} target="_blank" rel="noreferrer" className="inline-block">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={cp.url} alt="CK" className="h-10 w-10 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                            </a>
+                          ))}
+                        </div>
                       <div className="flex items-center gap-3">
                         {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
                         {it.paid && linked?.proof_url && (
@@ -1165,6 +1212,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                         </button>
                         <button onClick={() => deletePlan(it)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
                       </div>
+                      </div>
                     </li>
                   );
                 })}
@@ -1172,6 +1220,16 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
 
             {/* Add an instalment — optionally mark it collected immediately */}
+            {plan.length === 0 && total > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  className="btn-ghost text-xs"
+                  onClick={() => setPlanForm({ label: "Cọc hợp đồng", amount: Math.round(total * 0.25 / 1000) * 1000, due_date: "" })}
+                >
+                  Cọc 25% · {vnd(Math.round(total * 0.25 / 1000) * 1000)}
+                </button>
+              </div>
+            )}
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
               <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
@@ -1208,6 +1266,21 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <button onClick={() => addPlan(true)} disabled={busy === "planPaid"} className="btn-ghost" style={{ color: "#7bb38a" }}><Check size={15} /> {busy === "planPaid" ? "Đang lưu…" : "Thêm & đã thu"}</button>
             </div>
 
+            {/* Unlinked client proofs (not tied to any instalment) */}
+            {clientProofs.filter(cp => !cp.plan_id).length > 0 && (
+              <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                <p className="mb-2 text-xs font-medium" style={{ color: "var(--text3)" }}>Ảnh CK từ khách (chưa gắn đợt):</p>
+                <div className="flex flex-wrap gap-2">
+                  {clientProofs.filter(cp => !cp.plan_id).map(cp => (
+                    <a key={cp.id} href={cp.url} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={cp.url} alt="CK" className="h-14 w-14 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Backward-compat: payments recorded before the merge (no instalment) */}
             {orphanPayments.length > 0 && (
               <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
@@ -1231,26 +1304,6 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
             )}
           </div>
-
-          {/* Client payment proofs */}
-          {clientProofs.length > 0 && (
-            <div className="card p-6">
-              <h2 className="mb-1 font-serif text-lg font-medium">Ảnh chuyển khoản từ khách</h2>
-              <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Khách hàng đã gửi {clientProofs.length} ảnh xác nhận thanh toán.</p>
-              <div className="flex flex-wrap gap-3">
-                {clientProofs.map((p: { id: string; url: string; note: string | null; uploaded_at: string }) => (
-                  <div key={p.id} className="flex flex-col items-center gap-1">
-                    <a href={p.url} target="_blank" rel="noreferrer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.url} alt="CK" className="h-24 w-24 rounded-xl object-cover" style={{ border: "1px solid var(--border)" }} />
-                    </a>
-                    <p className="text-[11px]" style={{ color: "var(--text3)" }}>{p.uploaded_at.slice(0, 10)}</p>
-                    {p.note && <p className="max-w-[96px] truncate text-[11px]" style={{ color: "var(--text2)" }}>{p.note}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Per-contract expenses */}
           <div className="card p-6">
