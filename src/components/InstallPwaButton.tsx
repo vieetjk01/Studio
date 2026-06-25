@@ -58,7 +58,7 @@ export default function InstallPwaButton() {
         style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
       >
         <Download size={18} style={{ flex: "none" }} />
-        Thêm vào màn hình chính
+        Tạo Webapp
       </button>
     );
   }
@@ -73,7 +73,7 @@ export default function InstallPwaButton() {
           style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
         >
           <Share size={18} style={{ flex: "none" }} />
-          Thêm vào màn hình chính
+          Tạo Webapp
         </button>
 
         {showIosHint && (
