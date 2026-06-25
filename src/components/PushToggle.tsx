@@ -37,15 +37,25 @@ export default function PushToggle() {
     }
     if (Notification.permission === "denied") { setState("denied"); return; }
 
+    // Hard safety net: never let the UI sit on "loading" — if the check below
+    // doesn't settle quickly, fall back to an actionable state.
+    let settled = false;
+    const fallback = setTimeout(() => {
+      if (!settled) setState((s) => (s === "loading" ? "default" : s));
+    }, 5000);
+    const done = (s: State) => { settled = true; clearTimeout(fallback); setState(s); };
+
     // Check whether this device is already subscribed.
     // Use getRegistration() instead of .ready so we don't hang if no SW is registered yet.
-    navigator.serviceWorker.getRegistration("/sw.js")
+    withTimeout(navigator.serviceWorker.getRegistration("/sw.js"), 4000, "kiểm tra service worker")
       .then(async (reg) => {
-        if (!reg) { setState("default"); return; }
+        if (!reg) { done("default"); return; }
         const sub = await reg.pushManager.getSubscription();
-        setState(sub ? "subscribed" : "default");
+        done(sub ? "subscribed" : "default");
       })
-      .catch(() => setState("default"));
+      .catch(() => done("default"));
+
+    return () => clearTimeout(fallback);
   }, []);
 
   async function enable() {
