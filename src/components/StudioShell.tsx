@@ -451,6 +451,45 @@ export default function StudioShell({
               <Menu size={18} />
             </button>
 
+            {/* Mobile: avatar dropdown */}
+            <div className="relative lg:hidden">
+              <button
+                onClick={() => setAvatarOpen((v) => !v)}
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-[11px] font-bold"
+                style={{ background: "var(--brandSoft)", color: "var(--brand)", border: avatarOpen ? "2px solid var(--brand)" : "2px solid transparent" }}
+                aria-label="Tài khoản"
+              >
+                {initials}
+              </button>
+              {avatarOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} />
+                  <div
+                    className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl p-1.5 shadow-lg"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                  >
+                    <div className="px-3 py-2 mb-1" style={{ borderBottom: "1px solid var(--border)" }}>
+                      <p className="truncate text-sm font-semibold">{profile.full_name || "Tài khoản"}</p>
+                      <p className="truncate text-[11px]" style={{ color: "var(--text3)" }}>{profile.email}</p>
+                    </div>
+                    <Link href="/dashboard/account" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <UserCircle size={15} style={{ color: "var(--brand)" }} /> Cài đặt tài khoản
+                    </Link>
+                    <Link href="/dashboard/connections" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <Link2 size={15} style={{ color: "var(--brand)" }} /> Kết nối Calendar
+                    </Link>
+                    <Link href="/dashboard/upgrade" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <Gift size={15} style={{ color: "var(--s-amber)" }} /> Nâng cấp gói
+                    </Link>
+                    <div className="my-1" style={{ borderTop: "1px solid var(--border)" }} />
+                    <button onClick={signOut} className="nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--s-red)" }}>
+                      <LogOut size={15} /> Đăng xuất
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-[17px] font-extrabold tracking-tight sm:text-[18px]">{title}</h1>
               {sub ? <p className="hidden truncate text-[12px] sm:block" style={{ color: "var(--text3)" }}>{sub}</p> : null}
