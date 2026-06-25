@@ -87,63 +87,51 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Dashboard auth + Supabase session refresh ─────────────────
-  if (pathname.startsWith("/dashboard")) {
-    if (request.headers.get("next-router-prefetch") === "1" || request.headers.get("purpose") === "prefetch") {
+  // ── Supabase session refresh (runs on every non-static request) ──────────
+  // This keeps the access token alive regardless of which page the user is on.
+  // Without this, the token would only refresh on /dashboard routes and would
+  // expire silently while the user is on the landing page.
+  if (request.headers.get("next-router-prefetch") === "1" || request.headers.get("purpose") === "prefetch") {
+    // Prefetch: skip full auth round-trip, just check cookie presence for dashboard.
+    if (pathname.startsWith("/dashboard")) {
       const hasSession = request.cookies.getAll().some(
         (c) => c.name.includes("sb-") && c.name.includes("-auth-token")
       );
-      if (!hasSession) {
-        return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url));
-      }
-      return NextResponse.next();
+      if (!hasSession) return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url));
     }
-
-    let response = NextResponse.next({ request });
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(
-            cookiesToSet: {
-              name: string;
-              value: string;
-              options?: Record<string, unknown>;
-            }[]
-          ) {
-            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-            response = NextResponse.next({ request });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(
-                name,
-                value,
-                options as Parameters<typeof response.cookies.set>[2]
-              )
-            );
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
-    }
-    return response;
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  let response = NextResponse.next({ request });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
+          );
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Only enforce auth for dashboard routes.
+  if (!user && pathname.startsWith("/dashboard")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  return response;
 }
 
 export const config = {
