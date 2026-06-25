@@ -249,6 +249,7 @@ export type NotificationKind =
   | "crew_declined"
   | "review"
   | "payment"
+  | "quote_accepted"
   | "info";
 
 export interface StudioNotification {
