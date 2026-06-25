@@ -502,16 +502,26 @@ export default function ContractView({ token }: { token: string }) {
             <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
               <p className="text-sm font-medium">{lang === "vi" ? "Thanh toán / chuyển khoản" : "Payment"}</p>
               <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Bấm vào nút bên dưới để hiện mã QR chuyển khoản." : "Tap a button below to reveal the transfer QR."}</p>
-              {bank.bin && bank.account ? (
-                <div className="flex flex-wrap gap-2">
-                  {plan.filter((p) => !p.paid && p.amount > 0).length > 0 ? (
-                    plan.filter((p) => !p.paid && p.amount > 0).map((p) => (
-                      <VietQRButton key={p.id} bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${p.label} · ${vnd(p.amount)}`} />
-                    ))
-                  ) : (
-                    <VietQRButton bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${lang === "vi" ? "Thanh toán" : "Pay"} · ${vnd(balance)}`} />
+              {bank.account ? (
+                <>
+                  {/* Plain-text bank details so the client can copy them manually */}
+                  <div className="mb-3 rounded-lg p-3 text-xs space-y-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                    {bank.name && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Ngân hàng" : "Bank"}:</span><span className="font-medium">{bank.name}</span></div>}
+                    <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Số tài khoản" : "Account"}:</span><span className="font-medium tracking-wider">{bank.account}</span></div>
+                    {bank.holder && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Chủ tài khoản" : "Holder"}:</span><span className="font-medium uppercase">{bank.holder}</span></div>}
+                  </div>
+                  {bank.bin && (
+                    <div className="flex flex-wrap gap-2">
+                      {plan.filter((p) => !p.paid && p.amount > 0).length > 0 ? (
+                        plan.filter((p) => !p.paid && p.amount > 0).map((p) => (
+                          <VietQRButton key={p.id} bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${p.label} · ${vnd(p.amount)}`} />
+                        ))
+                      ) : (
+                        <VietQRButton bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${lang === "vi" ? "Thanh toán" : "Pay"} · ${vnd(balance)}`} />
+                      )}
+                    </div>
                   )}
-                </div>
+                </>
               ) : (
                 <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
               )}

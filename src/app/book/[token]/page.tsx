@@ -1,8 +1,27 @@
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import BookingForm, { type PkgOption } from "./BookingForm";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
+  const db = createAdminClient();
+  const { data: owner } = await db
+    .from("profiles")
+    .select("full_name")
+    .eq("booking_token", params.token)
+    .maybeSingle();
+  const studioName = owner?.full_name || "Studio";
+  const title = `Đặt lịch · ${studioName}`;
+  const description = `Đặt lịch chụp ảnh với ${studioName} — nhanh chóng, tiện lợi.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function BookingPage({ params, searchParams }: { params: { token: string }; searchParams?: { pkg?: string } }) {
   const db = createAdminClient();

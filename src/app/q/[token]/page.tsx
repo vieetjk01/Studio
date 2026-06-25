@@ -9,8 +9,24 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
   const db = createAdminClient();
-  const { data } = await db.from("studio_quotes").select("title, client_name").eq("client_token", params.token).maybeSingle();
-  return { title: data?.title ? `${data.title}${data.client_name ? ` · ${data.client_name}` : ""}` : "Báo giá · Vieetjk" };
+  const { data } = await db
+    .from("studio_quotes")
+    .select("title, client_name, studio_quotes_owner:profiles!owner_id(full_name)")
+    .eq("client_token", params.token)
+    .maybeSingle();
+
+  const studioName = (data?.studio_quotes_owner as { full_name?: string } | null)?.full_name || "Studio";
+  const title = data?.title
+    ? `${data.title}${data.client_name ? ` · ${data.client_name}` : ""}`
+    : "Báo giá dịch vụ";
+  const description = `${studioName} — xem và xác nhận báo giá dịch vụ nhiếp ảnh.`;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary", title, description },
+  };
 }
 
 export default async function QuoteClientPage({ params }: { params: { token: string } }) {
