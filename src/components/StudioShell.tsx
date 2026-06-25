@@ -8,6 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
+  UserCircle, ChevronDown,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { appUrl, imgUrl } from "@/lib/hosts";
@@ -124,6 +125,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/affiliate", "Affiliate", "Giới thiệu & hoa hồng"],
   ["/dashboard/admin/affiliate", "Quản lý Affiliate", "Danh sách hoa hồng"],
   ["/dashboard/settings", "Cài đặt", "Cài đặt hệ thống"],
+  ["/dashboard/account", "Tài khoản", "Thông tin & bảo mật tài khoản"],
 ];
 
 export default function StudioShell({
@@ -141,9 +143,10 @@ export default function StudioShell({
   const pathname = usePathname();
   const { theme, toggle: toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
-  // Close drawer on route change
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  // Close drawer + avatar menu on route change
+  useEffect(() => { setDrawerOpen(false); setAvatarOpen(false); }, [pathname]);
 
   async function signOut() {
     const supabase = createClient();
@@ -459,7 +462,7 @@ export default function StudioShell({
                 <StudioSearch />
               </div>
               <NotificationBell />
-              {/* Language + theme: desktop only (in drawer on mobile) */}
+              {/* Language + theme: desktop only */}
               <div className="hidden lg:flex lg:items-center lg:gap-1.5">
                 <LanguageSwitcher />
                 <button
@@ -470,21 +473,75 @@ export default function StudioShell({
                 >
                   {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                 </button>
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold"
-                  style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
-                  title={profile.full_name || profile.email || ""}
-                >
-                  {initials}
-                </span>
-                <button
-                  onClick={signOut}
-                  aria-label="Đăng xuất"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg"
-                  style={{ border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}
-                >
-                  <LogOut size={16} />
-                </button>
+
+                {/* Avatar dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setAvatarOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2 transition-colors"
+                    style={{ background: avatarOpen ? "var(--surface2)" : "transparent", border: "1px solid var(--border)" }}
+                    aria-label="Tài khoản"
+                  >
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
+                      style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+                    >
+                      {initials}
+                    </span>
+                    <ChevronDown size={13} style={{ color: "var(--text3)", transform: avatarOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                  </button>
+
+                  {avatarOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} />
+                      {/* Dropdown */}
+                      <div
+                        className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl p-1.5 shadow-lg"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                      >
+                        {/* User info */}
+                        <div className="px-3 py-2 mb-1" style={{ borderBottom: "1px solid var(--border)" }}>
+                          <p className="truncate text-sm font-semibold">{profile.full_name || "Tài khoản"}</p>
+                          <p className="truncate text-[11px]" style={{ color: "var(--text3)" }}>{profile.email}</p>
+                        </div>
+
+                        <Link href="/dashboard/account"
+                          className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          <UserCircle size={15} style={{ color: "var(--brand)" }} />
+                          Cài đặt tài khoản
+                        </Link>
+                        <Link href="/dashboard/connections"
+                          className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          <Link2 size={15} style={{ color: "var(--brand)" }} />
+                          Kết nối Calendar
+                        </Link>
+                        <Link href="/dashboard/upgrade"
+                          className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          <Gift size={15} style={{ color: "var(--s-amber)" }} />
+                          Nâng cấp gói
+                        </Link>
+
+                        <div className="my-1" style={{ borderTop: "1px solid var(--border)" }} />
+
+                        <button
+                          onClick={signOut}
+                          className="nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--s-red)" }}
+                        >
+                          <LogOut size={15} />
+                          Đăng xuất
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </header>
