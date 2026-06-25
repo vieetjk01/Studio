@@ -85,9 +85,9 @@ const D: Record<"vi" | "en", Dict> = {
     about: {
       title: "Về mstudo",
       text: "mstudo là giải pháp quản lý studio toàn diện được phát triển dành riêng cho các studio nhiếp ảnh tại Việt Nam. Chúng tôi giúp các studio số hoá toàn bộ quy trình vận hành — từ lịch hẹn, đơn hàng đến tài chính và nhân sự.",
-      company: "Công ty TNHH Công nghệ mstudo", addrLabel: "Địa chỉ", address: "Tầng 5, Toà nhà ABC, Quận 1, TP. Hồ Chí Minh", email: "hello@mstudo.com", phone: "1900 0000",
+      company: "Một sản phẩm của Vieetjk", addrLabel: "Địa chỉ", address: "Quảng Ngãi", email: "vieetjk@gmail.com", phone: "0974.374.744",
     },
-    footer: { copy: "© 2026 mstudo. Mọi quyền được bảo lưu." },
+    footer: { copy: "© 2026 mstudo. Một sản phẩm của Vieetjk." },
   },
   en: {
     nav: { features: "Features", guide: "Guide", pricing: "Pricing", faq: "FAQ", about: "About", login: "Log in", start: "Start free", website: "Build your website" },
@@ -96,7 +96,7 @@ const D: Record<"vi" | "en", Dict> = {
       title: "All-in-one studio management",
       sub: "mstudo helps photography studios manage bookings, orders, finances and staff — all in one platform.",
       ctaPrimary: "Start for free", ctaSecondary: "See how it works", ctaWebsite: "Build your website",
-      note: "14-day free trial · No credit card required", shot: "[ Dashboard screenshot ]",
+      note: "7-day free trial · No credit card required", shot: "[ Dashboard screenshot ]",
     },
     feat: {
       title: "Everything your studio needs, in one place",
@@ -150,9 +150,9 @@ const D: Record<"vi" | "en", Dict> = {
     about: {
       title: "About mstudo",
       text: "mstudo is an all-in-one studio management solution built for photography studios in Vietnam. We help studios digitize their entire workflow — from bookings and orders to finances and staff.",
-      company: "mstudo Technology Co., Ltd", addrLabel: "Address", address: "Floor 5, ABC Building, District 1, Ho Chi Minh City", email: "hello@mstudo.com", phone: "1900 0000",
+     company: "A product of Vieetjk", addrLabel: "Address", address: "Quang Ngai", email: "vieetjk@gmail.com", phone: "0974.374.744",
     },
-    footer: { copy: "© 2026 mstudo. All rights reserved." },
+    footer: { copy: "© 2026 mstudo. A product of Vieetjk" },
   },
 };
 
