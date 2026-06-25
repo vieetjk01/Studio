@@ -17,6 +17,14 @@ function urlBase64ToUint8Array(base64String: string) {
 
 type State = "unsupported" | "default" | "denied" | "subscribed" | "loading";
 
+// Reject if a promise doesn't settle in time, so the UI never hangs on "loading".
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Hết thời gian: ${label}`)), ms)),
+  ]);
+}
+
 export default function PushToggle() {
   const [state, setState] = useState<State>("loading");
   const [err, setErr] = useState<string | null>(null);
@@ -50,13 +58,17 @@ export default function PushToggle() {
         return;
       }
 
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      const reg = await withTimeout(navigator.serviceWorker.register("/sw.js"), 10000, "đăng ký service worker");
+      await withTimeout(navigator.serviceWorker.ready, 10000, "kích hoạt service worker");
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
-      });
+      const sub = await withTimeout(
+        reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+        }),
+        15000,
+        "đăng ký nhận thông báo"
+      );
 
       const res = await fetch("/api/push/subscribe", {
         method: "POST",
@@ -75,8 +87,12 @@ export default function PushToggle() {
   async function disable() {
     setState("loading");
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+      const reg = await withTimeout(
+        navigator.serviceWorker.getRegistration("/sw.js"),
+        10000,
+        "lấy service worker"
+      );
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (sub) {
         await fetch("/api/push/subscribe", {
           method: "DELETE",
@@ -86,7 +102,8 @@ export default function PushToggle() {
         await sub.unsubscribe();
       }
       setState("default");
-    } catch {
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Không tắt được thông báo");
       setState("subscribed");
     }
   }
