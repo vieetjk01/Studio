@@ -283,7 +283,17 @@ export default function ContractEditor({
       .eq("id", contract.id);
     setBusy(null);
     toast(error ? `Lỗi: ${error.message}` : "Đã lưu thông tin hợp đồng.");
-    if (!error) router.refresh();
+    if (!error) {
+      router.refresh();
+      // Sync to Google Calendar if a shoot date is set (fire-and-forget).
+      if (f.event_date) {
+        fetch("/api/gcal/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "contract", id: contract.id, action: "upsert" }),
+        }).catch(() => {});
+      }
+    }
   }
 
   // ── Items ──────────────────────────────────────────────────────

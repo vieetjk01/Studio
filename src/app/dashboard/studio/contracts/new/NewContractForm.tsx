@@ -105,6 +105,14 @@ export default function NewContractForm({
       );
     }
     setSaving(false);
+    // Sync to Google Calendar if a date is set (fire-and-forget).
+    if (eventDate) {
+      fetch("/api/gcal/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "contract", id: data.id, action: "upsert" }),
+      }).catch(() => {});
+    }
     router.push(`/dashboard/studio/contracts/${data.id}`);
   }
 

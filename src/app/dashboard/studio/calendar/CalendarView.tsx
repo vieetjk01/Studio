@@ -109,10 +109,22 @@ export default function CalendarView({
       setTime("");
       setNote("");
       setRemind(true);
+      // Sync to Google Calendar (fire-and-forget).
+      fetch("/api/gcal/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "event", id: data.id, action: "upsert" }),
+      }).catch(() => {});
     }
   }
 
   async function delEvent(id: string) {
+    // Sync deletion to Google Calendar before removing locally.
+    fetch("/api/gcal/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "event", id, action: "delete" }),
+    }).catch(() => {});
     await supabase.from("studio_events").delete().eq("id", id);
     setEvents((p) => p.filter((e) => e.id !== id));
   }

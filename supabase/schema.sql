@@ -1448,3 +1448,15 @@ alter table public.profiles add column if not exists referred_by text; -- affili
 alter table public.site_settings add column if not exists affiliate_commission_basic        int not null default 10;
 alter table public.site_settings add column if not exists affiliate_commission_photographer  int not null default 10;
 alter table public.site_settings add column if not exists affiliate_commission_studio        int not null default 10;
+
+-- ============================================================================
+-- Google Calendar integration
+-- ============================================================================
+-- Encrypted OAuth2 refresh token for each user who connects Google Calendar.
+alter table public.profiles add column if not exists google_refresh_token text;
+-- Which Google Calendar ID to sync to (default: 'primary').
+alter table public.profiles add column if not exists google_calendar_id   text;
+
+-- Store the Google Calendar event ID on each local event so we can update/delete it.
+alter table public.studio_events    add column if not exists gcal_event_id text;
+alter table public.studio_contracts add column if not exists gcal_event_id text;
