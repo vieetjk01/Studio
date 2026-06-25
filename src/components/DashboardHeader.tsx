@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, ChevronDown, LayoutDashboard } from "lucide-react";
+import { Menu, X, ChevronDown, LayoutDashboard, UserCircle, Settings, Gift, LogOut, ShieldCheck } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -39,6 +39,8 @@ export default function DashboardHeader({
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   async function signOut() {
     const supabase = createClient();
@@ -259,9 +261,58 @@ export default function DashboardHeader({
           </span>
           <LanguageSwitcher />
           <ThemeToggle />
-          <button onClick={signOut} className="btn-ghost px-3 py-1.5 text-xs">
-            {t("logout")}
-          </button>
+
+          {/* Avatar dropdown */}
+          <div ref={avatarRef} className="relative">
+            <button
+              onClick={() => setAvatarOpen((o) => !o)}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text)" }}
+              aria-label="Tài khoản"
+            >
+              {(profile.full_name || profile.email || "?").charAt(0).toUpperCase()}
+            </button>
+            {avatarOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setAvatarOpen(false)} />
+                <div
+                  className="absolute right-0 top-full z-40 mt-2 min-w-[200px] rounded-xl p-1.5 shadow-xl"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                >
+                  <div className="mb-1 border-b px-3 pb-2 pt-1" style={{ borderColor: "var(--border)" }}>
+                    <p className="text-[13px] font-medium">{profile.full_name || profile.email}</p>
+                    {profile.full_name && <p className="text-[11px]" style={{ color: "var(--text3)" }}>{profile.email}</p>}
+                  </div>
+                  {[
+                    { href: "/dashboard/affiliate", label: "Affiliate", icon: Gift, external: false },
+                    { href: "/dashboard/settings", label: t("settings"), icon: Settings, external: false },
+                    ...(profile.role === "admin" ? [{ href: "/dashboard/admin/affiliate", label: "Quản lý Affiliate", icon: ShieldCheck, external: false }] : []),
+                  ].map(({ href, label, icon: Icon }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setAvatarOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-[var(--surface2)]"
+                      style={{ color: "var(--text2)" }}
+                    >
+                      <Icon size={14} />
+                      {label}
+                    </Link>
+                  ))}
+                  <div className="mt-1 border-t pt-1" style={{ borderColor: "var(--border)" }}>
+                    <button
+                      onClick={() => { setAvatarOpen(false); signOut(); }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-[var(--surface2)]"
+                      style={{ color: "var(--text2)" }}
+                    >
+                      <LogOut size={14} />
+                      {t("logout")}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           {/* Mobile menu toggle */}
           <button
             onClick={() => setMenuOpen((o) => !o)}

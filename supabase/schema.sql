@@ -1395,3 +1395,52 @@ alter table public.studio_quotes add column if not exists bulk_discount_min_item
 -- package). If the client selects the studio's designated package
 -- (discount_package_group), bulk_discount_amount is knocked off the total.
 alter table public.studio_quotes add column if not exists discount_package_group text null;
+
+-- ============================================================================
+-- Affiliate / referral system
+-- ============================================================================
+
+-- Each user gets one affiliate code (generated on demand).
+create table if not exists public.affiliate_codes (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  code        text not null unique,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+alter table public.affiliate_codes enable row level security;
+create policy affiliate_codes_owner on public.affiliate_codes
+  for all using (user_id = auth.uid());
+create policy affiliate_codes_admin on public.affiliate_codes
+  for all using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+-- Commission records: created when a referred user buys a plan.
+create table if not exists public.affiliate_commissions (
+  id                  uuid primary key default gen_random_uuid(),
+  referrer_id         uuid not null references public.profiles(id) on delete cascade,
+  referred_user_id    uuid references public.profiles(id) on delete set null,
+  referred_email      text,
+  plan                text not null,
+  cycle               text not null default 'month',
+  sale_amount         bigint not null default 0,  -- VND
+  commission_pct      int not null default 0,      -- %
+  commission_amount   bigint not null default 0,   -- VND
+  status              text not null default 'pending', -- pending | paid | cancelled
+  upgrade_request_id  uuid,
+  note                text,
+  created_at          timestamptz not null default now(),
+  paid_at             timestamptz
+);
+alter table public.affiliate_commissions enable row level security;
+create policy affiliate_commissions_owner on public.affiliate_commissions
+  for select using (referrer_id = auth.uid());
+create policy affiliate_commissions_admin on public.affiliate_commissions
+  for all using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+-- Track which affiliate code referred each user (set on first sign-up/visit).
+alter table public.profiles add column if not exists referred_by text; -- affiliate code
+
+-- Commission % per plan (stored in site_settings).
+alter table public.site_settings add column if not exists affiliate_commission_basic        int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_photographer  int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_studio        int not null default 10;

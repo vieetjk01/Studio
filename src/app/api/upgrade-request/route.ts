@@ -5,6 +5,46 @@ import { planProfilePatch, type Plan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
+type Db = ReturnType<typeof createAdminClient>;
+
+async function creditAffiliateCommission(
+  db: Db,
+  userId: string,
+  userEmail: string,
+  plan: Plan,
+  cycle: string,
+  saleAmount: number,
+) {
+  const { data: profile } = await db.from("profiles").select("referred_by").eq("id", userId).maybeSingle();
+  if (!profile?.referred_by) return;
+
+  const { data: affCode } = await db
+    .from("affiliate_codes")
+    .select("user_id")
+    .eq("code", profile.referred_by)
+    .eq("active", true)
+    .maybeSingle();
+  if (!affCode) return;
+
+  const planKey = `affiliate_commission_${plan}` as const;
+  const { data: settings } = await db.from("site_settings").select(planKey).eq("id", 1).maybeSingle();
+  const pct: number = (settings as Record<string, unknown>)?.[planKey] as number ?? 0;
+  if (pct <= 0) return;
+
+  const commissionAmount = Math.round(saleAmount * pct / 100);
+  await db.from("affiliate_commissions").insert({
+    referrer_id: affCode.user_id,
+    referred_user_id: userId,
+    referred_email: userEmail,
+    plan,
+    cycle,
+    sale_amount: saleAmount,
+    commission_pct: pct,
+    commission_amount: commissionAmount,
+    status: "pending",
+  });
+}
+
 function expiryFor(cycle: "month" | "year"): string {
   const d = new Date();
   if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
@@ -67,6 +107,9 @@ export async function POST(req: Request) {
         .update({ ...planProfilePatch(validPlan), plan_cycle: validCycle, plan_expires_at: expiryFor(validCycle) })
         .eq("id", user.id);
       activated = true;
+
+      // Credit affiliate commission if this user was referred.
+      await creditAffiliateCommission(db, user.id, user.email ?? "", validPlan, validCycle, amount ?? 0);
     }
   }
 

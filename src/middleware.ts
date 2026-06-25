@@ -145,6 +145,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Affiliate ref tracking: set a 30-day cookie when ?ref=CODE is present.
+  const refParam = request.nextUrl.searchParams.get("ref");
+  if (refParam && /^[A-Z0-9]{4,16}$/.test(refParam) && !request.cookies.get("aff_ref")) {
+    response.cookies.set("aff_ref", refParam, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax" });
+  }
+
   // Only enforce auth for dashboard routes.
   if (!user && pathname.startsWith("/dashboard")) {
     const url = request.nextUrl.clone();

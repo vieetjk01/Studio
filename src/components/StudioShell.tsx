@@ -7,7 +7,7 @@ import {
   LayoutDashboard, CalendarDays, Clock, Users, Wallet, FileText, FileEdit,
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
-  Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe,
+  Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { appUrl, imgUrl } from "@/lib/hosts";
@@ -119,6 +119,8 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio", "Tổng quan", "Tổng quan hoạt động studio"],
   ["/dashboard/site", "Website riêng", "Trang web portfolio cá nhân"],
   ["/dashboard/upgrade", "Nâng cấp gói", "Gói dịch vụ & bảng giá"],
+  ["/dashboard/affiliate", "Affiliate", "Giới thiệu & hoa hồng"],
+  ["/dashboard/admin/affiliate", "Quản lý Affiliate", "Danh sách hoa hồng"],
   ["/dashboard/settings", "Cài đặt", "Cài đặt hệ thống"],
 ];
 
@@ -259,6 +261,7 @@ export default function StudioShell({
               </p>
               {[
                 { href: "/dashboard/admin", label: "Quản trị", icon: ShieldCheck },
+                { href: "/dashboard/admin/affiliate", label: "Affiliate", icon: Gift },
                 { href: "/dashboard/settings", label: "Cài đặt", icon: Settings },
               ].map((it) => {
                 const active = isActive(it.href);
@@ -282,6 +285,15 @@ export default function StudioShell({
 
           {/* Drawer footer actions */}
           <div className="mt-auto pt-6 flex flex-col gap-2">
+            <Link
+              href="/dashboard/affiliate"
+              onClick={() => setDrawerOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+              style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+            >
+              <Gift size={18} />
+              Affiliate · Hoa hồng
+            </Link>
             <InstallPwaButton />
             <button
               onClick={toggleTheme}
@@ -349,6 +361,7 @@ export default function StudioShell({
               </p>
               {[
                 { href: "/dashboard/admin", label: "Quản trị", icon: ShieldCheck },
+                { href: "/dashboard/admin/affiliate", label: "Affiliate", icon: Gift },
                 { href: "/dashboard/settings", label: "Cài đặt", icon: Settings },
               ].map((it) => {
                 const active = isActive(it.href);
@@ -369,8 +382,16 @@ export default function StudioShell({
               })}
             </div>
           )}
-          {/* Sidebar install button */}
-          <div className="mt-auto pt-4">
+          {/* Sidebar footer */}
+          <div className="mt-auto pt-4 flex flex-col gap-2">
+            <Link
+              href="/dashboard/affiliate"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors"
+              style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+            >
+              <Gift size={16} />
+              Affiliate
+            </Link>
             <InstallPwaButton />
           </div>
         </aside>

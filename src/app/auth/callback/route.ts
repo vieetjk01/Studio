@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_DOMAIN } from "@/lib/hosts";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 4) Return the SAME response object that now carries the Set-Cookie headers.
+  // 4) Save affiliate referral code if present and user has no referrer yet.
+  const affRef = request.cookies.get("aff_ref")?.value;
+  if (affRef) {
+    const { data: { user: newUser } } = await supabase.auth.getUser();
+    if (newUser) {
+      const db = createAdminClient();
+      const { data: profile } = await db.from("profiles").select("referred_by").eq("id", newUser.id).maybeSingle();
+      if (profile && !profile.referred_by) {
+        const { data: affCode } = await db.from("affiliate_codes").select("user_id").eq("code", affRef).eq("active", true).maybeSingle();
+        // Don't let users refer themselves
+        if (affCode && affCode.user_id !== newUser.id) {
+          await db.from("profiles").update({ referred_by: affRef }).eq("id", newUser.id);
+        }
+      }
+      // Clear the cookie once stored
+      response.cookies.set("aff_ref", "", { maxAge: 0, path: "/" });
+    }
+  }
+
+  // 5) Return the SAME response object that now carries the Set-Cookie headers.
   return response;
 }
