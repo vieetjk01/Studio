@@ -152,8 +152,57 @@ export default function ContractEditor({
     source: contract.source ?? "",
     assigned_to: contract.assigned_to ?? "",
   });
+  const contractSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [contractSaved, setContractSaved] = useState<"idle" | "saving" | "saved">("idle");
+
+  async function autosaveContract(data: typeof f) {
+    setContractSaved("saving");
+    const { error } = await supabase
+      .from("studio_contracts")
+      .update({
+        title: data.title.trim() || "Hợp đồng",
+        code: data.code.trim() || null,
+        client_name: data.client_name.trim() || null,
+        client_phone: data.client_phone.replace(/\D/g, "") || null,
+        client_email: data.client_email.trim() || null,
+        shoot_type: data.shoot_type,
+        status: data.status,
+        event_date: data.event_date || null,
+        event_time: data.event_time.trim() || null,
+        location: data.location.trim() || null,
+        note: data.note.trim() || null,
+        gallery_album_id: data.gallery_album_id || null,
+        delivery_due: data.delivery_due || null,
+        client_messenger: data.client_messenger.trim() || null,
+        selection_album_id: data.selection_album_id || null,
+        source: data.source || null,
+        ...(canAssign ? { assigned_to: data.assigned_to || null } : {}),
+      })
+      .eq("id", contract.id);
+    if (error) {
+      setContractSaved("idle");
+      toast(`Lỗi lưu: ${error.message}`);
+      return;
+    }
+    setContractSaved("saved");
+    setTimeout(() => setContractSaved("idle"), 1500);
+    // Sync to Google Calendar if a shoot date is set (fire-and-forget).
+    if (data.event_date) {
+      fetch("/api/gcal/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "contract", id: contract.id, action: "upsert" }),
+      }).catch(() => {});
+    }
+  }
+
   const set = (k: keyof typeof f, v: string | number) =>
-    setF((p) => ({ ...p, [k]: v }) as typeof p);
+    setF((p) => {
+      const next = { ...p, [k]: v } as typeof p;
+      if (contractSaveTimer.current) clearTimeout(contractSaveTimer.current);
+      contractSaveTimer.current = setTimeout(() => autosaveContract(next), 700);
+      return next;
+    });
 
   const [items, setItems] = useState<ItemRow[]>(
     initialItems.map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price }))
@@ -251,62 +300,6 @@ export default function ContractEditor({
   }
 
   // ── Save contract fields ───────────────────────────────────────
-  async function saveContract() {
-    if (reqMissing.title || reqMissing.code || reqMissing.client_name) {
-      toast("Cần nhập: Tên HĐ, Mã HĐ, Tên khách.");
-      return;
-    }
-    if (reqMissing.client_phone) {
-      toast("SĐT khách phải đủ 10 số.");
-      return;
-    }
-    if (!studioSigned) {
-      toast("Cần chữ ký studio (Bên A) trước khi lưu — ký ở mục “Chữ ký Bên A (Studio)”.");
-      return;
-    }
-    setBusy("contract");
-    const pendingStudioSig =
-      !contract.studio_signed_at && studioSignName.trim() && studioSignature
-        ? { studio_signed_name: studioSignName.trim(), studio_signature: studioSignature, studio_signed_at: new Date().toISOString() }
-        : {};
-    const { error } = await supabase
-      .from("studio_contracts")
-      .update({
-        title: f.title.trim() || "Hợp đồng",
-        code: f.code.trim() || null,
-        client_name: f.client_name.trim() || null,
-        client_phone: f.client_phone.replace(/\D/g, "") || null,
-        ...pendingStudioSig,
-        client_email: f.client_email.trim() || null,
-        shoot_type: f.shoot_type,
-        status: f.status,
-        event_date: f.event_date || null,
-        event_time: f.event_time.trim() || null,
-        location: f.location.trim() || null,
-        note: f.note.trim() || null,
-        gallery_album_id: f.gallery_album_id || null,
-        delivery_due: f.delivery_due || null,
-        client_messenger: f.client_messenger.trim() || null,
-        selection_album_id: f.selection_album_id || null,
-        source: f.source || null,
-        ...(canAssign ? { assigned_to: f.assigned_to || null } : {}),
-      })
-      .eq("id", contract.id);
-    setBusy(null);
-    toast(error ? `Lỗi: ${error.message}` : "Đã lưu thông tin hợp đồng.");
-    if (!error) {
-      router.refresh();
-      // Sync to Google Calendar if a shoot date is set (fire-and-forget).
-      if (f.event_date) {
-        fetch("/api/gcal/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind: "contract", id: contract.id, action: "upsert" }),
-        }).catch(() => {});
-      }
-    }
-  }
-
   // ── Items ──────────────────────────────────────────────────────
   async function saveItems() {
     setBusy("items");
@@ -786,10 +779,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </select>
           </label>
           <div className="flex flex-col items-end">
-            <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary px-4 py-2 text-xs">
-              <Check size={14} /> {busy === "contract" ? "Đang lưu…" : "Lưu hợp đồng"}
-            </button>
-            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "#c77b7b" }}>Cần chữ ký studio để lưu</span>}
+            <span className="flex items-center gap-1 px-3 py-2 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
+              {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu</> : "Tự động lưu"}
+            </span>
+            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "#c77b7b" }}>Chưa có chữ ký studio</span>}
           </div>
           <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">
             Xem như khách
@@ -1070,9 +1063,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <textarea className="input min-h-[80px]" value={f.note} onChange={(e) => set("note", e.target.value)} />
                 <ClauseInserter onInsert={(t) => set("note", f.note.trim() ? `${f.note.trim()}\n\n${t}` : t)} />
               </div>
-              <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary">
-                {busy === "contract" ? "Đang lưu…" : "Lưu thông tin"}
-              </button>
+              <p className="flex items-center gap-1 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
+                {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu tự động</> : "Thông tin tự động lưu khi nhập"}
+              </p>
             </div>
           </div>
 
@@ -1224,9 +1217,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   className="btn-ghost text-xs"
-                  onClick={() => setPlanForm({ label: "Cọc hợp đồng", amount: Math.round(total * 0.25 / 1000) * 1000, due_date: "" })}
+                  onClick={() => setPlanForm({ label: "Cọc hợp đồng", amount: Math.max(500_000, Math.round(total * 0.25 / 500_000) * 500_000), due_date: "" })}
                 >
-                  Cọc 25% · {vnd(Math.round(total * 0.25 / 1000) * 1000)}
+                  Cọc 25% · {vnd(Math.max(500_000, Math.round(total * 0.25 / 500_000) * 500_000))}
                 </button>
               </div>
             )}
