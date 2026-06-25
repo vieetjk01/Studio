@@ -13,6 +13,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
+import InstallPwaButton from "@/components/InstallPwaButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
 import type { Profile } from "@/lib/types";
@@ -267,6 +268,7 @@ export default function StudioShell({
 
           {/* Drawer footer actions */}
           <div className="mt-auto pt-6 flex flex-col gap-2">
+            <InstallPwaButton />
             <button
               onClick={toggleTheme}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
@@ -354,6 +356,10 @@ export default function StudioShell({
               })}
             </div>
           )}
+          {/* Sidebar install button */}
+          <div className="mt-auto pt-4">
+            <InstallPwaButton />
+          </div>
         </aside>
 
         {/* ── Main column ───────────────────────────────────────── */}
