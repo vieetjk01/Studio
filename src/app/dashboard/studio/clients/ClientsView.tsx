@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Phone, Repeat, Search, Download, HeartHandshake } from "lucide-react";
+import { Phone, Repeat, Search, Download, HeartHandshake, Users } from "lucide-react";
 import ZaloButton from "@/components/ZaloButton";
 import { vnd, LEAD_SOURCE_LABEL } from "@/lib/types";
 
@@ -95,25 +95,34 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
       </div>
 
       {clients.length === 0 ? (
-        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Chưa có khách hàng nào.</div>
+        <div className="card flex flex-col items-center py-16 text-center">
+          <Users size={32} className="mb-3 opacity-30" style={{ color: "var(--text3)" }} />
+          <p className="text-sm font-medium" style={{ color: "var(--text2)" }}>Chưa có khách hàng nào.</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>Khách hàng sẽ xuất hiện sau khi bạn tạo hợp đồng đầu tiên.</p>
+        </div>
       ) : (
         <>
           {filtered.length === 0 ? (
-            <div className="card py-12 text-center text-sm" style={{ color: "var(--text3)" }}>Không tìm thấy khách phù hợp.</div>
+            <div className="card py-12 text-center">
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Không tìm thấy khách phù hợp.</p>
+              <button onClick={() => { setQ(""); setOnlyOld(false); }} className="mt-3 text-xs hover:underline" style={{ color: "var(--s-green)" }}>
+                Xoá bộ lọc
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
               {filtered.map((c) => (
-                <div key={c.key} className="card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div key={c.key} className="card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:border-[var(--border2)]">
                   <Link href={`/dashboard/studio/clients/${encodeURIComponent(digits(c.phone) || c.key)}`} className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 font-medium">
                       {c.name}
                       {c.count > 1 && (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--surface2)", color: "#7bb38a" }}>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-greenS)", color: "var(--s-green)" }}>
                           <Repeat size={10} /> khách cũ
                         </span>
                       )}
                       {isOld(c) && (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--surface2)", color: "#c7a76b" }}>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-amberS)", color: "var(--s-amber)" }}>
                           <HeartHandshake size={10} /> cần chăm sóc
                         </span>
                       )}

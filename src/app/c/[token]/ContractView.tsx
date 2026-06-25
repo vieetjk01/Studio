@@ -321,7 +321,9 @@ export default function ContractView({ token }: { token: string }) {
           <h1 className="mt-4 font-serif text-2xl font-medium">{t("portalTitle")}</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>{t("gatePrompt")}</p>
           <input className="input mt-5 text-center" placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} />
-          {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
+          {err && (
+            <p className="mt-3 rounded-lg px-3 py-2 text-sm font-medium" style={{ background: "var(--s-redS)", color: "var(--s-red)" }}>{err}</p>
+          )}
           <button type="submit" disabled={loading} className="btn-primary mt-4 w-full">
             {loading ? t("opening") : t("view")}
           </button>
@@ -572,21 +574,47 @@ export default function ContractView({ token }: { token: string }) {
               </select>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            {/* Drag-drop upload zone */}
+            <label
+              className="relative block w-full cursor-pointer rounded-2xl border-2 border-dashed py-8 text-center transition-colors"
+              style={{
+                borderColor: proofUploading ? "var(--brand)" : "var(--border2)",
+                background: proofUploading ? "var(--brandSoft)" : "transparent",
+                opacity: proofUploading ? 0.8 : 1,
+              }}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.background = "var(--brandSoft)"; }}
+              onDragLeave={(e) => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.background = ""; }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderColor = "";
+                e.currentTarget.style.background = "";
+                const f = e.dataTransfer.files?.[0];
+                if (f && f.type.startsWith("image/")) uploadProof(f, selectedPlanId || undefined);
+              }}
+            >
+              <input type="file" accept="image/*" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" disabled={proofUploading}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f, selectedPlanId || undefined); e.target.value = ""; }} />
+              <Upload size={22} className="mx-auto mb-2" style={{ color: proofUploading ? "var(--brand)" : "var(--text3)" }} />
+              <p className="text-sm font-medium" style={{ color: proofUploading ? "var(--brand)" : "var(--text2)" }}>
+                {proofUploading
+                  ? (lang === "vi" ? "Đang tải lên…" : "Uploading…")
+                  : (lang === "vi" ? "Kéo ảnh vào đây hoặc bấm để chọn" : "Drag photo here or tap to select")}
+              </p>
+              {!proofUploading && (
+                <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>
+                  {lang === "vi" ? "Ảnh chuyển khoản ngân hàng • Tối đa 10MB" : "Bank transfer screenshot • Max 10MB"}
+                </p>
+              )}
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
               {!paidReported && (
                 <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
-                  {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
+                  {lang === "vi" ? "Tôi đã chuyển khoản (không có ảnh)" : "I have transferred (no screenshot)"}
                 </button>
               )}
               {paidReported && (
-                <p className="py-2 text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã thông báo, studio sẽ đối soát." : "Notified — studio will reconcile."}</p>
+                <p className="py-2 text-sm" style={{ color: "var(--s-green)" }}>✓ {lang === "vi" ? "Đã thông báo, studio sẽ đối soát." : "Notified — studio will reconcile."}</p>
               )}
-              <label className="btn-ghost flex cursor-pointer items-center gap-1.5 px-4 py-2 text-sm" style={{ opacity: proofUploading ? 0.6 : 1 }}>
-                <Upload size={14} />
-                {proofUploading ? (lang === "vi" ? "Đang tải…" : "Uploading…") : (lang === "vi" ? "Gửi ảnh chuyển khoản" : "Upload proof")}
-                <input type="file" accept="image/*" className="hidden" disabled={proofUploading}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f, selectedPlanId || undefined); e.target.value = ""; }} />
-              </label>
             </div>
           </div>
         </div>

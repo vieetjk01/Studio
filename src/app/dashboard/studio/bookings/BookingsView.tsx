@@ -32,6 +32,7 @@ export default function BookingsView({
   }, [token]);
 
   async function archive(id: string) {
+    if (!confirm("Lưu trữ yêu cầu này? Sẽ không hiển thị trong danh sách nữa.")) return;
     await supabase.from("studio_bookings").update({ status: "archived" }).eq("id", id);
     setList((p) => p.filter((b) => b.id !== id));
   }
@@ -111,13 +112,13 @@ export default function BookingsView({
       ) : (
         <div className="space-y-2">
           {list.map((b) => (
-            <div key={b.id} className="card p-4">
+            <div key={b.id} className="card p-4 hover:border-[var(--border2)] transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">
                     {b.name}
                     {b.status === "handled" && (
-                      <span className="ml-2 text-[11px] font-medium" style={{ color: "var(--s-green, #7bb38a)" }}>✓ đã xử lý</span>
+                      <span className="ml-2 text-[11px] font-medium" style={{ color: "var(--s-green)" }}>✓ đã xử lý</span>
                     )}
                   </p>
                   <p className="flex items-center gap-1.5 text-xs mt-0.5" style={{ color: "var(--text3)" }}>
@@ -139,10 +140,10 @@ export default function BookingsView({
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>{new Date(b.created_at).toLocaleString("vi-VN")}</p>
                 </div>
                 <div className="flex shrink-0 flex-col gap-2">
-                  <button onClick={() => toContract(b)} disabled={busy === b.id} className="btn-primary px-3 py-1.5 text-xs gap-1.5">
-                    <FilePlus size={13} /> {busy === b.id ? "…" : "Tạo HĐ"}
+                  <button onClick={() => toContract(b)} disabled={!!busy} className="btn-primary px-3 py-1.5 text-xs gap-1.5">
+                    <FilePlus size={13} /> {busy === b.id ? "Đang tạo…" : "Tạo HĐ"}
                   </button>
-                  <button onClick={() => archive(b.id)} className="btn-ghost px-3 py-1.5 text-xs gap-1.5">
+                  <button onClick={() => archive(b.id)} disabled={!!busy} className="btn-ghost px-3 py-1.5 text-xs gap-1.5">
                     <Archive size={13} /> Lưu trữ
                   </button>
                 </div>
