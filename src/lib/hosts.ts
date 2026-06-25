@@ -14,6 +14,21 @@ export const ADMIN_HOST = process.env.NEXT_PUBLIC_ADMIN_HOST || "";
  */
 export const COOKIE_DOMAIN = MAIN_HOST ? `.${MAIN_HOST}` : undefined;
 
+/**
+ * Cookie domain to actually use for a given request host. We only attach the
+ * shared `.mstudo.com` domain when the request really is on mstudo.com (apex or
+ * a subdomain). On any other host (*.vercel.app previews, local dev, a custom
+ * host that differs from the configured MAIN_HOST) we return undefined so the
+ * cookie is host-only — otherwise the browser silently REJECTS a cookie whose
+ * domain doesn't match the page host, and the session is never stored
+ * (the classic "logged in but bounced straight back to /login" bug).
+ */
+export function cookieDomainForHost(host?: string | null): string | undefined {
+  if (!MAIN_HOST || !host) return undefined;
+  const h = host.split(":")[0];
+  return h === MAIN_HOST || h.endsWith(`.${MAIN_HOST}`) ? `.${MAIN_HOST}` : undefined;
+}
+
 /** URL to a route on the app subdomain (album.mstudo.com). */
 export function appUrl(path: string): string {
   return APP_HOST ? `https://${APP_HOST}${path}` : path;

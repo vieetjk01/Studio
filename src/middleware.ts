@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { cookieDomainForHost } from "@/lib/hosts";
 
 // Domain split (set these on Vercel to enable it). When unset (local dev,
 // *.vercel.app previews) the full app is served on one host.
@@ -119,7 +120,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
+      ...((() => { const d = cookieDomainForHost(host); return d ? { cookieOptions: { domain: d } } : {}; })()),
       cookies: {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {

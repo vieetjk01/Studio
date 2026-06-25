@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { COOKIE_DOMAIN } from "@/lib/hosts";
+import { cookies, headers } from "next/headers";
+import { cookieDomainForHost } from "@/lib/hosts";
 
 /**
  * Supabase client bound to the current request's cookies (RLS-aware).
@@ -8,13 +8,16 @@ import { COOKIE_DOMAIN } from "@/lib/hosts";
  */
 export function createClient() {
   const cookieStore = cookies();
+  // Match the cookie domain to the actual request host (see cookieDomainForHost).
+  let domain: string | undefined;
+  try { domain = cookieDomainForHost(headers().get("host")); } catch { domain = undefined; }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key",
     {
       // Share the session cookie across mstudo.com subdomains (album / img).
-      ...(COOKIE_DOMAIN ? { cookieOptions: { domain: COOKIE_DOMAIN } } : {}),
+      ...(domain ? { cookieOptions: { domain } } : {}),
       cookies: {
         getAll() {
           return cookieStore.getAll();
