@@ -58,12 +58,27 @@ export default function PricingManager({
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
 
-  // Load custom lists from localStorage on mount
+  // Load custom lists from localStorage on mount. Lists created before labels
+  // were stored in the DB only have their readable name in localStorage, so the
+  // public page would show the bare slug (e.g. "k-yu" for "Kỷ yếu"). Back-fill
+  // any missing labels into pl_list_labels so the public page shows them too.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(`pl_custom_lists_${ownerId}`);
-      if (raw) setCustomLists(JSON.parse(raw));
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { key: string; label: string; title: string }[];
+      setCustomLists(parsed);
+      const missing: Record<string, string> = {};
+      for (const l of parsed) {
+        if (l.label && l.label !== l.key && !initialListLabels[l.key]) missing[l.key] = l.label;
+      }
+      if (Object.keys(missing).length) {
+        const merged = { ...initialListLabels, ...missing };
+        setListLabels(merged);
+        supabase.from("profiles").update({ pl_list_labels: merged }).eq("id", ownerId);
+      }
     } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId]);
 
   const allLists = [...visibleBuiltIns, ...customLists];
