@@ -52,13 +52,10 @@ export interface Album {
   updated_at: string;
 }
 
-export const GALLERY_CATEGORIES = [
-  { value: "cuoi-hoi", label: "Cưới hỏi" },
-  { value: "su-kien", label: "Sự kiện" },
-  { value: "gia-dinh", label: "Gia đình" },
-  { value: "video", label: "Video" },
-  { value: "khac", label: "Khác" },
-] as const;
+// Gallery categories are free-text, entered per studio (saved & suggested from
+// the user's own past galleries). "video" is the one reserved value — galleries
+// tagged with it appear under the Video tab on the public browse page.
+export const VIDEO_CATEGORY = "video";
 
 export interface Feedback {
   id: string;

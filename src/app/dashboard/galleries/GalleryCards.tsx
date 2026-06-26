@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Calendar, ExternalLink, Image as ImageIcon, Pin, Settings2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mainUrl } from "@/lib/hosts";
+import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl } from "@/lib/drive";
-import { GALLERY_CATEGORIES } from "@/lib/types";
 
 export interface GalleryRow {
   id: string;
@@ -23,8 +24,7 @@ export interface GalleryRow {
 }
 
 function catLabel(cat: string | null, custom: string | null) {
-  if (cat === "khac" && custom) return custom;
-  return GALLERY_CATEGORIES.find((c) => c.value === cat)?.label ?? "Khác";
+  return cat?.trim() || custom?.trim() || "Khác";
 }
 
 export default function GalleryCards({ galleries }: { galleries: GalleryRow[] }) {
@@ -91,6 +91,7 @@ function Card({ g }: { g: GalleryRow }) {
           <button onClick={() => setMenu((v) => !v)} className="btn-ghost py-1.5 text-xs" title="Bật/tắt nhanh">
             <Settings2 size={13} /> Sửa
           </button>
+          <ShareButton path={mainUrl(`/album/${g.slug}`)} title={g.title} label="" className="btn-ghost py-1.5 text-xs" compact />
           <Link href={`/album/${g.slug}`} target="_blank" className="btn-ghost py-1.5 text-xs">
             <ExternalLink size={13} />
           </Link>

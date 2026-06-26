@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,7 +11,7 @@ import { mainUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
-import { GALLERY_CATEGORIES } from "@/lib/types";
+import { fetchMyGalleryCategories } from "@/lib/gallery-cats";
 import type { Album, AlbumSource, Photo, Feedback, SourceKind } from "@/lib/types";
 
 export default function GalleryEditor({
@@ -32,14 +32,17 @@ export default function GalleryEditor({
     title: album.title,
     client_name: album.client_name ?? "",
     event_date: album.event_date ?? "",
-    category: album.category ?? "cuoi-hoi",
-    category_label: album.category_label ?? "",
+    category: album.category ?? "",
     status: album.status,
     gallery_pinned: album.gallery_pinned,
     download_enabled: album.download_enabled ?? true,
     cover_url: album.cover_url,
   });
   const [newPhone, setNewPhone] = useState("");
+  const [catSuggestions, setCatSuggestions] = useState<string[]>([]);
+  useEffect(() => {
+    fetchMyGalleryCategories().then(setCatSuggestions);
+  }, []);
   const [sources, setSources] = useState<AlbumSource[]>(initialSources);
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [newSource, setNewSource] = useState({ name: "", url: "" });
@@ -61,8 +64,8 @@ export default function GalleryEditor({
         title: form.title,
         client_name: form.client_name || null,
         event_date: form.event_date || null,
-        category: form.category,
-        category_label: form.category === "khac" ? form.category_label || "Khác" : null,
+        category: form.category.trim() || null,
+        category_label: null,
         status: form.status,
         gallery_pinned: form.gallery_pinned,
         download_enabled: form.download_enabled,
@@ -173,14 +176,35 @@ export default function GalleryEditor({
           </div>
           <div><label className="label">Ngày cưới / đính hôn</label><input type="date" className="input" value={form.event_date ?? ""} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></div>
           <div>
-            <label className="label">Phân loại</label>
-            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-              {GALLERY_CATEGORIES.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
-            </select>
+            <label className="label">Phân loại (tự nhập)</label>
+            <input
+              className="input"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              list="gallery-cat-suggestions"
+              placeholder="VD: Cưới hỏi, Kỷ yếu, Sự kiện…"
+            />
+            <datalist id="gallery-cat-suggestions">
+              {catSuggestions.map((c) => (<option key={c} value={c} />))}
+            </datalist>
+            {catSuggestions.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {catSuggestions.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: c })}
+                    className="rounded-full px-2.5 py-1 text-[12px]"
+                    style={form.category === c
+                      ? { background: "var(--gold)", color: "#1a1205" }
+                      : { background: "var(--surface2)", color: "var(--text2)" }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {form.category === "khac" && (
-            <div><label className="label">Tên phân loại</label><input className="input" value={form.category_label} onChange={(e) => setForm({ ...form, category_label: e.target.value })} /></div>
-          )}
           <div>
             <label className="label">Trạng thái</label>
             <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Album["status"] })}>

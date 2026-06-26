@@ -57,7 +57,7 @@ import Link from "next/link";
 import { Search, Calendar, Lock, Pin, Play } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { GALLERY_CATEGORIES } from "@/lib/types";
+import { VIDEO_CATEGORY } from "@/lib/types";
 
 export interface GalleryCard {
   slug: string;
@@ -71,9 +71,9 @@ export interface GalleryCard {
 }
 
 function catLabel(cat: string | null, custom: string | null) {
-  if (cat === "khac" && custom) return custom;
-  return GALLERY_CATEGORIES.find((c) => c.value === cat)?.label ?? "Other";
+  return cat?.trim() || custom?.trim() || "Other";
 }
+const isVideoCat = (c: string | null) => (c ?? "").trim().toLowerCase() === VIDEO_CATEGORY;
 function periodKey(d: string | null, months: readonly string[], other: string) {
   if (!d) return other;
   const dt = new Date(d);
@@ -111,12 +111,23 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
   }
 
   const base = results ?? galleries;
-  const images = useMemo(() => base.filter((g) => g.category !== "video"), [base]);
-  const videos = useMemo(() => base.filter((g) => g.category === "video"), [base]);
+  const images = useMemo(() => base.filter((g) => !isVideoCat(g.category)), [base]);
+  const videos = useMemo(() => base.filter((g) => isVideoCat(g.category)), [base]);
+
+  // Distinct image categories actually in use (the studio's own labels).
+  const imageCats = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const g of images) {
+      const c = g.category?.trim();
+      if (c && !seen.has(c)) { seen.add(c); out.push(c); }
+    }
+    return out;
+  }, [images]);
 
   // Image mode: filter by category, group by month.
   const shownImages = useMemo(
-    () => (cat === "all" ? images : images.filter((g) => g.category === cat)),
+    () => (cat === "all" ? images : images.filter((g) => g.category?.trim() === cat)),
     [images, cat]
   );
   const imageGroups = useMemo(() => {
@@ -186,8 +197,8 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
         {media === "image" ? (
           <div className="mt-4 flex flex-wrap gap-2">
             <CatTab active={cat === "all"} onClick={() => setCat("all")}>{tr.filterAll}</CatTab>
-            {GALLERY_CATEGORIES.filter((c) => c.value !== "video").map((c) => (
-              <CatTab key={c.value} active={cat === c.value} onClick={() => setCat(c.value)}>{c.label}</CatTab>
+            {imageCats.map((c) => (
+              <CatTab key={c} active={cat === c} onClick={() => setCat(c)}>{c}</CatTab>
             ))}
           </div>
         ) : (

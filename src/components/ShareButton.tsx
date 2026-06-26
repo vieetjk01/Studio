@@ -16,11 +16,15 @@ export default function ShareButton({
   title,
   label = "Chia sẻ",
   className = "btn-ghost",
+  compact = false,
 }: {
   path: string;
   title?: string;
   label?: string;
   className?: string;
+  /** Skip the popover: clicking shares (native) / copies the link directly.
+   * Useful inside cards with `overflow-hidden` that would clip a popover. */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -69,6 +73,30 @@ export default function ShareButton({
     } catch {
       /* cancelled */
     }
+  }
+
+  async function quickShareOrCopy() {
+    if (navigator.share) {
+      try { await navigator.share({ title: title || "Album ảnh", url }); return; } catch { /* cancelled */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* ignore */ }
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={quickShareOrCopy}
+        title="Chia sẻ link album"
+        className={className}
+      >
+        {copied ? <Check size={15} /> : <Share2 size={15} />} {label}
+      </button>
+    );
   }
 
   return (
