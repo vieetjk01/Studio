@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import Turnstile from "@/components/Turnstile";
 import { thumbnailUrl, fullImageUrl } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
 import type { Feedback } from "@/lib/types";
@@ -41,6 +42,8 @@ export default function GalleryView({
   const [fbContent, setFbContent] = useState("");
   const [fbList, setFbList] = useState<Feedback[]>(feedback);
   const [fbSent, setFbSent] = useState(false);
+  const [fbCaptcha, setFbCaptcha] = useState<string | null>(null);
+  const onFbCaptcha = useCallback((t: string) => setFbCaptcha(t), []);
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -91,10 +94,10 @@ export default function GalleryView({
   }
 
   async function sendFeedback() {
-    if (!fbContent.trim()) return;
+    if (!fbContent.trim() || !fbCaptcha) return;
     const res = await fetch("/api/feedback", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ albumId: gallery.id, clientName: fbName, rating: fbRating, content: fbContent }),
+      body: JSON.stringify({ albumId: gallery.id, clientName: fbName, rating: fbRating, content: fbContent, captcha: fbCaptcha }),
     });
     if (res.ok) {
       setFbSent(true);
@@ -203,7 +206,8 @@ export default function GalleryView({
                     ))}
                   </div>
                   <textarea value={fbContent} onChange={(e) => setFbContent(e.target.value)} placeholder="Chia sẻ cảm nhận của bạn về bộ ảnh…" className="input min-h-[90px] resize-y" />
-                  <button onClick={sendFeedback} className="btn-primary mt-3 w-full"><Send size={15} /> Gửi cảm nhận</button>
+                  <Turnstile onVerify={onFbCaptcha} onExpire={() => setFbCaptcha(null)} onError={() => setFbCaptcha(null)} className="mt-3" />
+                  <button onClick={sendFeedback} disabled={!fbCaptcha} className="btn-primary mt-3 w-full"><Send size={15} /> Gửi cảm nhận</button>
                 </>
               )}
             </div>

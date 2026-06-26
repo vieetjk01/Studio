@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarCheck, Check } from "lucide-react";
 import { vnd } from "@/lib/types";
+import Turnstile from "@/components/Turnstile";
 
 export type PkgOption = { name: string; price: number };
 
@@ -24,6 +25,7 @@ export default function BookingForm({
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
 
   async function submit(e: React.FormEvent) {
@@ -33,6 +35,10 @@ export default function BookingForm({
       setErr("Vui lòng nhập tên và số điện thoại.");
       return;
     }
+    if (!captchaToken) {
+      setErr("Vui lòng xác minh bạn không phải robot.");
+      return;
+    }
     const chosen = packages.find((p) => p.name === pkg);
     const packageName = pkg === "__custom__" ? customPkg.trim() || null : chosen?.name || null;
     const packagePrice = pkg === "__custom__" ? null : chosen?.price ?? null;
@@ -40,7 +46,7 @@ export default function BookingForm({
     const res = await fetch(`/api/book/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...f, package_name: packageName, package_price: packagePrice }),
+      body: JSON.stringify({ ...f, package_name: packageName, package_price: packagePrice, captcha: captchaToken }),
     });
     setBusy(false);
     if (res.ok) setSent(true);
@@ -109,8 +115,13 @@ export default function BookingForm({
           <label className="label">Ghi chú</label>
           <textarea className="input min-h-[80px]" value={f.note} onChange={(e) => set("note", e.target.value)} />
         </div>
+        <Turnstile
+          onVerify={setCaptchaToken}
+          onExpire={() => setCaptchaToken(null)}
+          onError={() => setCaptchaToken(null)}
+        />
         {err && <p className="text-sm text-red-400">{err}</p>}
-        <button type="submit" disabled={busy} className="btn-primary w-full">
+        <button type="submit" disabled={busy || !captchaToken} className="btn-primary w-full">
           {busy ? "Đang gửi…" : "Gửi yêu cầu đặt lịch"}
         </button>
       </form>
