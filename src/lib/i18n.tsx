@@ -101,6 +101,13 @@ export const dict: Dict = {
   submitSelection: { vi: "Gửi lựa chọn cho photographer", en: "Send selection to photographer" },
   submitted: { vi: "Đã gửi lựa chọn của bạn!", en: "Your selection has been sent!" },
   allPhotos: { vi: "Tất cả", en: "All" },
+  viewingSelected: { vi: "Đang xem ảnh đã chọn", en: "Viewing selected photos" },
+  selectedCount: { vi: "Ảnh đã chọn", en: "Selected photos" },
+  noneSelected: { vi: "Chưa chọn ảnh nào", en: "No photos selected" },
+  saveErr: { vi: "Chưa lưu được lựa chọn", en: "Could not save selection" },
+  savedForStudio: { vi: "Đã lưu cho studio", en: "Saved for studio" },
+  noSelectedPhotos: { vi: "Chưa có ảnh nào được chọn", en: "No photos selected yet" },
+  heartHint: { vi: "Nhấn vào trái tim ở góc mỗi ảnh để chọn.", en: "Tap the heart on any photo to select it." },
   // selections view (photographer)
   customerSelections: { vi: "Lượt chọn của khách", en: "Customer selections" },
   note: { vi: "Ghi chú", en: "Note" },

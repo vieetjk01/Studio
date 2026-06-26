@@ -113,7 +113,7 @@ export default function CustomerAlbum({
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setSaveStatus("idle");
-        flashToast(`Chưa lưu được lựa chọn (${d.error ?? res.status})`);
+        flashToast(`${t("saveErr")} (${d.error ?? res.status})`);
         return;
       }
       dirtyUntil.current = Date.now() + 2500; // grace for read-after-write
@@ -467,12 +467,12 @@ export default function CustomerAlbum({
             }
           >
             <Heart size={14} fill={selectedOnly ? "currentColor" : "none"} />
-            {selectedOnly ? "Đang xem ảnh đã chọn" : `Ảnh đã chọn${selected.size ? ` · ${selected.size}` : ""}`}
+            {selectedOnly ? t("viewingSelected") : `${t("selectedCount")}${selected.size ? ` · ${selected.size}` : ""}`}
           </button>
           <span className="text-[13px]" style={{ color: "var(--text3)" }}>
             {selected.size > 0
               ? `${selected.size}${limit != null ? ` / ${limit}` : ""} ${t("selected")}`
-              : `Chưa chọn ảnh nào · ${photos.length} ${t("photos")}`}
+              : `${t("noneSelected")} · ${photos.length} ${t("photos")}`}
           </span>
 
           <div className="flex-1" />
@@ -480,10 +480,10 @@ export default function CustomerAlbum({
           {/* Auto-save status */}
           <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: saveStatus === "saved" ? "#5fd29a" : "var(--text3)" }}>
             {saveStatus === "saving" ? (
-              <>Đang lưu…</>
+              <>{t("saving")}</>
             ) : saveStatus === "saved" ? (
               <>
-                <Check size={13} /> Đã lưu cho studio
+                <Check size={13} /> {t("savedForStudio")}
               </>
             ) : null}
           </span>
@@ -508,9 +508,9 @@ export default function CustomerAlbum({
         {visiblePhotos.length === 0 ? (
           <div className="py-20 text-center animate-[vkFade_.4s_ease_both]" style={{ color: "var(--text3)" }}>
             <p className="mb-1.5 font-serif text-2xl" style={{ color: "var(--text2)" }}>
-              {selectedOnly ? "Chưa có ảnh nào được chọn" : t("loading")}
+              {selectedOnly ? t("noSelectedPhotos") : t("loading")}
             </p>
-            <p className="text-[13.5px]">Nhấn vào trái tim ở góc mỗi ảnh để chọn.</p>
+            <p className="text-[13.5px]">{t("heartHint")}</p>
           </div>
         ) : (
           // Sections — each Drive source shown separately, left-to-right
