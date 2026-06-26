@@ -15,9 +15,12 @@ import {
   sumAmounts,
   vnd,
   CONTRACT_STATUS_LABEL,
+  QUOTE_STATUS_LABEL,
   SHOOT_TYPE_LABEL,
   CREW_ROLE_LABEL,
+  quoteSelectedTotal,
   type ContractStatus,
+  type QuoteStatus,
   type CrewRole,
 } from "@/lib/types";
 
@@ -292,6 +295,7 @@ export default async function StudioOverview() {
     { data: paySixMonths },
     { count: newBookings },
     { count: bookingsAll },
+    { data: recentQuotes },
   ] = await Promise.all([
     cq.order("event_date", { ascending: true, nullsFirst: false }),
     supabase
@@ -314,6 +318,12 @@ export default async function StudioOverview() {
       .gte("paid_at", chartStart),
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id).eq("status", "new"),
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
+    supabase
+      .from("studio_quotes")
+      .select("id, code, client_name, client_phone, status, created_at, quote_items(qty, unit_price, selected, is_optional, is_discount)")
+      .eq("owner_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
   type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
@@ -578,6 +588,56 @@ export default async function StudioOverview() {
           </div>
         )}
       </div>
+
+      {/* Recent quotes */}
+      {recentQuotes && recentQuotes.length > 0 && (
+        <div className="card mb-6 p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-serif text-lg font-medium">Báo giá gần đây</h2>
+            <Link href="/dashboard/studio/quotes" className="text-xs hover:underline" style={{ color: ACCENT }}>
+              Tất cả →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[13.5px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
+                  <th className="px-2 py-2.5 font-bold">Mã</th>
+                  <th className="px-2 py-2.5 font-bold">Khách hàng</th>
+                  <th className="px-2 py-2.5 font-bold">Tổng</th>
+                  <th className="px-2 py-2.5 font-bold">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(recentQuotes as Array<{ id: string; code: string | null; client_name: string | null; client_phone: string | null; status: QuoteStatus; created_at: string; quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount?: boolean }[] }>).map((q) => {
+                  const total = quoteSelectedTotal(q.quote_items || []);
+                  const QUOTE_TONE: Record<string, ToneKey> = {
+                    draft: "gray", sent: "blue", viewed: "blue",
+                    adjust_requested: "amber", accepted: "green",
+                    converted: "green", expired: "gray", cancelled: "red",
+                  };
+                  return (
+                    <tr key={q.id} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td className="px-2 py-3 font-bold font-mono">
+                        <Link href={`/dashboard/studio/quotes/${q.id}`} className="hover:underline">
+                          {q.code || q.id.slice(0, 6)}
+                        </Link>
+                      </td>
+                      <td className="px-2 py-3">{q.client_name || "—"}</td>
+                      <td className="px-2 py-3 font-bold">{vnd(total)}</td>
+                      <td className="px-2 py-3">
+                        <span style={badgeStyle(QUOTE_TONE[q.status] ?? "gray")}>
+                          {QUOTE_STATUS_LABEL[q.status] || q.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Reminders: unsigned + debts + crew awaiting response + late deliveries + due installments */}
       {(unsigned.length > 0 || debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (

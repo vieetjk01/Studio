@@ -374,7 +374,7 @@ export interface StudioBooking {
   package_name: string | null;
   package_price: number | null;
   facebook: string | null;
-  status: "new" | "handled" | "archived";
+  status: "new" | "accepted" | "pending" | "declined" | "handled" | "archived";
   created_at: string;
 }
 
