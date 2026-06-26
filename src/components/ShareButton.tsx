@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Share2, Copy, Check, X, MessageCircle } from "lucide-react";
+import { Share2, Copy, Check, X } from "lucide-react";
 
 /**
  * Share an album/gallery link. Shows the full URL with a one-tap copy button and
- * direct share shortcuts (native share sheet → Messenger / Zalo on mobile, plus
- * explicit Messenger & Zalo links as a fallback).
+ * a quick-share action that opens the device's native share sheet (which lists
+ * Messenger / Zalo / etc. on mobile).
  *
  * `path` may be absolute (https://…) or relative (/a/slug). Relative paths are
  * resolved against the current origin on the client.
@@ -71,10 +71,6 @@ export default function ShareButton({
     }
   }
 
-  const enc = encodeURIComponent(url);
-  const messengerUrl = `https://www.facebook.com/sharer/sharer.php?u=${enc}`;
-  const zaloUrl = `https://sp.zalo.me/plugins/share?u=${enc}`;
-
   return (
     <div className="relative inline-block">
       <button type="button" onClick={() => setOpen((v) => !v)} className={className}>
@@ -116,36 +112,16 @@ export default function ShareButton({
             </button>
           </div>
 
-          {/* Direct share shortcuts */}
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {canNativeShare && (
-              <button
-                onClick={nativeShare}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-medium"
-                style={{ background: "var(--accent)", color: "var(--accentInk)" }}
-              >
-                <Share2 size={15} /> Chia sẻ nhanh
-              </button>
-            )}
-            <a
-              href={messengerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-medium"
-              style={{ background: "#0866ff", color: "#fff" }}
+          {/* Quick share via the native share sheet (Messenger / Zalo / …) */}
+          {canNativeShare && (
+            <button
+              onClick={nativeShare}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-medium"
+              style={{ background: "var(--accent)", color: "var(--accentInk)" }}
             >
-              <MessageCircle size={15} /> Messenger
-            </a>
-            <a
-              href={zaloUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-medium"
-              style={{ background: "#0068ff", color: "#fff" }}
-            >
-              Zalo
-            </a>
-          </div>
+              <Share2 size={15} /> Chia sẻ nhanh
+            </button>
+          )}
         </div>
       )}
     </div>

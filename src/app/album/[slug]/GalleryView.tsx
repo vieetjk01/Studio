@@ -44,11 +44,13 @@ const TR = {
   },
 } as const;
 import {
-  Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play,
+  Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play, Heart, Share2,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Turnstile from "@/components/Turnstile";
+import ShareButton from "@/components/ShareButton";
+import { mainUrl } from "@/lib/hosts";
 import { thumbnailUrl, fullImageUrl } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
 import type { Feedback } from "@/lib/types";
@@ -60,12 +62,13 @@ interface S { id: string; name: string; position: number; }
 interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, feedback,
+  gallery, initialPhotos, initialSources, feedback, shareIds,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
   initialSources: S[] | null;
   feedback: Feedback[];
+  shareIds?: string[] | null;
 }) {
   const [unlocked, setUnlocked] = useState(!gallery.hasPassword);
   const [photos, setPhotos] = useState<P[]>(initialPhotos ?? []);
@@ -77,6 +80,37 @@ export default function GalleryView({
   const [activeTab, setActiveTab] = useState("all");
   const [lbIdx, setLbIdx] = useState<number | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
+
+  // Client-side photo selection → build a "share only these" link.
+  const shareMode = shareIds != null && shareIds.length > 0;
+  const shareSet = useMemo(() => (shareIds ? new Set(shareIds) : null), [shareIds]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [shareCopied, setShareCopied] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function shareSelected() {
+    if (selected.size === 0) return;
+    const ids = [...selected].join(",");
+    const base = mainUrl(`/album/${gallery.slug}`);
+    const abs = /^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`;
+    const url = `${abs}?share=${ids}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: gallery.title, url }); return; } catch { /* cancelled */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch { /* ignore */ }
+  }
 
   const [lang, setLang] = useState<Lang>("vi");
   useEffect(() => {
@@ -108,7 +142,11 @@ export default function GalleryView({
   }
 
   const tabSources = useMemo(() => sources.filter((s) => photos.some((p) => p.source_id === s.id)), [sources, photos]);
-  const visible = useMemo(() => (activeTab === "all" ? photos : photos.filter((p) => p.source_id === activeTab)), [photos, activeTab]);
+  const visible = useMemo(() => {
+    let base = activeTab === "all" ? photos : photos.filter((p) => p.source_id === activeTab);
+    if (shareSet) base = base.filter((p) => shareSet.has(p.id));
+    return base;
+  }, [photos, activeTab, shareSet]);
   const sections = useMemo(() => {
     const idx = visible.map((p, i) => ({ p, i }));
     if (activeTab !== "all" || tabSources.length <= 1) return [{ id: "all", name: "", items: idx }];
@@ -182,11 +220,18 @@ export default function GalleryView({
       <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 md:px-10" style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}>
         <Brand />
         <div className="flex items-center gap-3">
+          {!shareMode && selected.size > 0 && (
+            <button onClick={shareSelected} className="btn-primary px-3 py-1.5 text-[13px]">
+              {shareCopied ? <Check size={14} /> : <Share2 size={14} />}
+              {shareCopied ? "Đã chép link" : `Chia sẻ ${selected.size} ảnh đã chọn`}
+            </button>
+          )}
           {gallery.allowDownload !== false && (
             <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
               <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.downloadAll}
             </button>
           )}
+          {!shareMode && <ShareButton path={mainUrl(`/album/${gallery.slug}`)} title={gallery.title} className="btn-ghost px-3 py-1.5 text-[13px]" />}
           <LanguageSwitcher />
         </div>
       </header>
@@ -204,8 +249,17 @@ export default function GalleryView({
         <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{gallery.title}</h1>
         <p className="mt-2 flex items-center gap-3 text-[13.5px]" style={{ color: "var(--text2)" }}>
           {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>)}
-          <span>{photos.length} {tr.photoCount}</span>
+          <span>{shareMode ? visible.length : photos.length} {tr.photoCount}</span>
         </p>
+        {shareMode ? (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--gold)" }}>
+            <Share2 size={14} /> {shareIds!.length} ảnh được chia sẻ
+          </div>
+        ) : (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+            <Heart size={14} /> Nhấn vào trái tim ở mỗi ảnh để chọn rồi bấm “Chia sẻ ảnh đã chọn”
+          </div>
+        )}
 
         {/* tabs */}
         {tabSources.length > 1 && (
@@ -221,17 +275,33 @@ export default function GalleryView({
             <section key={sec.id}>
               {sec.name && <h2 className="mb-3 font-serif text-xl font-medium">{sec.name}</h2>}
               <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-                {sec.items.map(({ p, i }) => (
-                  <div key={p.id} onClick={() => setLbIdx(i)} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
+                {sec.items.map(({ p, i }) => {
+                  const isSel = selected.has(p.id);
+                  return (
+                  <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    {isSel && <div className="pointer-events-none absolute inset-0 z-[2]" style={{ boxShadow: "inset 0 0 0 3px var(--gold)" }} />}
                     {isVideo(p) && (
-                      <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
+                      <span onClick={() => setLbIdx(i)} className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
                         <Play size={20} fill="currentColor" strokeWidth={0} />
                       </span>
                     )}
+                    {!shareMode && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
+                        title="Chọn ảnh để chia sẻ"
+                        className="absolute right-2 top-2 z-[4] flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-90"
+                        style={isSel
+                          ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
+                          : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }}
+                      >
+                        <Heart size={18} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
+                      </button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ))}

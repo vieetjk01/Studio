@@ -25,8 +25,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   });
 }
 
-export default async function GalleryPage({ params }: { params: { slug: string } }) {
+export default async function GalleryPage({ params, searchParams }: { params: { slug: string }; searchParams?: { share?: string } }) {
   const admin = createAdminClient();
+  const shareParam = searchParams?.share;
+  const shareIds = shareParam ? shareParam.split(",").filter(Boolean) : null;
   const { data: album } = await admin
     .from("albums")
     .select("id, slug, title, status, is_gallery, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled")
@@ -78,6 +80,7 @@ export default async function GalleryPage({ params }: { params: { slug: string }
       initialPhotos={photos}
       initialSources={sources}
       feedback={(feedback ?? []) as Feedback[]}
+      shareIds={shareIds}
     />
   );
 }
