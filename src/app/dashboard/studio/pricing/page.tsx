@@ -35,6 +35,7 @@ export default async function PricingPage() {
     .order("position");
 
   const hiddenLists = (profile.pl_hidden_lists as string[] | null) ?? [];
+  const listLabels = (profile.pl_list_labels as Record<string, string> | null) ?? {};
 
   // First visit: auto-fill the wedding + engagement lists from the studio's cards.
   // Skip any built-in list the studio has explicitly hidden so it is not
@@ -51,6 +52,7 @@ export default async function PricingPage() {
       ownerId={profile.id}
       initial={(data ?? []) as PricelistItem[]}
       hiddenLists={hiddenLists}
+      listLabels={listLabels}
       shareUrl={token ? mainUrl(`/gia/${token}`) : ""}
       contact={{
         pl_phone: profile.pl_phone ?? "",

@@ -914,6 +914,8 @@ alter table public.profiles add column if not exists pl_accent       text;
 alter table public.profiles add column if not exists pl_logo_url     text;
 -- Built-in price lists (e.g. 'cuoi', 'dinh-hon') the studio has hidden/removed.
 alter table public.profiles add column if not exists pl_hidden_lists text[] not null default '{}';
+-- Per-user custom labels for price list tabs (built-in + custom), key → label.
+alter table public.profiles add column if not exists pl_list_labels  jsonb not null default '{}';
 alter table public.profiles add column if not exists auto_client_emails boolean not null default false;  -- opt-in: auto-email clients (shoot reminder, review request)
 
 -- Widen the shoot_type check to the fuller service list (idempotent).

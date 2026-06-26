@@ -19,6 +19,7 @@ export default function PricingManager({
   ownerId,
   initial,
   hiddenLists: initialHidden = [],
+  listLabels: initialListLabels = {},
   shareUrl,
   contact,
   appearance,
@@ -26,6 +27,7 @@ export default function PricingManager({
   ownerId: string;
   initial: PricelistItem[];
   hiddenLists?: string[];
+  listLabels?: Record<string, string>;
   shareUrl: string; // base /gia/<token>
   contact: Contact;
   appearance: Appearance;
@@ -51,6 +53,10 @@ export default function PricingManager({
   const [customLists, setCustomLists] = useState<{ key: string; label: string; title: string }[]>([]);
   const [newListName, setNewListName] = useState("");
   const [showNewList, setShowNewList] = useState(false);
+  // Per-key label overrides (both built-in and custom lists).
+  const [listLabels, setListLabels] = useState<Record<string, string>>(initialListLabels);
+  const [renamingKey, setRenamingKey] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
 
   // Load custom lists from localStorage on mount
   useEffect(() => {
@@ -89,6 +95,24 @@ export default function PricingManager({
   async function restoreBuiltinList(key: string) {
     await saveHiddenLists(hiddenLists.filter((k) => k !== key));
     setActiveList(key);
+  }
+
+  function getLabel(key: string, fallback: string) {
+    return listLabels[key] || fallback;
+  }
+
+  function startRename(key: string, currentLabel: string) {
+    setRenamingKey(key);
+    setRenameVal(listLabels[key] || currentLabel);
+  }
+
+  async function saveRename(key: string) {
+    const label = renameVal.trim();
+    if (!label) { setRenamingKey(null); return; }
+    const next = { ...listLabels, [key]: label };
+    setListLabels(next);
+    setRenamingKey(null);
+    await supabase.from("profiles").update({ pl_list_labels: next }).eq("id", ownerId);
   }
 
   function addCustomList() {
@@ -245,23 +269,48 @@ export default function PricingManager({
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {allLists.map((l) => {
           const isCustom = customLists.some((c) => c.key === l.key);
+          const displayLabel = getLabel(l.key, l.label);
           return (
             <div key={l.key} className="relative flex items-center">
-              <button
-                onClick={() => setActiveList(l.key)}
-                className="rounded-full px-4 py-2 text-sm font-medium"
-                style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: 28 }}
-              >
-                Bảng giá {l.label}
-              </button>
-              <button
-                onClick={() => (isCustom ? removeCustomList(l.key) : removeBuiltinList(l.key))}
-                className="absolute right-1 flex h-5 w-5 items-center justify-center rounded-full"
-                style={{ color: "var(--text3)" }}
-                title="Xoá bảng giá này"
-              >
-                <X size={11} />
-              </button>
+              {renamingKey === l.key ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    autoFocus
+                    className="input h-9 w-36 rounded-full px-3 text-sm"
+                    value={renameVal}
+                    onChange={(e) => setRenameVal(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveRename(l.key); if (e.key === "Escape") setRenamingKey(null); }}
+                  />
+                  <button onClick={() => saveRename(l.key)} className="btn-primary rounded-full px-2 py-1.5 text-xs"><Check size={13} /></button>
+                  <button onClick={() => setRenamingKey(null)} className="btn-ghost rounded-full px-2 py-1.5 text-xs"><X size={13} /></button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setActiveList(l.key)}
+                    className="rounded-full px-4 py-2 text-sm font-medium"
+                    style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: 48 }}
+                  >
+                    Bảng giá {displayLabel}
+                  </button>
+                  <button
+                    onClick={() => startRename(l.key, l.label)}
+                    className="absolute right-7 flex h-5 w-5 items-center justify-center rounded-full"
+                    style={{ color: "var(--text3)" }}
+                    title="Đổi tên bảng giá"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                  <button
+                    onClick={() => (isCustom ? removeCustomList(l.key) : removeBuiltinList(l.key))}
+                    className="absolute right-1 flex h-5 w-5 items-center justify-center rounded-full"
+                    style={{ color: "var(--text3)" }}
+                    title="Xoá bảng giá này"
+                  >
+                    <X size={11} />
+                  </button>
+                </>
+              )}
             </div>
           );
         })}
@@ -313,7 +362,7 @@ export default function PricingManager({
         <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
           <LinkIcon size={16} style={{ color: "var(--text3)" }} />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {allLists.find((l) => l.key === activeList)?.label} gửi khách</p>
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "")} gửi khách</p>
             <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{listUrl}</p>
           </div>
           <a href={listUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">Xem thử</a>
@@ -434,8 +483,8 @@ export default function PricingManager({
         <div className="lg:col-span-2 space-y-6">
           {visible.length === 0 ? (
             <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
-              <p>Bảng giá {allLists.find((l) => l.key === activeList)?.label} đang trống.</p>
-              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {allLists.find((l) => l.key === activeList)?.label}</button>
+              <p>Bảng giá {getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "")} đang trống.</p>
+              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "")}</button>
             </div>
           ) : (
             <>
