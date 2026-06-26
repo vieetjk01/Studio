@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, ExternalLink, Image as ImageIcon, Pin, Settings2 } from "lucide-react";
+import { Calendar, ExternalLink, Image as ImageIcon, Pin, Settings2, Share2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
-import ShareButton from "@/components/ShareButton";
+import ShareDialog from "@/components/ShareDialog";
 import { thumbnailUrl } from "@/lib/drive";
 
 export interface GalleryRow {
@@ -43,6 +43,12 @@ function Card({ g }: { g: GalleryRow }) {
   const [status, setStatus] = useState(g.status);
   const [pinned, setPinned] = useState(g.gallery_pinned);
   const [download, setDownload] = useState(g.download_enabled);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  function openShare() {
+    const base = mainUrl(`/album/${g.slug}`);
+    setShareUrl(/^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`);
+  }
 
   const cover = g.cover_url || (g.photos?.[0]?.drive_file_id ? thumbnailUrl(g.photos[0].drive_file_id, 800) : null);
 
@@ -91,7 +97,9 @@ function Card({ g }: { g: GalleryRow }) {
           <button onClick={() => setMenu((v) => !v)} className="btn-ghost py-1.5 text-xs" title="Bật/tắt nhanh">
             <Settings2 size={13} /> Sửa
           </button>
-          <ShareButton path={mainUrl(`/album/${g.slug}`)} title={g.title} label="" className="btn-ghost py-1.5 text-xs" compact />
+          <button onClick={openShare} title="Chia sẻ link album" className="btn-ghost py-1.5 text-xs">
+            <Share2 size={13} />
+          </button>
           <Link href={`/album/${g.slug}`} target="_blank" className="btn-ghost py-1.5 text-xs">
             <ExternalLink size={13} />
           </Link>
@@ -109,6 +117,13 @@ function Card({ g }: { g: GalleryRow }) {
           </div>
         </div>
       )}
+
+      <ShareDialog
+        url={shareUrl}
+        title="Chia sẻ album"
+        subtitle="Gửi link này cho khách để xem album."
+        onClose={() => setShareUrl(null)}
+      />
     </div>
   );
 }
