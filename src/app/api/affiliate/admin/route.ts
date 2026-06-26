@@ -9,8 +9,9 @@ async function assertAdmin() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const db = createAdminClient();
-  const { data: profile } = await db.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  return profile?.role === "admin" ? db : null;
+  // M-4: Check both role AND is_active to block deactivated admins
+  const { data: profile } = await db.from("profiles").select("role, is_active").eq("id", user.id).maybeSingle();
+  return profile?.role === "admin" && profile?.is_active !== false ? db : null;
 }
 
 /** GET — all commissions with referrer info */

@@ -28,7 +28,9 @@ function LoginForm() {
   const params = useSearchParams();
   // Default landing = studio management. Free/Basic accounts (no studio tier)
   // are redirected on to the album dashboard by the studio page itself.
-  const next = params.get("next") || "/dashboard/studio";
+  const rawNext = params.get("next") || "/dashboard/studio";
+  // C-1: Prevent open redirect — only allow relative paths
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard/studio";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

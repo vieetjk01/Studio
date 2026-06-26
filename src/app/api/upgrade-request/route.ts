@@ -108,8 +108,11 @@ export async function POST(req: Request) {
         .eq("id", user.id);
       activated = true;
 
-      // Credit affiliate commission if this user was referred.
-      await creditAffiliateCommission(db, user.id, user.email ?? "", validPlan, validCycle, amount ?? 0);
+      // M-5: Look up canonical plan price server-side — never trust client-submitted amount
+      const planPriceKey = `price_${validPlan}_${validCycle}` as const;
+      const { data: priceSettings } = await db.from("site_settings").select(planPriceKey).eq("id", 1).maybeSingle();
+      const canonicalAmount: number = (priceSettings as Record<string, unknown>)?.[planPriceKey] as number ?? amount ?? 0;
+      await creditAffiliateCommission(db, user.id, user.email ?? "", validPlan, validCycle, canonicalAmount);
     }
   }
 

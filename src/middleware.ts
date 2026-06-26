@@ -148,7 +148,7 @@ export async function middleware(request: NextRequest) {
   // Affiliate ref tracking: set a 30-day cookie when ?ref=CODE is present.
   const refParam = request.nextUrl.searchParams.get("ref");
   if (refParam && /^[A-Z0-9]{4,16}$/.test(refParam) && !request.cookies.get("aff_ref")) {
-    response.cookies.set("aff_ref", refParam, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax" });
+    response.cookies.set("aff_ref", refParam, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", httpOnly: true });
   }
 
   // Only enforce auth for dashboard routes.
