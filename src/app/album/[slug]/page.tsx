@@ -3,13 +3,26 @@ import { fetchAllPhotos } from "@/lib/photos";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import GalleryView from "./GalleryView";
+import { buildAlbumMetadata } from "@/lib/album-meta";
+import { MAIN_HOST } from "@/lib/hosts";
 import type { Feedback } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const { data } = await createAdminClient().from("albums").select("title").eq("slug", params.slug).maybeSingle();
-  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+  const { data } = await createAdminClient()
+    .from("albums")
+    .select("title, description, cover_url")
+    .eq("slug", params.slug)
+    .maybeSingle();
+  if (!data?.title) return { title: "Vieetjk" };
+  return buildAlbumMetadata({
+    title: data.title,
+    description: data.description,
+    coverUrl: data.cover_url,
+    host: MAIN_HOST,
+    path: `/album/${params.slug}`,
+  });
 }
 
 export default async function GalleryPage({ params }: { params: { slug: string } }) {

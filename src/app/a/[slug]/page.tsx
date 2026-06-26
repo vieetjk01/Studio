@@ -3,16 +3,25 @@ import { fetchAllPhotos } from "@/lib/photos";
 import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Brand from "@/components/Brand";
+import { buildAlbumMetadata } from "@/lib/album-meta";
+import { APP_HOST } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { data } = await createAdminClient()
     .from("albums")
-    .select("title")
+    .select("title, description, cover_url")
     .eq("slug", params.slug)
     .maybeSingle();
-  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+  if (!data?.title) return { title: "Vieetjk" };
+  return buildAlbumMetadata({
+    title: data.title,
+    description: data.description,
+    coverUrl: data.cover_url,
+    host: APP_HOST,
+    path: `/a/${params.slug}`,
+  });
 }
 
 export default async function PublicAlbumPage({

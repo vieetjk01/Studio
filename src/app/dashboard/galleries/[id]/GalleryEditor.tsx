@@ -7,6 +7,8 @@ import {
   ArrowLeft, RefreshCw, Trash2, Plus, Star, ExternalLink, Save, Pin, MessageSquare, Star as StarIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mainUrl } from "@/lib/hosts";
+import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
 import { GALLERY_CATEGORIES } from "@/lib/types";
@@ -146,6 +148,7 @@ export default function GalleryEditor({
           <Link href={`/album/${album.slug}`} target="_blank" className="btn-ghost">
             <ExternalLink size={15} /> Xem
           </Link>
+          <ShareButton path={mainUrl(`/album/${album.slug}`)} title={form.title} />
           <button onClick={deleteGallery} disabled={deleting} className="btn-danger">
             <Trash2 size={15} /> {deleting ? "Đang xóa…" : "Xóa"}
           </button>

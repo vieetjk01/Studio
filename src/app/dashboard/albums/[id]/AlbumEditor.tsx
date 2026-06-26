@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
+import { appUrl } from "@/lib/hosts";
+import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
 import type { Album, AlbumSource, Photo, SourceKind } from "@/lib/types";
@@ -202,6 +204,7 @@ export default function AlbumEditor({
           <Link href={`/a/${form.slug}`} target="_blank" className="btn-ghost">
             <ExternalLink size={15} /> {t("view")}
           </Link>
+          <ShareButton path={appUrl(`/a/${form.slug}`)} title={form.title} />
           <button onClick={deleteAlbum} disabled={deleting} className="btn-danger">
             <Trash2 size={15} /> {deleting ? "Đang xóa…" : t("delete")}
           </button>
