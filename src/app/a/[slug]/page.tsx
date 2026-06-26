@@ -17,8 +17,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function PublicAlbumPage({
   params,
+  searchParams,
 }: {
   params: { slug: string };
+  searchParams?: { share?: string };
 }) {
   const admin = createAdminClient();
 
@@ -45,6 +47,10 @@ export default async function PublicAlbumPage({
   }
 
   const hasPassword = !!album.password_hash;
+
+  // ?share=id1,id2,id3 — view only those specific photos (read-only, no selection UI).
+  const shareParam = searchParams?.share;
+  const shareIds = shareParam ? shareParam.split(",").filter(Boolean) : null;
 
   // Owner permissions gate customer download (ZIP) and notes.
   const { data: owner } = await admin
@@ -97,6 +103,7 @@ export default async function PublicAlbumPage({
       initialSources={sources}
       initialSelected={selected}
       initialNotes={notes}
+      shareIds={shareIds}
     />
   );
 }

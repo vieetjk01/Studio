@@ -14,6 +14,7 @@ import {
   ListChecks,
   ZoomIn,
   ZoomOut,
+  Share2,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -56,12 +57,14 @@ export default function CustomerAlbum({
   initialSources,
   initialSelected,
   initialNotes,
+  shareIds,
 }: {
   album: PublicAlbum;
   initialPhotos: PublicPhoto[] | null;
   initialSources: PublicSource[] | null;
   initialSelected?: string[];
   initialNotes?: Record<string, string>;
+  shareIds?: string[] | null;
 }) {
   const { t } = useLang();
 
@@ -88,6 +91,22 @@ export default function CustomerAlbum({
   const [toast, setToast] = useState<string | null>(null);
 
   const wm = album.watermark_enabled ? album.watermark_text || "Vieetjk" : null;
+
+  // Share-mode: viewing a pre-filtered set of photos shared by the customer.
+  const shareMode = shareIds != null && shareIds.length > 0;
+  const shareSet = useMemo(() => shareIds ? new Set(shareIds) : null, [shareIds]);
+
+  const [shareUrlCopied, setShareUrlCopied] = useState(false);
+  function shareSelected() {
+    if (selected.size === 0) return;
+    const ids = [...selected].join(",");
+    const url = `${window.location.origin}/a/${album.slug}?share=${ids}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setShareUrlCopied(true);
+      setTimeout(() => setShareUrlCopied(false), 2000);
+      flashToast("Đã sao chép link ảnh đã chọn");
+    });
+  }
 
   // Refs hold the latest selection so the debounced save uses fresh data.
   const selectedRef = useRef(selected);
@@ -214,9 +233,10 @@ export default function CustomerAlbum({
 
   const visiblePhotos = useMemo(() => {
     let base = activeTab === "all" ? photos : photos.filter((p) => p.source_id === activeTab);
-    if (selectedOnly) base = base.filter((p) => selected.has(p.id));
+    if (shareSet) base = base.filter((p) => shareSet.has(p.id));
+    else if (selectedOnly) base = base.filter((p) => selected.has(p.id));
     return base;
-  }, [photos, activeTab, selectedOnly, selected]);
+  }, [photos, activeTab, selectedOnly, selected, shareSet]);
   const selectedPhotos = useMemo(() => photos.filter((p) => selected.has(p.id)), [photos, selected]);
 
   // Only sources that actually contain photos become tabs/sections (a parent
@@ -393,8 +413,8 @@ export default function CustomerAlbum({
           className="ml-auto flex items-center gap-2.5 rounded-full px-3.5 py-1.5 text-[12.5px]"
           style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
         >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#3fbf7f" }} />
-          Album được chia sẻ · chế độ khách
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: shareMode ? "var(--gold)" : "#3fbf7f" }} />
+          {shareMode ? `${shareIds!.length} ảnh được chia sẻ` : "Album được chia sẻ · chế độ khách"}
         </div>
         <LanguageSwitcher />
       </header>
@@ -450,30 +470,38 @@ export default function CustomerAlbum({
 
         {/* Sticky toolbar */}
         <div
-          className="sticky top-[64px] z-20 mt-6 mb-7 flex flex-wrap items-center gap-2.5 rounded-2xl p-3 animate-[vkFade_.5s_ease_both]"
+          className={`sticky top-[64px] z-20 mt-6 mb-7 flex flex-wrap items-center gap-2.5 rounded-2xl p-3 animate-[vkFade_.5s_ease_both]${shareMode ? " justify-between" : ""}`}
           style={{
             background: "color-mix(in srgb, var(--bg2) 86%, transparent)",
             backdropFilter: "blur(16px)",
             border: "1px solid var(--border)",
           }}
         >
-          <button
-            onClick={() => setSelectedOnly((v) => !v)}
-            className="flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium transition-colors"
-            style={
-              selectedOnly
-                ? { background: "var(--accent)", color: "var(--accentInk)", border: "1px solid var(--accent)" }
-                : { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }
-            }
-          >
-            <Heart size={14} fill={selectedOnly ? "currentColor" : "none"} />
-            {selectedOnly ? t("viewingSelected") : `${t("selectedCount")}${selected.size ? ` · ${selected.size}` : ""}`}
-          </button>
-          <span className="text-[13px]" style={{ color: "var(--text3)" }}>
-            {selected.size > 0
-              ? `${selected.size}${limit != null ? ` / ${limit}` : ""} ${t("selected")}`
-              : `${t("noneSelected")} · ${photos.length} ${t("photos")}`}
-          </span>
+          {shareMode ? (
+            <span className="flex items-center gap-2 text-[13px] font-medium" style={{ color: "var(--gold)" }}>
+              <Share2 size={14} /> {shareIds!.length} ảnh được chia sẻ
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={() => setSelectedOnly((v) => !v)}
+                className="flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium transition-colors"
+                style={
+                  selectedOnly
+                    ? { background: "var(--accent)", color: "var(--accentInk)", border: "1px solid var(--accent)" }
+                    : { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }
+                }
+              >
+                <Heart size={14} fill={selectedOnly ? "currentColor" : "none"} />
+                {selectedOnly ? t("viewingSelected") : `${t("selectedCount")}${selected.size ? ` · ${selected.size}` : ""}`}
+              </button>
+              <span className="text-[13px]" style={{ color: "var(--text3)" }}>
+                {selected.size > 0
+                  ? `${selected.size}${limit != null ? ` / ${limit}` : ""} ${t("selected")}`
+                  : `${t("noneSelected")} · ${photos.length} ${t("photos")}`}
+              </span>
+            </>
+          )}
 
           <div className="flex-1" />
 
@@ -488,18 +516,26 @@ export default function CustomerAlbum({
             ) : null}
           </span>
 
-          {selected.size > 0 && (
+          {!shareMode && selected.size > 0 && (
             <ToolButton onClick={copyList}>
               {copied ? <Check size={14} /> : <Copy size={14} />} {t("copyList")}
             </ToolButton>
           )}
-          <ToolButton onClick={exportList} disabled={selected.size === 0}>
-            <FileText size={14} /> {t("exportList")}
-          </ToolButton>
-          {album.allowZip && (
+          {!shareMode && (
+            <ToolButton onClick={exportList} disabled={selected.size === 0}>
+              <FileText size={14} /> {t("exportList")}
+            </ToolButton>
+          )}
+          {!shareMode && album.allowZip && (
             <ToolButton onClick={downloadZip} disabled={selected.size === 0 || zipProgress !== null}>
               <Download size={14} />
               {zipProgress !== null ? `${zipProgress}%` : t("downloadZip")}
+            </ToolButton>
+          )}
+          {!shareMode && (
+            <ToolButton onClick={shareSelected} disabled={selected.size === 0}>
+              {shareUrlCopied ? <Check size={14} /> : <Share2 size={14} />}
+              {shareUrlCopied ? "Đã sao chép!" : "Chia sẻ ảnh đã chọn"}
             </ToolButton>
           )}
         </div>
@@ -564,21 +600,23 @@ export default function CustomerAlbum({
                       style={{ background: "linear-gradient(to bottom, rgba(0,0,0,.5), transparent)" }}
                     />
                     {/* heart select — large tap target for mobile */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggle(p.id);
-                      }}
-                      title={t("selectThis")}
-                      className="absolute right-2 top-2 z-[4] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90"
-                      style={
-                        isSel
-                          ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
-                          : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }
-                      }
-                    >
-                      <Heart size={20} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
-                    </button>
+                    {!shareMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggle(p.id);
+                        }}
+                        title={t("selectThis")}
+                        className="absolute right-2 top-2 z-[4] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90"
+                        style={
+                          isSel
+                            ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
+                            : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }
+                        }
+                      >
+                        <Heart size={20} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
+                      </button>
+                    )}
                   </div>
 
                   {/* note under the thumbnail */}
@@ -618,18 +656,20 @@ export default function CustomerAlbum({
               {lbIdx + 1} / {visiblePhotos.length}
             </span>
             <div className="flex-1" />
-            <button
-              onClick={() => toggle(lbPhoto.id)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-[13.5px] font-semibold transition-all"
-              style={
-                selected.has(lbPhoto.id)
-                  ? { background: "var(--gold)", color: "#1a1205", border: "1px solid var(--gold)" }
-                  : { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }
-              }
-            >
-              <Heart size={15} fill={selected.has(lbPhoto.id) ? "currentColor" : "none"} strokeWidth={selected.has(lbPhoto.id) ? 0 : 2} />
-              {selected.has(lbPhoto.id) ? "Đã thích" : "Thích ảnh này"}
-            </button>
+            {!shareMode && (
+              <button
+                onClick={() => toggle(lbPhoto.id)}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-[13.5px] font-semibold transition-all"
+                style={
+                  selected.has(lbPhoto.id)
+                    ? { background: "var(--gold)", color: "#1a1205", border: "1px solid var(--gold)" }
+                    : { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }
+                }
+              >
+                <Heart size={15} fill={selected.has(lbPhoto.id) ? "currentColor" : "none"} strokeWidth={selected.has(lbPhoto.id) ? 0 : 2} />
+                {selected.has(lbPhoto.id) ? "Đã thích" : "Thích ảnh này"}
+              </button>
+            )}
             {album.allowZip && (
               <a
                 href={`/api/img?id=${lbPhoto.drive_file_id}&w=2400`}
