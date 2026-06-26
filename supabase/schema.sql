@@ -119,6 +119,22 @@ begin
 end $$;
 
 -- ============================================================================
+-- album_shares: short-token links to a hand-picked subset of an album's photos.
+-- Lets "share N selected photos" produce a short URL (?s=token) instead of
+-- cramming every photo id into the query string.
+-- ============================================================================
+create table if not exists public.album_shares (
+  token       text primary key,
+  album_id    uuid not null references public.albums (id) on delete cascade,
+  photo_ids   text[] not null default '{}',
+  created_at  timestamptz not null default now()
+);
+create index if not exists album_shares_album_idx on public.album_shares (album_id);
+alter table public.album_shares enable row level security;
+drop policy if exists album_shares_public_read on public.album_shares;
+create policy album_shares_public_read on public.album_shares for select using (true);
+
+-- ============================================================================
 -- updated_at trigger for albums
 -- ============================================================================
 create or replace function public.set_updated_at()

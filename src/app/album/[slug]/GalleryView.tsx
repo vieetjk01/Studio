@@ -50,6 +50,7 @@ import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Turnstile from "@/components/Turnstile";
 import ShareButton from "@/components/ShareButton";
+import ShareDialog from "@/components/ShareDialog";
 import { mainUrl } from "@/lib/hosts";
 import { thumbnailUrl, fullImageUrl } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
@@ -85,7 +86,8 @@ export default function GalleryView({
   const shareMode = shareIds != null && shareIds.length > 0;
   const shareSet = useMemo(() => (shareIds ? new Set(shareIds) : null), [shareIds]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [shareCopied, setShareCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -97,19 +99,27 @@ export default function GalleryView({
   }
 
   async function shareSelected() {
-    if (selected.size === 0) return;
-    const ids = [...selected].join(",");
+    if (selected.size === 0 || shareBusy) return;
+    setShareBusy(true);
     const base = mainUrl(`/album/${gallery.slug}`);
     const abs = /^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`;
-    const url = `${abs}?share=${ids}`;
-    if (navigator.share) {
-      try { await navigator.share({ title: gallery.title, url }); return; } catch { /* cancelled */ }
-    }
     try {
-      await navigator.clipboard.writeText(url);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch { /* ignore */ }
+      // Store the picks server-side and use a short ?s=token link.
+      const res = await fetch(`/api/album/${gallery.slug}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoIds: [...selected] }),
+      });
+      if (res.ok) {
+        const { token } = await res.json();
+        setShareUrl(`${abs}?s=${token}`);
+      } else {
+        setShareUrl(`${abs}?share=${[...selected].join(",")}`); // fallback
+      }
+    } catch {
+      setShareUrl(`${abs}?share=${[...selected].join(",")}`); // offline fallback
+    }
+    setShareBusy(false);
   }
 
   const [lang, setLang] = useState<Lang>("vi");
@@ -221,9 +231,9 @@ export default function GalleryView({
         <Brand />
         <div className="flex items-center gap-3">
           {!shareMode && selected.size > 0 && (
-            <button onClick={shareSelected} className="btn-primary px-3 py-1.5 text-[13px]">
-              {shareCopied ? <Check size={14} /> : <Share2 size={14} />}
-              {shareCopied ? "Đã chép link" : `Chia sẻ ${selected.size} ảnh đã chọn`}
+            <button onClick={shareSelected} disabled={shareBusy} className="btn-primary px-3 py-1.5 text-[13px]">
+              <Share2 size={14} />
+              {shareBusy ? "Đang tạo link…" : `Chia sẻ ${selected.size} ảnh đã chọn`}
             </button>
           )}
           {gallery.allowDownload !== false && (
@@ -376,6 +386,13 @@ export default function GalleryView({
           </div>
         </div>
       )}
+
+      <ShareDialog
+        url={shareUrl}
+        title={`Chia sẻ ${selected.size} ảnh đã chọn`}
+        subtitle="Gửi link này cho người khác — họ sẽ chỉ xem đúng những ảnh bạn đã chọn."
+        onClose={() => setShareUrl(null)}
+      />
     </main>
   );
 }

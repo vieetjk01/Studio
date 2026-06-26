@@ -26,10 +26,17 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   });
 }
 
-export default async function GalleryPage({ params, searchParams }: { params: { slug: string }; searchParams?: { share?: string } }) {
+export default async function GalleryPage({ params, searchParams }: { params: { slug: string }; searchParams?: { share?: string; s?: string } }) {
   const admin = createAdminClient();
-  const shareParam = searchParams?.share;
-  const shareIds = shareParam ? shareParam.split(",").filter(Boolean) : null;
+  let shareIds: string[] | null = searchParams?.share ? searchParams.share.split(",").filter(Boolean) : null;
+  if (!shareIds && searchParams?.s) {
+    const { data: sh } = await admin
+      .from("album_shares")
+      .select("photo_ids")
+      .eq("token", searchParams.s)
+      .maybeSingle();
+    if (sh?.photo_ids?.length) shareIds = sh.photo_ids as string[];
+  }
   const { data: album } = await admin
     .from("albums")
     .select("id, slug, title, status, is_gallery, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled")

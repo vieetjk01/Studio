@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ShareDialog from "@/components/ShareDialog";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl, fullImageUrl, stripExtension } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
@@ -96,16 +97,28 @@ export default function CustomerAlbum({
   const shareMode = shareIds != null && shareIds.length > 0;
   const shareSet = useMemo(() => shareIds ? new Set(shareIds) : null, [shareIds]);
 
-  const [shareUrlCopied, setShareUrlCopied] = useState(false);
-  function shareSelected() {
-    if (selected.size === 0) return;
-    const ids = [...selected].join(",");
-    const url = `${window.location.origin}/a/${album.slug}?share=${ids}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setShareUrlCopied(true);
-      setTimeout(() => setShareUrlCopied(false), 2000);
-      flashToast("Đã sao chép link ảnh đã chọn");
-    });
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  async function shareSelected() {
+    if (selected.size === 0 || shareBusy) return;
+    setShareBusy(true);
+    const abs = `${window.location.origin}/a/${album.slug}`;
+    try {
+      const res = await fetch(`/api/album/${album.slug}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoIds: [...selected] }),
+      });
+      if (res.ok) {
+        const { token } = await res.json();
+        setShareUrl(`${abs}?s=${token}`);
+      } else {
+        setShareUrl(`${abs}?share=${[...selected].join(",")}`);
+      }
+    } catch {
+      setShareUrl(`${abs}?share=${[...selected].join(",")}`);
+    }
+    setShareBusy(false);
   }
 
   // Refs hold the latest selection so the debounced save uses fresh data.
@@ -533,9 +546,9 @@ export default function CustomerAlbum({
             </ToolButton>
           )}
           {!shareMode && (
-            <ToolButton onClick={shareSelected} disabled={selected.size === 0}>
-              {shareUrlCopied ? <Check size={14} /> : <Share2 size={14} />}
-              {shareUrlCopied ? "Đã sao chép!" : "Chia sẻ ảnh đã chọn"}
+            <ToolButton onClick={shareSelected} disabled={selected.size === 0 || shareBusy}>
+              <Share2 size={14} />
+              {shareBusy ? "Đang tạo link…" : "Chia sẻ ảnh đã chọn"}
             </ToolButton>
           )}
         </div>
@@ -793,6 +806,13 @@ export default function CustomerAlbum({
           <span className="text-sm font-medium">{toast}</span>
         </div>
       )}
+
+      <ShareDialog
+        url={shareUrl}
+        title={`Chia sẻ ${selected.size} ảnh đã chọn`}
+        subtitle="Gửi link này — người nhận sẽ chỉ xem đúng những ảnh bạn đã chọn."
+        onClose={() => setShareUrl(null)}
+      />
     </main>
   );
 }

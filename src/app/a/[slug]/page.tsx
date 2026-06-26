@@ -30,7 +30,7 @@ export default async function PublicAlbumPage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams?: { share?: string };
+  searchParams?: { share?: string; s?: string };
 }) {
   const admin = createAdminClient();
 
@@ -58,9 +58,17 @@ export default async function PublicAlbumPage({
 
   const hasPassword = !!album.password_hash;
 
-  // ?share=id1,id2,id3 — view only those specific photos (read-only, no selection UI).
-  const shareParam = searchParams?.share;
-  const shareIds = shareParam ? shareParam.split(",").filter(Boolean) : null;
+  // View only specific photos (read-only): ?s=token (short link) or the legacy
+  // ?share=id1,id2,id3. Token links keep the URL short for large selections.
+  let shareIds: string[] | null = searchParams?.share ? searchParams.share.split(",").filter(Boolean) : null;
+  if (!shareIds && searchParams?.s) {
+    const { data: sh } = await admin
+      .from("album_shares")
+      .select("photo_ids")
+      .eq("token", searchParams.s)
+      .maybeSingle();
+    if (sh?.photo_ids?.length) shareIds = sh.photo_ids as string[];
+  }
 
   // Owner permissions gate customer download (ZIP) and notes.
   const { data: owner } = await admin
