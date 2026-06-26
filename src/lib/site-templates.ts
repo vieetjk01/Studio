@@ -45,7 +45,7 @@ function makeThumb(t: SiteTheme, label: string): string {
   const text = t.text || "#eee";
   const accent = t.accent || "#c7a76b";
   const serif = t.font !== "sans";
-  const family = serif ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
+  const family = serif ? "Georgia,serif" : "Helvetica,Arial,sans-serif";
   const r = t.radius === "sharp" ? 0 : 12;
   const center = t.heroAlign !== "left";
   const titleX = center ? 300 : 40;
