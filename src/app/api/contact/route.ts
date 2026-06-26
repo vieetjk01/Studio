@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +10,17 @@ export async function POST(req: Request) {
     name?: string;
     email?: string;
     message?: string;
+    captcha?: string;
   };
 
+  // Verify CAPTCHA before processing
+  const captchaOk = await verifyTurnstile(body.captcha);
+  if (!captchaOk) {
+    return NextResponse.json({ error: "Xác minh captcha thất bại. Vui lòng thử lại." }, { status: 400 });
+  }
+
   const name = body.name?.trim();
-  const message = body.message?.trim();
+  const message = body.message?.trim().slice(0, 5000);
   if (!name || !message) {
     return NextResponse.json({ error: "Vui lòng nhập tên và nội dung." }, { status: 400 });
   }

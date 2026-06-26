@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Phone, MapPin, Calendar, Check, X, Camera, CalendarOff, Plus, Trash2 } from "lucide-react";
+import Turnstile from "@/components/Turnstile";
 import {
   vnd,
   SHOOT_TYPE_LABEL,
@@ -45,15 +46,16 @@ export default function CrewPortal() {
   const [newBusy, setNewBusy] = useState({ date: "", note: "" });
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   async function load(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!phone.trim()) return;
+    if (!phone.trim() || !captchaToken) return;
     setLoading(true);
     const res = await fetch("/api/crew", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone, captcha: captchaToken }),
     });
     setLoading(false);
     const j = await res.json().catch(() => ({ assignments: [], busy: [] }));
@@ -106,16 +108,23 @@ export default function CrewPortal() {
         Nhập số điện thoại của bạn để xem các buổi chụp / quay được studio giao &amp; mức lương.
       </p>
 
-      <form onSubmit={load} className="card mt-6 flex gap-2 p-4">
-        <input
-          className="input"
-          placeholder="Số điện thoại của bạn"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+      <form onSubmit={load} className="card mt-6 p-4 flex flex-col gap-3">
+        <div className="flex gap-2">
+          <input
+            className="input"
+            placeholder="Số điện thoại của bạn"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <button type="submit" disabled={loading || !captchaToken} className="btn-primary shrink-0">
+            {loading ? "Đang tìm…" : "Xem việc"}
+          </button>
+        </div>
+        <Turnstile
+          onVerify={setCaptchaToken}
+          onExpire={() => setCaptchaToken(null)}
+          onError={() => setCaptchaToken(null)}
         />
-        <button type="submit" disabled={loading} className="btn-primary shrink-0">
-          {loading ? "Đang tìm…" : "Xem việc"}
-        </button>
       </form>
 
       {list !== null && (
