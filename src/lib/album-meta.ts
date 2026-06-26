@@ -2,18 +2,32 @@ import "server-only";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-/** The studio's display name, used to personalise album share titles. */
-export async function studioName(): Promise<string> {
+/**
+ * Display name of the studio that owns an album — used to personalise the share
+ * title. Prefers the owner's own profile name so a shared album shows the
+ * creator's studio, not whichever account happens to power the global site.
+ * Falls back to the global site title only when the owner has no name set.
+ */
+export async function albumOwnerName(ownerId?: string | null): Promise<string> {
+  const db = createAdminClient();
   try {
-    const db = createAdminClient();
-    const { data } = await db
+    if (ownerId) {
+      const { data } = await db
+        .from("profiles")
+        .select("full_name")
+        .eq("id", ownerId)
+        .maybeSingle();
+      const name = data?.full_name?.trim();
+      if (name) return name;
+    }
+    const { data: site } = await db
       .from("site_settings")
       .select("site_title, profile_name")
       .eq("id", 1)
       .maybeSingle();
-    return data?.site_title || data?.profile_name || "Vieetjk";
+    return site?.site_title || site?.profile_name || "mstudo";
   } catch {
-    return "Vieetjk";
+    return "mstudo";
   }
 }
 
@@ -31,14 +45,16 @@ export async function buildAlbumMetadata({
   coverUrl,
   host,
   path,
+  ownerId,
 }: {
   title: string;
   description?: string | null;
   coverUrl?: string | null;
   host: string;
   path: string;
+  ownerId?: string | null;
 }): Promise<Metadata> {
-  const studio = await studioName();
+  const studio = await albumOwnerName(ownerId);
   const fullTitle = `${title} · ${studio}`;
   const desc =
     description?.trim() ||

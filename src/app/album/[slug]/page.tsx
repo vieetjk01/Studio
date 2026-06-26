@@ -12,16 +12,17 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { data } = await createAdminClient()
     .from("albums")
-    .select("title, description, cover_url")
+    .select("title, description, cover_url, owner_id")
     .eq("slug", params.slug)
     .maybeSingle();
-  if (!data?.title) return { title: "Vieetjk" };
+  if (!data?.title) return { title: "mstudo" };
   return buildAlbumMetadata({
     title: data.title,
     description: data.description,
     coverUrl: data.cover_url,
     host: MAIN_HOST,
     path: `/album/${params.slug}`,
+    ownerId: data.owner_id,
   });
 }
 
