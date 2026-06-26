@@ -1,6 +1,48 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+
+type Lang = "vi" | "en";
+const TR = {
+  vi: {
+    enterPw: "Nhập mật khẩu để xem album",
+    pwHint: "Mật khẩu là",
+    pwHintBold: "số điện thoại",
+    pwHintSuffix: "của bạn.",
+    pwWrong: "Mật khẩu không đúng",
+    pwOpening: "Đang mở…",
+    pwEnter: "Vào xem",
+    downloadAll: "Tải cả album",
+    photoCount: "ảnh",
+    tabAll: "Tất cả",
+    feedbackTitle: "Cảm nhận của bạn",
+    fbThanks: "Cảm ơn bạn đã gửi cảm nhận!",
+    fbNamePh: "Tên của bạn",
+    fbContentPh: "Chia sẻ cảm nhận của bạn về bộ ảnh…",
+    fbSend: "Gửi cảm nhận",
+    fbEmpty: "Chưa có cảm nhận nào.",
+    fbGuest: "Khách",
+  },
+  en: {
+    enterPw: "Enter password to view this album",
+    pwHint: "Password is your",
+    pwHintBold: "phone number",
+    pwHintSuffix: ".",
+    pwWrong: "Wrong password",
+    pwOpening: "Opening…",
+    pwEnter: "Enter",
+    downloadAll: "Download album",
+    photoCount: "photos",
+    tabAll: "All",
+    feedbackTitle: "Your feedback",
+    fbThanks: "Thank you for your feedback!",
+    fbNamePh: "Your name",
+    fbContentPh: "Share your thoughts about this photo set…",
+    fbSend: "Send feedback",
+    fbEmpty: "No feedback yet.",
+    fbGuest: "Guest",
+  },
+} as const;
 import {
   Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play,
 } from "lucide-react";
@@ -35,6 +77,13 @@ export default function GalleryView({
   const [activeTab, setActiveTab] = useState("all");
   const [lbIdx, setLbIdx] = useState<number | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
+
+  const [lang, setLang] = useState<Lang>("vi");
+  useEffect(() => {
+    const stored = localStorage.getItem("vk_lang") as Lang | null;
+    if (stored === "en") setLang("en");
+  }, []);
+  const tr = TR[lang];
 
   // feedback form
   const [fbName, setFbName] = useState("");
@@ -115,11 +164,11 @@ export default function GalleryView({
           <form onSubmit={unlock} className="card w-full max-w-sm p-8 text-center">
             <Lock className="mx-auto mb-4" size={26} style={{ color: "var(--gold)" }} />
             <h1 className="font-serif text-2xl font-medium">{gallery.title}</h1>
-            <p className="mb-1 mt-2 text-sm" style={{ color: "var(--text2)" }}>Nhập mật khẩu để xem album</p>
-            <p className="mb-6 text-[12.5px]" style={{ color: "var(--gold)" }}>Mật khẩu là <b>số điện thoại</b> của bạn.</p>
+            <p className="mb-1 mt-2 text-sm" style={{ color: "var(--text2)" }}>{tr.enterPw}</p>
+            <p className="mb-6 text-[12.5px]" style={{ color: "var(--gold)" }}>{tr.pwHint} <b>{tr.pwHintBold}</b>{tr.pwHintSuffix}</p>
             <input type="text" inputMode="numeric" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} className="input mb-4 text-center" placeholder="09xx xxx xxx" />
-            {pwError && <p className="mb-4 text-sm text-red-400">Mật khẩu không đúng</p>}
-            <button disabled={pwLoading} className="btn-primary w-full">{pwLoading ? "Đang mở…" : "Vào xem"}</button>
+            {pwError && <p className="mb-4 text-sm text-red-400">{tr.pwWrong}</p>}
+            <button disabled={pwLoading} className="btn-primary w-full">{pwLoading ? tr.pwOpening : tr.pwEnter}</button>
           </form>
         </div>
       </main>
@@ -135,7 +184,7 @@ export default function GalleryView({
         <div className="flex items-center gap-3">
           {gallery.allowDownload !== false && (
             <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
-              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : "Tải cả album"}
+              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.downloadAll}
             </button>
           )}
           <LanguageSwitcher />
@@ -154,14 +203,14 @@ export default function GalleryView({
       <div className="mx-auto max-w-[1500px] px-6 md:px-10" style={{ marginTop: gallery.cover_url ? "-60px" : "28px", position: "relative" }}>
         <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{gallery.title}</h1>
         <p className="mt-2 flex items-center gap-3 text-[13.5px]" style={{ color: "var(--text2)" }}>
-          {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString("vi-VN")}</span>)}
-          <span>{photos.length} ảnh</span>
+          {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>)}
+          <span>{photos.length} {tr.photoCount}</span>
         </p>
 
         {/* tabs */}
         {tabSources.length > 1 && (
           <div className="mt-6 flex flex-wrap gap-2">
-            <Tab active={activeTab === "all"} onClick={() => setActiveTab("all")}>Tất cả</Tab>
+            <Tab active={activeTab === "all"} onClick={() => setActiveTab("all")}>{tr.tabAll}</Tab>
             {tabSources.map((s) => (<Tab key={s.id} active={activeTab === s.id} onClick={() => setActiveTab(s.id)}>{s.name} <span className="opacity-60">{photos.filter((p) => p.source_id === s.id).length}</span></Tab>))}
           </div>
         )}
@@ -190,14 +239,14 @@ export default function GalleryView({
 
         {/* Feedback */}
         <section className="mt-16 border-t pt-10" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-serif text-2xl font-medium">Cảm nhận của bạn</h2>
+          <h2 className="font-serif text-2xl font-medium">{tr.feedbackTitle}</h2>
           <div className="mt-5 grid gap-6 lg:grid-cols-2">
             <div className="card p-5">
               {fbSent ? (
-                <div className="flex items-center gap-2.5 text-sm" style={{ color: "#5fd29a" }}><Check size={18} /> Cảm ơn bạn đã gửi cảm nhận!</div>
+                <div className="flex items-center gap-2.5 text-sm" style={{ color: "#5fd29a" }}><Check size={18} /> {tr.fbThanks}</div>
               ) : (
                 <>
-                  <input value={fbName} onChange={(e) => setFbName(e.target.value)} placeholder="Tên của bạn" className="input mb-3" />
+                  <input value={fbName} onChange={(e) => setFbName(e.target.value)} placeholder={tr.fbNamePh} className="input mb-3" />
                   <div className="mb-3 flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} onClick={() => setFbRating(n)} style={{ color: n <= fbRating ? "var(--gold)" : "var(--text3)" }}>
@@ -205,19 +254,19 @@ export default function GalleryView({
                       </button>
                     ))}
                   </div>
-                  <textarea value={fbContent} onChange={(e) => setFbContent(e.target.value)} placeholder="Chia sẻ cảm nhận của bạn về bộ ảnh…" className="input min-h-[90px] resize-y" />
+                  <textarea value={fbContent} onChange={(e) => setFbContent(e.target.value)} placeholder={tr.fbContentPh} className="input min-h-[90px] resize-y" />
                   <Turnstile onVerify={onFbCaptcha} onExpire={() => setFbCaptcha(null)} onError={() => setFbCaptcha(null)} className="mt-3" />
-                  <button onClick={sendFeedback} disabled={!fbCaptcha} className="btn-primary mt-3 w-full"><Send size={15} /> Gửi cảm nhận</button>
+                  <button onClick={sendFeedback} disabled={!fbCaptcha} className="btn-primary mt-3 w-full"><Send size={15} /> {tr.fbSend}</button>
                 </>
               )}
             </div>
             <div className="space-y-3">
               {fbList.length === 0 ? (
-                <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có cảm nhận nào.</p>
+                <p className="text-sm" style={{ color: "var(--text3)" }}>{tr.fbEmpty}</p>
               ) : fbList.map((f) => (
                 <div key={f.id} className="card p-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{f.client_name || "Khách"}</span>
+                    <span className="text-sm font-medium">{f.client_name || tr.fbGuest}</span>
                     {f.rating ? <span className="flex items-center gap-0.5" style={{ color: "var(--gold)" }}>{Array.from({ length: f.rating }).map((_, i) => <Star key={i} size={12} fill="currentColor" strokeWidth={0} />)}</span> : null}
                   </div>
                   <p className="mt-1 text-[13.5px]" style={{ color: "var(--text2)" }}>{f.content}</p>
