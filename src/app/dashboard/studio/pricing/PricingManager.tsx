@@ -115,16 +115,27 @@ export default function PricingManager({
     await supabase.from("profiles").update({ pl_list_labels: next }).eq("id", ownerId);
   }
 
-  function addCustomList() {
+  async function addCustomList() {
     const label = newListName.trim();
     if (!label) return;
-    const key = label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    // Slugify for the URL/list_key. Vietnamese chars are stripped here, so the
+    // human-readable label is stored separately in pl_list_labels (and shown on
+    // both dashboard and the public price page).
+    const base = label
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d").replace(/Đ/g, "D")
+      .toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const key = base || `loai-${Object.keys(listLabels).length + customLists.length + 1}`;
     if (allLists.some((l) => l.key === key)) return;
     const entry = { key, label, title: `Bảng giá ${label}` };
     saveCustomLists([...customLists, entry]);
+    // Persist the readable label so the public page shows it (not the slug).
+    const nextLabels = { ...listLabels, [key]: label };
+    setListLabels(nextLabels);
     setActiveList(key);
     setNewListName("");
     setShowNewList(false);
+    await supabase.from("profiles").update({ pl_list_labels: nextLabels }).eq("id", ownerId);
   }
 
   function removeCustomList(key: string) {
