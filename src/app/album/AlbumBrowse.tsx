@@ -1,6 +1,58 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type Lang = "vi" | "en";
+const TR = {
+  vi: {
+    bookBtn: "Đặt lịch",
+    eyebrow: "Bộ sưu tập",
+    title: "Album khách hàng",
+    subtitle1: "Tìm album theo tên hoặc số điện thoại. Mở album cần nhập mật khẩu là",
+    subtitle2: "số điện thoại",
+    subtitle3: "của khách.",
+    searchPh: "Tên album hoặc số điện thoại…",
+    searching: "Đang tìm…",
+    searchBtn: "Tìm",
+    clearBtn: "Xóa",
+    mediaImages: "Hình ảnh",
+    mediaVideos: "Video",
+    filterAll: "Tất cả",
+    yearPrefix: "Năm ",
+    other: "Khác",
+    noResults: "Không tìm thấy album phù hợp.",
+    noVideos: "Chưa có video nào.",
+    noPhotos: "Chưa có album ảnh nào.",
+    collapse: "Thu gọn",
+    viewMore: "Xem thêm",
+    dateLocale: "vi-VN",
+    months: ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"],
+  },
+  en: {
+    bookBtn: "Book",
+    eyebrow: "Collection",
+    title: "Customer albums",
+    subtitle1: "Find albums by name or phone number. Opening an album requires the password:",
+    subtitle2: "phone number",
+    subtitle3: "of the customer.",
+    searchPh: "Album name or phone number…",
+    searching: "Searching…",
+    searchBtn: "Search",
+    clearBtn: "Clear",
+    mediaImages: "Photos",
+    mediaVideos: "Videos",
+    filterAll: "All",
+    yearPrefix: "",
+    other: "Other",
+    noResults: "No matching albums found.",
+    noVideos: "No videos yet.",
+    noPhotos: "No photo albums yet.",
+    collapse: "Collapse",
+    viewMore: "View more",
+    dateLocale: "en-GB",
+    months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+  },
+} as const;
 import Link from "next/link";
 import { Search, Calendar, Lock, Pin, Play } from "lucide-react";
 import Brand from "@/components/Brand";
@@ -18,21 +70,26 @@ export interface GalleryCard {
   gallery_pinned: boolean;
 }
 
-const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
-
 function catLabel(cat: string | null, custom: string | null) {
   if (cat === "khac" && custom) return custom;
-  return GALLERY_CATEGORIES.find((c) => c.value === cat)?.label ?? "Khác";
+  return GALLERY_CATEGORIES.find((c) => c.value === cat)?.label ?? "Other";
 }
-function periodKey(d: string | null) {
-  if (!d) return "Khác";
+function periodKey(d: string | null, months: readonly string[], other: string) {
+  if (!d) return other;
   const dt = new Date(d);
-  return `${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
+  return `${months[dt.getMonth()]} ${dt.getFullYear()}`;
 }
 
-const yearKey = (d: string | null) => (d ? String(new Date(d).getFullYear()) : "Khác");
+const yearKey = (d: string | null, other: string) => (d ? String(new Date(d).getFullYear()) : other);
 
 export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] }) {
+  const [lang, setLangState] = useState<Lang>("vi");
+  useEffect(() => {
+    const stored = localStorage.getItem("vk_lang") as Lang | null;
+    if (stored === "en") setLangState("en");
+  }, []);
+  const tr = TR[lang];
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GalleryCard[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -66,21 +123,21 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
     if (results) return null;
     const map = new Map<string, GalleryCard[]>();
     for (const g of shownImages) {
-      const k = periodKey(g.event_date);
+      const k = periodKey(g.event_date, tr.months, tr.other);
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(g);
     }
     return [...map.entries()];
-  }, [shownImages, results]);
+  }, [shownImages, results, tr]);
 
   // Video mode: filter by year.
   const videoYears = useMemo(
-    () => [...new Set(videos.map((g) => yearKey(g.event_date)))],
-    [videos]
+    () => [...new Set(videos.map((g) => yearKey(g.event_date, tr.other)))],
+    [videos, tr]
   );
   const shownVideos = useMemo(
-    () => (year === "all" ? videos : videos.filter((g) => yearKey(g.event_date) === year)),
-    [videos, year]
+    () => (year === "all" ? videos : videos.filter((g) => yearKey(g.event_date, tr.other) === year)),
+    [videos, year, tr]
   );
 
   const current = media === "image" ? shownImages : shownVideos;
@@ -93,63 +150,62 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
       >
         <Brand />
         <div className="flex items-center gap-3">
-          <Link href="/#dat-lich" className="btn-ghost px-4 py-2 text-[13.5px]">Đặt lịch</Link>
+          <Link href="/#dat-lich" className="btn-ghost px-4 py-2 text-[13.5px]">{tr.bookBtn}</Link>
           <LanguageSwitcher />
         </div>
       </header>
 
       <div className="mx-auto max-w-[1180px] px-6 pt-8 md:px-10">
-        <p className="eyebrow mb-1.5">Bộ sưu tập</p>
-        <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">Album khách hàng</h1>
+        <p className="eyebrow mb-1.5">{tr.eyebrow}</p>
+        <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{tr.title}</h1>
         <p className="mt-3 text-[14.5px]" style={{ color: "var(--text2)" }}>
-          Tìm album theo tên hoặc số điện thoại. Mở album cần nhập mật khẩu là <b style={{ color: "var(--text)" }}>số điện thoại</b> của khách.
+          {tr.subtitle1} <b style={{ color: "var(--text)" }}>{tr.subtitle2}</b> {tr.subtitle3}
         </p>
 
         <form onSubmit={runSearch} className="mt-6 flex max-w-md gap-2.5">
           <div className="relative flex-1">
             <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--text3)" }} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tên album hoặc số điện thoại…" className="input pl-[42px]" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={tr.searchPh} className="input pl-[42px]" />
           </div>
-          <button className="btn-primary whitespace-nowrap">{searching ? "Đang tìm…" : "Tìm"}</button>
+          <button className="btn-primary whitespace-nowrap">{searching ? tr.searching : tr.searchBtn}</button>
           {results && (
-            <button type="button" onClick={() => { setResults(null); setQuery(""); }} className="btn-ghost whitespace-nowrap">Xóa</button>
+            <button type="button" onClick={() => { setResults(null); setQuery(""); }} className="btn-ghost whitespace-nowrap">{tr.clearBtn}</button>
           )}
         </form>
 
-        {/* Media toggle: Hình ảnh / Video */}
         <div className="mt-6 inline-flex rounded-full p-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           <button onClick={() => setMedia("image")} className="rounded-full px-5 py-1.5 text-[13.5px] font-medium transition-colors" style={media === "image" ? { background: "var(--accent)", color: "var(--accentInk)" } : { color: "var(--text2)" }}>
-            Hình ảnh ({images.length})
+            {tr.mediaImages} ({images.length})
           </button>
           <button onClick={() => setMedia("video")} className="rounded-full px-5 py-1.5 text-[13.5px] font-medium transition-colors" style={media === "video" ? { background: "var(--accent)", color: "var(--accentInk)" } : { color: "var(--text2)" }}>
-            Video ({videos.length})
+            {tr.mediaVideos} ({videos.length})
           </button>
         </div>
 
         {/* Sub-filter: categories (image) or years (video) */}
         {media === "image" ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            <CatTab active={cat === "all"} onClick={() => setCat("all")}>Tất cả</CatTab>
+            <CatTab active={cat === "all"} onClick={() => setCat("all")}>{tr.filterAll}</CatTab>
             {GALLERY_CATEGORIES.filter((c) => c.value !== "video").map((c) => (
               <CatTab key={c.value} active={cat === c.value} onClick={() => setCat(c.value)}>{c.label}</CatTab>
             ))}
           </div>
         ) : (
           <div className="mt-4 flex flex-wrap gap-2">
-            <CatTab active={year === "all"} onClick={() => setYear("all")}>Tất cả</CatTab>
+            <CatTab active={year === "all"} onClick={() => setYear("all")}>{tr.filterAll}</CatTab>
             {videoYears.map((y) => (
-              <CatTab key={y} active={year === y} onClick={() => setYear(y)}>{y === "Khác" ? y : `Năm ${y}`}</CatTab>
+              <CatTab key={y} active={year === y} onClick={() => setYear(y)}>{y === tr.other ? y : `${tr.yearPrefix}${y}`}</CatTab>
             ))}
           </div>
         )}
 
         {current.length === 0 ? (
           <p className="py-20 text-center text-sm" style={{ color: "var(--text3)" }}>
-            {results ? "Không tìm thấy album phù hợp." : media === "video" ? "Chưa có video nào." : "Chưa có album ảnh nào."}
+            {results ? tr.noResults : media === "video" ? tr.noVideos : tr.noPhotos}
           </p>
         ) : media === "video" || results ? (
           <div className="mt-8">
-            <Grid items={current} video={media === "video"} />
+            <Grid items={current} video={media === "video"} dateLocale={tr.dateLocale} />
           </div>
         ) : (
           <div className="mt-8 space-y-10">
@@ -159,11 +215,11 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
               return (
                 <section key={period}>
                   <h2 className="mb-4 font-serif text-2xl font-medium">{period}</h2>
-                  <Grid items={vis} />
+                  <Grid items={vis} dateLocale={tr.dateLocale} />
                   {items.length > PER_MONTH && (
                     <div className="mt-4 text-center">
                       <button onClick={() => setExpanded((e) => ({ ...e, [period]: !isOpen }))} className="btn-ghost">
-                        {isOpen ? "Thu gọn" : `Xem thêm (${items.length - PER_MONTH})`}
+                        {isOpen ? tr.collapse : `${tr.viewMore} (${items.length - PER_MONTH})`}
                       </button>
                     </div>
                   )}
@@ -189,7 +245,7 @@ function CatTab({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function Grid({ items, video }: { items: GalleryCard[]; video?: boolean }) {
+function Grid({ items, video, dateLocale }: { items: GalleryCard[]; video?: boolean; dateLocale: string }) {
   return (
     <div className="grid gap-[clamp(14px,2vw,20px)] [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
       {items.map((g) => (
@@ -222,7 +278,7 @@ function Grid({ items, video }: { items: GalleryCard[]; video?: boolean }) {
               <h3 className="font-serif text-xl font-medium leading-tight text-white">{g.title}</h3>
               {g.event_date && (
                 <p className="mt-0.5 flex items-center gap-1 text-[11.5px]" style={{ color: "rgba(255,255,255,.7)" }}>
-                  <Calendar size={11} /> {new Date(g.event_date).toLocaleDateString("vi-VN")}
+                  <Calendar size={11} /> {new Date(g.event_date).toLocaleDateString(dateLocale)}
                 </p>
               )}
             </div>
