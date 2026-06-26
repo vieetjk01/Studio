@@ -34,8 +34,12 @@ export default async function PricingPage() {
     .eq("owner_id", profile.id)
     .order("position");
 
+  const hiddenLists = (profile.pl_hidden_lists as string[] | null) ?? [];
+
   // First visit: auto-fill the wedding + engagement lists from the studio's cards.
-  if ((!data || data.length === 0) && profile.actingRole !== "staff") {
+  // Skip any built-in list the studio has explicitly hidden so it is not
+  // re-seeded after being removed.
+  if ((!data || data.length === 0) && profile.actingRole !== "staff" && hiddenLists.length === 0) {
     await supabase.from("studio_pricelist").insert(
       ALL_SEED.map((s, i) => ({ ...s, owner_id: profile.id, position: i }))
     );
@@ -46,6 +50,7 @@ export default async function PricingPage() {
     <PricingManager
       ownerId={profile.id}
       initial={(data ?? []) as PricelistItem[]}
+      hiddenLists={hiddenLists}
       shareUrl={token ? mainUrl(`/gia/${token}`) : ""}
       contact={{
         pl_phone: profile.pl_phone ?? "",

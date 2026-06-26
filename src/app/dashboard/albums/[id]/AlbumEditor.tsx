@@ -133,6 +133,8 @@ export default function AlbumEditor({
     if (error) return flash(error.message);
     setSources([...sources, data as AlbumSource]);
     setNewSource({ name: "", url: "" });
+    // Auto-sync so photos & thumbnails appear immediately after adding a source.
+    await sync();
   }
 
   async function removeSource(id: string) {

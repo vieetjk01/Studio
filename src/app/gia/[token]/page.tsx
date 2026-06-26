@@ -6,8 +6,10 @@ import type { PricelistItem } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function buildLists(allItems: PricelistItem[]) {
-  const builtIn = PRICE_LISTS.filter((l) => allItems.some((i) => (i.list_key || "cuoi") === l.key));
+function buildLists(allItems: PricelistItem[], hidden: string[] = []) {
+  const builtIn = PRICE_LISTS.filter(
+    (l) => !hidden.includes(l.key) && allItems.some((i) => (i.list_key || "cuoi") === l.key)
+  );
   const builtInKeys = new Set(PRICE_LISTS.map((l) => l.key));
   const customKeys = [...new Set(allItems.map((i) => i.list_key || "cuoi"))].filter((k) => !builtInKeys.has(k));
   const custom = customKeys.map((k) => ({ key: k, label: k, title: `Bảng giá ${k}` }));
@@ -42,16 +44,18 @@ export default async function PublicPricelist({ params, searchParams }: { params
     .order("position");
   const allItems = (data ?? []) as PricelistItem[];
 
-  const lists = buildLists(allItems);
+  const { data: th } = await db
+    .from("profiles")
+    .select("pl_bg, pl_text, pl_accent, pl_logo_url, pl_hidden_lists")
+    .eq("id", owner.id)
+    .maybeSingle();
+  const hidden = ((th?.pl_hidden_lists as string[] | null) ?? []);
+
+  const lists = buildLists(allItems, hidden);
   const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
 
   let theme: { bg?: string | null; text?: string | null; accent?: string | null; logo?: string | null } | undefined;
-  const { data: th } = await db
-    .from("profiles")
-    .select("pl_bg, pl_text, pl_accent, pl_logo_url")
-    .eq("id", owner.id)
-    .maybeSingle();
   if (th) theme = { bg: th.pl_bg, text: th.pl_text, accent: th.pl_accent, logo: th.pl_logo_url };
 
   return (

@@ -18,19 +18,24 @@ const DEFAULT_APPEARANCE: Appearance = { pl_bg: "#e7ebdf", pl_text: "#23402c", p
 export default function PricingManager({
   ownerId,
   initial,
+  hiddenLists: initialHidden = [],
   shareUrl,
   contact,
   appearance,
 }: {
   ownerId: string;
   initial: PricelistItem[];
+  hiddenLists?: string[];
   shareUrl: string; // base /gia/<token>
   contact: Contact;
   appearance: Appearance;
 }) {
   const supabase = createClient();
   const [list, setList] = useState<PricelistItem[]>(initial);
-  const [activeList, setActiveList] = useState(PRICE_LISTS[0].key);
+  // Built-in lists the studio has hidden (e.g. removed "Cưới" / "Đính hôn").
+  const [hiddenLists, setHiddenLists] = useState<string[]>(initialHidden);
+  const visibleBuiltIns = PRICE_LISTS.filter((l) => !hiddenLists.includes(l.key));
+  const [activeList, setActiveList] = useState((visibleBuiltIns[0] ?? PRICE_LISTS[0]).key);
   const [f, setF] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [c, setC] = useState<Contact>(contact);
   const [savedContact, setSavedContact] = useState(false);
@@ -55,11 +60,35 @@ export default function PricingManager({
     } catch { /* ignore */ }
   }, [ownerId]);
 
-  const allLists = [...PRICE_LISTS, ...customLists];
+  const allLists = [...visibleBuiltIns, ...customLists];
 
   function saveCustomLists(next: typeof customLists) {
     setCustomLists(next);
     localStorage.setItem(`pl_custom_lists_${ownerId}`, JSON.stringify(next));
+  }
+
+  async function saveHiddenLists(next: string[]) {
+    setHiddenLists(next);
+    await supabase.from("profiles").update({ pl_hidden_lists: next }).eq("id", ownerId);
+  }
+
+  // "Delete" a built-in list (Cưới / Đính hôn): hide its tab everywhere
+  // (dashboard + public). Reversible via "restore". Items are kept so nothing
+  // is lost; an empty hidden list simply never shows.
+  async function removeBuiltinList(key: string) {
+    const label = PRICE_LISTS.find((l) => l.key === key)?.label ?? key;
+    if (!confirm(`Xóa bảng giá "${label}"? Bạn có thể khôi phục lại sau.`)) return;
+    const next = [...new Set([...hiddenLists, key])];
+    await saveHiddenLists(next);
+    if (activeList === key) {
+      const remaining = [...PRICE_LISTS.filter((l) => !next.includes(l.key)), ...customLists];
+      setActiveList((remaining[0] ?? PRICE_LISTS[0]).key);
+    }
+  }
+
+  async function restoreBuiltinList(key: string) {
+    await saveHiddenLists(hiddenLists.filter((k) => k !== key));
+    setActiveList(key);
   }
 
   function addCustomList() {
@@ -214,27 +243,28 @@ export default function PricingManager({
 
       {/* List tabs */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {allLists.map((l) => (
-          <div key={l.key} className="relative flex items-center">
-            <button
-              onClick={() => setActiveList(l.key)}
-              className="rounded-full px-4 py-2 text-sm font-medium"
-              style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: customLists.some(c => c.key === l.key) ? 28 : undefined }}
-            >
-              Bảng giá {l.label}
-            </button>
-            {customLists.some((c) => c.key === l.key) && (
+        {allLists.map((l) => {
+          const isCustom = customLists.some((c) => c.key === l.key);
+          return (
+            <div key={l.key} className="relative flex items-center">
               <button
-                onClick={() => removeCustomList(l.key)}
+                onClick={() => setActiveList(l.key)}
+                className="rounded-full px-4 py-2 text-sm font-medium"
+                style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: 28 }}
+              >
+                Bảng giá {l.label}
+              </button>
+              <button
+                onClick={() => (isCustom ? removeCustomList(l.key) : removeBuiltinList(l.key))}
                 className="absolute right-1 flex h-5 w-5 items-center justify-center rounded-full"
                 style={{ color: "var(--text3)" }}
-                title="Xoá loại bảng giá"
+                title="Xoá bảng giá này"
               >
                 <X size={11} />
               </button>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
 
         {/* Add new list type */}
         {showNewList ? (
@@ -260,6 +290,24 @@ export default function PricingManager({
           </button>
         )}
       </div>
+
+      {/* Restore hidden built-in lists */}
+      {PRICE_LISTS.some((l) => hiddenLists.includes(l.key)) && (
+        <div className="mb-6 -mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text3)" }}>
+          <span>Đã ẩn:</span>
+          {PRICE_LISTS.filter((l) => hiddenLists.includes(l.key)).map((l) => (
+            <button
+              key={l.key}
+              onClick={() => restoreBuiltinList(l.key)}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1"
+              style={{ border: "1px dashed var(--border2)" }}
+              title="Khôi phục bảng giá"
+            >
+              <Plus size={11} /> {l.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {listUrl && (
         <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
