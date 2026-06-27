@@ -257,10 +257,13 @@ export default function CalendarView({
               const isSel = dateStr === selected;
               const has = evs.length + cons.length > 0;
               return (
-                <button
+                <div
                   key={i}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelected(dateStr)}
-                  className="flex min-h-[72px] flex-col items-stretch rounded-lg p-1.5 text-sm transition-colors"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelected(dateStr); }}
+                  className="flex min-h-[72px] cursor-pointer flex-col items-stretch rounded-lg p-1.5 text-sm transition-colors"
                   style={{
                     background: isSel ? "var(--surface2)" : "transparent",
                     border: isToday ? "1px solid var(--border2)" : "1px solid transparent",
@@ -274,9 +277,16 @@ export default function CalendarView({
                     {cons.map((c) => {
                       const mc = c.calendar_color || DEFAULT_MARK;
                       return (
-                        <span key={c.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: `color-mix(in srgb,${mc} 22%,transparent)`, borderLeft: `2px solid ${mc}`, color: "var(--text2)" }} title={c.title}>
+                        <Link
+                          key={c.id}
+                          href={`/dashboard/studio/contracts/${c.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="block truncate rounded px-1 py-0.5 text-[9px] leading-tight"
+                          style={{ background: `color-mix(in srgb,${mc} 22%,transparent)`, borderLeft: `2px solid ${mc}`, color: "var(--text2)" }}
+                          title={`Mở hợp đồng: ${c.title}`}
+                        >
                           {c.event_time ? `${c.event_time} ` : ""}{c.client_name || c.title}
-                        </span>
+                        </Link>
                       );
                     })}
                     {evs.map((e) => (
@@ -286,7 +296,7 @@ export default function CalendarView({
                     ))}
                   </div>
                   {has && <span className="sr-only">có lịch</span>}
-                </button>
+                </div>
               );
             })}
           </div>

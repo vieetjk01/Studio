@@ -142,6 +142,7 @@ import {
   type QuoteAdjustment,
 } from "@/lib/types";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
+import { fmtDateLunar } from "@/lib/date";
 import { mainUrl } from "@/lib/hosts";
 
 export default function QuoteClientView({
@@ -336,7 +337,7 @@ export default function QuoteClientView({
             <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>{tr.eventTitle}</h2>
             <dl className="mt-2 grid gap-2 text-sm md:grid-cols-2">
               {quote.event_date && (
-                <div><dt className="opacity-60">{tr.dateLabel}</dt><dd>{new Date(quote.event_date).toLocaleDateString(tr.dateLocale)}</dd></div>
+                <div><dt className="opacity-60">{tr.dateLabel}</dt><dd>{fmtDateLunar(quote.event_date)}</dd></div>
               )}
               {quote.location && (
                 <div><dt className="opacity-60">{tr.locationLabel}</dt><dd>{quote.location}</dd></div>

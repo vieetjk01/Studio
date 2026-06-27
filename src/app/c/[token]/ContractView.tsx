@@ -864,7 +864,7 @@ function PrintDoc({
           <tr><td style={{ padding: "3px 0", width: 130 }}>Bên A (Studio):</td><td><b>{studioName}</b>{studioPhone ? ` · ĐT: ${studioPhone}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Bên B (Khách hàng):</td><td><b>{contract.client_name || "—"}</b>{contract.client_phone ? ` · ĐT: ${contract.client_phone}` : ""}{contract.client_email ? ` · ${contract.client_email}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Gói dịch vụ:</td><td>{SHOOT_TYPE_LABEL[contract.shoot_type]}</td></tr>
-          <tr><td style={{ padding: "3px 0" }}>Ngày chính:</td><td>{contract.event_date || "—"}{contract.event_time ? ` · ${contract.event_time}` : ""}</td></tr>
+          <tr><td style={{ padding: "3px 0" }}>Ngày chính:</td><td>{fmtDateLunar(contract.event_date) || "—"}{contract.event_time ? ` · ${contract.event_time}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Địa điểm:</td><td>{contract.location || "—"}</td></tr>
         </tbody>
       </table>
@@ -938,7 +938,7 @@ function PrintDoc({
               </div>
               <div>{contract.studio_signed_name || studioName}</div>
               {contract.studio_signed_at && (
-                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {new Date(contract.studio_signed_at).toLocaleDateString("vi-VN")}</div>
+                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {fmtDate(contract.studio_signed_at)}</div>
               )}
             </td>
             <td style={{ width: "50%" }}>
@@ -951,7 +951,7 @@ function PrintDoc({
               </div>
               <div>{contract.client_signed_name || contract.client_name || ""}</div>
               {contract.client_signed_at && (
-                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {new Date(contract.client_signed_at).toLocaleDateString("vi-VN")}</div>
+                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {fmtDate(contract.client_signed_at)}</div>
               )}
             </td>
           </tr>
