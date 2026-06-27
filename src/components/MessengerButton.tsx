@@ -61,8 +61,14 @@ export default function MessengerButton({
     <button
       type="button"
       onClick={() => {
-        const canShare = typeof navigator !== "undefined" && !!navigator.share;
-        if (canShare) {
+        // Web Share only on real mobile/touch devices — on desktop the share
+        // sheet often only copies a link, so there we copy the FULL message and
+        // open the chat to paste.
+        const isMobile =
+          typeof navigator !== "undefined" &&
+          (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+            (navigator.maxTouchPoints > 0 && matchMedia("(pointer: coarse)").matches));
+        if (isMobile && navigator.share) {
           navigator.share({ text: message }).catch(() => {});
         } else {
           navigator.clipboard?.writeText(message).catch(() => {});
