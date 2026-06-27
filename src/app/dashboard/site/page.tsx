@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { effectivePlan } from "@/lib/plans";
-import SiteManager from "./SiteManager";
+import CanvasBuilder from "./builder/CanvasBuilder";
 import type { Site, SiteBlock } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
 
+// Trang tạo website giờ dùng trình tạo kéo-thả (canvas + inline edit + inspector).
+// Dùng chung bảng sites/site_blocks với SiteRenderer nên dữ liệu & xuất bản tương thích.
 export default async function SiteBuilderPage() {
   const supabase = createClient();
   const {
@@ -27,12 +30,10 @@ export default async function SiteBuilderPage() {
   ]);
 
   return (
-    <SiteManager
+    <CanvasBuilder
       site={site as Site}
       initialBlocks={(blocks ?? []) as SiteBlock[]}
       albums={(albums ?? []) as { id: string; slug: string; title: string; cover_url: string | null }[]}
-      plan={plan}
-      isAdmin={isAdmin}
       canPublish={canPublish}
       mainHost={process.env.NEXT_PUBLIC_MAIN_HOST || ""}
     />

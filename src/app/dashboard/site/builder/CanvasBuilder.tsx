@@ -351,7 +351,7 @@ export default function CanvasBuilder({
     <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", flexDirection: "column", background: "#E7E1D7", color: "#23201B", fontFamily: "var(--font-manrope), system-ui, sans-serif" }}>
       {/* TOP BAR */}
       <header style={{ height: 58, flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", background: "#fff", borderBottom: "1px solid #E4DCD0" }}>
-        <a href="/dashboard/site" title="Quay lại quản lý trang" style={chipBtn(false)}><ArrowLeft size={16} /></a>
+        <a href="/dashboard/studio" title="Quay lại bảng điều khiển" style={chipBtn(false)}><ArrowLeft size={16} /></a>
         <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 15 }}>Trình tạo website</span>
 
         {!preview && (
