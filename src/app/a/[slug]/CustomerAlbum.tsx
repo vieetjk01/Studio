@@ -329,6 +329,19 @@ export default function CustomerAlbum({
     setPan({ x: 0, y: 0 });
   }, [lbIdx]);
 
+  // Preload neighbouring full images so prev/next switches feel instant
+  // (otherwise each step fetches a fresh 1600px image from Drive and lags).
+  useEffect(() => {
+    if (lbIdx === null) return;
+    for (const off of [1, -1, 2, -2]) {
+      const p = visiblePhotos[lbIdx + off];
+      if (p) {
+        const img = new Image();
+        img.src = fullImageUrl(p.drive_file_id, 1600);
+      }
+    }
+  }, [lbIdx, visiblePhotos]);
+
   function zoomBy(d: number) {
     setZoom((z) => {
       const n = Math.min(5, Math.max(1, +(z + d).toFixed(2)));
@@ -739,12 +752,21 @@ export default function CustomerAlbum({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
+                  key={lbPhoto.id}
                   src={fullImageUrl(lbPhoto.drive_file_id, 1600)}
                   alt={lbPhoto.name}
                   draggable={false}
                   onContextMenu={(e) => wm && e.preventDefault()}
                   className="max-h-[46vh] max-w-full select-none rounded object-contain md:max-h-[78vh]"
-                  style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
+                  style={{
+                    boxShadow: "0 30px 80px rgba(0,0,0,.6)",
+                    // Show the cached grid thumbnail behind while the full image
+                    // decodes, so the picture changes immediately on prev/next.
+                    backgroundImage: `url(${thumbnailUrl(lbPhoto.drive_file_id, 600)})`,
+                    backgroundSize: "contain",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "center",
+                  }}
                 />
                 {wm && (
                   <div className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-x-12 gap-y-10 overflow-hidden opacity-30">
