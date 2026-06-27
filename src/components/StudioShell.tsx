@@ -87,7 +87,7 @@ const GROUPS: Group[] = [
   {
     label: "Công cụ",
     items: [
-      { href: "/dashboard", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
+      { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/create", label: "Tạo album", icon: Plus, minTier: "booking" },
       { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
       { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
@@ -118,6 +118,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/ranking", "Xếp hạng", "Xếp hạng đội ngũ"],
   ["/dashboard/studio/messages", "Mẫu tin", "Mẫu tin nhắn"],
   ["/dashboard/studio", "Tổng quan", "Tổng quan hoạt động studio"],
+  ["/dashboard/albums", "Thư viện album", "Tất cả album của bạn"],
   ["/dashboard/create", "Tạo album", "Tạo album giao khách mới"],
   ["/dashboard/filter", "Lọc ảnh", "Lọc & đối chiếu ảnh chọn"],
   ["/dashboard/compress", "Nén ảnh", "Nén ảnh & đóng dấu watermark"],

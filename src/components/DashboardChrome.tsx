@@ -42,6 +42,7 @@ export default function DashboardChrome({
       pathname.startsWith("/dashboard/settings") ||
       // Bộ công cụ ảnh chạy ngay trong shell studio (không nhảy ra subdomain khác)
       pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/albums") ||
       pathname.startsWith("/dashboard/create") ||
       pathname.startsWith("/dashboard/filter") ||
       pathname.startsWith("/dashboard/compress")
