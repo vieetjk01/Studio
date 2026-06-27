@@ -56,18 +56,23 @@ export default function MessengerButton({
     <button
       type="button"
       onClick={() => {
-        // Open synchronously FIRST so the tap stays a user gesture — that's what
-        // lets the m.me universal link open the Messenger app on Android/iOS
-        // (awaiting clipboard first dropped the gesture → web/install page).
-        window.open(url, "_blank", "noopener,noreferrer");
-        navigator.clipboard?.writeText(message).catch(() => {});
+        // Messenger can't prefill chat text via a URL. On mobile, use the OS
+        // share sheet so the message is carried INTO Messenger ready to send
+        // (the user just picks the chat). On desktop, fall back to copy + open.
+        const canShare = typeof navigator !== "undefined" && !!navigator.share;
+        if (canShare) {
+          navigator.share({ text: message }).catch(() => {});
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+          navigator.clipboard?.writeText(message).catch(() => {});
+        }
         setDone(true);
         setTimeout(() => setDone(false), 2000);
       }}
       className={className}
-      title="Chép sẵn lời nhắn rồi mở Messenger"
+      title="Gửi nội dung sẵn qua Messenger (điện thoại) / chép sẵn rồi mở chat (máy tính)"
     >
-      {done ? <Check size={14} /> : <MessageSquare size={14} />} {done ? "Đã chép, mở…" : label}
+      {done ? <Check size={14} /> : <MessageSquare size={14} />} {done ? "Đang mở…" : label}
     </button>
   );
 }
