@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { contractTotal, vnd, CONTRACT_STATUS_LABEL, type ContractStatus } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 export type BoardCard = {
   id: string;
@@ -87,7 +88,7 @@ export default function BoardView({ initial }: { initial: BoardCard[] }) {
                         </div>
                         {(c.event_date || late) && (
                           <p className="mt-1 text-[11px]" style={{ color: late ? "#c77b7b" : "var(--text3)" }}>
-                            {late ? `Trễ giao · hạn ${c.delivery_due}` : `Chụp ${c.event_date}`}
+                            {late ? `Trễ giao · hạn ${fmtDate(c.delivery_due)}` : `Chụp ${fmtDate(c.event_date)}`}
                           </p>
                         )}
                       </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { fmtDate } from "@/lib/date";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1404,7 +1405,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </p>
             {f.event_date && (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                <span className="text-sm">Buổi chính · {f.event_date}{f.event_time ? ` · ${f.event_time}` : ""}</span>
+                <span className="text-sm">Buổi chính · {fmtDate(f.event_date)}{f.event_time ? ` · ${f.event_time}` : ""}</span>
                 <CalendarButtons compact event={{ date: f.event_date, time: f.event_time, title: f.title, location: f.location }} />
               </div>
             )}
@@ -1416,7 +1417,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                     <div>
                       <p className="text-sm font-medium">{m.title}</p>
-                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{fmtDate(m.event_date)}{m.event_time ? ` · ${m.event_time}` : ""}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: f.location }} />

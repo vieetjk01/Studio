@@ -11,6 +11,7 @@ import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
 import { fullClauseText } from "@/lib/contract-clauses";
 import { messengerUrl } from "@/components/MessengerButton";
 import { vnd, type StudioBooking } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 import { useRouter } from "next/navigation";
 
 type BookingStatus = "new" | "accepted" | "pending" | "declined" | "handled" | "archived";
@@ -225,7 +226,7 @@ export default function BookingsView({
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: "var(--text3)" }}>
                     <span className="flex items-center gap-1"><Phone size={11} /> {b.phone}</span>
                     {b.service && <span>Dịch vụ: {b.service}</span>}
-                    {b.preferred_date && <span>Ngày: {b.preferred_date}</span>}
+                    {b.preferred_date && <span>Ngày: {fmtDate(b.preferred_date)}</span>}
                   </div>
                   {b.package_name && (
                     <p className="mt-1 text-xs" style={{ color: "var(--brand, var(--accent))" }}>

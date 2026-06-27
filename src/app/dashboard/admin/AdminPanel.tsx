@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtDate } from "@/lib/date";
 import { UserPlus, Trash2 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { planProfilePatch, type Plan } from "@/lib/plans";
@@ -190,7 +191,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                   </select>
                   {p.plan !== "free" && p.plan_expires_at && (
                     <div className="mt-1 text-[10px]" style={{ color: "var(--text3)" }}>
-                      {t("expiresShort")}: {new Date(p.plan_expires_at).toLocaleDateString()}
+                      {t("expiresShort")}: {fmtDate(p.plan_expires_at)}
                     </div>
                   )}
                 </td>

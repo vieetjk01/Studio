@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { fmtDate } from "@/lib/date";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -300,7 +301,7 @@ export default function CalendarView({
         <div className="space-y-6">
           {selected ? (
             <div className="card p-5">
-              <h2 className="font-serif text-lg font-medium">{selected}</h2>
+              <h2 className="font-serif text-lg font-medium">{fmtDate(selected)}</h2>
               <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lunarFull(selected)}</p>
 
               {selContracts.map((c) => {
@@ -408,7 +409,7 @@ export default function CalendarView({
                 {upcoming.map((e) => (
                   <li key={e.id} className="flex justify-between text-sm">
                     <span>{e.title}</span>
-                    <span style={{ color: "var(--text3)" }}>{e.event_date}</span>
+                    <span style={{ color: "var(--text3)" }}>{fmtDate(e.event_date)}</span>
                   </li>
                 ))}
               </ul>

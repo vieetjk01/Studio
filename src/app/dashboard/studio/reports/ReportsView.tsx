@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wall
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import { vnd, EXPENSE_CATEGORY_LABEL, PAYMENT_KIND_LABEL, type StudioExpense, type PaymentKind } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 export type PaymentRow = {
   id: string;
@@ -263,7 +264,7 @@ export default function ReportsView({
             <ul className="space-y-2 text-sm">
               {monthPayments.map((p) => (
                 <li key={p.id} className="flex justify-between">
-                  <span>{p.contract?.title || "Hợp đồng"} <span style={{ color: "var(--text3)" }}>· {p.paid_at}</span></span>
+                  <span>{p.contract?.title || "Hợp đồng"} <span style={{ color: "var(--text3)" }}>· {fmtDate(p.paid_at)}</span></span>
                   <span className="font-medium">{vnd(p.amount)}</span>
                 </li>
               ))}

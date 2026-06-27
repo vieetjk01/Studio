@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fmtDate } from "@/lib/date";
 import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package, Upload } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
@@ -377,7 +378,7 @@ export default function ContractView({ token }: { token: string }) {
           <div className="mt-4 space-y-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Gói dịch vụ" : "Service"}: <b>{SHOOT_TYPE_LABEL[contract.shoot_type]}</b></div>
             {(contract.event_date || contract.event_time) && (
-              <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Ngày chính" : "Main date"}: {contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
+              <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Ngày chính" : "Main date"}: {fmtDate(contract.event_date)}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
             )}
             {contract.location && (
               <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
@@ -427,7 +428,7 @@ export default function ContractView({ token }: { token: string }) {
                     <p className="font-medium">{lang === "vi" ? "Buổi chính" : "Main session"}{contract.title ? ` — ${contract.title}` : ""}</p>
                     {contract.location && <p className="text-xs" style={{ color: "var(--text3)" }}>📍 {contract.location}</p>}
                   </div>
-                  <span style={{ color: "var(--text2)" }}>{contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</span>
+                  <span style={{ color: "var(--text2)" }}>{fmtDate(contract.event_date)}{contract.event_time ? ` · ${contract.event_time}` : ""}</span>
                   <CalendarButtons compact event={{ date: contract.event_date, time: contract.event_time, title: contract.title, location: contract.location }} />
                 </li>
               )}
@@ -438,7 +439,7 @@ export default function ContractView({ token }: { token: string }) {
                     <p>{m.title}</p>
                     {m.note && <p className="text-xs" style={{ color: "var(--text3)" }}>{m.note}</p>}
                   </div>
-                  <span style={{ color: "var(--text2)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</span>
+                  <span style={{ color: "var(--text2)" }}>{fmtDate(m.event_date)}{m.event_time ? ` · ${m.event_time}` : ""}</span>
                   <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: contract.location }} />
                 </li>
               ))}
@@ -520,7 +521,7 @@ export default function ContractView({ token }: { token: string }) {
                         {p.paid
                           ? `✓ ${lang === "vi" ? "Đã thanh toán" : "Paid"}${p.paid_at ? ` · ${p.paid_at.slice(0, 10)}` : ""}`
                           : p.due_date
-                            ? `${lang === "vi" ? "Hạn" : "Due"}: ${p.due_date}`
+                            ? `${lang === "vi" ? "Hạn" : "Due"}: ${fmtDate(p.due_date)}`
                             : lang === "vi" ? "Chưa thanh toán" : "Pending"}
                       </p>
                     </div>
@@ -876,7 +877,7 @@ function PrintDoc({
               {milestones.map((m) => (
                 <tr key={m.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "4px 0" }}>{m.title}</td>
-                  <td style={{ padding: "4px 0", textAlign: "right", width: 180 }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</td>
+                  <td style={{ padding: "4px 0", textAlign: "right", width: 180 }}>{fmtDate(m.event_date)}{m.event_time ? ` · ${m.event_time}` : ""}</td>
                 </tr>
               ))}
             </tbody>

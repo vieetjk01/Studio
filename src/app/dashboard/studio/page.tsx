@@ -22,6 +22,7 @@ import {
   type QuoteStatus,
   type CrewRole,
 } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 /* ── Design tokens (ported from the mstudo app mockup) ─────────────────────
    Status tones with a soft background, matching the green-accent mstudo look.
@@ -234,7 +235,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm" style={{ color: ACCENT }}>{b.preferred_date}</p>
+                  <p className="text-sm" style={{ color: ACCENT }}>{fmtDate(b.preferred_date)}</p>
                   {b.package_price ? <p className="text-[11px]" style={{ color: "var(--text3)" }}>{vnd(b.package_price)}</p> : null}
                 </div>
               </li>
@@ -680,7 +681,7 @@ export default async function StudioOverview() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{d.contract?.title || "Hợp đồng"} · {d.label}</p>
                         <p className="text-[11px]" style={{ color: d.due_date < today ? TONE.red.fg : "var(--text3)" }}>
-                          {vnd(d.amount)} · hạn {d.due_date}{d.due_date < today ? " · quá hạn" : ""}
+                          {vnd(d.amount)} · hạn {fmtDate(d.due_date)}{d.due_date < today ? " · quá hạn" : ""}
                         </p>
                       </div>
                     </Link>
@@ -700,7 +701,7 @@ export default async function StudioOverview() {
                   <li key={c.id}>
                     <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                       <p className="truncate text-sm font-medium">{c.title}</p>
-                      <span className="shrink-0 text-[11px]" style={{ color: TONE.red.fg }}>hạn {c.delivery_due}</span>
+                      <span className="shrink-0 text-[11px]" style={{ color: TONE.red.fg }}>hạn {fmtDate(c.delivery_due)}</span>
                     </Link>
                   </li>
                 ))}

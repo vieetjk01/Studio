@@ -14,6 +14,7 @@ import {
   type ContractStatus,
   type ShootType,
 } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 export type ContractRow = {
   id: string;
@@ -138,7 +139,7 @@ export default function ContractsListView({ list: initialList }: { list: Contrac
                     <p className="mt-0.5 truncate font-serif text-lg font-medium">{c.title}</p>
                     <p className="text-xs" style={{ color: "var(--text3)" }}>
                       {c.client_name || "Chưa có khách"} · {SHOOT_TYPE_LABEL[c.shoot_type]}
-                      {c.event_date ? ` · ${c.event_date}` : ""}
+                      {c.event_date ? ` · ${fmtDate(c.event_date)}` : ""}
                     </p>
                   </Link>
                   <div className="flex flex-col items-end gap-2">
