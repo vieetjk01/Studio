@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { nextContractCode, newShareToken } from "@/lib/contract-code";
 import { computeRoundedDeposit } from "@/lib/quote-deposit";
 import { fullClauseText } from "@/lib/contract-clauses";
+import { fmtDate } from "@/lib/date";
 
 export type ConvertResult =
   | { ok: true; contract_id: string; contract_token: string }
@@ -61,28 +62,38 @@ export async function convertQuoteToContract(
   // Use the quoted service's clauses (if any) so the contract inherits the same
   // terms the client was quoted under; fall back to the default clause set.
   let serviceClauses: string | null = null;
+  let serviceName: string | null = null;
   if (quote.service_id) {
     const { data: svc } = await db
       .from("studio_services")
-      .select("clauses")
+      .select("name, clauses")
       .eq("id", quote.service_id)
       .maybeSingle();
     if (svc?.clauses) serviceClauses = svc.clauses as string;
+    if (svc?.name) serviceName = svc.name as string;
   }
+
+  // Title format: "Hợp đồng [loại dịch vụ] - [tên khách hàng], [ngày khách chọn]".
+  const titleParts = [
+    `Hợp đồng${serviceName ? ` ${serviceName}` : ""}`,
+    quote.client_name ? ` - ${quote.client_name}` : "",
+    quote.event_date ? `, ${fmtDate(quote.event_date)}` : "",
+  ];
+  const contractTitle = titleParts.join("") || quote.title || "Hợp đồng";
 
   const { data: contract, error: cErr } = await db
     .from("studio_contracts")
     .insert({
       owner_id: quote.owner_id,
       code,
-      title: quote.title || "Hợp đồng",
+      title: contractTitle,
+      service_id: quote.service_id ?? null,
       client_name: quote.client_name,
       client_phone: quote.client_phone,
       client_email: quote.client_email,
       client_facebook: quote.client_facebook,
       event_date: quote.event_date,
       location: quote.location,
-      ...(quote.service_id ? { service_id: quote.service_id } : {}),
       deposit,
       status: "draft",
       client_token: token,

@@ -7,6 +7,7 @@ import { Plus, Trash2, Lock, LockOpen, ArrowLeft, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { nextQuoteCode, newShareToken } from "@/lib/contract-code";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
+import { fmtDate } from "@/lib/date";
 import { vnd } from "@/lib/types";
 
 type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean; is_discount: boolean; package_group: string };
@@ -14,7 +15,7 @@ type Draft = { name: string; description: string; qty: number; unit_price: numbe
 export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: string; services?: { id: string; name: string }[] }) {
   const router = useRouter();
   const supabase = createClient();
-  const [title, setTitle] = useState("Báo giá");
+  const [title, setTitle] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -64,12 +65,15 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
     try {
       const code = await nextQuoteCode(supabase, ownerId);
       const token = newShareToken();
+      // Auto-title from service + chosen date when the studio didn't type one.
+      const svcName = services.find((s) => s.id === serviceId)?.name;
+      const autoTitle = `Báo giá${svcName ? ` ${svcName}` : ""} ${fmtDate(eventDate || new Date())}`;
       const { data: quote, error: qErr } = await supabase
         .from("studio_quotes")
         .insert({
           owner_id: ownerId,
           code,
-          title: title.trim() || "Báo giá",
+          title: title.trim() || autoTitle,
           client_name: clientName.trim() || null,
           client_phone: clientPhone.trim() || null,
           client_email: clientEmail.trim() || null,
@@ -128,7 +132,13 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Field label="Tiêu đề báo giá">
-            <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="quote-title" />
+            <input
+              className="input"
+              placeholder={`Báo giá${services.find((s) => s.id === serviceId)?.name ? ` ${services.find((s) => s.id === serviceId)?.name}` : ""} ${fmtDate(eventDate || new Date())}`}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              data-testid="quote-title"
+            />
           </Field>
           {services.length > 0 && (
             <Field label="Dịch vụ (điều khoản riêng)">
