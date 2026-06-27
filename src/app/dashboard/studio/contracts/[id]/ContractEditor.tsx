@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -241,6 +242,8 @@ export default function ContractEditor({
   const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
   const [proofBusy, setProofBusy] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null); // zoomed transfer-proof image
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!lightbox) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
@@ -1688,8 +1691,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </div>
       </div>
 
-      {/* Lightbox: zoom a transfer-proof image in place (no new tab) */}
-      {lightbox && (
+      {/* Lightbox: zoom a transfer-proof image in place (no new tab).
+          Portalled to <body> so the fixed overlay covers the full viewport and
+          isn't trapped by the studio shell's transformed (.page-in) ancestor. */}
+      {mounted && lightbox && createPortal(
         <div
           onClick={() => setLightbox(null)}
           className="fixed inset-0 z-[70] flex items-center justify-center p-4 cursor-zoom-out"
@@ -1721,7 +1726,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           >
             Mở ảnh gốc ↗
           </a>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
