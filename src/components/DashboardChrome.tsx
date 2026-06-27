@@ -40,10 +40,12 @@ export default function DashboardChrome({
       pathname.startsWith("/dashboard/site") ||
       pathname.startsWith("/dashboard/upgrade") ||
       pathname.startsWith("/dashboard/settings") ||
-      // Thư viện album chạy trong shell studio; còn tạo album/lọc/nén ảnh đã
-      // chuyển sang subdomain img.mstudo.com (xem middleware hostForPath).
+      // Bộ công cụ ảnh chạy ngay trong shell studio (không chuyển hướng ra ngoài)
       pathname === "/dashboard" ||
-      pathname.startsWith("/dashboard/albums")
+      pathname.startsWith("/dashboard/albums") ||
+      pathname.startsWith("/dashboard/create") ||
+      pathname.startsWith("/dashboard/filter") ||
+      pathname.startsWith("/dashboard/compress")
     ));
 
   if (isStudio && tier !== "none") {

@@ -31,13 +31,14 @@ function hostForPath(path: string): string | undefined {
   // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
 
-  // Photo tools (create selection-album, filter, compress) are consolidated on
-  // the image subdomain img.mstudo.com.
+  // Photo tools (create selection-album, filter, compress) run IN-APP inside the
+  // studio admin — never force them onto another subdomain. Serve on whatever
+  // host the request arrived at (img.mstudo.com still works too, not forced).
   if (
     path.startsWith(COMPRESS_PATH) ||
     path.startsWith("/dashboard/create") ||
     path.startsWith("/dashboard/filter")
-  ) return IMG_HOST;
+  ) return undefined;
 
   // album.mstudo.com is retired — the album app (library, public viewer /a/,
   // and the whole dashboard) is served by the main host now.
