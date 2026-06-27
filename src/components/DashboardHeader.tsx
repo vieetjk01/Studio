@@ -118,8 +118,8 @@ export default function DashboardHeader({
       tier: "booking",
       children: [
         { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
-        { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
-        { href: appUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
+        { href: imgUrl("/dashboard/create"), label: t("newAlbum"), external: true },
+        { href: imgUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
         { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
       ],
     },
@@ -146,8 +146,8 @@ export default function DashboardHeader({
     label: "Công cụ",
     children: [
       { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
-      { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
-      { href: appUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
+      { href: imgUrl("/dashboard/create"), label: t("newAlbum"), external: true },
+      { href: imgUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
       { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
     ],
   };
@@ -158,8 +158,9 @@ export default function DashboardHeader({
     kind === "img"
       ? [
           { href: "/dashboard/compress", label: t("compressPhotos") },
-          { href: appUrl("/dashboard/create"), label: t("newAlbum"), external: true },
-          { href: appUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
+          { href: "/dashboard/create", label: t("newAlbum") },
+          { href: "/dashboard/filter", label: t("filterPhotos") },
+          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
         ]
       : kind === "admin"
       ? [
@@ -169,8 +170,8 @@ export default function DashboardHeader({
         ]
       : [
           { href: "/dashboard", label: t("myAlbums") },
-          { href: "/dashboard/create", label: t("newAlbum") },
-          { href: "/dashboard/filter", label: t("filterPhotos") },
+          { href: imgUrl("/dashboard/create"), label: t("newAlbum"), external: true },
+          { href: imgUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
           { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
           ...(hasSite ? [{ href: "/dashboard/site", label: "Trang web" }] : []),
           ...(profile.role !== "admin" ? [{ href: "/dashboard/upgrade", label: t("upgrade") }] : []),

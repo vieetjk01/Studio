@@ -30,18 +30,17 @@ function hostForPath(path: string): string | undefined {
   // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
 
-  // Photo tools (album library, create, filter, compress) run IN-APP inside the
-  // studio shell now, so they must NOT be forced onto another subdomain — serve
-  // them on whatever host the request arrived at (no external redirect).
+  // Photo tools (create selection-album, filter, compress) are consolidated on
+  // the image subdomain img.mstudo.com.
   if (
     path.startsWith(COMPRESS_PATH) ||
-    path === "/dashboard" ||
     path.startsWith("/dashboard/create") ||
     path.startsWith("/dashboard/filter")
-  ) return undefined;
+  ) return IMG_HOST || APP_HOST;
 
-  // Public album viewer + album-host landing still live on album.mstudo.com.
-  if (path.startsWith("/a/") || path === "/start") return APP_HOST;
+  // Album library + public album viewer + album-host landing live on the album
+  // subdomain. (/dashboard on the main host is caught earlier → studio overview.)
+  if (path === "/dashboard" || path.startsWith("/a/") || path === "/start") return APP_HOST;
 
   // Everything else under /dashboard is the studio management app → force it
   // onto the MAIN host so studio never runs on album.mstudo.com. Admin/settings

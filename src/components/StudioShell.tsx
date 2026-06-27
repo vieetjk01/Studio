@@ -10,6 +10,7 @@ import {
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
   UserCircle, ChevronDown,
 } from "lucide-react";
+import { imgUrl } from "@/lib/hosts";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
@@ -88,9 +89,9 @@ const GROUPS: Group[] = [
     label: "Công cụ",
     items: [
       { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
-      { href: "/dashboard/create", label: "Tạo album", icon: Plus, minTier: "booking" },
-      { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
-      { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
+      { href: imgUrl("/dashboard/create"), label: "Tạo album", icon: Plus, minTier: "booking", external: true },
+      { href: imgUrl("/dashboard/filter"), label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking", external: true },
+      { href: imgUrl("/dashboard/compress"), label: "Nén ảnh", icon: Archive, minTier: "booking", external: true },
       { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },
     ],
   },
