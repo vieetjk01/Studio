@@ -23,14 +23,13 @@ export default function ZaloButton({
   const url = zaloChatUrl(phone);
   if (!url) return null;
 
-  // Real <a> keeps the click a user gesture so the Zalo app opens on mobile
-  // (not the web/install page). Copy fires without blocking the navigation.
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
       onClick={() => {
+        // Open synchronously first so the tap stays a user gesture → the Zalo
+        // app opens on mobile instead of the web/install page.
+        window.open(url, "_blank", "noopener,noreferrer");
         navigator.clipboard?.writeText(message).catch(() => {});
         setDone(true);
         setTimeout(() => setDone(false), 2000);
@@ -39,6 +38,6 @@ export default function ZaloButton({
       title="Chép sẵn lời nhắc rồi mở Zalo để gửi"
     >
       {done ? <Check size={14} /> : <MessageCircle size={14} />} {done ? "Đã chép, mở Zalo…" : label}
-    </a>
+    </button>
   );
 }
