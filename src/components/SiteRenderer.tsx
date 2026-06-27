@@ -39,7 +39,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     "--s-border": dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
     "--s-radius": t.radius === "sharp" ? "0px" : "14px",
-    "--s-maxw": t.contentWidth === "full" ? "100%" : "1040px",
+    "--s-maxw": "100%",
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
@@ -64,11 +64,16 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
         </div>
       </div>
     ) : (
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
+      <div style={{ maxWidth: t.contentWidth === "full" ? "100%" : 1040, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
         {blocks.map((b) => {
-          const half = b.config?.width === "half" && b.type !== "hero";
+          const isHero = b.type === "hero";
+          const half = b.config?.width === "half" && !isHero;
+          // Hero breaks out to full-bleed; half blocks split the content column.
+          const style: React.CSSProperties = isHero
+            ? { flex: "1 1 100%", width: "100vw", marginLeft: "calc(50% - 50vw)" }
+            : { flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 300 : 0 };
           return (
-            <div id={`sec-${b.id}`} key={b.id} style={{ flex: half ? "1 1 420px" : "1 1 100%", minWidth: 0 }}>
+            <div id={`sec-${b.id}`} key={b.id} style={style}>
               <Block block={b} data={data} fontVar={fontVar} demo={demo} />
             </div>
           );

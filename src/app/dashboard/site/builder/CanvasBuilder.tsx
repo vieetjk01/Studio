@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Monitor, Smartphone, Undo2, Redo2, Eye, Rocket, ArrowLeft, Plus,
@@ -342,6 +342,7 @@ export default function CanvasBuilder({
   }, [selId, blocks, theme]);
 
   const selected = blocks.find((b) => b.id === selId) || null;
+  const dragging = dragType !== null || dragId !== null;
   const accent = theme.accent || "#1A1815";
   const canvasMax: number | string = device === "mobile" ? 402 : (theme.contentWidth === "full" ? "100%" : 1080);
 
@@ -478,41 +479,49 @@ export default function CanvasBuilder({
                 <p style={{ marginTop: 8, fontSize: 14 }}>Chọn một <b>Mẫu trang</b> hoặc kéo khối từ bên trái vào đây.</p>
               </div>
             ) : (
-              blocks.map((b, i) => (
-                <div key={b.id}>
-                  {!preview && <DropZone active={dropIndex === i} onOver={() => setDropIndex(i)} onDrop={() => {
-                    if (dragType) insertBlock(dragType, i);
-                    else if (dragId) reorderTo(i);
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
+                {blocks.map((b, i) => {
+                  const isHero = b.type === "hero";
+                  const half = b.config?.width === "half" && !isHero;
+                  return (
+                    <Fragment key={b.id}>
+                      {!preview && <DropZone dragging={dragging} active={dropIndex === i} onOver={() => setDropIndex(i)} onDrop={() => {
+                        if (dragType) insertBlock(dragType, i);
+                        else if (dragId) reorderTo(i);
+                        setDropIndex(null); setDragType(null); setDragId(null);
+                      }} />}
+                      <div style={{ flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 240 : 0 }}>
+                        <BlockShell
+                          block={b}
+                          selected={selId === b.id}
+                          preview={preview}
+                          first={i === 0}
+                          last={i === blocks.length - 1}
+                          fontHead={fontHead}
+                          accent={accent}
+                          albums={albums}
+                          pricelist={pricelist}
+                          onSelect={() => setSelId(b.id)}
+                          onDragStart={() => { setDragId(b.id); setDragType(null); }}
+                          onDragEnd={() => { setDragId(null); setDropIndex(null); }}
+                          onMove={(d) => moveDir(b.id, d)}
+                          onDup={() => dupBlock(b.id)}
+                          onDel={() => delBlock(b.id)}
+                          onEdit={(k, v, commit) => setConfig(b.id, k, v, commit)}
+                          onBeforeEdit={snapshot}
+                        />
+                      </div>
+                    </Fragment>
+                  );
+                })}
+                {!preview && (
+                  <DropZone dragging={dragging} active={dropIndex === blocks.length} onOver={() => setDropIndex(blocks.length)} onDrop={() => {
+                    if (dragType) insertBlock(dragType, blocks.length);
+                    else if (dragId) reorderTo(blocks.length);
                     setDropIndex(null); setDragType(null); setDragId(null);
-                  }} />}
-                  <BlockShell
-                    block={b}
-                    selected={selId === b.id}
-                    preview={preview}
-                    first={i === 0}
-                    last={i === blocks.length - 1}
-                    fontHead={fontHead}
-                    accent={accent}
-                    albums={albums}
-                    pricelist={pricelist}
-                    onSelect={() => setSelId(b.id)}
-                    onDragStart={() => { setDragId(b.id); setDragType(null); }}
-                    onDragEnd={() => { setDragId(null); setDropIndex(null); }}
-                    onMove={(d) => moveDir(b.id, d)}
-                    onDup={() => dupBlock(b.id)}
-                    onDel={() => delBlock(b.id)}
-                    onEdit={(k, v, commit) => setConfig(b.id, k, v, commit)}
-                    onBeforeEdit={snapshot}
-                  />
-                </div>
-              ))
-            )}
-            {!preview && blocks.length > 0 && (
-              <DropZone active={dropIndex === blocks.length} onOver={() => setDropIndex(blocks.length)} onDrop={() => {
-                if (dragType) insertBlock(dragType, blocks.length);
-                else if (dragId) reorderTo(blocks.length);
-                setDropIndex(null); setDragType(null); setDragId(null);
-              }} tall />
+                  }} tall />
+                )}
+              </div>
             )}
           </div>
         </main>
@@ -621,15 +630,18 @@ export default function CanvasBuilder({
   return mounted ? createPortal(ui, document.body) : null;
 }
 
-/* ── Drop zone between blocks ──────────────────────────────────────────── */
-function DropZone({ active, onOver, onDrop, tall }: { active: boolean; onOver: () => void; onDrop: () => void; tall?: boolean }) {
+/* ── Drop zone between blocks ──────────────────────────────────────────────
+   Only present while dragging, so it never breaks the half-block flex row in
+   normal editing. As a full-row flex item it marks a clear insertion line. */
+function DropZone({ dragging, active, onOver, onDrop, tall }: { dragging: boolean; active: boolean; onOver: () => void; onDrop: () => void; tall?: boolean }) {
+  if (!dragging) return null;
   return (
     <div
       onDragOver={(e) => { e.preventDefault(); onOver(); }}
       onDrop={(e) => { e.preventDefault(); onDrop(); }}
-      style={{ height: active ? 36 : tall ? 40 : 8, transition: "height .12s ease", display: "flex", alignItems: "center", padding: "0 24px" }}
+      style={{ flex: "1 1 100%", height: active ? 36 : tall ? 40 : 14, transition: "height .12s ease", display: "flex", alignItems: "center", padding: "0 24px" }}
     >
-      <div style={{ width: "100%", height: active ? 4 : 0, borderRadius: 999, background: "var(--brand)", transition: "all .12s ease" }} />
+      <div style={{ width: "100%", height: active ? 4 : 2, borderRadius: 999, background: active ? "var(--brand)" : "var(--border)", transition: "all .12s ease" }} />
     </div>
   );
 }
