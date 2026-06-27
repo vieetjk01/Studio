@@ -324,6 +324,40 @@ body {
   font-family: var(--font-cormorant), Georgia, serif;
 }
 
+/* ── Published tenant-site nav (SiteRenderer) — modern pill links ─────────── */
+.s-navlink {
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.82;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+.s-navlink:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--s-accent) 14%, transparent);
+}
+.s-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  background: var(--s-accent);
+  color: var(--s-accentInk, #fff);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.15s ease;
+}
+.s-cta:hover {
+  filter: brightness(1.08);
+}
+
 /* ── mstudo marketing landing — self-contained Manrope + green theme ──────── */
 /* Scoped tokens so the homepage can be light-by-default & toggle to dark
    independently of the dark-only app shell. */

@@ -35,6 +35,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     "--s-bg": t.bg || "#0c0c0d",
     "--s-text": t.text || "#ececec",
     "--s-accent": t.accent || "#c7a76b",
+    "--s-accentInk": isLightHex(t.accent) ? "#171717" : "#ffffff",
     "--s-border": dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
     "--s-radius": t.radius === "sharp" ? "0px" : "14px",
@@ -87,22 +88,49 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     </footer>
   );
 
-  // Top navigation (default).
-  if (navPos === "top") {
+  // Top / bottom navigation — a modern pill bar.
+  if (navPos === "top" || navPos === "bottom") {
+    const bottom = navPos === "bottom";
+    const bar = blocks.length > 0 && (
+      <header
+        style={{
+          position: bottom ? "fixed" : "sticky",
+          top: bottom ? undefined : 0,
+          bottom: bottom ? 0 : undefined,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          justifyContent: "space-between",
+          padding: "12px 24px",
+          borderBottom: bottom ? undefined : "1px solid var(--s-border)",
+          borderTop: bottom ? "1px solid var(--s-border)" : undefined,
+          background: "color-mix(in srgb, var(--s-bg) 80%, transparent)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>{brand}</div>
+        <nav style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, fontSize: 14, justifyContent: "center" }}>
+          {navItems.map((n) => (
+            <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
+          ))}
+        </nav>
+        {owner?.booking_token ? (
+          <a href={mainUrl(`/book/${owner.booking_token}`)} className="s-cta">Đặt lịch</a>
+        ) : <span style={{ width: 1 }} />}
+      </header>
+    );
     return (
       <div style={wrap}>
-        {blocks.length > 0 && (
-          <header style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", gap: 20, justifyContent: "space-between", padding: "12px 24px", borderBottom: "1px solid var(--s-border)", background: "color-mix(in srgb, var(--s-bg) 82%, transparent)", backdropFilter: "blur(8px)" }}>
-            {brand}
-            <nav style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 14 }}>
-              {navItems.map((n) => (
-                <a key={n.id} href={`#sec-${n.id}`} style={{ color: "inherit", opacity: 0.85, textDecoration: "none" }}>{n.label}</a>
-              ))}
-            </nav>
-          </header>
-        )}
+        {!bottom && bar}
         {content}
         {footer}
+        {/* leave room so the fixed bottom bar doesn't cover the footer */}
+        {bottom && blocks.length > 0 && <div style={{ height: 72 }} />}
+        {bottom && bar}
       </div>
     );
   }
@@ -129,13 +157,13 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
             }}
           >
             <div>{brand}</div>
-            <nav style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
+            <nav style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, alignItems: "flex-start" }}>
               {navItems.map((n) => (
-                <a key={n.id} href={`#sec-${n.id}`} style={{ color: "inherit", opacity: 0.85, textDecoration: "none" }}>{n.label}</a>
+                <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
               ))}
             </nav>
             {owner?.booking_token && (
-              <a href={mainUrl(`/book/${owner.booking_token}`)} style={{ marginTop: "auto", padding: "10px 16px", borderRadius: 999, background: "var(--s-accent)", color: "#171717", fontWeight: 600, textAlign: "center", textDecoration: "none", fontSize: 14 }}>Đặt lịch</a>
+              <a href={mainUrl(`/book/${owner.booking_token}`)} className="s-cta" style={{ marginTop: "auto", justifyContent: "center" }}>Đặt lịch</a>
             )}
           </aside>
         )}

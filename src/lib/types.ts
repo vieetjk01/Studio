@@ -568,7 +568,7 @@ export type SiteTheme = {
   heroAlign?: "center" | "left";    // hero text alignment
   galleryCols?: number;             // gallery columns (2–4)
   radius?: "rounded" | "sharp";     // corner style
-  navPosition?: "top" | "left" | "right"; // menu placement
+  navPosition?: "top" | "left" | "right" | "bottom"; // menu placement
   heroSize?: "small" | "medium" | "large"; // cover height
   contentWidth?: "full" | "compact";       // published page width
 };

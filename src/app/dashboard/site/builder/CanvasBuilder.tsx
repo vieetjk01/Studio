@@ -16,6 +16,8 @@ import {
   type SiteTheme,
 } from "@/lib/types";
 import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
+import { compressImage } from "@/lib/image";
+import { useTheme } from "@/lib/theme";
 
 /* ─────────────────────────────────────────────────────────────────────────
    Trình tạo website kéo-thả (canvas + inline edit + inspector).
@@ -87,6 +89,7 @@ export default function CanvasBuilder({
   mainHost: string;
 }) {
   const supabase = createClient();
+  const { theme: uiTheme } = useTheme(); // studio light/dark, to sync the builder chrome
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -348,16 +351,16 @@ export default function CanvasBuilder({
   const fontHead = theme.font === "sans" ? "var(--font-hanken), system-ui, sans-serif" : "var(--font-cormorant), Georgia, serif";
 
   const ui = (
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", flexDirection: "column", background: "#E7E1D7", color: "#23201B", fontFamily: "var(--font-manrope), system-ui, sans-serif" }}>
+    <div className="studio-shell" data-theme={uiTheme} style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", flexDirection: "column", background: "var(--bg)", color: "var(--text)", fontFamily: "var(--font-manrope), system-ui, sans-serif" }}>
       {/* TOP BAR */}
-      <header style={{ height: 58, flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", background: "#fff", borderBottom: "1px solid #E4DCD0" }}>
+      <header style={{ height: 58, flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
         <a href="/dashboard/studio" title="Quay lại bảng điều khiển" style={chipBtn(false)}><ArrowLeft size={16} /></a>
         <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 15 }}>Trình tạo website</span>
 
         {!preview && (
           <>
-            <span style={{ width: 1, height: 26, background: "#E4DCD0", margin: "0 4px" }} />
-            <div style={{ display: "flex", borderRadius: 999, overflow: "hidden", border: "1px solid #E4DCD0" }}>
+            <span style={{ width: 1, height: 26, background: "var(--border)", margin: "0 4px" }} />
+            <div style={{ display: "flex", borderRadius: 999, overflow: "hidden", border: "1px solid var(--border)" }}>
               <button onClick={() => setDevice("desktop")} title="Máy tính" style={segBtn(device === "desktop")}><Monitor size={15} /></button>
               <button onClick={() => setDevice("mobile")} title="Điện thoại" style={segBtn(device === "mobile")}><Smartphone size={15} /></button>
             </div>
@@ -367,16 +370,16 @@ export default function CanvasBuilder({
         )}
 
         {!preview && (
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 0, border: "1px solid #E4DCD0", borderRadius: 999, padding: "3px 4px 3px 12px", background: "#FBF8F3" }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 0, border: "1px solid var(--border)", borderRadius: 999, padding: "3px 4px 3px 12px", background: "var(--surface2)" }}>
             <input
               value={subdomain}
               onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
               onKeyDown={(e) => { if (e.key === "Enter") saveDomain(); }}
               placeholder="ten-cua-ban"
               spellCheck={false}
-              style={{ width: 110, border: 0, background: "transparent", outline: "none", fontSize: 13, fontWeight: 600, color: "#23201B" }}
+              style={{ width: 110, border: 0, background: "transparent", outline: "none", fontSize: 13, fontWeight: 600, color: "var(--text)" }}
             />
-            <span style={{ fontSize: 12, color: "#8C8278", marginRight: 6 }}>.{mainHost || "mstudo.com"}</span>
+            <span style={{ fontSize: 12, color: "var(--text3)", marginRight: 6 }}>.{mainHost || "mstudo.com"}</span>
             <button onClick={saveDomain} disabled={savingDomain || subdomain.trim().toLowerCase() === savedSub} title="Lưu tên miền" style={{ ...chipBtn(false, savingDomain || subdomain.trim().toLowerCase() === savedSub), height: 28, padding: "0 10px" }}>
               <Check size={14} /> Lưu
             </button>
@@ -399,8 +402,8 @@ export default function CanvasBuilder({
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* LEFT PANEL */}
         {!preview && (
-          <aside style={{ width: 284, flexShrink: 0, background: "#fff", borderRight: "1px solid #E4DCD0", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", padding: 10, gap: 6, borderBottom: "1px solid #F1ECE3" }}>
+          <aside style={{ width: 284, flexShrink: 0, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", padding: 10, gap: 6, borderBottom: "1px solid var(--border)" }}>
               <button onClick={() => setLeftTab("blocks")} style={tabBtn(leftTab === "blocks")}><Blocks size={15} /> Khối</button>
               <button onClick={() => setLeftTab("templates")} style={tabBtn(leftTab === "templates")}><LayoutTemplate size={15} /> Mẫu trang</button>
             </div>
@@ -408,7 +411,7 @@ export default function CanvasBuilder({
             <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
               {leftTab === "blocks" ? (
                 <>
-                  <p style={{ fontSize: 12, color: "#8C8278", marginBottom: 10 }}>Kéo khối thả vào trang, hoặc bấm để thêm vào cuối.</p>
+                  <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 10 }}>Kéo khối thả vào trang, hoặc bấm để thêm vào cuối.</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     {PALETTE.map((type) => (
                       <button
@@ -419,7 +422,7 @@ export default function CanvasBuilder({
                         onClick={() => insertBlock(type, blocks.length)}
                         style={paletteCard}
                       >
-                        <Plus size={14} style={{ color: "#B85C3B" }} />
+                        <Plus size={14} style={{ color: "var(--brand)" }} />
                         <span style={{ fontSize: 11.5, fontWeight: 600, lineHeight: 1.2 }}>{SITE_BLOCK_LABEL[type]}</span>
                       </button>
                     ))}
@@ -433,7 +436,7 @@ export default function CanvasBuilder({
                       <img src={tp.thumb} alt={tp.name} style={{ width: "100%", aspectRatio: "3/2", objectFit: "cover", display: "block" }} />
                       <div style={{ padding: "7px 9px" }}>
                         <div style={{ fontSize: 12.5, fontWeight: 700 }}>{tp.name}</div>
-                        <div style={{ fontSize: 10.5, color: "#8C8278", marginTop: 1 }}>{tp.tag}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--text3)", marginTop: 1 }}>{tp.tag}</div>
                       </div>
                     </button>
                   ))}
@@ -445,7 +448,7 @@ export default function CanvasBuilder({
 
         {/* CANVAS */}
         <main
-          style={{ flex: 1, overflowY: "auto", background: preview ? "var(--s-bg)" : "#D9D2C6", padding: preview ? 0 : "26px 20px", ...canvasVars }}
+          style={{ flex: 1, overflowY: "auto", background: preview ? "var(--s-bg)" : "var(--bg2)", padding: preview ? 0 : "26px 20px", ...canvasVars }}
           onClick={() => setSelId(null)}
         >
           <div
@@ -508,7 +511,7 @@ export default function CanvasBuilder({
 
         {/* RIGHT INSPECTOR */}
         {!preview && (
-          <aside style={{ width: 300, flexShrink: 0, background: "#fff", borderLeft: "1px solid #E4DCD0", overflowY: "auto" }}>
+          <aside style={{ width: 300, flexShrink: 0, background: "var(--surface)", borderLeft: "1px solid var(--border)", overflowY: "auto" }}>
             {selected ? (
               <Inspector
                 key={selected.id}
@@ -521,15 +524,15 @@ export default function CanvasBuilder({
             ) : (
               <div style={{ padding: 16 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Giao diện trang</h3>
-                <p style={{ fontSize: 12, color: "#8C8278", marginBottom: 16 }}>Áp dụng cho toàn bộ trang. Bấm một khối để chỉnh riêng khối đó.</p>
+                <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>Áp dụng cho toàn bộ trang. Bấm một khối để chỉnh riêng khối đó.</p>
 
                 <label style={insLabel}>Màu nhấn</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                   {ACCENTS.map((c) => (
                     <button key={c} onClick={() => patchTheme({ accent: c })} title={c}
-                      style={{ width: 30, height: 30, borderRadius: 999, background: c, border: accent.toLowerCase() === c.toLowerCase() ? "2px solid #23201B" : "1px solid #E4DCD0", cursor: "pointer" }} />
+                      style={{ width: 30, height: 30, borderRadius: 999, background: c, border: accent.toLowerCase() === c.toLowerCase() ? "2px solid var(--text)" : "1px solid var(--border)", cursor: "pointer" }} />
                   ))}
-                  <label style={{ width: 30, height: 30, borderRadius: 999, border: "1px solid #E4DCD0", overflow: "hidden", cursor: "pointer", position: "relative" }}>
+                  <label style={{ width: 30, height: 30, borderRadius: 999, border: "1px solid var(--border)", overflow: "hidden", cursor: "pointer", position: "relative" }}>
                     <input type="color" value={accent} onChange={(e) => patchTheme({ accent: e.target.value })} style={{ position: "absolute", inset: -4, width: 40, height: 40, border: 0, cursor: "pointer" }} />
                   </label>
                 </div>
@@ -552,7 +555,41 @@ export default function CanvasBuilder({
                   ))}
                 </div>
 
-                <div style={{ marginTop: 8, padding: 12, borderRadius: 12, background: "#FBF8F3", border: "1px solid #F1ECE3", fontSize: 12, color: "#8C8278", lineHeight: 1.6 }}>
+                <label style={insLabel}>Bố cục trang</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {([["compact", "Thu nhỏ"], ["full", "Toàn màn hình"]] as const).map(([w, lbl]) => (
+                    <button key={w} onClick={() => patchTheme({ contentWidth: w })} style={segWide((theme.contentWidth || "compact") === w)}>{lbl}</button>
+                  ))}
+                </div>
+
+                <label style={insLabel}>Vị trí menu</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {([["top", "Trên"], ["left", "Trái"], ["bottom", "Dưới"]] as const).map(([np, lbl]) => (
+                    <button key={np} onClick={() => patchTheme({ navPosition: np })} style={segWide((theme.navPosition || "top") === np)}>{lbl}</button>
+                  ))}
+                </div>
+
+                <label style={insLabel}>Logo studio</label>
+                <div style={{ marginBottom: 16 }}>
+                  {theme.logo ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={theme.logo} alt="logo" style={{ height: 36, width: "auto", maxWidth: 140, objectFit: "contain", borderRadius: 6, border: "1px solid var(--border)" }} />
+                      <button onClick={() => patchTheme({ logo: "" })} style={{ ...segWide(false), flex: "0 0 auto", padding: "0 10px", height: 30 }}>Gỡ</button>
+                    </div>
+                  ) : null}
+                  <label style={{ ...insInput, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "var(--surface2)" }}>
+                    <ImagePlus size={15} /> Tải logo lên
+                    <input type="file" accept="image/*" hidden onChange={async (e) => {
+                      const file = e.target.files?.[0]; e.target.value = "";
+                      if (!file) return;
+                      const url = await compressImage(file, { maxDim: 400, quality: 0.9, mime: "image/png" });
+                      patchTheme({ logo: url });
+                    }} />
+                  </label>
+                </div>
+
+                <div style={{ marginTop: 8, padding: 12, borderRadius: 12, background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>
                   💡 Mẹo: bấm thẳng vào chữ trên trang để sửa. Dùng thanh công cụ nổi trên mỗi khối để di chuyển, nhân bản hay xoá.
                 </div>
               </div>
@@ -583,7 +620,7 @@ function DropZone({ active, onOver, onDrop, tall }: { active: boolean; onOver: (
       onDrop={(e) => { e.preventDefault(); onDrop(); }}
       style={{ height: active ? 36 : tall ? 40 : 8, transition: "height .12s ease", display: "flex", alignItems: "center", padding: "0 24px" }}
     >
-      <div style={{ width: "100%", height: active ? 4 : 0, borderRadius: 999, background: "#B85C3B", transition: "all .12s ease" }} />
+      <div style={{ width: "100%", height: active ? 4 : 0, borderRadius: 999, background: "var(--brand)", transition: "all .12s ease" }} />
     </div>
   );
 }
@@ -921,13 +958,13 @@ function Inspector({ block, albums, accent, onEdit, onBeforeEdit }: {
     setUploadKey(key);
     fileRef.current?.click();
   }
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => { onBeforeEdit(); onEdit(uploadKey, String(reader.result), true); };
-    reader.readAsDataURL(f);
     e.target.value = "";
+    if (!f) return;
+    const url = await compressImage(f);
+    onBeforeEdit();
+    onEdit(uploadKey, url, true);
   }
 
   const hasImage = ["hero", "about"].includes(block.type);
@@ -944,7 +981,7 @@ function Inspector({ block, albums, accent, onEdit, onBeforeEdit }: {
     <div style={{ padding: 16 }}>
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
       <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 2 }}>{SITE_BLOCK_LABEL[block.type]}</h3>
-      <p style={{ fontSize: 11.5, color: "#8C8278", marginBottom: 16 }}>Chỉnh nội dung & bố cục khối này.</p>
+      <p style={{ fontSize: 11.5, color: "var(--text3)", marginBottom: 16 }}>Chỉnh nội dung & bố cục khối này.</p>
 
       {/* Text fields */}
       {"heading" in DEFAULTS[block.type]! || ["hero", "about", "cta", "quote", "map", "contact"].includes(block.type) ? (
@@ -998,17 +1035,17 @@ function Inspector({ block, albums, accent, onEdit, onBeforeEdit }: {
             <div style={{ position: "relative", marginBottom: 8 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={S("image")} alt="" style={{ width: "100%", borderRadius: 10, display: "block" }} />
-              <button onClick={() => { onBeforeEdit(); onEdit("image", "", true); }} style={{ position: "absolute", top: 6, right: 6, background: "#23201B", color: "#fff", border: 0, borderRadius: 999, width: 26, height: 26, cursor: "pointer" }}><X size={14} /></button>
+              <button onClick={() => { onBeforeEdit(); onEdit("image", "", true); }} style={{ position: "absolute", top: 6, right: 6, background: "var(--text)", color: "var(--bg)", border: 0, borderRadius: 999, width: 26, height: 26, cursor: "pointer" }}><X size={14} /></button>
             </div>
           ) : null}
-          <button onClick={() => pickFile("image")} style={{ ...insInput, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "#FBF8F3" }}>
+          <button onClick={() => pickFile("image")} style={{ ...insInput, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "var(--surface2)" }}>
             <ImagePlus size={15} /> Tải ảnh lên
           </button>
           <input style={{ ...insInput, marginTop: 6 }} placeholder="hoặc dán link ảnh" value={S("image").startsWith("data:") ? "" : S("image")} onFocus={onBeforeEdit} onChange={(e) => onEdit("image", e.target.value)} onBlur={(e) => onEdit("image", e.target.value, true)} />
           {albums.filter((a) => a.cover_url).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
               {albums.filter((a) => a.cover_url).slice(0, 9).map((a) => (
-                <button key={a.id} onClick={() => { onBeforeEdit(); onEdit("image", a.cover_url, true); }} title={a.title} style={{ width: 44, height: 32, borderRadius: 6, overflow: "hidden", border: S("image") === a.cover_url ? `2px solid ${accent}` : "1px solid #E4DCD0", padding: 0, cursor: "pointer" }}>
+                <button key={a.id} onClick={() => { onBeforeEdit(); onEdit("image", a.cover_url, true); }} title={a.title} style={{ width: 44, height: 32, borderRadius: 6, overflow: "hidden", border: S("image") === a.cover_url ? `2px solid ${accent}` : "1px solid var(--border)", padding: 0, cursor: "pointer" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={a.cover_url as string} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </button>
@@ -1032,7 +1069,7 @@ function Inspector({ block, albums, accent, onEdit, onBeforeEdit }: {
       )}
 
       {(block.type === "pricing" || block.type === "testimonials") && (
-        <p style={{ fontSize: 12, color: "#8C8278", marginTop: 8, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 8, lineHeight: 1.5 }}>
           {block.type === "pricing" ? "Khối này tự lấy bảng giá đang bật của bạn khi xuất bản." : "Khối này tự lấy đánh giá khách đã duyệt khi xuất bản."}
         </p>
       )}
@@ -1050,26 +1087,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /* ── Inline style helpers ─────────────────────────────────────────────── */
-const insLabel: React.CSSProperties = { display: "block", fontSize: 11.5, fontWeight: 700, color: "#8C8278", marginBottom: 5, letterSpacing: ".01em" };
-const insInput: React.CSSProperties = { width: "100%", border: "1px solid #E4DCD0", borderRadius: 9, padding: "8px 10px", fontSize: 13, color: "#23201B", background: "#fff", outline: "none", boxSizing: "border-box", resize: "vertical" };
+const insLabel: React.CSSProperties = { display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text3)", marginBottom: 5, letterSpacing: ".01em" };
+const insInput: React.CSSProperties = { width: "100%", border: "1px solid var(--border)", borderRadius: 9, padding: "8px 10px", fontSize: 13, color: "var(--text)", background: "var(--surface)", outline: "none", boxSizing: "border-box", resize: "vertical" };
 const cardBox: React.CSSProperties = { borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 20 };
 const editHint: React.CSSProperties = { marginTop: 12, fontSize: 11.5, opacity: 0.5, fontStyle: "italic" };
 const toolBtn: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, border: 0, background: "transparent", color: "#fff", cursor: "pointer" };
 
 function chipBtn(active: boolean, disabled = false): React.CSSProperties {
-  return { display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid #E4DCD0", background: active ? "#23201B" : "#fff", color: active ? "#fff" : "#23201B", fontSize: 13, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1, textDecoration: "none" };
+  return { display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid var(--border)", background: active ? "var(--brand)" : "var(--surface)", color: active ? "var(--brandFg)" : "var(--text)", fontSize: 13, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1, textDecoration: "none" };
 }
 function segBtn(active: boolean): React.CSSProperties {
-  return { display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 32, border: 0, background: active ? "#23201B" : "#fff", color: active ? "#fff" : "#8C8278", cursor: "pointer" };
+  return { display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 32, border: 0, background: active ? "var(--brand)" : "var(--surface)", color: active ? "var(--brandFg)" : "var(--text3)", cursor: "pointer" };
 }
-const primaryBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 16px", borderRadius: 999, border: 0, background: "#B85C3B", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const primaryBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 16px", borderRadius: 999, border: 0, background: "var(--brand)", color: "var(--brandFg)", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 function tabBtn(active: boolean): React.CSSProperties {
-  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, borderRadius: 9, border: 0, background: active ? "#23201B" : "#F1ECE3", color: active ? "#fff" : "#8C8278", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
+  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, borderRadius: 9, border: 0, background: active ? "var(--brand)" : "var(--surface2)", color: active ? "var(--brandFg)" : "var(--text3)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
 }
-const paletteCard: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, padding: "10px 11px", borderRadius: 11, border: "1px solid #E4DCD0", background: "#FBF8F3", color: "#23201B", cursor: "grab", textAlign: "left" };
-const tplCard: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid #E4DCD0", background: "#fff", cursor: "pointer" };
+const paletteCard: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, padding: "10px 11px", borderRadius: 11, border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)", cursor: "grab", textAlign: "left" };
+const tplCard: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" };
 function segWide(active: boolean): React.CSSProperties {
-  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 9, border: active ? "1px solid #23201B" : "1px solid #E4DCD0", background: active ? "#23201B" : "#fff", color: active ? "#fff" : "#23201B", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
+  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 9, border: active ? "1px solid var(--brand)" : "1px solid var(--border)", background: active ? "var(--brand)" : "var(--surface)", color: active ? "var(--brandFg)" : "var(--text)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
 }
 function ctaPill(accent: string): React.CSSProperties {
   return { display: "inline-block", marginTop: 22, padding: "12px 28px", borderRadius: 999, background: accent, color: contrastInk(accent), fontWeight: 600 };
