@@ -138,7 +138,8 @@ export default function PricelistPoster({
                       {g.items.map((it) => {
                         const featured = it.price === top && g.items.length > 1;
                         const pkg = `${selectedList?.label || ""} · ${it.name}`;
-                        const href = bookHref.includes("/book/") ? `${bookHref}?pkg=${encodeURIComponent(pkg)}` : bookHref;
+                        const sep = bookHref.includes("?") ? "&" : "?";
+                        const href = bookHref.includes("/book/") ? `${bookHref}${sep}pkg=${encodeURIComponent(pkg)}` : bookHref;
                         return (
                           <div key={it.id} className="relative flex flex-col rounded-2xl p-6"
                             style={{ background: P.panel, border: `1px solid ${featured ? P.green : P.line}`, boxShadow: featured ? `0 0 0 1px ${P.green}` : "none" }}>

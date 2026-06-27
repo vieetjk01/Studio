@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
   };
 }
 
-export default async function BookingPage({ params, searchParams }: { params: { token: string }; searchParams?: { pkg?: string } }) {
+export default async function BookingPage({ params, searchParams }: { params: { token: string }; searchParams?: { pkg?: string; list?: string } }) {
   const db = createAdminClient();
   const { data: owner } = await db
     .from("profiles")
@@ -42,17 +42,23 @@ export default async function BookingPage({ params, searchParams }: { params: { 
     );
   }
 
-  const { data: pl } = await db
+  let plq = db
     .from("studio_pricelist")
     .select("id, list_key, name, price, category")
     .eq("owner_id", owner.id)
     .eq("active", true)
     .gt("price", 0)
     .order("position");
+  // Booking from a specific price list → only show that list's packages, so the
+  // customer isn't overwhelmed by every list's packages.
+  const scoped = (searchParams?.list || "").trim();
+  if (scoped) plq = plq.eq("list_key", scoped);
+  const { data: pl } = await plq;
 
   const label = (k: string) => PRICE_LISTS.find((l) => l.key === k)?.label || "";
   const packages: PkgOption[] = (pl ?? []).map((p) => ({
-    name: `${label(p.list_key as string) ? label(p.list_key as string) + " · " : ""}${p.name}`,
+    // When scoped to one list, drop the list-name prefix (it's redundant).
+    name: scoped ? (p.name as string) : `${label(p.list_key as string) ? label(p.list_key as string) + " · " : ""}${p.name}`,
     price: (p.price as number) || 0,
   }));
 

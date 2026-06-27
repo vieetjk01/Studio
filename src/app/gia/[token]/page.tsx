@@ -66,7 +66,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
       lists={lists}
       selected={selected}
       tabBase={`/gia/${params.token}`}
-      bookHref={`/book/${params.token}`}
+      bookHref={`/book/${params.token}?list=${encodeURIComponent(selected)}`}
       theme={theme}
     />
   );
