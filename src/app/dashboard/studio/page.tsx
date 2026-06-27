@@ -505,50 +505,60 @@ export default async function StudioOverview() {
         ))}
       </div>
 
-      {/* Revenue chart + contracts pending action */}
+      {/* Revenue chart + upcoming shoots */}
       <div className="mb-6 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <RevenueChart bars={revBars} />
         <div className="card p-6">
           <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-medium">
-            <FileText size={18} style={{ color: ACCENT }} /> Hợp đồng đang chờ xử lý
+            <CalendarDays size={18} style={{ color: ACCENT }} /> Lịch chụp sắp tới
           </h2>
-          {pending.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text3)" }}>Không có hợp đồng nào đang chờ.</p>
+          {upcoming.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có lịch sắp tới.</p>
           ) : (
             <ul className="space-y-3">
-              {pending.map((c) => (
-                <li key={c.id}>
-                  <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-bold">{c.title}</p>
-                      <p className="text-xs" style={{ color: "var(--text3)" }}>
-                        {c.client_name || "—"}{c.event_date ? ` · ${fmtDate(c.event_date)}` : ""}
-                      </p>
-                    </div>
-                    <span style={badgeStyle(STATUS_TONE[c.status])}>{CONTRACT_STATUS_LABEL[c.status]}</span>
-                  </Link>
-                </li>
-              ))}
+              {upcoming.map((c) => {
+                const d = c.event_date ? new Date(c.event_date) : null;
+                return (
+                  <li key={c.id}>
+                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-3">
+                      <div
+                        className="flex h-11 w-11 flex-none flex-col items-center justify-center rounded-xl"
+                        style={{ background: "var(--surface2)" }}
+                      >
+                        <span className="text-[15px] font-bold leading-none">{d ? d.getDate() : "—"}</span>
+                        <span className="text-[10px] font-semibold" style={{ color: "var(--text3)" }}>
+                          {d ? `TH${d.getMonth() + 1}` : ""}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-bold">{c.title}</p>
+                        <p className="text-xs" style={{ color: "var(--text3)" }}>
+                          {(c.event_time || "—")} · {c.client_name || SHOOT_TYPE_LABEL[c.shoot_type]}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
-          <Link href="/dashboard/studio/contracts" className="mt-4 inline-block text-xs hover:underline" style={{ color: ACCENT }}>
-            Tất cả hợp đồng →
+          <Link href="/dashboard/studio/calendar" className="mt-4 inline-block text-xs hover:underline" style={{ color: ACCENT }}>
+            Xem lịch đầy đủ →
           </Link>
         </div>
       </div>
 
-      {/* Recent contracts table */}
+      {/* Contracts pending action (draft / sent, client not signed yet) */}
       <div className="card mb-6 p-6">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-serif text-lg font-medium">Hợp đồng gần đây</h2>
+          <h2 className="font-serif text-lg font-medium">Hợp đồng đang chờ xử lý</h2>
           <Link href="/dashboard/studio/contracts" className="text-xs hover:underline" style={{ color: ACCENT }}>
             Tất cả →
           </Link>
         </div>
-        {list.length === 0 ? (
+        {pending.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--text3)" }}>
-            Chưa có hợp đồng nào.{" "}
-            <Link href="/dashboard/studio/contracts/new" style={{ color: ACCENT }} className="hover:underline">Tạo ngay</Link>.
+            Không có hợp đồng nào đang chờ xử lý.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -563,7 +573,7 @@ export default async function StudioOverview() {
                 </tr>
               </thead>
               <tbody>
-                {list.slice(0, 8).map((c) => (
+                {pending.map((c) => (
                   <tr key={c.id} style={{ borderTop: "1px solid var(--border)" }}>
                     <td className="px-2 py-3 font-bold font-mono">
                       <Link href={`/dashboard/studio/contracts/${c.id}`} className="hover:underline">
