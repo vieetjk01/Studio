@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SHOOT_TYPE_LABEL, SHOOT_TYPES, type ShootType } from "@/lib/types";
 import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
 import { fullClauseText } from "@/lib/contract-clauses";
+import { fmtDate } from "@/lib/date";
 
 export type TemplateOption = {
   id: string;
@@ -35,9 +36,8 @@ export default function NewContractForm({
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [shootType, setShootType] = useState<ShootType>("photo");
-  const [serviceId, setServiceId] = useState("");
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [eventDate, setEventDate] = useState("");
-  const [includeClauses, setIncludeClauses] = useState(true);
   const [addChecklist, setAddChecklist] = useState(true);
   const [templateId, setTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,14 +65,19 @@ export default function NewContractForm({
         : Math.random().toString(36).slice(2) + Date.now().toString(36);
     const tpl = templates.find((x) => x.id === templateId);
     const code = await nextContractCode(supabase, ownerId);
-    // Clause priority: chosen service's clauses → template note → default (if opted in).
-    const note = selectedService?.clauses || tpl?.note || (includeClauses ? fullClauseText() : null);
+    // Clauses are fixed by the chosen service; fall back to template/default only
+    // when no service is selected.
+    const note = selectedService?.clauses || tpl?.note || fullClauseText();
+    // Default title: "Hợp đồng {loại dịch vụ} {ngày tạo}".
+    const autoTitle = selectedService
+      ? `Hợp đồng ${selectedService.name} ${fmtDate(new Date())}`
+      : `Hợp đồng ${fmtDate(new Date())}`;
     const { data, error } = await supabase
       .from("studio_contracts")
       .insert({
         owner_id: ownerId,
         code,
-        title: title.trim() || "Hợp đồng",
+        title: title.trim() || autoTitle,
         client_name: clientName.trim() || null,
         client_phone: clientPhone.replace(/\D/g, "") || null,
         shoot_type: shootType,
@@ -143,7 +148,15 @@ export default function NewContractForm({
         )}
         <div className="field">
           <label className="label">Tên hợp đồng</label>
-          <input className="input" placeholder="VD: Phóng sự cưới Anh & Hằng" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            className="input"
+            placeholder={selectedService ? `Hợp đồng ${selectedService.name} ${fmtDate(new Date())}` : "Để trống để tự đặt tên"}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+            Để trống sẽ tự đặt: <b>Hợp đồng {selectedService?.name || "{loại dịch vụ}"} {fmtDate(new Date())}</b>
+          </p>
         </div>
         <div className="field">
           <label className="label">Tên khách hàng</label>
@@ -153,40 +166,42 @@ export default function NewContractForm({
           <label className="label">SĐT khách (mật khẩu xem HĐ)</label>
           <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
         </div>
-        {services.length > 0 && (
+        {services.length > 0 ? (
           <div>
             <div className="field">
-              <label className="label">Dịch vụ (điều khoản riêng)</label>
+              <label className="label">Loại dịch vụ</label>
               <select className="input" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-                <option value="">— Không chọn —</option>
                 {services.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
             </div>
             <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
-              {selectedService ? "Điều khoản của dịch vụ này sẽ được áp dụng tự động." : "Chọn dịch vụ để tự áp điều khoản riêng của dịch vụ đó."}{" "}
-              <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Quản lý dịch vụ</Link>
+              Điều khoản cố định theo dịch vụ này.{" "}
+              <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Sửa điều khoản dịch vụ</Link>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <div className="field">
+              <label className="label">Loại dịch vụ</label>
+              <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
+                {SHOOT_TYPES.map((k) => (
+                  <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+              Chưa có dịch vụ nào.{" "}
+              <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Tạo dịch vụ &amp; điều khoản</Link>
             </p>
           </div>
         )}
-        <div className="field">
-          <label className="label">Phân loại (lịch &amp; báo cáo)</label>
-          <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
-            {SHOOT_TYPES.map((k) => (
-              <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
-            ))}
-          </select>
-        </div>
         <div className="field">
           <label className="label">Ngày chụp / quay</label>
           <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
-            <input type="checkbox" checked={includeClauses} onChange={(e) => setIncludeClauses(e.target.checked)} />
-            Kèm điều khoản mẫu (nếu không chọn mẫu HĐ có sẵn điều khoản)
-          </label>
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
             <input type="checkbox" checked={addChecklist} onChange={(e) => setAddChecklist(e.target.checked)} />
             Thêm checklist hậu kỳ mặc định ({DEFAULT_TASKS.join(" → ")})
