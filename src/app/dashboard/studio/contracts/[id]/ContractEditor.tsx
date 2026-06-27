@@ -15,6 +15,7 @@ import {
   Star,
   FileText,
   Upload,
+  X,
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -239,6 +240,13 @@ export default function ContractEditor({
   const [clientProofs, setClientProofs] = useState(initialClientProofs);
   const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
   const [proofBusy, setProofBusy] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null); // zoomed transfer-proof image
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
   const [products, setProducts] = useState<ContractProduct[]>(initialProducts);
   const [prodForm, setProdForm] = useState({ name: "", qty: 1, cost: 0 });
   const [quoteOptions, setQuoteOptions] = useState<ContractQuoteOption[]>(initialQuoteOptions);
@@ -1212,19 +1220,19 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           )}
                           {/* Client proofs for this instalment */}
                           {clientProofs.filter((cp) => cp.plan_id === it.id).map((cp) => (
-                            <a key={cp.id} href={cp.url} target="_blank" rel="noreferrer" className="inline-block">
+                            <button key={cp.id} type="button" onClick={() => setLightbox(cp.url)} className="inline-block cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={cp.url} alt="CK" className="h-10 w-10 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
-                            </a>
+                            </button>
                           ))}
                         </div>
                       <div className="flex items-center gap-3">
                         {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
                         {it.paid && linked?.proof_url && (
-                          <a href={linked.proof_url} target="_blank" rel="noreferrer" title="Xem ảnh chuyển khoản">
+                          <button type="button" onClick={() => setLightbox(linked.proof_url!)} className="cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={linked.proof_url} alt="CK" className="h-7 w-7 rounded object-cover" style={{ border: "1px solid var(--border)" }} />
-                          </a>
+                          </button>
                         )}
                         {it.paid && linked && (
                           <label className="cursor-pointer text-[11px]" style={{ color: "var(--text3)" }} title="Tải ảnh đã chuyển khoản">
@@ -1283,10 +1291,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => pickPlanProof(e.target.files?.[0] ?? null)} />
               </label>
               {planProof && (
-                <a href={planProof} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs" style={{ color: "var(--text2)" }}>
+                <button type="button" onClick={() => setLightbox(planProof)} className="flex items-center gap-1 text-xs cursor-zoom-in" style={{ color: "var(--text2)" }} title="Phóng to ảnh">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={planProof} alt="proof" className="h-8 w-8 rounded object-cover" style={{ border: "1px solid var(--border)" }} /> đính kèm khi “đã thu”
-                </a>
+                </button>
               )}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -1300,10 +1308,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <p className="mb-2 text-xs font-medium" style={{ color: "var(--text3)" }}>Ảnh CK từ khách (chưa gắn đợt):</p>
                 <div className="flex flex-wrap gap-2">
                   {clientProofs.filter(cp => !cp.plan_id).map(cp => (
-                    <a key={cp.id} href={cp.url} target="_blank" rel="noreferrer">
+                    <button key={cp.id} type="button" onClick={() => setLightbox(cp.url)} className="cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={cp.url} alt="CK" className="h-14 w-14 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1679,6 +1687,42 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           </div>
         </div>
       </div>
+
+      {/* Lightbox: zoom a transfer-proof image in place (no new tab) */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 cursor-zoom-out"
+          style={{ background: "rgba(0,0,0,.85)", backdropFilter: "blur(4px)" }}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            aria-label="Đóng"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}
+          >
+            <X size={20} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Ảnh chuyển khoản"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-[92vw] rounded-lg object-contain cursor-default"
+            style={{ boxShadow: "0 12px 48px rgba(0,0,0,.5)" }}
+          />
+          <a
+            href={lightbox}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-xs font-semibold"
+            style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}
+          >
+            Mở ảnh gốc ↗
+          </a>
+        </div>
+      )}
     </div>
   );
 }
