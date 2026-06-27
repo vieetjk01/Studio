@@ -11,7 +11,6 @@ import {
   UserCircle, ChevronDown,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { appUrl, imgUrl } from "@/lib/hosts";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
@@ -88,10 +87,10 @@ const GROUPS: Group[] = [
   {
     label: "Công cụ",
     items: [
-      { href: appUrl("/dashboard"), label: "Thư viện album", icon: ImageIcon, minTier: "booking", external: true },
-      { href: appUrl("/dashboard/create"), label: "Tạo album", icon: Plus, minTier: "booking", external: true },
-      { href: appUrl("/dashboard/filter"), label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking", external: true },
-      { href: imgUrl("/dashboard/compress"), label: "Nén ảnh", icon: Archive, minTier: "booking", external: true },
+      { href: "/dashboard", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
+      { href: "/dashboard/create", label: "Tạo album", icon: Plus, minTier: "booking" },
+      { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
+      { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
       { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },
     ],
   },
@@ -119,6 +118,9 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/ranking", "Xếp hạng", "Xếp hạng đội ngũ"],
   ["/dashboard/studio/messages", "Mẫu tin", "Mẫu tin nhắn"],
   ["/dashboard/studio", "Tổng quan", "Tổng quan hoạt động studio"],
+  ["/dashboard/create", "Tạo album", "Tạo album giao khách mới"],
+  ["/dashboard/filter", "Lọc ảnh", "Lọc & đối chiếu ảnh chọn"],
+  ["/dashboard/compress", "Nén ảnh", "Nén ảnh & đóng dấu watermark"],
   ["/dashboard/site", "Website riêng", "Trang web portfolio cá nhân"],
   ["/dashboard/upgrade", "Nâng cấp gói", "Gói dịch vụ & bảng giá"],
   ["/dashboard/connections", "Kết nối", "Tích hợp dịch vụ bên ngoài"],
@@ -126,6 +128,8 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/admin/affiliate", "Quản lý Affiliate", "Danh sách hoa hồng"],
   ["/dashboard/settings", "Cài đặt", "Cài đặt hệ thống"],
   ["/dashboard/account", "Tài khoản", "Thông tin & bảo mật tài khoản"],
+  // Most-general last so specific routes above always match first.
+  ["/dashboard", "Thư viện album", "Tất cả album của bạn"],
 ];
 
 export default function StudioShell({
@@ -168,7 +172,9 @@ export default function StudioShell({
   })).filter((g) => g.items.length > 0);
 
   const isActive = (href: string) =>
-    href === "/dashboard/studio" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+    href === "/dashboard/studio" || href === "/dashboard"
+      ? pathname === href
+      : pathname === href || pathname.startsWith(href + "/");
 
   const [title, sub] =
     TITLES.find(([p]) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p))?.slice(1) ??

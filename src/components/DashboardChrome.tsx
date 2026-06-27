@@ -39,7 +39,12 @@ export default function DashboardChrome({
     (tier !== "none" && (
       pathname.startsWith("/dashboard/site") ||
       pathname.startsWith("/dashboard/upgrade") ||
-      pathname.startsWith("/dashboard/settings")
+      pathname.startsWith("/dashboard/settings") ||
+      // Bộ công cụ ảnh chạy ngay trong shell studio (không nhảy ra subdomain khác)
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/create") ||
+      pathname.startsWith("/dashboard/filter") ||
+      pathname.startsWith("/dashboard/compress")
     ));
 
   if (isStudio && tier !== "none") {
