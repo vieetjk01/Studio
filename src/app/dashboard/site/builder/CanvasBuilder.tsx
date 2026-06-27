@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Monitor, Smartphone, Undo2, Redo2, Eye, Rocket, ArrowLeft, Plus,
   LayoutTemplate, Blocks, GripVertical, ChevronUp, ChevronDown, Copy,
@@ -87,9 +88,15 @@ export default function CanvasBuilder({
 }) {
   const supabase = createClient();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [blocks, setBlocks] = useState<SiteBlock[]>(initialBlocks);
   const [theme, setTheme] = useState<SiteTheme>(site.theme || {});
   const [published, setPublished] = useState(site.published);
+  const [subdomain, setSubdomain] = useState(site.subdomain ?? "");
+  const [savedSub, setSavedSub] = useState(site.subdomain ?? "");
+  const [savingDomain, setSavingDomain] = useState(false);
   const [selId, setSelId] = useState<string | null>(null);
   const [leftTab, setLeftTab] = useState<"blocks" | "templates">("blocks");
   const [device, setDevice] = useState<Device>("desktop");
@@ -107,7 +114,28 @@ export default function CanvasBuilder({
   const redoStack = useRef<{ blocks: SiteBlock[]; theme: SiteTheme }[]>([]);
   const [, force] = useState(0);
 
-  const liveUrl = site.subdomain && mainHost ? `https://${site.subdomain}.${mainHost}` : "";
+  const liveUrl = savedSub && mainHost ? `https://${savedSub}.${mainHost}` : "";
+
+  function validSubdomain(s: string): string | null {
+    const v = s.trim().toLowerCase();
+    if (!v) return null;
+    if (!/^[a-z0-9-]{3,30}$/.test(v)) return "Tên miền phụ chỉ gồm a-z, 0-9, gạch ngang (3–30 ký tự).";
+    if (v.startsWith("-") || v.endsWith("-")) return "Không bắt đầu/kết thúc bằng gạch ngang.";
+    return null;
+  }
+
+  async function saveDomain() {
+    const v = subdomain.trim().toLowerCase();
+    const err = validSubdomain(v);
+    if (err) { flash(err); return; }
+    setSavingDomain(true);
+    const { error } = await supabase.from("sites").update({ subdomain: v || null, updated_at: new Date().toISOString() }).eq("id", site.id);
+    setSavingDomain(false);
+    if (error) { flash(error.message.includes("duplicate") ? "Tên miền phụ đã có người dùng." : `Lỗi: ${error.message}`); return; }
+    setSubdomain(v);
+    setSavedSub(v);
+    flash("Đã lưu tên miền.");
+  }
 
   function flash(m: string) {
     setToast(m);
@@ -269,7 +297,17 @@ export default function CanvasBuilder({
 
   async function togglePublish() {
     if (!canPublish) return;
-    if (!site.subdomain) { flash("Cần đặt tên miền phụ ở trang Quản lý trước khi xuất bản."); return; }
+    // Auto-save the domain typed in the bar before publishing.
+    let sub = savedSub;
+    if (!published && subdomain.trim().toLowerCase() !== savedSub) {
+      const v = subdomain.trim().toLowerCase();
+      const err = validSubdomain(v);
+      if (err) { flash(err); return; }
+      const { error } = await supabase.from("sites").update({ subdomain: v || null }).eq("id", site.id);
+      if (error) { flash(error.message.includes("duplicate") ? "Tên miền phụ đã có người dùng." : `Lỗi: ${error.message}`); return; }
+      setSavedSub(v); setSubdomain(v); sub = v;
+    }
+    if (!published && !sub) { flash("Nhập tên miền phụ trước khi xuất bản."); return; }
     setBusy(true);
     const next = !published;
     await supabase.from("sites").update({ published: next, updated_at: new Date().toISOString() }).eq("id", site.id);
@@ -309,8 +347,8 @@ export default function CanvasBuilder({
   } as React.CSSProperties;
   const fontHead = theme.font === "sans" ? "var(--font-hanken), system-ui, sans-serif" : "var(--font-cormorant), Georgia, serif";
 
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", background: "#E7E1D7", color: "#23201B", fontFamily: "var(--font-manrope), system-ui, sans-serif" }}>
+  const ui = (
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", flexDirection: "column", background: "#E7E1D7", color: "#23201B", fontFamily: "var(--font-manrope), system-ui, sans-serif" }}>
       {/* TOP BAR */}
       <header style={{ height: 58, flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", background: "#fff", borderBottom: "1px solid #E4DCD0" }}>
         <a href="/dashboard/site" title="Quay lại quản lý trang" style={chipBtn(false)}><ArrowLeft size={16} /></a>
@@ -328,7 +366,24 @@ export default function CanvasBuilder({
           </>
         )}
 
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+        {!preview && (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 0, border: "1px solid #E4DCD0", borderRadius: 999, padding: "3px 4px 3px 12px", background: "#FBF8F3" }}>
+            <input
+              value={subdomain}
+              onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
+              onKeyDown={(e) => { if (e.key === "Enter") saveDomain(); }}
+              placeholder="ten-cua-ban"
+              spellCheck={false}
+              style={{ width: 110, border: 0, background: "transparent", outline: "none", fontSize: 13, fontWeight: 600, color: "#23201B" }}
+            />
+            <span style={{ fontSize: 12, color: "#8C8278", marginRight: 6 }}>.{mainHost || "mstudo.com"}</span>
+            <button onClick={saveDomain} disabled={savingDomain || subdomain.trim().toLowerCase() === savedSub} title="Lưu tên miền" style={{ ...chipBtn(false, savingDomain || subdomain.trim().toLowerCase() === savedSub), height: 28, padding: "0 10px" }}>
+              <Check size={14} /> Lưu
+            </button>
+          </div>
+        )}
+
+        <div style={{ marginLeft: preview ? "auto" : 0, display: "flex", alignItems: "center", gap: 8 }}>
           {liveUrl && published && (
             <a href={liveUrl} target="_blank" rel="noreferrer" style={chipBtn(false)} title="Mở trang thật"><ExternalLink size={15} /></a>
           )}
@@ -513,6 +568,11 @@ export default function CanvasBuilder({
       )}
     </div>
   );
+
+  // Render through a portal to <body> so the fixed overlay escapes the studio
+  // shell's transformed ancestors (the .page-in animation creates a containing
+  // block that would otherwise trap position:fixed and let chrome show through).
+  return mounted ? createPortal(ui, document.body) : null;
 }
 
 /* ── Drop zone between blocks ──────────────────────────────────────────── */
