@@ -52,23 +52,23 @@ export default function MessengerButton({
   const url = messengerUrl(link);
   if (!url) return null;
 
+  // Use a real <a>: the click stays a user gesture so the m.me universal link
+  // opens the Messenger app directly on Android/iOS (instead of the web/install
+  // page). Copy the message without await so it never blocks the navigation.
   return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard?.writeText(message);
-        } catch {
-          /* clipboard may be blocked; still open the chat */
-        }
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => {
+        navigator.clipboard?.writeText(message).catch(() => {});
         setDone(true);
         setTimeout(() => setDone(false), 2000);
-        window.open(url, "_blank", "noopener,noreferrer");
       }}
       className={className}
       title="Chép sẵn lời nhắn rồi mở Messenger"
     >
       {done ? <Check size={14} /> : <MessageSquare size={14} />} {done ? "Đã chép, mở…" : label}
-    </button>
+    </a>
   );
 }
