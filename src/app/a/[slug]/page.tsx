@@ -4,7 +4,7 @@ import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Brand from "@/components/Brand";
 import { buildAlbumMetadata } from "@/lib/album-meta";
-import { APP_HOST } from "@/lib/hosts";
+import { MAIN_HOST } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     title: data.title,
     description: data.description,
     coverUrl: data.cover_url,
-    host: APP_HOST,
+    host: MAIN_HOST,
     path: `/a/${params.slug}`,
     ownerId: data.owner_id,
   });

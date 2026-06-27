@@ -117,7 +117,7 @@ export default function DashboardHeader({
       label: "Công cụ",
       tier: "booking",
       children: [
-        { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+        { href: "/dashboard/albums", label: t("myAlbums") },
         { href: imgUrl("/dashboard/create"), label: t("newAlbum"), external: true },
         { href: imgUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
         { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
@@ -145,7 +145,7 @@ export default function DashboardHeader({
   const appToolsGroup: NavGroup = {
     label: "Công cụ",
     children: [
-      { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+      { href: "/dashboard/albums", label: t("myAlbums") },
       { href: imgUrl("/dashboard/create"), label: t("newAlbum"), external: true },
       { href: imgUrl("/dashboard/filter"), label: t("filterPhotos"), external: true },
       { href: imgUrl("/dashboard/compress"), label: t("compressPhotos"), external: true },
@@ -160,13 +160,13 @@ export default function DashboardHeader({
           { href: "/dashboard/compress", label: t("compressPhotos") },
           { href: "/dashboard/create", label: t("newAlbum") },
           { href: "/dashboard/filter", label: t("filterPhotos") },
-          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+          { href: appUrl("/dashboard/albums"), label: t("myAlbums"), external: true },
         ]
       : kind === "admin"
       ? [
           { href: "/dashboard/admin", label: t("admin") },
           { href: "/dashboard/settings", label: t("settings") },
-          { href: appUrl("/dashboard"), label: t("myAlbums"), external: true },
+          { href: appUrl("/dashboard/albums"), label: t("myAlbums"), external: true },
         ]
       : [
           { href: "/dashboard", label: t("myAlbums") },

@@ -29,9 +29,13 @@ export function cookieDomainForHost(host?: string | null): string | undefined {
   return h === MAIN_HOST || h.endsWith(`.${MAIN_HOST}`) ? `.${MAIN_HOST}` : undefined;
 }
 
-/** URL to a route on the app subdomain (album.mstudo.com). */
+/**
+ * URL to an album-app route. The album subdomain (album.mstudo.com) is no longer
+ * used — the album app is served by the main host now, so these links resolve to
+ * MAIN_HOST (or stay relative on single-host setups).
+ */
 export function appUrl(path: string): string {
-  return APP_HOST ? `https://${APP_HOST}${path}` : path;
+  return MAIN_HOST ? `https://${MAIN_HOST}${path}` : path;
 }
 
 /** URL to a route on the main marketing site (mstudo.com). */

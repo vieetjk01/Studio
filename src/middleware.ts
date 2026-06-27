@@ -5,7 +5,8 @@ import { cookieDomainForHost } from "@/lib/hosts";
 // Domain split (set these on Vercel to enable it). When unset (local dev,
 // *.vercel.app previews) the full app is served on one host.
 //   MAIN_HOST  = mstudo.com        -> landing + studio management
-//   APP_HOST   = album.mstudo.com  -> album dashboard, create, filter, /a/
+//   APP_HOST   = album.mstudo.com  -> RETIRED (album app now served by MAIN_HOST;
+//                                     kept only as a known system host)
 //   IMG_HOST   = img.mstudo.com    -> image-compress tool
 //   ADMIN_HOST = admin.mstudo.com  -> site administration + settings
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
@@ -36,16 +37,11 @@ function hostForPath(path: string): string | undefined {
     path.startsWith(COMPRESS_PATH) ||
     path.startsWith("/dashboard/create") ||
     path.startsWith("/dashboard/filter")
-  ) return IMG_HOST || APP_HOST;
+  ) return IMG_HOST;
 
-  // Album library + public album viewer + album-host landing live on the album
-  // subdomain. (/dashboard on the main host is caught earlier → studio overview.)
-  if (path === "/dashboard" || path.startsWith("/a/") || path === "/start") return APP_HOST;
-
-  // Everything else under /dashboard is the studio management app → force it
-  // onto the MAIN host so studio never runs on album.mstudo.com. Admin/settings
-  // included (they're role-guarded server-side).
-  if (path.startsWith("/dashboard")) return MAIN_HOST;
+  // album.mstudo.com is retired — the album app (library, public viewer /a/,
+  // and the whole dashboard) is served by the main host now.
+  if (path.startsWith("/dashboard") || path.startsWith("/a/") || path === "/start") return MAIN_HOST;
 
   return undefined;
 }
@@ -88,10 +84,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Host-based routing ────────────────────────────────────────
-  if (MAIN_HOST && APP_HOST && host) {
+  if (MAIN_HOST && host) {
     // Per-host home pages.
     if (pathname === "/") {
-      if (host === APP_HOST) return NextResponse.rewrite(new URL("/start", request.url));
       if (IMG_HOST && host === IMG_HOST) return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
       if (ADMIN_HOST && host === ADMIN_HOST) return NextResponse.redirect(new URL(ADMIN_PATH, request.url));
       // MAIN_HOST / = marketing landing — fall through.

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { appUrl } from "@/lib/hosts";
 import ZaloButton from "@/components/ZaloButton";
 import StudioTrialButton from "@/components/StudioTrialButton";
 import MessengerButton from "@/components/MessengerButton";
@@ -251,9 +250,9 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
 export default async function StudioOverview() {
   const profile = await requireStudio("booking");
-  // Free/Basic accounts have no studio tier — send them to the album dashboard
-  // (on the app host) instead of the studio workspace.
-  if (!profile) redirect(appUrl("/dashboard"));
+  // Free/Basic accounts have no studio tier — send them to the album library
+  // (not /dashboard, which redirects back here and would loop).
+  if (!profile) redirect("/dashboard/albums");
 
   const supabase = createClient();
 
