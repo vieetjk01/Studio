@@ -353,6 +353,11 @@ export default async function StudioOverview() {
     // Lịch chụp sắp tới chỉ tính hợp đồng đã xác nhận/ký (bỏ nháp & mới gửi).
     .filter((c) => c.event_date && c.event_date >= today && ["approved", "in_progress", "completed"].includes(c.status))
     .slice(0, 6);
+  // Hợp đồng đang chờ xử lý: nháp / đã gửi nhưng khách chưa ký xác nhận.
+  const pending = list
+    .filter((c) => c.status === "draft" || c.status === "sent")
+    .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""))
+    .slice(0, 6);
   const totalValue = list
     .filter((c) => c.status !== "cancelled")
     .reduce((s, c) => s + contractTotal(c.contract_items || []), 0);
@@ -500,45 +505,34 @@ export default async function StudioOverview() {
         ))}
       </div>
 
-      {/* Revenue chart + upcoming shoots */}
+      {/* Revenue chart + contracts pending action */}
       <div className="mb-6 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <RevenueChart bars={revBars} />
         <div className="card p-6">
           <h2 className="mb-4 flex items-center gap-2 font-serif text-lg font-medium">
-            <CalendarDays size={18} style={{ color: ACCENT }} /> Lịch chụp sắp tới
+            <FileText size={18} style={{ color: ACCENT }} /> Hợp đồng đang chờ xử lý
           </h2>
-          {upcoming.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có lịch sắp tới.</p>
+          {pending.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--text3)" }}>Không có hợp đồng nào đang chờ.</p>
           ) : (
             <ul className="space-y-3">
-              {upcoming.map((c) => {
-                const d = c.event_date ? new Date(c.event_date) : null;
-                return (
-                  <li key={c.id}>
-                    <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-3">
-                      <div
-                        className="flex h-11 w-11 flex-none flex-col items-center justify-center rounded-xl"
-                        style={{ background: "var(--surface2)" }}
-                      >
-                        <span className="text-[15px] font-bold leading-none">{d ? d.getDate() : "—"}</span>
-                        <span className="text-[10px] font-semibold" style={{ color: "var(--text3)" }}>
-                          {d ? `TH${d.getMonth() + 1}` : ""}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-[13px] font-bold">{c.title}</p>
-                        <p className="text-xs" style={{ color: "var(--text3)" }}>
-                          {(c.event_time || "—")} · {c.client_name || SHOOT_TYPE_LABEL[c.shoot_type]}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
+              {pending.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-bold">{c.title}</p>
+                      <p className="text-xs" style={{ color: "var(--text3)" }}>
+                        {c.client_name || "—"}{c.event_date ? ` · ${fmtDate(c.event_date)}` : ""}
+                      </p>
+                    </div>
+                    <span style={badgeStyle(STATUS_TONE[c.status])}>{CONTRACT_STATUS_LABEL[c.status]}</span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
-          <Link href="/dashboard/studio/calendar" className="mt-4 inline-block text-xs hover:underline" style={{ color: ACCENT }}>
-            Xem lịch đầy đủ →
+          <Link href="/dashboard/studio/contracts" className="mt-4 inline-block text-xs hover:underline" style={{ color: ACCENT }}>
+            Tất cả hợp đồng →
           </Link>
         </div>
       </div>
