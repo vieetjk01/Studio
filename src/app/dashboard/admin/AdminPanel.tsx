@@ -53,7 +53,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
   }
 
   async function removeUser(p: Profile) {
-    if (!window.confirm(`Xoá tài khoản ${p.email}? Không thể hoàn tác.`)) return;
+    if (!window.confirm(t("confirmDeleteUser").replace("{email}", p.email))) return;
     setRows((r) => r.filter((x) => x.id !== p.id));
     const res = await fetch(`/api/admin/photographers?id=${p.id}`, { method: "DELETE" });
     if (!res.ok) flash(t("error"));
@@ -149,13 +149,13 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
           <thead>
             <tr className="border-b border-ink-800 text-left text-xs uppercase tracking-wide text-accent-muted">
               <th className="px-4 py-3">{t("email")}</th>
-              <th className="px-4 py-3">Gói</th>
+              <th className="px-4 py-3">{t("plan")}</th>
               <th className="px-4 py-3">{t("role")}</th>
               <th className="px-4 py-3">{t("active")}</th>
               <th className="px-4 py-3">{t("monthlyLimit")}</th>
               <th className="px-4 py-3">{t("canZip")}</th>
               <th className="px-4 py-3">{t("canNotes")}</th>
-              <th className="px-4 py-3">Gallery</th>
+              <th className="px-4 py-3">{t("gallery")}</th>
               <th className="px-4 py-3">WM Pro</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -180,17 +180,17 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                       }
                     }}
                   >
-                    <option value="free">Miễn phí</option>
-                    <option value="basic-month">Basic · tháng</option>
-                    <option value="basic-year">Basic · năm</option>
-                    <option value="photographer-month">Photographer · tháng</option>
-                    <option value="photographer-year">Photographer · năm</option>
-                    <option value="studio-month">Studio · tháng</option>
-                    <option value="studio-year">Studio · năm</option>
+                    <option value="free">{t("planFree")}</option>
+                    <option value="basic-month">Basic · {t("cycleMonth")}</option>
+                    <option value="basic-year">Basic · {t("cycleYear")}</option>
+                    <option value="photographer-month">Photographer · {t("cycleMonth")}</option>
+                    <option value="photographer-year">Photographer · {t("cycleYear")}</option>
+                    <option value="studio-month">Studio · {t("cycleMonth")}</option>
+                    <option value="studio-year">Studio · {t("cycleYear")}</option>
                   </select>
                   {p.plan !== "free" && p.plan_expires_at && (
                     <div className="mt-1 text-[10px]" style={{ color: "var(--text3)" }}>
-                      HH: {new Date(p.plan_expires_at).toLocaleDateString()}
+                      {t("expiresShort")}: {new Date(p.plan_expires_at).toLocaleDateString()}
                     </div>
                   )}
                 </td>
@@ -257,7 +257,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                   />
                 </td>
                 <td className="px-4 py-3">
-                  <button onClick={() => removeUser(p)} className="rounded-md p-1.5 text-red-400 hover:bg-red-500/10" title="Xoá tài khoản">
+                  <button onClick={() => removeUser(p)} className="rounded-md p-1.5 text-red-400 hover:bg-red-500/10" title={t("deleteAccount")}>
                     <Trash2 size={15} />
                   </button>
                 </td>

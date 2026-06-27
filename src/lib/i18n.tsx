@@ -116,6 +116,17 @@ export const dict: Dict = {
   session: { vi: "Phiên", en: "Session" },
   // admin
   photographers: { vi: "Nhiếp ảnh gia", en: "Photographers" },
+  plan: { vi: "Gói", en: "Plan" },
+  planFree: { vi: "Miễn phí", en: "Free" },
+  cycleMonth: { vi: "tháng", en: "month" },
+  cycleYear: { vi: "năm", en: "year" },
+  gallery: { vi: "Gallery", en: "Gallery" },
+  expiresShort: { vi: "HH", en: "Exp" },
+  deleteAccount: { vi: "Xoá tài khoản", en: "Delete account" },
+  confirmDeleteUser: {
+    vi: "Xoá tài khoản {email}? Không thể hoàn tác.",
+    en: "Delete account {email}? This cannot be undone.",
+  },
   role: { vi: "Vai trò", en: "Role" },
   active: { vi: "Kích hoạt", en: "Active" },
   maxAlbums: { vi: "Giới hạn album", en: "Album limit" },
