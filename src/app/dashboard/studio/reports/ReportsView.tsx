@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wallet, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
@@ -312,7 +313,7 @@ export default function ReportsView({
               <option key={k} value={k}>{EXPENSE_CATEGORY_LABEL[k]}</option>
             ))}
           </select>
-          <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
+          <DateInput wrapperClassName="sm:col-span-3" value={exp.spent_at} onChange={(v) => setExp((p) => ({ ...p, spent_at: v }))} />
         </div>
         <button onClick={addExpense} disabled={busy} className="btn-primary mt-3">
           <Plus size={15} /> {busy ? "Đang thêm…" : "Thêm chi phí"}

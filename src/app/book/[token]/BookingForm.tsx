@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { CalendarCheck, Check } from "lucide-react";
 import { vnd } from "@/lib/types";
 import Turnstile from "@/components/Turnstile";
@@ -157,7 +158,7 @@ export default function BookingForm({
         </div>
         <div>
           <label className="label">{tr.date}</label>
-          <input type="date" className="input" value={f.preferred_date} onChange={(e) => set("preferred_date", e.target.value)} />
+          <DateInput value={f.preferred_date} onChange={(v) => set("preferred_date", v)} />
         </div>
         <div>
           <label className="label">{tr.note}</label>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import DateInput from "@/components/DateInput";
 import { useState } from "react";
 import { Plus, Trash2, Lock, LockOpen, ArrowLeft, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -152,7 +153,7 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
             <input className="input" value={clientFacebook} onChange={(e) => setClientFacebook(e.target.value)} placeholder="https://facebook.com/..." />
           </Field>
           <Field label="Ngày sự kiện">
-            <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+            <DateInput value={eventDate} onChange={(v) => setEventDate(v)} />
           </Field>
           <Field label="Địa điểm" className="md:col-span-2">
             <input className="input" value={location} onChange={(e) => setLocation(e.target.value)} />

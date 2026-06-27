@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DateInput from "@/components/DateInput";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -199,7 +200,7 @@ export default function NewContractForm({
         )}
         <div className="field">
           <label className="label">Ngày chụp / quay</label>
-          <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+          <DateInput value={eventDate} onChange={(v) => setEventDate(v)} />
         </div>
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { Phone, MapPin, Calendar, Check, X, Camera, CalendarOff, Plus, Trash2 } from "lucide-react";
 import Turnstile from "@/components/Turnstile";
 import {
@@ -259,7 +260,7 @@ export default function CrewPortal() {
               </ul>
             )}
             <div className="flex flex-wrap gap-2">
-              <input type="date" className="input w-auto" value={newBusy.date} onChange={(e) => setNewBusy((p) => ({ ...p, date: e.target.value }))} />
+              <DateInput wrapperClassName="w-auto" value={newBusy.date} onChange={(v) => setNewBusy((p) => ({ ...p, date: v }))} />
               <input className="input flex-1" placeholder={tr.notePh} value={newBusy.note} onChange={(e) => setNewBusy((p) => ({ ...p, note: e.target.value }))} />
               <button onClick={addBusy} disabled={busy === "busy" || !newBusy.date} className="btn-ghost shrink-0">
                 <Plus size={15} /> {tr.add}

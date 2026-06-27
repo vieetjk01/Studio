@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DateInput from "@/components/DateInput";
 import {
   Save, Tag, Trash2, Plus, Shuffle, Check, Crown, MessageSquare,
   Globe, LayoutTemplate, BadgeDollarSign, Settings2, ChevronDown, ChevronRight,
@@ -277,7 +278,7 @@ export default function SettingsPanel({
             <input type="number" min={0} className="input w-24" value={newCode.trial} onChange={(e) => setNewCode({ ...newCode, trial: Math.max(0, Number(e.target.value) || 0) })} />
           </Field>
           <Field label="Hạn dùng">
-            <input type="date" className="input w-36" value={newCode.expires} onChange={(e) => setNewCode({ ...newCode, expires: e.target.value })} />
+            <DateInput wrapperClassName="w-36" value={newCode.expires} onChange={(v) => setNewCode({ ...newCode, expires: v })} />
           </Field>
           <button onClick={addCode} className="btn-primary self-end"><Plus size={14} /> Thêm mã</button>
         </div>

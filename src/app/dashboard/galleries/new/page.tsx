@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Link2, FolderTree, ArrowRight, Lock } from "lucide-react";
@@ -175,7 +176,7 @@ export default function NewGalleryPage() {
           </div>
           <div>
             <label className="label">Ngày cưới / đính hôn</label>
-            <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="input" />
+            <DateInput value={eventDate} onChange={(v) => setEventDate(v)} />
           </div>
           <div>
             <label className="label">Phân loại (tự nhập)</label>

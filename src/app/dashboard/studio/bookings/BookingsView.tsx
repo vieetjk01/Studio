@@ -12,6 +12,7 @@ import { fullClauseText } from "@/lib/contract-clauses";
 import { messengerUrl } from "@/components/MessengerButton";
 import { vnd, type StudioBooking } from "@/lib/types";
 import { fmtDate } from "@/lib/date";
+import DateInput from "@/components/DateInput";
 import { useRouter } from "next/navigation";
 
 type BookingStatus = "new" | "accepted" | "pending" | "declined" | "handled" | "archived";
@@ -369,11 +370,9 @@ export default function BookingsView({
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text3)" }}>Ngày mong muốn</label>
-                <input
-                  type="date"
-                  className="input w-full"
+                <DateInput
                   value={editState.preferred_date}
-                  onChange={(e) => setEditState((s) => s ? { ...s, preferred_date: e.target.value } : s)}
+                  onChange={(v) => setEditState((s) => s ? { ...s, preferred_date: v } : s)}
                 />
               </div>
               <div>

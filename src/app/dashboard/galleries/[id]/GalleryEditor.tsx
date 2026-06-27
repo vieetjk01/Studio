@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -174,7 +175,7 @@ export default function GalleryEditor({
             <label className="label">Đổi SĐT / mật khẩu</label>
             <input className="input" placeholder={album.client_phone ? "•••• (đã đặt)" : "Nhập SĐT"} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
           </div>
-          <div><label className="label">Ngày cưới / đính hôn</label><input type="date" className="input" value={form.event_date ?? ""} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></div>
+          <div><label className="label">Ngày cưới / đính hôn</label><DateInput value={form.event_date ?? ""} onChange={(v) => setForm({ ...form, event_date: v })} /></div>
           <div>
             <label className="label">Phân loại (tự nhập)</label>
             <input

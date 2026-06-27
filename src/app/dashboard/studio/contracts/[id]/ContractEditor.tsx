@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import DateInput from "@/components/DateInput";
 import { fmtDate } from "@/lib/date";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -1031,7 +1032,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 </div>
                 <div>
                   <label className="label">Ngày</label>
-                  <input type="date" className="input" value={f.event_date} onChange={(e) => set("event_date", e.target.value)} />
+                  <DateInput value={f.event_date} onChange={(v) => set("event_date", v)} />
                 </div>
                 <div>
                   <label className="label">Giờ</label>
@@ -1063,7 +1064,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
               <div>
                 <label className="label">Hạn giao ảnh</label>
-                <input type="date" className="input" value={f.delivery_due} onChange={(e) => set("delivery_due", e.target.value)} />
+                <DateInput value={f.delivery_due} onChange={(v) => set("delivery_due", v)} />
               </div>
               {canAssign && staffList.length > 0 && (
                 <div>
@@ -1213,11 +1214,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                                 value={it.amount}
                                 onChange={(n) => autosavePlan(it.id, { amount: n })}
                               />
-                              <input
-                                type="date"
-                                className="input h-8 text-sm w-36"
+                              <DateInput
+                                className="input h-8 text-sm"
+                                wrapperClassName="w-36"
                                 value={it.due_date ?? ""}
-                                onChange={(e) => autosavePlan(it.id, { due_date: e.target.value || null })}
+                                onChange={(v) => autosavePlan(it.id, { due_date: v || null })}
                               />
                               {overdue && <span className="text-[11px] self-center" style={{ color: "#c77b7b" }}>quá hạn</span>}
                             </div>
@@ -1273,7 +1274,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
               <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
-              <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
+              <DateInput wrapperClassName="sm:col-span-3" value={planForm.due_date} onChange={(v) => setPlanForm((p) => ({ ...p, due_date: v }))} />
             </div>
             {/* Quick amounts */}
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1382,7 +1383,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-6" placeholder="Nội dung chi" value={exp.title} onChange={(e) => setExp((p) => ({ ...p, title: e.target.value }))} />
               <MoneyInput className="input sm:col-span-3" placeholder="Số tiền" value={exp.amount} onChange={(n) => setExp((p) => ({ ...p, amount: n }))} />
-              <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
+              <DateInput wrapperClassName="sm:col-span-3" value={exp.spent_at} onChange={(v) => setExp((p) => ({ ...p, spent_at: v }))} />
             </div>
             <label className="mt-3 flex items-center gap-2 text-xs" style={{ color: "var(--text2)" }}>
               <input type="checkbox" checked={exp.client_visible} onChange={(e) => setExp((p) => ({ ...p, client_visible: e.target.checked }))} />
@@ -1429,7 +1430,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-6" placeholder="Tên mốc (vd: Ngày cưới)" value={ms.title} onChange={(e) => setMs((p) => ({ ...p, title: e.target.value }))} />
-              <input type="date" className="input sm:col-span-4" value={ms.event_date} onChange={(e) => setMs((p) => ({ ...p, event_date: e.target.value }))} />
+              <DateInput wrapperClassName="sm:col-span-4" value={ms.event_date} onChange={(v) => setMs((p) => ({ ...p, event_date: v }))} />
               <input className="input sm:col-span-2" placeholder="08:00" value={ms.event_time} onChange={(e) => setMs((p) => ({ ...p, event_time: e.target.value }))} />
             </div>
             <button onClick={addMilestone} disabled={busy === "milestone"} className="btn-ghost mt-3">

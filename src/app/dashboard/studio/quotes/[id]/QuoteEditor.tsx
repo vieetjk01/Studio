@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import DateInput from "@/components/DateInput";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Copy, ExternalLink, Plus, Trash2, Lock, LockOpen, Send, FileSignature, X, Check, Save, Tag, CloudOff } from "lucide-react";
@@ -444,7 +445,7 @@ export default function QuoteEditor({
             <input className="input" value={quote.client_facebook || ""} disabled={locked} placeholder="https://facebook.com/..." onChange={(e) => patchLocal({ client_facebook: e.target.value })} />
           </Field>
           <Field label="Ngày sự kiện">
-            <input type="date" className="input" value={quote.event_date || ""} disabled={locked} onChange={(e) => patchLocal({ event_date: e.target.value || null })} />
+            <DateInput value={quote.event_date || ""} disabled={locked} onChange={(v) => patchLocal({ event_date: v || null })} />
           </Field>
           <Field label="Địa điểm">
             <input className="input" value={quote.location || ""} disabled={locked} onChange={(e) => patchLocal({ location: e.target.value })} />
