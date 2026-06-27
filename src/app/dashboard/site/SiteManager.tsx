@@ -357,7 +357,10 @@ export default function SiteManager({
 
       {/* Top toolbar: domain + publish + save + preview controls */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto font-serif text-xl font-medium">Trang web của bạn</h1>
+        <h1 className="font-serif text-xl font-medium">Trang web của bạn</h1>
+        <a href="/dashboard/site/builder" className="btn-ghost mr-auto px-3 py-2 text-xs gap-1.5">
+          <Wand2 size={14} /> Trình tạo kéo-thả
+        </a>
 
         <div className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
           <input className="input h-8 w-32 text-xs" placeholder="ten-cua-ban" value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase())} />
