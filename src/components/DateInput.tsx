@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Calendar } from "lucide-react";
+import { fmtLunar } from "@/lib/date";
 
 // Date field that always SHOWS dd/mm/yyyy (regardless of browser locale) while
 // emitting an ISO yyyy-mm-dd string via onChange. A calendar button opens the
@@ -27,6 +28,7 @@ export default function DateInput({
   placeholder = "dd/mm/yyyy",
   id,
   disabled = false,
+  lunar = true,
 }: {
   value: string;
   onChange: (iso: string) => void;
@@ -35,6 +37,7 @@ export default function DateInput({
   placeholder?: string;
   id?: string;
   disabled?: boolean;
+  lunar?: boolean;
 }) {
   const [text, setText] = useState(() => isoToDisplay(value));
   const picker = useRef<HTMLInputElement>(null);
@@ -80,6 +83,9 @@ export default function DateInput({
         aria-hidden
         style={{ position: "absolute", right: 6, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
       />
+      {lunar && value && fmtLunar(value) && (
+        <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Âm lịch: {fmtLunar(value)}</p>
+      )}
     </div>
   );
 }

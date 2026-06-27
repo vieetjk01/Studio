@@ -91,6 +91,13 @@ export default async function ContractPage({ params }: { params: { id: string } 
     supabase.from("contract_quote_options").select("*").eq("contract_id", params.id).order("position"),
   ]);
 
+  const { data: services } = await supabase
+    .from("studio_services")
+    .select("id, name, clauses")
+    .eq("owner_id", profile.id)
+    .eq("active", true)
+    .order("position", { ascending: true });
+
   // Scheduling conflicts for the contract's date: crew already booked on another
   // of this studio's contracts that day, or crew who marked the day as busy.
   const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
@@ -155,6 +162,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
         name: (profile.pl_bank_name as string | null) ?? null,
       }}
       sameDayContracts={sameDayContracts}
+      services={(services ?? []) as { id: string; name: string; clauses: string }[]}
       pricelist={(pricelistRows ?? []) as { name: string; price: number; unit: string | null }[]}
       initialItems={(items ?? []) as ContractItem[]}
       initialCrew={(crew ?? []) as ContractCrew[]}

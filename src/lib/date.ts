@@ -1,5 +1,6 @@
 // Centralised date formatting — the whole app shows dates as ngày/tháng/năm
 // (dd/mm/yyyy). Accepts a Date, an ISO string ("2026-06-27") or a timestamp.
+import { solarToLunar } from "@/lib/lunar";
 
 function toDate(v: string | number | Date | null | undefined): Date | null {
   if (v == null || v === "") return null;
@@ -27,4 +28,21 @@ export function fmtDateTime(v: string | number | Date | null | undefined): strin
   const d = toDate(v);
   if (!d) return "";
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Lunar (âm lịch) date: "dd/mm/yyyy" (+ " nhuận" for a leap month). "" if invalid. */
+export function fmtLunar(v: string | number | Date | null | undefined): string {
+  const d = toDate(v);
+  if (!d) return "";
+  const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const l = solarToLunar(iso);
+  return `${pad(l.day)}/${pad(l.month)}/${l.year}${l.leap ? " nhuận" : ""}`;
+}
+
+/** Solar + lunar together: "dd/mm/yyyy (ÂL dd/mm/yyyy)". "" if invalid. */
+export function fmtDateLunar(v: string | number | Date | null | undefined): string {
+  const s = fmtDate(v);
+  if (!s) return "";
+  const l = fmtLunar(v);
+  return l ? `${s} (ÂL ${l})` : s;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import DateInput from "@/components/DateInput";
-import { fmtDate } from "@/lib/date";
+import { fmtDate, fmtDateLunar } from "@/lib/date";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,7 +30,6 @@ import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
-import ClauseInserter from "@/components/ClauseInserter";
 import { PRESET_ITEMS, PRESET_TASKS, nextContractCode } from "@/lib/contract-code";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
@@ -38,7 +37,6 @@ import {
   vnd,
   sumAmounts,
   SHOOT_TYPE_LABEL,
-  SHOOT_TYPES,
   CONTRACT_STATUS_LABEL,
   CREW_ROLE_LABEL,
   CREW_STATUS_LABEL,
@@ -109,6 +107,7 @@ export default function ContractEditor({
   sameDayContracts,
   pricelist,
   initialClientProofs,
+  services = [],
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -132,6 +131,7 @@ export default function ContractEditor({
   sameDayContracts: { id: string; title: string; client_name: string | null }[];
   pricelist: { name: string; price: number; unit: string | null }[];
   initialClientProofs: { id: string; url: string; note: string | null; uploaded_at: string; plan_id: string | null }[];
+  services?: { id: string; name: string; clauses: string }[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -144,6 +144,7 @@ export default function ContractEditor({
     client_phone: contract.client_phone ?? "",
     client_email: contract.client_email ?? "",
     shoot_type: contract.shoot_type as ShootType,
+    service_id: contract.service_id ?? "",
     status: contract.status as ContractStatus,
     event_date: contract.event_date ?? "",
     event_time: contract.event_time ?? "",
@@ -170,6 +171,7 @@ export default function ContractEditor({
         client_phone: data.client_phone.replace(/\D/g, "") || null,
         client_email: data.client_email.trim() || null,
         shoot_type: data.shoot_type,
+        service_id: data.service_id || null,
         status: data.status,
         event_date: data.event_date || null,
         event_time: data.event_time.trim() || null,
@@ -806,7 +808,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1.5">{SHOOT_TYPE_LABEL[f.shoot_type]}{f.code ? ` · ${f.code}` : ""}</p>
+          <p className="eyebrow mb-1.5">{services.find((s) => s.id === f.service_id)?.name || SHOOT_TYPE_LABEL[f.shoot_type]}{f.code ? ` · ${f.code}` : ""}</p>
           <h1 className="font-serif text-3xl font-medium">{f.title || "Hợp đồng"}</h1>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -1024,11 +1026,28 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="label">Loại dịch vụ</label>
-                  <select className="input" value={f.shoot_type} onChange={(e) => set("shoot_type", e.target.value)}>
-                    {SHOOT_TYPES.map((k) => (
-                      <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
-                    ))}
-                  </select>
+                  {services.length > 0 ? (
+                    <select
+                      className="input"
+                      value={f.service_id}
+                      onChange={(e) => {
+                        const svc = services.find((s) => s.id === e.target.value);
+                        // Switching service: link it, force legacy type to "other",
+                        // and refresh the (read-only) clauses from the service.
+                        setF((p) => ({ ...p, service_id: e.target.value, shoot_type: "other", note: svc ? svc.clauses : p.note }));
+                        if (contractSaveTimer.current) clearTimeout(contractSaveTimer.current);
+                        const next = { ...f, service_id: e.target.value, shoot_type: "other" as ShootType, note: svc ? svc.clauses : f.note };
+                        autosaveContract(next);
+                      }}
+                    >
+                      <option value="">Khác</option>
+                      {services.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className="input" value="Khác" disabled />
+                  )}
                 </div>
                 <div>
                   <label className="label">Ngày</label>
@@ -1107,9 +1126,12 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 )}
               </div>
               <div>
-                <label className="label">Ghi chú / Điều khoản</label>
-                <textarea className="input min-h-[80px]" value={f.note} onChange={(e) => set("note", e.target.value)} />
-                <ClauseInserter onInsert={(t) => set("note", f.note.trim() ? `${f.note.trim()}\n\n${t}` : t)} />
+                <label className="label">Điều khoản hợp đồng</label>
+                <textarea className="input min-h-[120px]" value={f.note} readOnly style={{ opacity: 0.85, cursor: "default" }} />
+                <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                  Điều khoản cố định theo dịch vụ — không sửa ở đây.{" "}
+                  <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Sửa trong Dịch vụ &amp; điều khoản</Link>
+                </p>
               </div>
               <p className="flex items-center gap-1 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
                 {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu tự động</> : "Thông tin tự động lưu khi nhập"}
@@ -1406,7 +1428,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </p>
             {f.event_date && (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                <span className="text-sm">Buổi chính · {fmtDate(f.event_date)}{f.event_time ? ` · ${f.event_time}` : ""}</span>
+                <span className="text-sm">Buổi chính · {fmtDateLunar(f.event_date)}{f.event_time ? ` · ${f.event_time}` : ""}</span>
                 <CalendarButtons compact event={{ date: f.event_date, time: f.event_time, title: f.title, location: f.location }} />
               </div>
             )}
