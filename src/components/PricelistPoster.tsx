@@ -40,6 +40,7 @@ export default function PricelistPoster({
   tabBase,
   bookHref,
   theme,
+  clauses = "",
 }: {
   contact: PosterContact;
   items: PricelistItem[]; // already filtered to the selected list
@@ -48,6 +49,7 @@ export default function PricelistPoster({
   tabBase: string; // URL without ?list
   bookHref: string; // /book/<token>
   theme?: PosterTheme;
+  clauses?: string; // optional service clauses to show under the prices
 }) {
   const o = contact;
 
@@ -185,6 +187,13 @@ export default function PricelistPoster({
                     </ul>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {clauses.trim() && (
+              <div className="mt-10 rounded-2xl p-6" style={{ border: `1px solid ${P.line}`, background: P.panel }}>
+                <h3 className="mb-3 font-serif text-lg" style={{ color: P.ink }}>Điều khoản dịch vụ</h3>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: P.muted }}>{clauses}</p>
               </div>
             )}
 

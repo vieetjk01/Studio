@@ -37,6 +37,15 @@ export default async function PricingPage() {
   const hiddenLists = (profile.pl_hidden_lists as string[] | null) ?? [];
   const listLabels = (profile.pl_list_labels as Record<string, string> | null) ?? {};
 
+  // Studio-defined services become the price-list categories (loại bảng giá).
+  const { data: services } = await supabase
+    .from("studio_services")
+    .select("id, name")
+    .eq("owner_id", profile.id)
+    .eq("active", true)
+    .order("position", { ascending: true });
+  const showClauses = !!profile.pl_show_clauses;
+
   // First visit: auto-fill the wedding + engagement lists from the studio's cards.
   // Skip any built-in list the studio has explicitly hidden so it is not
   // re-seeded after being removed.
@@ -53,6 +62,8 @@ export default async function PricingPage() {
       initial={(data ?? []) as PricelistItem[]}
       hiddenLists={hiddenLists}
       listLabels={listLabels}
+      services={(services ?? []) as { id: string; name: string }[]}
+      showClauses={showClauses}
       shareUrl={token ? mainUrl(`/gia/${token}`) : ""}
       contact={{
         pl_phone: profile.pl_phone ?? "",

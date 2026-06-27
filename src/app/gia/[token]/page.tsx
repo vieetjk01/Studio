@@ -46,7 +46,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
 
   const { data: th } = await db
     .from("profiles")
-    .select("pl_bg, pl_text, pl_accent, pl_logo_url, pl_hidden_lists, pl_list_labels")
+    .select("pl_bg, pl_text, pl_accent, pl_logo_url, pl_hidden_lists, pl_list_labels, pl_show_clauses")
     .eq("id", owner.id)
     .maybeSingle();
   const hidden = ((th?.pl_hidden_lists as string[] | null) ?? []);
@@ -55,6 +55,18 @@ export default async function PublicPricelist({ params, searchParams }: { params
   const lists = buildLists(allItems, hidden, labels);
   const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
+
+  // Optionally show the selected service's contract clauses under the prices.
+  let clauses = "";
+  if (th?.pl_show_clauses) {
+    const { data: svc } = await db
+      .from("studio_services")
+      .select("clauses")
+      .eq("id", selected)
+      .eq("owner_id", owner.id)
+      .maybeSingle();
+    clauses = (svc?.clauses as string) || "";
+  }
 
   let theme: { bg?: string | null; text?: string | null; accent?: string | null; logo?: string | null } | undefined;
   if (th) theme = { bg: th.pl_bg, text: th.pl_text, accent: th.pl_accent, logo: th.pl_logo_url };
@@ -68,6 +80,7 @@ export default async function PublicPricelist({ params, searchParams }: { params
       tabBase={`/gia/${params.token}`}
       bookHref={`/book/${params.token}?list=${encodeURIComponent(selected)}`}
       theme={theme}
+      clauses={clauses}
     />
   );
 }

@@ -774,6 +774,9 @@ alter table public.studio_contracts add column if not exists calendar_color text
 -- Monthly revenue target (mục tiêu doanh thu) per studio account.
 alter table public.profiles add column if not exists monthly_revenue_target integer not null default 0;
 
+-- Show the service's contract clauses on the public price list (studio toggle).
+alter table public.profiles add column if not exists pl_show_clauses boolean not null default false;
+
 -- Print / physical product orders per contract (album in, ảnh ép gỗ…).
 create table if not exists public.contract_products (
   id          uuid primary key default gen_random_uuid(),

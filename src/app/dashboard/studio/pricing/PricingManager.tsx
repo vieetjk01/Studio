@@ -23,6 +23,8 @@ export default function PricingManager({
   shareUrl,
   contact,
   appearance,
+  services = [],
+  showClauses: initialShowClauses = false,
 }: {
   ownerId: string;
   initial: PricelistItem[];
@@ -31,6 +33,8 @@ export default function PricingManager({
   shareUrl: string; // base /gia/<token>
   contact: Contact;
   appearance: Appearance;
+  services?: { id: string; name: string }[];
+  showClauses?: boolean;
 }) {
   const supabase = createClient();
   const [list, setList] = useState<PricelistItem[]>(initial);
@@ -57,6 +61,13 @@ export default function PricingManager({
   const [listLabels, setListLabels] = useState<Record<string, string>>(initialListLabels);
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
+  const [showClauses, setShowClauses] = useState(initialShowClauses);
+
+  async function toggleShowClauses() {
+    const next = !showClauses;
+    setShowClauses(next);
+    await supabase.from("profiles").update({ pl_show_clauses: next }).eq("id", ownerId);
+  }
 
   // Load custom lists from localStorage on mount. Lists created before labels
   // were stored in the DB only have their readable name in localStorage, so the
@@ -65,18 +76,29 @@ export default function PricingManager({
   useEffect(() => {
     try {
       const raw = localStorage.getItem(`pl_custom_lists_${ownerId}`);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { key: string; label: string; title: string }[];
-      setCustomLists(parsed);
+      const parsed = raw ? (JSON.parse(raw) as { key: string; label: string; title: string }[]) : [];
+      // Studio services are the price-list categories: ensure each active service
+      // has a list entry (key = service id, label = service name). Existing
+      // built-in/custom lists with data are preserved untouched.
+      const byKey = new Map(parsed.map((l) => [l.key, l]));
+      for (const s of services) {
+        byKey.set(s.id, { key: s.id, label: s.name, title: `Bảng giá ${s.name}` });
+      }
+      const merged = Array.from(byKey.values());
+      setCustomLists(merged);
+      localStorage.setItem(`pl_custom_lists_${ownerId}`, JSON.stringify(merged));
+      // Back-fill readable labels into the DB so the public page shows names.
       const missing: Record<string, string> = {};
-      for (const l of parsed) {
-        if (l.label && l.label !== l.key && !initialListLabels[l.key]) missing[l.key] = l.label;
+      for (const l of merged) {
+        if (l.label && l.label !== l.key && initialListLabels[l.key] !== l.label) missing[l.key] = l.label;
       }
       if (Object.keys(missing).length) {
-        const merged = { ...initialListLabels, ...missing };
-        setListLabels(merged);
-        supabase.from("profiles").update({ pl_list_labels: merged }).eq("id", ownerId);
+        const nextLabels = { ...initialListLabels, ...missing };
+        setListLabels(nextLabels);
+        supabase.from("profiles").update({ pl_list_labels: nextLabels }).eq("id", ownerId);
       }
+      // Prefer a service tab as the default active list.
+      if (services[0]) setActiveList((cur) => (byKey.has(cur) ? cur : services[0].id));
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId]);
@@ -443,6 +465,10 @@ export default function PricingManager({
       <div className="card mb-6 p-6">
         <h2 className="mb-1 font-serif text-lg font-medium">Giao diện bảng giá</h2>
         <p className="mb-4 text-sm" style={{ color: "var(--text2)" }}>Chọn màu nền, màu chữ, màu nhấn và logo hiển thị trên bảng giá gửi khách.</p>
+        <label className="mb-4 flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+          <input type="checkbox" checked={showClauses} onChange={toggleShowClauses} />
+          Hiện điều khoản của dịch vụ trên bảng giá công khai
+        </label>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {([
             ["pl_bg", "Màu nền"],
