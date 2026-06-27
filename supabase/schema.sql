@@ -767,6 +767,10 @@ alter table public.studio_contracts add column if not exists client_messenger te
 -- their photos straight from the unified portal.
 alter table public.studio_contracts add column if not exists selection_album_id uuid references public.albums (id) on delete set null;
 
+-- Per-contract calendar colour (hex) so multiple shoots on the same day are
+-- easy to tell apart. Null = use the default gold marker.
+alter table public.studio_contracts add column if not exists calendar_color text;
+
 -- Monthly revenue target (mục tiêu doanh thu) per studio account.
 alter table public.profiles add column if not exists monthly_revenue_target integer not null default 0;
 

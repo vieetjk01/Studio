@@ -19,11 +19,16 @@ export type ContractMarker = {
   event_time: string | null;
   status: string;
   shoot_type: ShootType;
+  calendar_color: string | null;
   contract_items: { name: string; qty: number }[];
   contract_crew: { id: string }[];
 };
 
 const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+// Default marker colour + the swatch palette the user can pick from per shoot.
+const DEFAULT_MARK = "#c7a76b";
+const MARK_COLORS = ["#c7a76b", "#3fb98a", "#6ba3c7", "#e0746f", "#b07ad0", "#d6a44a", "#7bb38a", "#e0719e"];
 const MONTHS = [
   "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
   "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
@@ -50,6 +55,7 @@ export default function CalendarView({
   const [y, mIdx] = todayStr.split("-").map(Number);
   const [cursor, setCursor] = useState({ year: y, month: mIdx - 1 });
   const [events, setEvents] = useState<StudioEvent[]>(initialEvents);
+  const [contractList, setContractList] = useState<ContractMarker[]>(contracts);
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"month" | "week">("month");
   const [weekAnchor, setWeekAnchor] = useState(todayStr); // any date inside the displayed week
@@ -98,7 +104,13 @@ export default function CalendarView({
     return events.filter((e) => e.event_date === dateStr);
   }
   function contractsOn(dateStr: string) {
-    return contracts.filter((c) => c.event_date === dateStr);
+    return contractList.filter((c) => c.event_date === dateStr);
+  }
+
+  // Assign a distinct colour to a shoot so several on the same day stand apart.
+  async function setContractColor(id: string, color: string) {
+    setContractList((p) => p.map((c) => (c.id === id ? { ...c, calendar_color: color } : c)));
+    await supabase.from("studio_contracts").update({ calendar_color: color }).eq("id", id);
   }
 
   function move(delta: number) {
@@ -258,11 +270,14 @@ export default function CalendarView({
                     <span className="text-[9px] leading-none" style={{ color: "var(--text3)" }}>{lunarCellLabel(dateStr)}</span>
                   </div>
                   <div className="mt-1 flex flex-col gap-0.5 text-left">
-                    {cons.map((c) => (
-                      <span key={c.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#c7a76b 18%,transparent)", color: "var(--text2)" }} title={c.title}>
-                        {c.event_time ? `${c.event_time} ` : ""}{c.client_name || c.title}
-                      </span>
-                    ))}
+                    {cons.map((c) => {
+                      const mc = c.calendar_color || DEFAULT_MARK;
+                      return (
+                        <span key={c.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: `color-mix(in srgb,${mc} 22%,transparent)`, borderLeft: `2px solid ${mc}`, color: "var(--text2)" }} title={c.title}>
+                          {c.event_time ? `${c.event_time} ` : ""}{c.client_name || c.title}
+                        </span>
+                      );
+                    })}
                     {evs.map((e) => (
                       <span key={e.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#6ba3c7 18%,transparent)", color: "var(--text2)" }} title={e.title}>
                         {e.title}
@@ -275,8 +290,9 @@ export default function CalendarView({
             })}
           </div>
           <div className="mt-3 flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#c7a76b" }} /> Hợp đồng</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: DEFAULT_MARK }} /> Hợp đồng</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#6ba3c7" }} /> Ghi chú</span>
+            <span style={{ color: "var(--text3)" }}>· Chọn ngày để đổi màu từng hợp đồng</span>
           </div>
         </div>
 
@@ -287,10 +303,12 @@ export default function CalendarView({
               <h2 className="font-serif text-lg font-medium">{selected}</h2>
               <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lunarFull(selected)}</p>
 
-              {selContracts.map((c) => (
-                <div key={c.id} className="mb-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+              {selContracts.map((c) => {
+                const mc = c.calendar_color || DEFAULT_MARK;
+                return (
+                <div key={c.id} className="mb-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)", borderLeft: `3px solid ${mc}` }}>
                   <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center gap-2">
-                    <Camera size={15} style={{ color: "#c7a76b" }} />
+                    <Camera size={15} style={{ color: mc }} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{c.title}</p>
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>
@@ -298,6 +316,21 @@ export default function CalendarView({
                       </p>
                     </div>
                   </Link>
+
+                  {/* Per-contract colour picker — tell apart multiple shoots on the same day */}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px]" style={{ color: "var(--text3)" }}>Màu:</span>
+                    {MARK_COLORS.map((col) => (
+                      <button
+                        key={col}
+                        onClick={() => setContractColor(c.id, col)}
+                        title={col}
+                        aria-label={`Đổi màu ${col}`}
+                        className="h-4 w-4 rounded-full transition-transform hover:scale-110"
+                        style={{ background: col, border: mc.toLowerCase() === col.toLowerCase() ? "2px solid var(--text)" : "1px solid var(--border)" }}
+                      />
+                    ))}
+                  </div>
                   <dl className="mt-2 space-y-0.5 text-[11px]" style={{ color: "var(--text2)" }}>
                     <div><span style={{ color: "var(--text3)" }}>Dịch vụ: </span>{SHOOT_TYPE_LABEL[c.shoot_type] || c.shoot_type}</div>
                     {c.contract_items.length > 0 && (
@@ -322,7 +355,8 @@ export default function CalendarView({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {selEvents.map((e) => (
                 <div key={e.id} className="mb-2 flex items-start justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
@@ -435,15 +469,17 @@ function WeekView({
                 <span className="text-sm font-medium" style={{ color: isToday ? "var(--accent)" : "var(--text)" }}>{dateStr.slice(8)}/{dateStr.slice(5, 7)}</span>
               </div>
               <div className="flex flex-col gap-1.5">
-                {cons.map((c) => (
+                {cons.map((c) => {
+                  const mc = c.calendar_color || DEFAULT_MARK;
+                  return (
                   <Link
                     key={c.id}
                     href={`/dashboard/studio/contracts/${c.id}`}
                     className="rounded-lg px-2 py-1.5 text-[11px] leading-snug"
-                    style={{ background: "color-mix(in srgb,#c7a76b 16%,transparent)", borderLeft: "2px solid #c7a76b" }}
+                    style={{ background: `color-mix(in srgb,${mc} 16%,transparent)`, borderLeft: `2px solid ${mc}` }}
                   >
                     <p className="flex items-center gap-1 font-medium">
-                      <Camera size={11} style={{ color: "#c7a76b", flex: "none" }} />
+                      <Camera size={11} style={{ color: mc, flex: "none" }} />
                       <span className="truncate">{c.event_time ? `${c.event_time} · ` : ""}{c.title}</span>
                     </p>
                     {c.client_name && <p style={{ color: "var(--text3)" }}>{c.client_name}</p>}
@@ -453,7 +489,8 @@ function WeekView({
                     )}
                     {c.location && <p className="truncate" style={{ color: "var(--text3)" }}>📍 {c.location}</p>}
                   </Link>
-                ))}
+                  );
+                })}
                 {evs.map((e) => (
                   <div
                     key={e.id}
