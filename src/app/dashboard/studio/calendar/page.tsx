@@ -29,7 +29,8 @@ export default async function CalendarPage() {
       : supabase.from("studio_contracts").select("id, title, client_name, client_phone, location, event_date, event_time, status, shoot_type, calendar_color, contract_items(name, qty), contract_crew(id)").eq("owner_id", profile.id)
     )
       .not("event_date", "is", null)
-      .neq("status", "cancelled"),
+      // Chỉ hiện hợp đồng đã xác nhận/khách đã ký — bỏ nháp & mới gửi.
+      .in("status", ["approved", "in_progress", "completed"]),
   ]);
 
   // Read-only calendar feed (owner sets it once; staff just see the URL).

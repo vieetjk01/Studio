@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   if (kind === "contract") {
     const { data: ct } = await db
       .from("studio_contracts")
-      .select("id, owner_id, title, client_name, shoot_type, event_date, event_time, location, gcal_event_id")
+      .select("id, owner_id, title, client_name, shoot_type, event_date, event_time, location, status, gcal_event_id")
       .eq("id", id)
       .eq("owner_id", user.id)
       .maybeSingle();
@@ -65,6 +65,15 @@ export async function POST(req: Request) {
 
     // Only sync if the contract has a scheduled date.
     if (!ct.event_date) return NextResponse.json({ ok: true, skipped: "no date" });
+
+    // Draft/sent (unsigned) contracts don't go on the calendar yet — only once
+    // confirmed/signed. If a previously-synced contract drops back to draft,
+    // remove its calendar event.
+    const onCalendar = ["approved", "in_progress", "completed"].includes(ct.status as string);
+    if (action === "upsert" && !onCalendar) {
+      if (ct.gcal_event_id) await deleteGCalEvent(user.id, ct.gcal_event_id);
+      return NextResponse.json({ ok: true, skipped: "not confirmed" });
+    }
 
     if (action === "delete") {
       if (ct.gcal_event_id) await deleteGCalEvent(user.id, ct.gcal_event_id);

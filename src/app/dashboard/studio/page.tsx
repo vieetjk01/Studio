@@ -349,7 +349,8 @@ export default async function StudioOverview() {
 
   const active = list.filter((c) => c.status !== "cancelled" && c.status !== "completed");
   const upcoming = list
-    .filter((c) => c.event_date && c.event_date >= today && c.status !== "cancelled")
+    // Lịch chụp sắp tới chỉ tính hợp đồng đã xác nhận/ký (bỏ nháp & mới gửi).
+    .filter((c) => c.event_date && c.event_date >= today && ["approved", "in_progress", "completed"].includes(c.status))
     .slice(0, 6);
   const totalValue = list
     .filter((c) => c.status !== "cancelled")
