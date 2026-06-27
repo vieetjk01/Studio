@@ -320,7 +320,7 @@ export default async function StudioOverview() {
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
     supabase
       .from("studio_quotes")
-      .select("id, code, client_name, client_phone, status, created_at, quote_items(qty, unit_price, selected, is_optional, is_discount)")
+      .select("id, code, title, client_name, client_phone, status, created_at, quote_items(qty, unit_price, selected, is_optional, is_discount)")
       .eq("owner_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -565,7 +565,7 @@ export default async function StudioOverview() {
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
-                  <th className="px-2 py-2.5 font-bold">Mã</th>
+                  <th className="px-2 py-2.5 font-bold">Tên hợp đồng</th>
                   <th className="px-2 py-2.5 font-bold">Khách hàng</th>
                   <th className="px-2 py-2.5 font-bold">Loại</th>
                   <th className="px-2 py-2.5 font-bold">Giá trị</th>
@@ -575,9 +575,9 @@ export default async function StudioOverview() {
               <tbody>
                 {pending.map((c) => (
                   <tr key={c.id} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td className="px-2 py-3 font-bold font-mono">
+                    <td className="px-2 py-3 font-bold">
                       <Link href={`/dashboard/studio/contracts/${c.id}`} className="hover:underline">
-                        {c.code || c.id.slice(0, 6)}
+                        {c.title || "(chưa đặt tên)"}
                       </Link>
                     </td>
                     <td className="px-2 py-3">{c.client_name || "—"}</td>
@@ -607,14 +607,14 @@ export default async function StudioOverview() {
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
-                  <th className="px-2 py-2.5 font-bold">Mã</th>
+                  <th className="px-2 py-2.5 font-bold">Tên báo giá</th>
                   <th className="px-2 py-2.5 font-bold">Khách hàng</th>
                   <th className="px-2 py-2.5 font-bold">Tổng</th>
                   <th className="px-2 py-2.5 font-bold">Trạng thái</th>
                 </tr>
               </thead>
               <tbody>
-                {(recentQuotes as Array<{ id: string; code: string | null; client_name: string | null; client_phone: string | null; status: QuoteStatus; created_at: string; quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount?: boolean }[] }>).map((q) => {
+                {(recentQuotes as Array<{ id: string; code: string | null; title: string | null; client_name: string | null; client_phone: string | null; status: QuoteStatus; created_at: string; quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount?: boolean }[] }>).map((q) => {
                   const total = quoteSelectedTotal(q.quote_items || []);
                   const QUOTE_TONE: Record<string, ToneKey> = {
                     draft: "gray", sent: "blue", viewed: "blue",
@@ -623,9 +623,9 @@ export default async function StudioOverview() {
                   };
                   return (
                     <tr key={q.id} style={{ borderTop: "1px solid var(--border)" }}>
-                      <td className="px-2 py-3 font-bold font-mono">
+                      <td className="px-2 py-3 font-bold">
                         <Link href={`/dashboard/studio/quotes/${q.id}`} className="hover:underline">
-                          {q.code || q.id.slice(0, 6)}
+                          {q.title || "(chưa đặt tên)"}
                         </Link>
                       </td>
                       <td className="px-2 py-3">{q.client_name || "—"}</td>
