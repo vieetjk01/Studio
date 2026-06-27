@@ -28,22 +28,14 @@ export default async function PricingPage() {
     await supabase.from("profiles").update({ booking_token: token }).eq("id", profile.id);
   }
 
-  let { data } = await supabase
-    .from("studio_pricelist")
-    .select("*")
-    .eq("owner_id", profile.id)
-    .order("position");
+  // Price list + services in parallel (services drive the list categories).
+  let [{ data }, { data: services }] = await Promise.all([
+    supabase.from("studio_pricelist").select("*").eq("owner_id", profile.id).order("position"),
+    supabase.from("studio_services").select("id, name").eq("owner_id", profile.id).eq("active", true).order("position", { ascending: true }),
+  ]);
 
   const hiddenLists = (profile.pl_hidden_lists as string[] | null) ?? [];
   const listLabels = (profile.pl_list_labels as Record<string, string> | null) ?? {};
-
-  // Studio-defined services become the price-list categories (loại bảng giá).
-  const { data: services } = await supabase
-    .from("studio_services")
-    .select("id, name")
-    .eq("owner_id", profile.id)
-    .eq("active", true)
-    .order("position", { ascending: true });
   const showClauses = !!profile.pl_show_clauses;
 
   // First visit: auto-fill the wedding + engagement lists from the studio's cards.
