@@ -10,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import {
   SITE_BLOCK_LABEL,
+  vnd,
   type Site,
   type SiteBlock,
   type SiteBlockType,
@@ -75,16 +76,22 @@ function contrastInk(hex: string): string {
 
 const lines = (v: unknown) => String(v ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
 
+export type PriceItem = { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null; list_key: string | null };
+
 export default function CanvasBuilder({
   site,
   initialBlocks,
   albums,
+  pricelist = [],
+  priceLists = [],
   canPublish,
   mainHost,
 }: {
   site: Site;
   initialBlocks: SiteBlock[];
   albums: AlbumLite[];
+  pricelist?: PriceItem[];
+  priceLists?: { key: string; label: string }[];
   canPublish: boolean;
   mainHost: string;
 }) {
@@ -336,7 +343,7 @@ export default function CanvasBuilder({
 
   const selected = blocks.find((b) => b.id === selId) || null;
   const accent = theme.accent || "#1A1815";
-  const canvasMax = device === "mobile" ? 402 : (theme.contentWidth === "full" ? 1280 : 1080);
+  const canvasMax: number | string = device === "mobile" ? 402 : (theme.contentWidth === "full" ? "100%" : 1080);
 
   // Canvas theme variables (mirror SiteRenderer).
   const dark = (theme.mode ?? (isLightHex(theme.bg) ? "light" : "dark")) === "dark";
@@ -487,6 +494,7 @@ export default function CanvasBuilder({
                     fontHead={fontHead}
                     accent={accent}
                     albums={albums}
+                    pricelist={pricelist}
                     onSelect={() => setSelId(b.id)}
                     onDragStart={() => { setDragId(b.id); setDragType(null); }}
                     onDragEnd={() => { setDragId(null); setDropIndex(null); }}
@@ -517,6 +525,7 @@ export default function CanvasBuilder({
                 key={selected.id}
                 block={selected}
                 albums={albums}
+                priceLists={priceLists}
                 accent={accent}
                 onEdit={(k, v, commit) => setConfig(selected.id, k, v, commit)}
                 onBeforeEdit={snapshot}
@@ -627,7 +636,7 @@ function DropZone({ active, onOver, onDrop, tall }: { active: boolean; onOver: (
 
 /* ── Block shell: floating toolbar + selection border + editable content ── */
 function BlockShell({
-  block, selected, preview, first, last, fontHead, accent, albums,
+  block, selected, preview, first, last, fontHead, accent, albums, pricelist,
   onSelect, onDragStart, onDragEnd, onMove, onDup, onDel, onEdit, onBeforeEdit,
 }: {
   block: SiteBlock;
@@ -638,6 +647,7 @@ function BlockShell({
   fontHead: string;
   accent: string;
   albums: AlbumLite[];
+  pricelist: PriceItem[];
   onSelect: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -676,7 +686,7 @@ function BlockShell({
           {SITE_BLOCK_LABEL[block.type]}
         </span>
       )}
-      <BlockBody block={block} fontHead={fontHead} accent={accent} albums={albums} preview={preview} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
+      <BlockBody block={block} fontHead={fontHead} accent={accent} albums={albums} pricelist={pricelist} preview={preview} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
     </div>
   );
 }
@@ -709,11 +719,12 @@ function Editable({ value, onCommit, onBeforeEdit, preview, style, placeholder, 
 }
 
 /* ── Block body: WYSIWYG canvas render of each block type ──────────────── */
-function BlockBody({ block, fontHead, accent, albums, preview, onEdit, onBeforeEdit }: {
+function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit, onBeforeEdit }: {
   block: SiteBlock;
   fontHead: string;
   accent: string;
   albums: AlbumLite[];
+  pricelist: PriceItem[];
   preview: boolean;
   onEdit: (k: string, v: unknown, commit?: boolean) => void;
   onBeforeEdit: () => void;
@@ -802,21 +813,29 @@ function BlockBody({ block, fontHead, accent, albums, preview, onEdit, onBeforeE
         </section>
       );
     }
-    case "pricing":
+    case "pricing": {
+      const plKey = S("list_key");
+      const shown = plKey ? pricelist.filter((p) => (p.list_key || "cuoi") === plKey) : pricelist;
       return (
         <section style={sec}>
           {heading("heading", "Bảng giá")}
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-            {[0, 1, 2].map((i) => (
-              <div key={i} style={cardBox}>
-                <p style={{ fontFamily: fontHead, fontSize: 20 }}>Gói {i + 1}</p>
-                <p style={{ fontFamily: fontHead, fontSize: 24, color: accent, marginTop: 4 }}>—</p>
-              </div>
-            ))}
-          </div>
-          {!preview && <p style={editHint}>Tự lấy bảng giá đang bật khi xuất bản.</p>}
+          {shown.length > 0 ? (
+            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+              {shown.map((p) => (
+                <div key={p.id} style={cardBox}>
+                  {p.category && <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1, opacity: 0.6 }}>{p.category}</p>}
+                  <p style={{ fontFamily: fontHead, fontSize: 20, marginTop: 2 }}>{p.name}</p>
+                  <p style={{ fontFamily: fontHead, fontSize: 24, color: accent, marginTop: 4 }}>{vnd(p.price)}{p.unit ? ` ${p.unit}` : ""}</p>
+                  {p.description && <ul style={{ marginTop: 10, paddingLeft: 16, fontSize: 13, opacity: 0.85 }}>{lines(p.description).map((l, i) => <li key={i}>{l}</li>)}</ul>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ opacity: 0.6, fontSize: 14 }}>Chưa có gói nào trong bảng giá này. Thêm ở trang Bảng giá.</p>
+          )}
         </section>
       );
+    }
     case "testimonials":
       return (
         <section style={sec}>
@@ -942,9 +961,10 @@ function BlockBody({ block, fontHead, accent, albums, preview, onEdit, onBeforeE
 }
 
 /* ── Inspector (right panel for the selected block) ───────────────────── */
-function Inspector({ block, albums, accent, onEdit, onBeforeEdit }: {
+function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdit }: {
   block: SiteBlock;
   albums: AlbumLite[];
+  priceLists?: { key: string; label: string }[];
   accent: string;
   onEdit: (k: string, v: unknown, commit?: boolean) => void;
   onBeforeEdit: () => void;
@@ -1052,6 +1072,22 @@ function Inspector({ block, albums, accent, onEdit, onBeforeEdit }: {
               ))}
             </div>
           )}
+        </Field>
+      )}
+
+      {/* Pricing: choose which price list (loại bảng giá) to show */}
+      {block.type === "pricing" && (
+        <Field label="Hiển thị bảng giá">
+          <select
+            style={insInput}
+            value={S("list_key")}
+            onChange={(e) => { onBeforeEdit(); onEdit("list_key", e.target.value, true); }}
+          >
+            <option value="">Tất cả bảng giá</option>
+            {priceLists.map((l) => (
+              <option key={l.key} value={l.key}>{l.label}</option>
+            ))}
+          </select>
         </Field>
       )}
 

@@ -39,7 +39,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     "--s-border": dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
     "--s-radius": t.radius === "sharp" ? "0px" : "14px",
-    "--s-maxw": t.contentWidth === "full" ? "1360px" : "1040px",
+    "--s-maxw": t.contentWidth === "full" ? "100%" : "1040px",
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
@@ -267,11 +267,13 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
       );
     }
     case "pricing": {
-      if (pricelist.length === 0) return null;
+      const plKey = str(c.list_key);
+      const shownPl = plKey ? pricelist.filter((p) => (p.list_key || "") === plKey) : pricelist;
+      if (shownPl.length === 0) return null;
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Bảng giá")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-            {pricelist.map((p) => (
+            {shownPl.map((p) => (
               <div key={p.id} style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 20 }}>
                 {p.category && <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1, opacity: 0.6 }}>{p.category}</p>}
                 <p style={{ fontFamily: fontVar, fontSize: 20, marginTop: 2 }}>{p.name}</p>
