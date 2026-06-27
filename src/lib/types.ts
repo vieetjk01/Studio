@@ -190,6 +190,16 @@ export type ContractStatus =
 export type CrewRole = "photographer" | "cameraman" | "assistant" | "editor" | "other";
 export type CrewStatus = "pending" | "accepted" | "declined";
 
+export interface StudioService {
+  id: string;
+  owner_id: string;
+  name: string;
+  clauses: string;
+  position: number;
+  active: boolean;
+  created_at: string;
+}
+
 export interface StudioContract {
   id: string;
   owner_id: string;
@@ -199,6 +209,7 @@ export interface StudioContract {
   client_phone: string | null;
   client_email: string | null;
   shoot_type: ShootType;
+  service_id: string | null;
   event_date: string | null;
   event_time: string | null;
   location: string | null;

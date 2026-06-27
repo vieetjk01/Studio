@@ -17,26 +17,33 @@ export type TemplateOption = {
   contract_template_items: { name: string; qty: number; unit_price: number; position: number }[];
 };
 
+export type ServiceOption = { id: string; name: string; clauses: string };
+
 export default function NewContractForm({
   ownerId,
   assignTo,
   templates,
+  services = [],
 }: {
   ownerId: string;
   assignTo: string | null;
   templates: TemplateOption[];
+  services?: ServiceOption[];
 }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [shootType, setShootType] = useState<ShootType>("photo");
+  const [serviceId, setServiceId] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [includeClauses, setIncludeClauses] = useState(true);
   const [addChecklist, setAddChecklist] = useState(true);
   const [templateId, setTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const selectedService = services.find((s) => s.id === serviceId) || null;
 
   function applyTemplate(id: string) {
     setTemplateId(id);
@@ -58,7 +65,8 @@ export default function NewContractForm({
         : Math.random().toString(36).slice(2) + Date.now().toString(36);
     const tpl = templates.find((x) => x.id === templateId);
     const code = await nextContractCode(supabase, ownerId);
-    const note = tpl?.note || (includeClauses ? fullClauseText() : null);
+    // Clause priority: chosen service's clauses → template note → default (if opted in).
+    const note = selectedService?.clauses || tpl?.note || (includeClauses ? fullClauseText() : null);
     const { data, error } = await supabase
       .from("studio_contracts")
       .insert({
@@ -68,6 +76,7 @@ export default function NewContractForm({
         client_name: clientName.trim() || null,
         client_phone: clientPhone.replace(/\D/g, "") || null,
         shoot_type: shootType,
+        ...(serviceId ? { service_id: serviceId } : {}),
         event_date: eventDate || null,
         note,
         client_token: token,
@@ -144,8 +153,25 @@ export default function NewContractForm({
           <label className="label">SĐT khách (mật khẩu xem HĐ)</label>
           <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
         </div>
+        {services.length > 0 && (
+          <div>
+            <div className="field">
+              <label className="label">Dịch vụ (điều khoản riêng)</label>
+              <select className="input" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+                <option value="">— Không chọn —</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+              {selectedService ? "Điều khoản của dịch vụ này sẽ được áp dụng tự động." : "Chọn dịch vụ để tự áp điều khoản riêng của dịch vụ đó."}{" "}
+              <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Quản lý dịch vụ</Link>
+            </p>
+          </div>
+        )}
         <div className="field">
-          <label className="label">Loại dịch vụ</label>
+          <label className="label">Phân loại (lịch &amp; báo cáo)</label>
           <select className="input" value={shootType} onChange={(e) => setShootType(e.target.value as ShootType)}>
             {SHOOT_TYPES.map((k) => (
               <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>

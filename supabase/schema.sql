@@ -1254,6 +1254,27 @@ drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;
 create policy studio_pricelist_owner_all on public.studio_pricelist
   for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
 
+-- Studio-defined service types (loại dịch vụ) with their own contract clauses.
+-- Picking a service in a contract/quote loads that service's clauses.
+create table if not exists public.studio_services (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  name       text not null default 'Dịch vụ',
+  clauses    text not null default '',
+  position   integer not null default 0,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists studio_services_owner_idx on public.studio_services (owner_id);
+alter table public.studio_services enable row level security;
+drop policy if exists studio_services_owner_all on public.studio_services;
+create policy studio_services_owner_all on public.studio_services
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+
+-- Link a contract / quote to the chosen studio service (for its clauses & label).
+alter table public.studio_contracts add column if not exists service_id uuid references public.studio_services (id) on delete set null;
+alter table public.studio_quotes    add column if not exists service_id uuid references public.studio_services (id) on delete set null;
+
 -- Contract-child tables: gated via the parent contract's owner.
 do $$
 declare t text;

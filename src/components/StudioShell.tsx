@@ -52,6 +52,7 @@ const GROUPS: Group[] = [
     label: "Bán hàng",
     items: [
       { href: "/dashboard/studio/pricing", label: "Bảng giá", icon: Package, minTier: "booking" },
+      { href: "/dashboard/studio/services", label: "Dịch vụ & điều khoản", icon: ClipboardList, minTier: "booking" },
       { href: "/dashboard/studio/quotes", label: "Báo giá", icon: FileEdit, minTier: "full" },
       { href: "/dashboard/studio/contracts/new", label: "Tạo hợp đồng", icon: Plus, minTier: "full" },
       { href: "/dashboard/studio/contracts", label: "Quản lý HĐ", icon: FileText, minTier: "full" },
@@ -102,6 +103,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/calendar", "Lịch chụp", "Lịch chụp theo tuần"],
   ["/dashboard/studio/team", "Lịch đội", "Lịch làm việc của đội ngũ"],
   ["/dashboard/studio/pricing", "Bảng giá", "Bảng giá dịch vụ"],
+  ["/dashboard/studio/services", "Dịch vụ & điều khoản", "Loại dịch vụ & điều khoản riêng"],
   ["/dashboard/studio/quotes", "Báo giá", "Danh sách báo giá"],
   ["/dashboard/studio/contracts/new", "Tạo hợp đồng", "Thông tin hợp đồng"],
   ["/dashboard/studio/contracts", "Quản lý hợp đồng", "Danh sách hợp đồng"],

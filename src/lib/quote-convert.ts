@@ -58,6 +58,18 @@ export async function convertQuoteToContract(
   const code = await nextContractCode(db, quote.owner_id);
   const token = newShareToken();
 
+  // Use the quoted service's clauses (if any) so the contract inherits the same
+  // terms the client was quoted under; fall back to the default clause set.
+  let serviceClauses: string | null = null;
+  if (quote.service_id) {
+    const { data: svc } = await db
+      .from("studio_services")
+      .select("clauses")
+      .eq("id", quote.service_id)
+      .maybeSingle();
+    if (svc?.clauses) serviceClauses = svc.clauses as string;
+  }
+
   const { data: contract, error: cErr } = await db
     .from("studio_contracts")
     .insert({
@@ -70,12 +82,13 @@ export async function convertQuoteToContract(
       client_facebook: quote.client_facebook,
       event_date: quote.event_date,
       location: quote.location,
+      ...(quote.service_id ? { service_id: quote.service_id } : {}),
       deposit,
       status: "draft",
       client_token: token,
       note: [
         quote.code ? `Tạo từ báo giá ${quote.code}` : null,
-        fullClauseText(),
+        serviceClauses || fullClauseText(),
       ].filter(Boolean).join("\n\n"),
     })
     .select("id")

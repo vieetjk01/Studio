@@ -10,10 +10,11 @@ import { vnd } from "@/lib/types";
 
 type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean; is_discount: boolean; package_group: string };
 
-export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
+export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: string; services?: { id: string; name: string }[] }) {
   const router = useRouter();
   const supabase = createClient();
   const [title, setTitle] = useState("Báo giá");
+  const [serviceId, setServiceId] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -75,6 +76,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           event_date: eventDate || null,
           location: location.trim() || null,
           intro: intro.trim() || null,
+          ...(serviceId ? { service_id: serviceId } : {}),
           client_token: token,
           status: "draft",
           bulk_discount_amount: bulkDiscountAmount || 0,
@@ -127,6 +129,16 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           <Field label="Tiêu đề báo giá">
             <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="quote-title" />
           </Field>
+          {services.length > 0 && (
+            <Field label="Dịch vụ (điều khoản riêng)">
+              <select className="input" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+                <option value="">— Không chọn —</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Tên khách (nếu đã biết)">
             <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} data-testid="quote-client-name" />
           </Field>
