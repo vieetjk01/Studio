@@ -37,40 +37,42 @@ export function messengerUrl(link: string | null | undefined): string {
  * One-tap Messenger contact: copies the prepared message + opens the chat.
  * (Messenger can't prefill text via URL, so we copy it for pasting.)
  */
+/**
+ * "Gửi cho khách" — shares the prepared message via the OS share sheet
+ * (navigator.share) so the studio can pick Messenger/Zalo/SMS… with the content
+ * already filled in, then just tap Send. Desktop fallback: copy the message and
+ * open the Messenger chat (if a link is known) to paste.
+ */
 export default function MessengerButton({
   link,
   message,
-  label = "Nhắn Messenger",
+  label = "Gửi cho khách",
   className = "btn-ghost px-2.5 py-1.5 text-xs",
 }: {
-  link: string | null | undefined;
+  link?: string | null | undefined;
   message: string;
   label?: string;
   className?: string;
 }) {
   const [done, setDone] = useState(false);
   const url = messengerUrl(link);
-  if (!url) return null;
 
   return (
     <button
       type="button"
       onClick={() => {
-        // Messenger can't prefill chat text via a URL. On mobile, use the OS
-        // share sheet so the message is carried INTO Messenger ready to send
-        // (the user just picks the chat). On desktop, fall back to copy + open.
         const canShare = typeof navigator !== "undefined" && !!navigator.share;
         if (canShare) {
           navigator.share({ text: message }).catch(() => {});
         } else {
-          window.open(url, "_blank", "noopener,noreferrer");
           navigator.clipboard?.writeText(message).catch(() => {});
+          if (url) window.open(url, "_blank", "noopener,noreferrer");
         }
         setDone(true);
         setTimeout(() => setDone(false), 2000);
       }}
       className={className}
-      title="Gửi nội dung sẵn qua Messenger (điện thoại) / chép sẵn rồi mở chat (máy tính)"
+      title="Gửi nội dung đã soạn cho khách (chọn Messenger/Zalo/SMS…)"
     >
       {done ? <Check size={14} /> : <MessageSquare size={14} />} {done ? "Đang mở…" : label}
     </button>

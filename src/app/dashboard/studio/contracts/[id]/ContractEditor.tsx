@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
-import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
 import CalendarButtons from "@/components/CalendarButtons";
@@ -879,14 +878,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               : "Khách chưa mở link"}
           </p>
         </div>
-        <ZaloButton
-          phone={f.client_phone}
-          label="Gửi khách qua Zalo"
-          message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
-        />
         <MessengerButton
           link={f.client_messenger}
-          label="Nhắn Messenger"
+          label="Gửi cho khách"
           message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
         />
         <EmailButton
@@ -917,8 +911,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
           return (
             <>
-              <ZaloButton phone={f.client_phone} label="Zalo" message={reviewMsg} />
-              <MessengerButton link={f.client_messenger} label="Messenger" message={reviewMsg} />
+              <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
               <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
             </>
           );
@@ -1561,9 +1554,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           </button>
                         </div>
                         <div className="flex items-center gap-2">
-                          <ZaloButton
-                            phone={c.phone}
-                            label="Nhắc Zalo"
+                          <MessengerButton
+                            label="Gửi cho thợ"
                             message={shootReminderMessage({
                               name: c.name,
                               title: f.title,

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Phone, Repeat, Search, Download, HeartHandshake, Users } from "lucide-react";
-import ZaloButton from "@/components/ZaloButton";
+import MessengerButton from "@/components/MessengerButton";
 import { vnd, LEAD_SOURCE_LABEL } from "@/lib/types";
 
 export type ClientAgg = {
@@ -139,8 +139,7 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
                       <p className="text-xs" style={{ color: "var(--text3)" }}>đã thu {vnd(c.collected)}</p>
                     </div>
                     {isOld(c) && c.phone && (
-                      <ZaloButton
-                        phone={c.phone}
+                      <MessengerButton
                         label="Mời lại"
                         message={`Xin chào ${c.name}, đã lâu chưa được phục vụ anh/chị. Studio đang có ưu đãi cho khách cũ, anh/chị có dịp nào muốn chụp lại không ạ? Cảm ơn anh/chị!`}
                       />

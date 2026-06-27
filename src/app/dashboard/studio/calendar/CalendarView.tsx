@@ -5,7 +5,7 @@ import { fmtDate } from "@/lib/date";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import ZaloButton from "@/components/ZaloButton";
+import MessengerButton from "@/components/MessengerButton";
 import { shootReminderMessage } from "@/lib/zalo";
 import { SHOOT_TYPE_LABEL, type StudioEvent, type ShootType } from "@/lib/types";
 import { lunarCellLabel, lunarFull } from "@/lib/lunar";
@@ -352,9 +352,8 @@ export default function CalendarView({
                   </dl>
                   {c.client_phone && (
                     <div className="mt-2">
-                      <ZaloButton
-                        phone={c.client_phone}
-                        label="Nhắc khách qua Zalo"
+                      <MessengerButton
+                        label="Gửi cho khách"
                         message={shootReminderMessage({
                           name: c.client_name,
                           title: c.title,

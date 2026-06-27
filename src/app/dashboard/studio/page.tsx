@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import ZaloButton from "@/components/ZaloButton";
 import StudioTrialButton from "@/components/StudioTrialButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
@@ -662,9 +661,9 @@ export default async function StudioOverview() {
                         {c.client_name || "—"} · đã gửi {days > 0 ? `${days} ngày trước` : "hôm nay"}
                       </p>
                     </Link>
-                    <ZaloButton
-                      phone={c.client_phone}
-                      label="Nhắc ký"
+                    <MessengerButton
+                      link={c.client_messenger}
+                      label="Gửi cho khách"
                       message={`Xin chào ${c.client_name || "anh/chị"}, studio gửi lại hợp đồng "${c.title}" để anh/chị xem & ký xác nhận giúp em nhé. Cảm ơn ạ!`}
                     />
                   </li>
@@ -727,14 +726,9 @@ export default async function StudioOverview() {
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
                       <VietQRButton bank={bank} amount={due} addInfo={(c.code || c.title || "").slice(0, 25)} label="QR" />
-                      <ZaloButton
-                        phone={c.client_phone}
-                        label="Zalo"
-                        message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
-                      />
                       <MessengerButton
                         link={c.client_messenger}
-                        label="Messenger"
+                        label="Gửi cho khách"
                         message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
                       />
                     </div>
@@ -757,9 +751,8 @@ export default async function StudioOverview() {
                       <p className="truncate text-sm font-medium">{cr.name || cr.phone || "—"}</p>
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>{CREW_ROLE_LABEL[cr.role]} · {c.title}</p>
                     </Link>
-                    <ZaloButton
-                      phone={cr.phone}
-                      label="Nhắc"
+                    <MessengerButton
+                      label="Gửi cho thợ"
                       message={shootReminderMessage({ name: cr.name, title: c.title, date: c.event_date, time: c.event_time, location: c.location, role: CREW_ROLE_LABEL[cr.role] })}
                     />
                   </li>
