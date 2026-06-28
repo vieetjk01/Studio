@@ -342,7 +342,12 @@ export default function ContractEditor({
   async function changeStatus(status: ContractStatus) {
     if (status === f.status) return;
     set("status", status);
-    const { error } = await supabase.from("studio_contracts").update({ status }).eq("id", contract.id);
+    // Stamp completion time (drives the 1-month client-proof auto-cleanup);
+    // clear it if the contract moves back out of "completed".
+    const patch: { status: ContractStatus; completed_at?: string | null } = { status };
+    if (status === "completed") patch.completed_at = new Date().toISOString();
+    else patch.completed_at = null;
+    const { error } = await supabase.from("studio_contracts").update(patch).eq("id", contract.id);
     toast(error ? `Lỗi: ${error.message}` : `Trạng thái: ${CONTRACT_STATUS_LABEL[status]}`);
     if (!error) router.refresh();
   }

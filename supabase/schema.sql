@@ -1551,3 +1551,9 @@ alter table public.profiles add column if not exists google_calendar_id   text;
 -- Store the Google Calendar event ID on each local event so we can update/delete it.
 alter table public.studio_events    add column if not exists gcal_event_id text;
 alter table public.studio_contracts add column if not exists gcal_event_id text;
+
+-- Auto-cleanup of client transfer-proof images: stamp when a contract is marked
+-- completed; a daily cron purges its payment-proof images ~1 month later and
+-- records when it did so (and notifies the studio).
+alter table public.studio_contracts add column if not exists completed_at      timestamptz;
+alter table public.studio_contracts add column if not exists proofs_purged_at  timestamptz;
