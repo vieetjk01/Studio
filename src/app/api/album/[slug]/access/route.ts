@@ -12,11 +12,13 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
 
   const { data: album } = await admin
     .from("albums")
-    .select("id, status, is_gallery, password_hash, gallery_pinned")
+    .select("id, status, is_gallery, phase, password_hash, gallery_pinned")
     .eq("slug", params.slug)
     .single();
 
-  if (!album || !album.is_gallery || album.status !== "published") {
+  // Accept legacy galleries and unified projects switched to the delivery phase.
+  const isDelivery = album?.is_gallery || album?.phase === "delivery";
+  if (!album || !isDelivery || album.status !== "published") {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
@@ -25,12 +27,20 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     if (!ok) return NextResponse.json({ error: "wrong_password" }, { status: 401 });
   }
 
-  const photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
-  const { data: sources } = await admin
+  const allPhotos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
+  const { data: allSources } = await admin
     .from("album_sources")
-    .select("id, name, position")
+    .select("id, name, position, stage")
     .eq("album_id", album.id)
     .order("position");
 
-  return NextResponse.json({ photos, sources: sources ?? [] });
+  // Prefer delivery-stage photos; if none are tagged yet, fall back to showing
+  // all the album's photos so the gallery is never unexpectedly empty.
+  const delSources = (allSources ?? []).filter((x) => x.stage === "delivery");
+  const useStages = delSources.length > 0;
+  const delSourceIds = new Set(delSources.map((x) => x.id));
+  const photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
+  const sources = (useStages ? delSources : (allSources ?? [])).map(({ id, name, position }) => ({ id, name, position }));
+
+  return NextResponse.json({ photos, sources });
 }

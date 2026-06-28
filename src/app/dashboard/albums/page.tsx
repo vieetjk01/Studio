@@ -10,7 +10,9 @@ export default async function AlbumsPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const [{ data: albums }, { data: profile }, { data: trialRed }] = await Promise.all([
-    supabase.from("albums").select("id, slug, title, cover_url, status, watermark_enabled, download_enabled, phase, photos(drive_file_id), selections(count)").eq("is_gallery", false).eq("owner_id", user?.id ?? "").order("updated_at", { ascending: false }),
+    // The album library is now the single home for both selection projects and
+    // delivery galleries (legacy is_gallery rows included), so don't filter by it.
+    supabase.from("albums").select("id, slug, title, cover_url, status, watermark_enabled, download_enabled, phase, photos(drive_file_id), selections(count)").eq("owner_id", user?.id ?? "").order("updated_at", { ascending: false }),
     user ? supabase.from("profiles").select("plan, plan_expires_at, role").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
     user ? supabase.from("discount_redemptions").select("id").eq("user_id", user.id).eq("code", "TRIAL_STUDIO_1D").maybeSingle() : Promise.resolve({ data: null }),
   ]);

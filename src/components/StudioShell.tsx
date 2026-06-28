@@ -64,7 +64,7 @@ const GROUPS: Group[] = [
     label: "Khách hàng",
     items: [
       { href: "/dashboard/studio/clients", label: "Khách hàng", icon: Users, minTier: "booking" },
-      { href: "/dashboard/galleries", label: "Gallery khách", icon: ImageIcon, minTier: "booking" },
+      { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/studio/board", label: "Bảng", icon: Kanban, minTier: "full" },
     ],
   },
@@ -88,7 +88,6 @@ const GROUPS: Group[] = [
   {
     label: "Công cụ",
     items: [
-      { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/create", label: "Tạo album", icon: Plus, minTier: "booking" },
       { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
       { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
