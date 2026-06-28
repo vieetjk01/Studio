@@ -19,6 +19,11 @@ function displayToIso(s: string): string {
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
   return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
+// Today as a local yyyy-mm-dd (not UTC, so it flips at local midnight).
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export default function DateInput({
   value,
@@ -29,6 +34,7 @@ export default function DateInput({
   id,
   disabled = false,
   lunar = true,
+  allowPast = false,
 }: {
   value: string;
   onChange: (iso: string) => void;
@@ -38,11 +44,25 @@ export default function DateInput({
   id?: string;
   disabled?: boolean;
   lunar?: boolean;
+  allowPast?: boolean;
 }) {
   const [text, setText] = useState(() => isoToDisplay(value));
+  const [pastWarn, setPastWarn] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
+  const min = allowPast ? undefined : todayIso();
   // Keep the displayed text in sync when the value changes from outside.
   useEffect(() => { setText(isoToDisplay(value)); }, [value]);
+
+  // Reject past dates unless explicitly allowed (e.g. back-dating old albums).
+  function emit(iso: string) {
+    if (iso && !allowPast && iso < todayIso()) {
+      setPastWarn(true);
+      onChange("");
+      return;
+    }
+    setPastWarn(false);
+    onChange(iso);
+  }
 
   function handleText(v: string) {
     const digits = v.replace(/\D/g, "").slice(0, 8);
@@ -50,7 +70,7 @@ export default function DateInput({
     if (digits.length >= 5) out = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
     else if (digits.length >= 3) out = `${digits.slice(0, 2)}/${digits.slice(2)}`;
     setText(out);
-    onChange(displayToIso(out));
+    emit(displayToIso(out));
   }
 
   return (
@@ -78,11 +98,15 @@ export default function DateInput({
         ref={picker}
         type="date"
         value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
+        min={min}
+        onChange={(e) => emit(e.target.value)}
         tabIndex={-1}
         aria-hidden
         style={{ position: "absolute", right: 6, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
       />
+      {pastWarn && (
+        <p className="mt-1 text-[11px]" style={{ color: "var(--s-red, #d66)" }}>Không thể chọn ngày trong quá khứ.</p>
+      )}
       {lunar && value && fmtLunar(value) && (
         <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Âm lịch: {fmtLunar(value)}</p>
       )}
