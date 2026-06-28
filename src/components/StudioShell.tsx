@@ -551,6 +551,7 @@ export default function StudioShell({
                           <LogOut size={15} />
                           Đăng xuất
                         </button>
+                        <p className="px-3 pt-1.5 text-[11px]" style={{ color: "var(--text3)" }}>Phiên bản {APP_VERSION}</p>
                       </div>
                     </>
                   )}
