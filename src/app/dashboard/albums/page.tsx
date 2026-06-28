@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { effectivePlan } from "@/lib/plans";
+import { effectivePlan, planAllowsDelivery } from "@/lib/plans";
 import AlbumList from "../AlbumList";
 
 // Album library reachable from the studio shell. Lives at its own path so it
@@ -22,5 +22,5 @@ export default async function AlbumsPage() {
   const showTrial = !isAdmin && (plan === "free" || plan === "basic");
   const trialUsed = !!trialRed;
 
-  return <AlbumList albums={albums ?? []} showTrial={showTrial} trialUsed={trialUsed} />;
+  return <AlbumList albums={albums ?? []} showTrial={showTrial} trialUsed={trialUsed} canDelivery={planAllowsDelivery(plan, isAdmin)} />;
 }

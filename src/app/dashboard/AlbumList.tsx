@@ -22,7 +22,7 @@ interface AlbumRow {
   selections: { count: number }[];
 }
 
-export default function AlbumList({ albums, showTrial = false, trialUsed = false }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean }) {
+export default function AlbumList({ albums, showTrial = false, trialUsed = false, canDelivery = true }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean; canDelivery?: boolean }) {
   const { t } = useLang();
 
   return (
@@ -62,7 +62,7 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((a) => (
-            <AlbumCard key={a.id} a={a} />
+            <AlbumCard key={a.id} a={a} canDelivery={canDelivery} />
           ))}
         </div>
       )}
@@ -70,7 +70,7 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
   );
 }
 
-function AlbumCard({ a }: { a: AlbumRow }) {
+function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boolean }) {
   const { t } = useLang();
   const supabase = createClient();
   const [menu, setMenu] = useState(false);
@@ -105,13 +105,15 @@ function AlbumCard({ a }: { a: AlbumRow }) {
         >
           {status === "published" ? t("published") : t("draft")}
         </span>
-        <span
-          className={`absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-            phase === "delivery" ? "bg-emerald-500/20 text-emerald-300" : "bg-accent-gold/20 text-accent-gold"
-          }`}
-        >
-          {phase === "delivery" ? "Giao khách" : "Chọn ảnh"}
-        </span>
+        {canDelivery && (
+          <span
+            className={`absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+              phase === "delivery" ? "bg-emerald-500/20 text-emerald-300" : "bg-accent-gold/20 text-accent-gold"
+            }`}
+          >
+            {phase === "delivery" ? "Giao khách" : "Chọn ảnh"}
+          </span>
+        )}
       </Link>
 
       <div className="p-4">
@@ -141,7 +143,9 @@ function AlbumCard({ a }: { a: AlbumRow }) {
       {menu && (
         <div className="absolute inset-x-3 bottom-3 z-20 rounded-xl p-3 shadow-xl" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
           <Toggle label="Đã xuất bản" on={status === "published"} onChange={(v) => { setStatus(v ? "published" : "draft"); patch({ status: v ? "published" : "draft" }); }} />
-          <Toggle label="Giao khách (ảnh hoàn thiện)" on={phase === "delivery"} onChange={(v) => { const next = v ? "delivery" : "selection"; setPhase(next); patch({ phase: next }); }} />
+          {canDelivery && (
+            <Toggle label="Giao khách (ảnh hoàn thiện)" on={phase === "delivery"} onChange={(v) => { const next = v ? "delivery" : "selection"; setPhase(next); patch({ phase: next }); }} />
+          )}
           <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
           <Toggle label="Cho tải xuống" on={download} onChange={(v) => { setDownload(v); patch({ download_enabled: v }); }} />
           <div className="mt-2 flex gap-2">

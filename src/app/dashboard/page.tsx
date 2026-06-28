@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { effectivePlan } from "@/lib/plans";
+import { effectivePlan, planAllowsDelivery } from "@/lib/plans";
 import AlbumList from "./AlbumList";
 
 export default async function DashboardPage() {
@@ -18,5 +18,5 @@ export default async function DashboardPage() {
   const showTrial = !isAdmin && (plan === "free" || plan === "basic");
   const trialUsed = !!trialRed;
 
-  return <AlbumList albums={albums ?? []} showTrial={showTrial} trialUsed={trialUsed} />;
+  return <AlbumList albums={albums ?? []} showTrial={showTrial} trialUsed={trialUsed} canDelivery={planAllowsDelivery(plan, isAdmin)} />;
 }

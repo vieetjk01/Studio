@@ -88,7 +88,6 @@ const GROUPS: Group[] = [
   {
     label: "Công cụ",
     items: [
-      { href: "/dashboard/create", label: "Tạo album", icon: Plus, minTier: "booking" },
       { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
       { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
       { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },

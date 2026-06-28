@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   const { data } = await db
     .from("albums")
     .select("slug, title, category, category_label, cover_url, gallery_pinned")
-    .eq("is_gallery", true)
+    .or("is_gallery.eq.true,and(phase.eq.delivery,gallery_pinned.eq.true)")
     .eq("status", "published")
     .or(
       phoneMatchSlugs.length > 0
