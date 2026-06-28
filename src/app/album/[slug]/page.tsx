@@ -67,12 +67,14 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   if (!hasPassword) {
     const allPhotos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
     const { data: s } = await admin.from("album_sources").select("id, name, position, stage").eq("album_id", album.id).order("position");
-    // Delivery view shows only delivery-stage photos. For a unified project this
-    // hides the original selection photos; legacy galleries have all sources
-    // backfilled to 'delivery' so they are unaffected.
-    const delSourceIds = new Set((s ?? []).filter((x) => x.stage === "delivery").map((x) => x.id));
-    photos = (allPhotos ?? []).filter((ph) => !ph.source_id || delSourceIds.has(ph.source_id));
-    sources = (s ?? []).filter((x) => x.stage === "delivery").map(({ id, name, position }) => ({ id, name, position }));
+    // Delivery view prefers delivery-stage photos. But if the studio hasn't
+    // tagged any source as 'delivery' yet (e.g. they just flipped the phase),
+    // fall back to showing all the album's photos so the page is never empty.
+    const delSources = (s ?? []).filter((x) => x.stage === "delivery");
+    const useStages = delSources.length > 0;
+    const delSourceIds = new Set(delSources.map((x) => x.id));
+    photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
+    sources = (useStages ? delSources : (s ?? [])).map(({ id, name, position }) => ({ id, name, position }));
   }
 
   const { data: feedback } = await admin
