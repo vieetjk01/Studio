@@ -582,6 +582,7 @@ export type SiteTheme = {
   navPosition?: "top" | "left" | "right" | "bottom"; // menu placement
   heroSize?: "small" | "medium" | "large"; // cover height
   contentWidth?: "full" | "compact";       // published page width
+  customCss?: string;                      // advanced: raw CSS applied site-wide
 };
 export type SiteSeo = { title?: string; description?: string; og_image?: string };
 

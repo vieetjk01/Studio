@@ -474,6 +474,7 @@ export default function CanvasBuilder({
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {theme.customCss ? <style dangerouslySetInnerHTML={{ __html: String(theme.customCss) }} /> : null}
             {blocks.length === 0 ? (
               <div style={{ padding: "120px 24px", textAlign: "center", color: "var(--s-text)", opacity: 0.6 }}>
                 <p style={{ fontFamily: fontHead, fontSize: 30 }}>Trang trống</p>
@@ -607,6 +608,17 @@ export default function CanvasBuilder({
                     }} />
                   </label>
                 </div>
+
+                <label style={insLabel}>CSS tùy chỉnh (nâng cao)</label>
+                <textarea
+                  style={{ ...insInput, minHeight: 140, fontFamily: "monospace", fontSize: 12, marginBottom: 8 }}
+                  placeholder={".site-block { } \n/* CSS riêng áp cho toàn trang */"}
+                  value={String(theme.customCss ?? "")}
+                  onChange={(e) => patchTheme({ customCss: e.target.value })}
+                />
+                <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginBottom: 16 }}>
+                  CSS này áp cho toàn bộ trang khi xuất bản. Dùng để chỉnh sâu màu sắc, khoảng cách, hiệu ứng. Sai cú pháp có thể làm trang hiển thị lệch.
+                </p>
 
                 <div style={{ marginTop: 8, padding: 12, borderRadius: 12, background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>
                   💡 Mẹo: bấm thẳng vào chữ trên trang để sửa. Dùng thanh công cụ nổi trên mỗi khối để di chuyển, nhân bản hay xoá.
