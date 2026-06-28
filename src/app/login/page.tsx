@@ -188,10 +188,10 @@ function LoginForm() {
             </svg>
             Đăng nhập với Google
           </button>
+          <p className="mt-5 text-center text-[11px]" style={{ color: "var(--text3)" }}>
+            Phiên bản {APP_VERSION}
+          </p>
         </form>
-        <p className="mt-5 text-center text-[11px]" style={{ color: "var(--text3)" }}>
-          Phiên bản {APP_VERSION}
-        </p>
       </div>
     </main>
   );

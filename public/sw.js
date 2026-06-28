@@ -46,7 +46,9 @@ self.addEventListener("notificationclick", (event) => {
 // We only (a) cache-first the immutable build assets for instant repeat loads,
 // and (b) network-first navigations with an offline fallback page.
 // ---------------------------------------------------------------------------
-const CACHE = "mstudo-v1";
+// Bumped to v2: drop the old cache-first behaviour for build assets that could
+// pin stale app code. We now only keep an offline fallback page.
+const CACHE = "mstudo-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/logo-mark.svg", "/favicon.svg"];
 
@@ -73,21 +75,9 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return; // never touch cross-origin (Supabase, Google)
   if (url.pathname.startsWith("/api/")) return;     // never cache API / image proxy
 
-  // Immutable build assets: cache-first.
-  if (url.pathname.startsWith("/_next/static/")) {
-    event.respondWith(
-      caches.match(req).then(
-        (hit) =>
-          hit ||
-          fetch(req).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-            return res;
-          })
-      )
-    );
-    return;
-  }
+  // Build assets are content-hashed and served with immutable cache headers, so
+  // we let the browser's HTTP cache handle them. We do NOT cache them in the SW
+  // anymore — caching them risked pinning an old app build.
 
   // Page navigations: network-first so data is always fresh; fall back to the
   // offline page only when the network is unreachable.
