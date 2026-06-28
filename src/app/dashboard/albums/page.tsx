@@ -10,7 +10,7 @@ export default async function AlbumsPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const [{ data: albums }, { data: profile }, { data: trialRed }] = await Promise.all([
-    supabase.from("albums").select("id, slug, title, cover_url, status, watermark_enabled, download_enabled, photos(drive_file_id), selections(count)").eq("is_gallery", false).order("updated_at", { ascending: false }),
+    supabase.from("albums").select("id, slug, title, cover_url, status, watermark_enabled, download_enabled, photos(drive_file_id), selections(count)").eq("is_gallery", false).eq("owner_id", user?.id ?? "").order("updated_at", { ascending: false }),
     user ? supabase.from("profiles").select("plan, plan_expires_at, role").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
     user ? supabase.from("discount_redemptions").select("id").eq("user_id", user.id).eq("code", "TRIAL_STUDIO_1D").maybeSingle() : Promise.resolve({ data: null }),
   ]);

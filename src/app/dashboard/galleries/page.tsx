@@ -31,6 +31,7 @@ export default async function GalleriesPage() {
     .from("albums")
     .select("id, slug, title, cover_url, status, gallery_pinned, download_enabled, category, category_label, client_name, event_date, photos(drive_file_id)")
     .eq("is_gallery", true)
+    .eq("owner_id", user?.id ?? "")
     .order("event_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
