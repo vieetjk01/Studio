@@ -7,6 +7,7 @@ import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
 import { mainUrl } from "@/lib/hosts";
+import { compressImage, checkImageFile } from "@/lib/image";
 import {
   contractTotal,
   vnd,
@@ -239,9 +240,18 @@ export default function ContractView({ token }: { token: string }) {
   }
 
   async function uploadProof(file: File, planId?: string) {
+    const check = checkImageFile(file);
+    if (!check.ok) { alert(check.error); return; }
     setProofUploading(true);
+    // Compress before upload (keep numbers legible) so stored proofs stay light.
+    let upload: File = file;
+    try {
+      const dataUrl = await compressImage(file, { maxDim: 1400, quality: 0.7, mime: "image/webp" });
+      const blob = await (await fetch(dataUrl)).blob();
+      if (blob.size > 0) upload = new File([blob], "proof.webp", { type: blob.type || "image/webp" });
+    } catch { /* fall back to the original file */ }
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", upload);
     if (planId) form.append("plan_id", planId);
     const res = await fetch(`/api/c/${token}/proof`, { method: "POST", body: form });
     if (res.ok) {

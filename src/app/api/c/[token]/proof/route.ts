@@ -20,7 +20,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   // Validate image
   if (!file.type.startsWith("image/")) return NextResponse.json({ error: "not_image" }, { status: 400 });
-  if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: "too_large" }, { status: 400 });
+  // Backstop: the client compresses before upload, so anything this large is abuse.
+  if (file.size > 3 * 1024 * 1024) return NextResponse.json({ error: "too_large" }, { status: 400 });
 
   // H-2: Derive extension from validated MIME type, not client-supplied filename
   const EXT_MAP: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/heic": "heic" };

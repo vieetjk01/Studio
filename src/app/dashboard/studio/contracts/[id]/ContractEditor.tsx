@@ -31,6 +31,7 @@ import MoneyInput from "@/components/MoneyInput";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
 import { PRESET_ITEMS, PRESET_TASKS, nextContractCode } from "@/lib/contract-code";
 import { shootReminderMessage } from "@/lib/zalo";
+import { compressImage, checkImageFile } from "@/lib/image";
 import {
   contractTotal,
   vnd,
@@ -556,9 +557,18 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
   // Upload a transfer-proof image to the payment-proofs bucket; returns its URL.
   async function uploadProof(file: File): Promise<string | null> {
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const check = checkImageFile(file);
+    if (!check.ok) { toast(check.error); return null; }
+    // Compress before upload (keep numbers legible) so stored proofs stay light.
+    let upload: File = file;
+    try {
+      const dataUrl = await compressImage(file, { maxDim: 1400, quality: 0.7, mime: "image/webp" });
+      const blob = await (await fetch(dataUrl)).blob();
+      if (blob.size > 0) upload = new File([blob], "proof.webp", { type: blob.type || "image/webp" });
+    } catch { /* fall back to original */ }
+    const ext = upload.type === "image/webp" ? "webp" : (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `${contract.owner_id}/${contract.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("payment-proofs").upload(path, file, { upsert: false });
+    const { error } = await supabase.storage.from("payment-proofs").upload(path, upload, { upsert: false, contentType: upload.type });
     if (error) {
       toast("Tải ảnh thất bại — kiểm tra đã chạy schema.sql (bucket payment-proofs) chưa.");
       return null;
