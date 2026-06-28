@@ -222,6 +222,8 @@ export default function ContractView({ token }: { token: string }) {
       setSent(true);
       setEditMsg("");
       setTimeout(() => setSent(false), 4000);
+    } else {
+      alert(t("genericErr"));
     }
   }
 
@@ -232,6 +234,7 @@ export default function ContractView({ token }: { token: string }) {
       body: JSON.stringify({ action: "paid", phone }),
     });
     if (res.ok) setPaidReported(true);
+    else alert(t("genericErr"));
   }
 
   async function uploadProof(file: File, planId?: string) {
@@ -244,6 +247,8 @@ export default function ContractView({ token }: { token: string }) {
       const { url } = await res.json();
       setProofUrls((p) => [...p, url]);
       setPaidReported(true);
+    } else {
+      alert(t("genericErr"));
     }
     setProofUploading(false);
   }
@@ -255,6 +260,7 @@ export default function ContractView({ token }: { token: string }) {
       body: JSON.stringify({ action: "choose_quote", phone, option_id: optionId }),
     });
     if (res.ok) setChosenQuote(optionId);
+    else alert(t("genericErr"));
   }
 
   async function submitBrief() {
@@ -307,6 +313,7 @@ export default function ContractView({ token }: { token: string }) {
     });
     setSigning(false);
     if (res.ok) await fetchContract(phone);
+    else setErr(t("genericErr"));
   }
 
   if (!contract) {
