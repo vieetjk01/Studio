@@ -2,12 +2,6 @@
 // + API token + a scheduled job; until then we open the person's Zalo chat and
 // copy a ready-made message so the studio can paste & send in one tap.
 
-/** Opens a 1-1 Zalo chat with this phone number (zalo.me/<digits>). */
-export function zaloChatUrl(phone: string | null | undefined): string {
-  const p = (phone ?? "").replace(/\D/g, "");
-  return p ? `https://zalo.me/${p}` : "";
-}
-
 /** Build a friendly reminder message for an upcoming shoot. */
 export function shootReminderMessage(opts: {
   name?: string | null;

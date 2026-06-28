@@ -33,8 +33,3 @@ export const BANKS: Bank[] = [
   { bin: "963388", code: "TIMO", name: "Timo" },
   { bin: "971005", code: "VTLMONEY", name: "Viettel Money" },
 ];
-
-export function bankByBin(bin: string | null | undefined): Bank | undefined {
-  if (!bin) return undefined;
-  return BANKS.find((b) => b.bin === bin);
-}
