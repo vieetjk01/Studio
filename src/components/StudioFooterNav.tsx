@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/studio/calendar",    icon: CalendarDays,    label: "Lịch chụp" },
   { href: "/dashboard/studio/quotes",      icon: FileEdit,        label: "Báo giá"   },
   { href: "/dashboard/studio/production",  icon: Film,            label: "Sản xuất"  },
-  { href: "/dashboard/galleries",          icon: ImageIcon,       label: "Gallery"   },
+  { href: "/dashboard/albums",             icon: ImageIcon,       label: "Album"     },
   { href: "/dashboard/studio/clients",     icon: Users,           label: "Khách hàng"},
   { href: "/dashboard/studio/bookings",    icon: Clock,           label: "Đặt lịch"  },
   { href: "/dashboard/studio/crew",        icon: UserCog,         label: "Sổ thợ"    },
