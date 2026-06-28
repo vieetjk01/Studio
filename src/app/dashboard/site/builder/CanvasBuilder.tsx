@@ -17,7 +17,7 @@ import {
   type SiteTheme,
 } from "@/lib/types";
 import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
-import { compressImage } from "@/lib/image";
+import { compressImage, checkImageFile, MAX_IMAGE_UPLOAD_MB } from "@/lib/image";
 import { useTheme } from "@/lib/theme";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -602,6 +602,8 @@ export default function CanvasBuilder({
                     <input type="file" accept="image/*" hidden onChange={async (e) => {
                       const file = e.target.files?.[0]; e.target.value = "";
                       if (!file) return;
+                      const check = checkImageFile(file);
+                      if (!check.ok) { flash(check.error); return; }
                       const url = await compressImage(file, { maxDim: 400, quality: 0.9, mime: "image/png" });
                       patchTheme({ logo: url });
                     }} />
@@ -1021,6 +1023,8 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
+    const check = checkImageFile(f);
+    if (!check.ok) { alert(check.error); return; }
     const url = await compressImage(f);
     onBeforeEdit();
     onEdit(uploadKey, url, true);
@@ -1116,6 +1120,9 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
           <button onClick={() => pickFile("image")} style={{ ...insInput, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "var(--surface2)" }}>
             <ImagePlus size={15} /> Tải ảnh lên
           </button>
+          <p style={{ marginTop: 4, fontSize: 11, color: "var(--text3)" }}>
+            Tối đa {MAX_IMAGE_UPLOAD_MB}MB — ảnh sẽ tự được nén cho trang nhẹ.
+          </p>
           <input style={{ ...insInput, marginTop: 6 }} placeholder="hoặc dán link ảnh" value={S("image").startsWith("data:") ? "" : S("image")} onFocus={onBeforeEdit} onChange={(e) => onEdit("image", e.target.value)} onBlur={(e) => onEdit("image", e.target.value, true)} />
           {albums.filter((a) => a.cover_url).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
