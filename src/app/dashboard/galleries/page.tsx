@@ -29,7 +29,7 @@ export default async function GalleriesPage() {
 
   const { data: galleries } = await supabase
     .from("albums")
-    .select("*, photos(drive_file_id)")
+    .select("id, slug, title, cover_url, status, gallery_pinned, download_enabled, category, category_label, client_name, event_date, photos(drive_file_id)")
     .eq("is_gallery", true)
     .order("event_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
