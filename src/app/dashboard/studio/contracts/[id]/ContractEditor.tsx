@@ -562,7 +562,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     // Compress before upload (keep numbers legible) so stored proofs stay light.
     let upload: File = file;
     try {
-      const dataUrl = await compressImage(file, { maxDim: 1400, quality: 0.7, mime: "image/webp" });
+      const dataUrl = await compressImage(file, { maxDim: 1600, quality: 0.85, mime: "image/webp" });
       const blob = await (await fetch(dataUrl)).blob();
       if (blob.size > 0) upload = new File([blob], "proof.webp", { type: blob.type || "image/webp" });
     } catch { /* fall back to original */ }
