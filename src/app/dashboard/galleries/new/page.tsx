@@ -106,15 +106,21 @@ export default function NewGalleryPage() {
       }
 
       // Password = client phone (hashed server-side). Skip if no phone provided.
+      // Fail loudly: a gallery that silently stays unprotected is worse than an error.
       if (viewPassword) {
-        await fetch(`/api/albums/${album.id}/password`, {
+        const pwRes = await fetch(`/api/albums/${album.id}/password`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password: viewPassword }),
         });
+        if (!pwRes.ok) throw new Error("Không đặt được mật khẩu cho gallery. Vui lòng thử lại.");
       }
+      // Sync failure isn't fatal — the gallery exists and can be re-synced — but warn.
       if (links.length > 0) {
-        await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
+        const syncRes = await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
+        if (!syncRes.ok) {
+          sessionStorage.setItem("gallerySyncWarning", "Đồng bộ ảnh chưa xong, hãy bấm Đồng bộ lại trong trang gallery.");
+        }
       }
 
       router.push(`/dashboard/galleries/${album.id}`);

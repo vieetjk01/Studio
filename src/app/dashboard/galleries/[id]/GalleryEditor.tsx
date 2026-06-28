@@ -43,6 +43,11 @@ export default function GalleryEditor({
   const [catSuggestions, setCatSuggestions] = useState<string[]>([]);
   useEffect(() => {
     fetchMyGalleryCategories().then(setCatSuggestions);
+    const warn = sessionStorage.getItem("gallerySyncWarning");
+    if (warn) {
+      sessionStorage.removeItem("gallerySyncWarning");
+      flash(warn);
+    }
   }, []);
   const [sources, setSources] = useState<AlbumSource[]>(initialSources);
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
@@ -75,12 +80,15 @@ export default function GalleryEditor({
       .eq("id", album.id);
     if (!error && newPhone.trim()) {
       await supabase.from("albums").update({ client_phone: newPhone.trim() }).eq("id", album.id);
-      await fetch(`/api/albums/${album.id}/password`, {
+      const pwRes = await fetch(`/api/albums/${album.id}/password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: newPhone.trim() }),
       });
+      setSaving(false);
+      if (!pwRes.ok) return flash("Đã lưu thông tin nhưng không đặt được mật khẩu mới. Vui lòng thử lại.");
       setNewPhone("");
+      return flash("Đã lưu");
     }
     setSaving(false);
     flash(error ? error.message : "Đã lưu");
@@ -112,7 +120,11 @@ export default function GalleryEditor({
   async function sync() {
     setSyncing(true);
     const res = await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setSyncing(false);
+      return flash(data.error || "Đồng bộ thất bại. Vui lòng thử lại.");
+    }
     const fresh = await fetchAllPhotos(supabase, album.id, "*");
     setPhotos(fresh as Photo[]);
     const { data: fs } = await supabase.from("album_sources").select("*").eq("album_id", album.id).order("position");
