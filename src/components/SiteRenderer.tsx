@@ -481,6 +481,18 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
         </Section>
       );
     }
+    case "html": {
+      // User-authored HTML/embed for their own public site. CSP (script-src
+      // whitelist) is the safety net against injected external scripts.
+      const html = str(c.html);
+      if (!html) return null;
+      const heading = str(c.heading);
+      return (
+        <Section fontVar={fontVar} heading={heading || undefined}>
+          <div dangerouslySetInnerHTML={{ __html: html }} />
+        </Section>
+      );
+    }
     default:
       return null;
   }

@@ -36,7 +36,7 @@ const ACCENTS = ["#1A1815", "#C9A24B", "#E0533D", "#C0837D", "#3E6F63", "#5566B5
 const PALETTE: SiteBlockType[] = [
   "hero", "gallery", "about", "services", "stats", "pricing",
   "testimonials", "quote", "cta", "team", "logos", "video",
-  "social", "faq", "map", "contact",
+  "social", "faq", "map", "contact", "html",
 ];
 
 // Nội dung mặc định khi thêm 1 khối mới (đúng config key của SiteRenderer).
@@ -57,6 +57,7 @@ const DEFAULTS: Partial<Record<SiteBlockType, Record<string, unknown>>> = {
   faq: { heading: "Câu hỏi thường gặp", items: "Đặt cọc bao nhiêu? | Studio giữ lịch khi cọc 30%.\nKhi nào nhận ảnh? | Trong 15–20 ngày." },
   map: { heading: "Ghé studio", address: "" },
   contact: { heading: "Liên hệ & đặt lịch", email: "", address: "" },
+  html: { heading: "", html: "<!-- Dán mã HTML / nhúng của bạn vào đây -->" },
 };
 
 function uid() {
@@ -967,6 +968,21 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
           <span style={ctaPill(accent)}>Đặt lịch ngay</span>
         </section>
       );
+    case "html": {
+      const raw = S("html");
+      return (
+        <section style={sec}>
+          {S("heading") && heading("heading", "")}
+          {raw ? (
+            <div dangerouslySetInnerHTML={{ __html: raw }} />
+          ) : (
+            <div style={{ padding: 24, borderRadius: "var(--s-radius)", background: "var(--s-card)", textAlign: "center", opacity: 0.6, fontSize: 13 }}>
+              {"</>"} Dán mã HTML / nhúng ở khung bên phải
+            </div>
+          )}
+        </section>
+      );
+    }
     default:
       return null;
   }
@@ -1052,6 +1068,22 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
       )}
       {block.type === "map" && (
         <Field label="Địa chỉ (hiện bản đồ)"><input style={insInput} value={S("address")} onFocus={onBeforeEdit} onChange={(e) => onEdit("address", e.target.value)} onBlur={(e) => onEdit("address", e.target.value, true)} /></Field>
+      )}
+
+      {block.type === "html" && (
+        <Field label="Mã HTML / nhúng (tự thiết kế)">
+          <textarea
+            style={{ ...insInput, minHeight: 200, fontFamily: "monospace", fontSize: 12 }}
+            placeholder="<div>...</div>  hoặc dán mã nhúng (YouTube, form, widget...)"
+            value={S("html")}
+            onFocus={onBeforeEdit}
+            onChange={(e) => onEdit("html", e.target.value)}
+            onBlur={(e) => onEdit("html", e.target.value, true)}
+          />
+          <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)" }}>
+            Dán HTML của riêng bạn. Mã nhúng từ nguồn lạ có thể bị chặn vì lý do bảo mật.
+          </p>
+        </Field>
       )}
 
       {hasItems && (
