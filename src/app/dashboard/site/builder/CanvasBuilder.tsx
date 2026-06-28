@@ -474,7 +474,6 @@ export default function CanvasBuilder({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {theme.customCss ? <style dangerouslySetInnerHTML={{ __html: String(theme.customCss) }} /> : null}
             {blocks.length === 0 ? (
               <div style={{ padding: "120px 24px", textAlign: "center", color: "var(--s-text)", opacity: 0.6 }}>
                 <p style={{ fontFamily: fontHead, fontSize: 30 }}>Trang trống</p>
@@ -617,7 +616,7 @@ export default function CanvasBuilder({
                   onChange={(e) => patchTheme({ customCss: e.target.value })}
                 />
                 <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginBottom: 16 }}>
-                  CSS này áp cho toàn bộ trang khi xuất bản. Dùng để chỉnh sâu màu sắc, khoảng cách, hiệu ứng. Sai cú pháp có thể làm trang hiển thị lệch.
+                  CSS này chỉ áp trên <b>trang đã xuất bản</b> (không hiện trong khung soạn này để khỏi ảnh hưởng trình tạo). Bấm Xuất bản rồi mở trang để xem. Sai cú pháp có thể làm trang lệch.
                 </p>
 
                 <div style={{ marginTop: 8, padding: 12, borderRadius: 12, background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>
