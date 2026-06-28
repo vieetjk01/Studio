@@ -253,7 +253,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
               ? picked.map((a) => (
                   <a key={a.id} href={mainUrl(`/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
                     <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
-                      {a.cover_url && <img src={a.cover_url} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                      {a.cover_url && <img src={a.cover_url} alt={a.title} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     </div>
                     <p style={{ marginTop: 8, fontSize: 14 }}>{a.title}</p>
                   </a>

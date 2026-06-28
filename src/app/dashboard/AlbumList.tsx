@@ -90,7 +90,7 @@ function AlbumCard({ a }: { a: AlbumRow }) {
       <Link href={`/dashboard/albums/${a.id}`} className="relative block aspect-[4/3] bg-ink-850">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={a.title} className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+          <img src={cover} alt={a.title} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-600">
             <ImageIcon size={32} />

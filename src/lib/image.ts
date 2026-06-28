@@ -4,7 +4,7 @@
 
 export async function compressImage(
   file: File,
-  { maxDim = 1600, quality = 0.82, mime = "image/jpeg" }: { maxDim?: number; quality?: number; mime?: string } = {}
+  { maxDim = 1600, quality = 0.82, mime = "image/webp" }: { maxDim?: number; quality?: number; mime?: string } = {}
 ): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
