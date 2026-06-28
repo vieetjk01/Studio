@@ -45,6 +45,9 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     minHeight: "100vh",
   } as React.CSSProperties;
 
+  // Advanced: user-authored CSS applied site-wide (scoped under the site root).
+  const customCssTag = t.customCss ? <style dangerouslySetInnerHTML={{ __html: t.customCss }} /> : null;
+
   const navPos = t.navPosition || "top";
   const navItems = blocks.filter((b) => b.type !== "hero").map((b) => ({ id: b.id, label: str(b.config?.heading) || SITE_BLOCK_LABEL[b.type] }));
 
@@ -130,6 +133,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     );
     return (
       <div style={wrap}>
+        {customCssTag}
         {!bottom && bar}
         {content}
         {footer}
@@ -143,6 +147,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
   // Left / right sidebar navigation.
   return (
     <div style={wrap}>
+      {customCssTag}
       <div style={{ display: "flex", flexDirection: navPos === "right" ? "row-reverse" : "row", minHeight: "100vh" }}>
         {blocks.length > 0 && (
           <aside

@@ -13,6 +13,7 @@ import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { appUrl, mainUrl } from "@/lib/hosts";
 import { effectivePlan, studioTier, STUDIO_TIER_RANK, type StudioTier } from "@/lib/plans";
+import { APP_VERSION } from "@/lib/version";
 import type { Profile } from "@/lib/types";
 
 interface NavLink {
@@ -310,6 +311,9 @@ export default function DashboardHeader({
                       {t("logout")}
                     </button>
                   </div>
+                  <p className="px-3 pt-1.5 text-[11px]" style={{ color: "var(--text3)" }}>
+                    Phiên bản {APP_VERSION}
+                  </p>
                 </div>
               </>
             )}

@@ -18,6 +18,7 @@ import MobileSearch from "@/components/MobileSearch";
 import InstallPwaButton from "@/components/InstallPwaButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
+import { APP_VERSION } from "@/lib/version";
 import type { Profile } from "@/lib/types";
 
 type StudioTier = "none" | "booking" | "full";
@@ -321,6 +322,7 @@ export default function StudioShell({
               <LogOut size={18} />
               Đăng xuất
             </button>
+            <p className="px-1 pt-1 text-[11px]" style={{ color: "var(--text3)" }}>Phiên bản {APP_VERSION}</p>
           </div>
         </div>
 
@@ -455,6 +457,7 @@ export default function StudioShell({
                     <button onClick={signOut} className="nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--s-red)" }}>
                       <LogOut size={15} /> Đăng xuất
                     </button>
+                    <p className="px-3 pt-1.5 text-[11px]" style={{ color: "var(--text3)" }}>Phiên bản {APP_VERSION}</p>
                   </div>
                 </>
               )}
