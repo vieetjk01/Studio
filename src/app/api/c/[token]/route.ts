@@ -193,21 +193,24 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (contract.gallery_album_id) {
     const { data: g } = await db
       .from("albums")
-      .select("slug, title, status, is_gallery")
+      .select("slug, title, status, is_gallery, phase")
       .eq("id", contract.gallery_album_id)
       .maybeSingle();
-    if (g && g.is_gallery && g.status === "published") gallery = { slug: g.slug, title: g.title };
+    // Accept legacy galleries and unified projects in the delivery phase.
+    if (g && (g.is_gallery || g.phase === "delivery") && g.status === "published") gallery = { slug: g.slug, title: g.title };
   }
 
-  // Linked selection album (client picks their photos at /a/[slug]).
-  let selection: { slug: string; title: string } | null = null;
+  // Linked selection album (client picks their photos at /a/[slug]). For a
+  // unified project the same link evolves to the delivery view, so we expose its
+  // phase and let the portal adapt the card label.
+  let selection: { slug: string; title: string; phase: string } | null = null;
   if (contract.selection_album_id) {
     const { data: s } = await db
       .from("albums")
-      .select("slug, title, status")
+      .select("slug, title, status, phase")
       .eq("id", contract.selection_album_id)
       .maybeSingle();
-    if (s && s.status === "published") selection = { slug: s.slug, title: s.title };
+    if (s && s.status === "published") selection = { slug: s.slug, title: s.title, phase: s.phase ?? "selection" };
   }
 
   // Never expose internal crew/salary to the client (gallery/selection ids hidden).

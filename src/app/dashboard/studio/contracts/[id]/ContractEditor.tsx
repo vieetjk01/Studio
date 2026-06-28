@@ -1112,9 +1112,13 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                     <option key={a.id} value={a.id}>{a.title}</option>
                   ))}
                 </select>
-                {selectionAlbums.length === 0 && (
+                {selectionAlbums.length === 0 ? (
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
                     Chưa có album chọn ảnh. Tạo album ở “Tạo album” rồi quay lại gắn.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                    Mẹo: nếu dùng Dự án hợp nhất, chỉ cần gắn ô này — link sẽ tự chuyển sang ảnh giao khách khi bạn đổi giai đoạn.
                   </p>
                 )}
               </div>

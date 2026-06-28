@@ -17,6 +17,7 @@ interface AlbumRow {
   status: "draft" | "published";
   watermark_enabled: boolean;
   download_enabled: boolean;
+  phase?: "selection" | "delivery";
   photos: { drive_file_id: string }[];
   selections: { count: number }[];
 }
@@ -76,6 +77,7 @@ function AlbumCard({ a }: { a: AlbumRow }) {
   const [status, setStatus] = useState(a.status);
   const [watermark, setWatermark] = useState(a.watermark_enabled);
   const [download, setDownload] = useState(a.download_enabled);
+  const [phase, setPhase] = useState<"selection" | "delivery">(a.phase ?? "selection");
 
   const cover =
     a.cover_url || (a.photos?.[0]?.drive_file_id ? thumbnailUrl(a.photos[0].drive_file_id, 800) : null);
@@ -102,6 +104,13 @@ function AlbumCard({ a }: { a: AlbumRow }) {
           }`}
         >
           {status === "published" ? t("published") : t("draft")}
+        </span>
+        <span
+          className={`absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+            phase === "delivery" ? "bg-emerald-500/20 text-emerald-300" : "bg-accent-gold/20 text-accent-gold"
+          }`}
+        >
+          {phase === "delivery" ? "Giao khách" : "Chọn ảnh"}
         </span>
       </Link>
 
@@ -132,6 +141,7 @@ function AlbumCard({ a }: { a: AlbumRow }) {
       {menu && (
         <div className="absolute inset-x-3 bottom-3 z-20 rounded-xl p-3 shadow-xl" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
           <Toggle label="Đã xuất bản" on={status === "published"} onChange={(v) => { setStatus(v ? "published" : "draft"); patch({ status: v ? "published" : "draft" }); }} />
+          <Toggle label="Giao khách (ảnh hoàn thiện)" on={phase === "delivery"} onChange={(v) => { const next = v ? "delivery" : "selection"; setPhase(next); patch({ phase: next }); }} />
           <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
           <Toggle label="Cho tải xuống" on={download} onChange={(v) => { setDownload(v); patch({ download_enabled: v }); }} />
           <div className="mt-2 flex gap-2">

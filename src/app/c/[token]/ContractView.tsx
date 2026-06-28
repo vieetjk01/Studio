@@ -55,6 +55,7 @@ type ExpenseRow = { id: string; title: string; amount: number; category: string 
 type TaskRow = { id: string; label: string; done: boolean };
 type ProductRow = { id: string; name: string; qty: number; cost: number; status: string };
 type Gallery = { slug: string; title: string };
+type Selection = { slug: string; title: string; phase?: string };
 
 type Lang = "vi" | "en";
 const TR = {
@@ -109,7 +110,7 @@ export default function ContractView({ token }: { token: string }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
-  const [selection, setSelection] = useState<Gallery | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanRow[]>([]);
@@ -461,10 +462,10 @@ export default function ContractView({ token }: { token: string }) {
             rel="noreferrer"
             className="card mt-6 flex items-center gap-3 p-5 transition-colors hover:bg-[var(--surface2)]"
           >
-            <ImagePlus size={20} style={{ color: "var(--accent)" }} />
+            {selection.phase === "delivery" ? <Images size={20} style={{ color: "var(--accent)" }} /> : <ImagePlus size={20} style={{ color: "var(--accent)" }} />}
             <div className="flex-1">
-              <p className="font-serif text-lg font-medium">{t("pickPhotos")}</p>
-              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · {t("pickPhotosSub")}</p>
+              <p className="font-serif text-lg font-medium">{selection.phase === "delivery" ? t("viewPhotos") : t("pickPhotos")}</p>
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · {selection.phase === "delivery" ? t("viewPhotosSub") : t("pickPhotosSub")}</p>
             </div>
             <span className="text-sm" style={{ color: "var(--accent)" }}>{t("open")}</span>
           </a>
