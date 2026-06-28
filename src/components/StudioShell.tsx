@@ -109,7 +109,6 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/templates", "Mẫu hợp đồng", "Mẫu hợp đồng & điều khoản"],
   ["/dashboard/studio/production", "Xử lý hình ảnh", "Tiến độ sản xuất"],
   ["/dashboard/studio/clients", "Khách hàng", "Danh bạ khách hàng"],
-  ["/dashboard/galleries", "Gallery khách", "Album bàn giao khách hàng"],
   ["/dashboard/studio/board", "Bảng công việc", "Theo dõi công việc"],
   ["/dashboard/studio/reports", "Thu chi", "Báo cáo tài chính"],
   ["/dashboard/studio/payroll", "Bảng lương", "Bảng lương nhân viên"],

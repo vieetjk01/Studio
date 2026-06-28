@@ -35,7 +35,7 @@ export default function DashboardChrome({
   // user has a studio tier so they stay in the same design context.
   const isStudio =
     pathname.startsWith("/dashboard/studio") ||
-    pathname.startsWith("/dashboard/galleries") ||
+    pathname.startsWith("/dashboard/albums") ||
     (tier !== "none" && (
       pathname.startsWith("/dashboard/site") ||
       pathname.startsWith("/dashboard/upgrade") ||

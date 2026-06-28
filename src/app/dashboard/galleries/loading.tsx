@@ -1,5 +1,0 @@
-import PageSkeleton from "@/components/PageSkeleton";
-
-export default function Loading() {
-  return <PageSkeleton stats={0} rows={8} />;
-}

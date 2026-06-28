@@ -139,7 +139,7 @@ export default function DashboardHeader({
 
   // Show studio nav when browsing any studio path (regardless of host).
   const isOnStudio =
-    pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/galleries");
+    pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/albums");
 
   // Album / filter / compress grouped under one "Công cụ" dropdown inside the
   // studio nav (visible when isOnStudio). On the album side the links stay flat.
