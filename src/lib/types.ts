@@ -48,9 +48,19 @@ export interface Album {
   category: string | null;
   category_label: string | null;
   gallery_pinned: boolean;
+  // Unified project model: which phase the client link currently exposes, and a
+  // separate watermark toggle for the delivery phase.
+  phase: AlbumPhase;
+  watermark_delivery: boolean;
   created_at: string;
   updated_at: string;
 }
+
+// A project moves from "selection" (client picks originals) to "delivery"
+// (client downloads finished photos). Each album_source is tagged with the
+// stage it belongs to.
+export type AlbumPhase = "selection" | "delivery";
+export type SourceStage = "selection" | "delivery";
 
 // Gallery categories are free-text, entered per studio (saved & suggested from
 // the user's own past galleries). "video" is the one reserved value — galleries
@@ -141,6 +151,7 @@ export interface AlbumSource {
   name: string;
   drive_url: string;
   kind: SourceKind;
+  stage: SourceStage;
   position: number;
   created_at: string;
 }

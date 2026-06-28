@@ -277,6 +277,32 @@ alter table public.site_settings add column if not exists featured_images text[]
 alter table public.albums add column if not exists download_enabled boolean not null default true;
 
 -- ============================================================================
+-- Unified project model (gộp Album + Gallery): one album record can carry BOTH
+-- a "selection" phase (original photos the client picks from) and a "delivery"
+-- phase (finished photos to download). Each Drive source is tagged with its
+-- stage; the album exposes one stage at a time to the client via `phase`.
+-- Legacy records keep working unchanged: an old album = a project with only
+-- selection sources, an old gallery = a project with only delivery sources.
+-- ============================================================================
+alter table public.album_sources add column if not exists stage text not null default 'selection'
+  check (stage in ('selection', 'delivery'));
+alter table public.albums add column if not exists phase text not null default 'selection'
+  check (phase in ('selection', 'delivery'));
+-- Watermark for the delivery phase (selection phase keeps using watermark_enabled).
+alter table public.albums add column if not exists watermark_delivery boolean not null default false;
+
+-- Backfill so existing rows behave exactly as before (idempotent):
+--   galleries (is_gallery=true) -> phase 'delivery' and their sources -> 'delivery'
+--   albums    (is_gallery=false) -> phase 'selection' (the column default)
+update public.albums set phase = 'delivery' where is_gallery = true and phase <> 'delivery';
+update public.album_sources s set stage = 'delivery'
+  from public.albums a
+  where s.album_id = a.id and a.is_gallery = true and s.stage <> 'delivery';
+
+create index if not exists album_sources_stage_idx on public.album_sources (album_id, stage);
+create index if not exists albums_phase_idx on public.albums (phase, status);
+
+-- ============================================================================
 -- feedback: client testimonials for a gallery / the photographer
 -- ============================================================================
 create table if not exists public.feedback (
