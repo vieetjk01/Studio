@@ -28,10 +28,14 @@ export default function AlbumEditor({
   album,
   initialSources,
   initialPhotos,
+  canDelivery = true,
+  canPinHome = true,
 }: {
   album: Album;
   initialSources: AlbumSource[];
   initialPhotos: Photo[];
+  canDelivery?: boolean;
+  canPinHome?: boolean;
 }) {
   const { t } = useLang();
   const supabase = createClient();
@@ -59,6 +63,7 @@ export default function AlbumEditor({
     watermark_enabled: album.watermark_enabled,
     watermark_text: album.watermark_text ?? "Vieetjk",
     watermark_delivery: album.watermark_delivery ?? false,
+    gallery_pinned: album.gallery_pinned ?? false,
     download_enabled: album.download_enabled ?? true,
     status: album.status,
     cover_url: album.cover_url,
@@ -102,6 +107,7 @@ export default function AlbumEditor({
         watermark_enabled: form.watermark_enabled,
         watermark_text: form.watermark_text || null,
         watermark_delivery: form.watermark_delivery,
+        gallery_pinned: canPinHome ? form.gallery_pinned : false,
         download_enabled: form.download_enabled,
         status: form.status,
         cover_url: form.cover_url,
@@ -154,6 +160,7 @@ export default function AlbumEditor({
 
   // Switch which phase the client link exposes (selection ↔ delivery).
   async function switchPhase(next: AlbumPhase) {
+    if (!canDelivery) return;
     setPhaseBusy(true);
     const { error } = await supabase.from("albums").update({ phase: next }).eq("id", album.id);
     setPhaseBusy(false);
@@ -257,17 +264,23 @@ export default function AlbumEditor({
             </p>
           </div>
         </div>
-        <button
-          onClick={() => switchPhase(phase === "delivery" ? "selection" : "delivery")}
-          disabled={phaseBusy}
-          className="btn-ghost whitespace-nowrap"
-        >
-          {phase === "delivery" ? (
-            <><ArrowLeft size={15} /> Về giai đoạn Chọn ảnh</>
-          ) : (
-            <>Chuyển sang Giao khách <ArrowRight size={15} /></>
-          )}
-        </button>
+        {canDelivery ? (
+          <button
+            onClick={() => switchPhase(phase === "delivery" ? "selection" : "delivery")}
+            disabled={phaseBusy}
+            className="btn-ghost whitespace-nowrap"
+          >
+            {phase === "delivery" ? (
+              <><ArrowLeft size={15} /> Về giai đoạn Chọn ảnh</>
+            ) : (
+              <>Chuyển sang Giao khách <ArrowRight size={15} /></>
+            )}
+          </button>
+        ) : (
+          <Link href="/dashboard/upgrade" className="btn-ghost whitespace-nowrap" title="Nâng cấp để dùng giao khách">
+            🔒 Giao khách (nâng cấp gói)
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -355,14 +368,32 @@ export default function AlbumEditor({
             Cho phép khách tải ảnh xuống
           </label>
 
-          <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
-            <input
-              type="checkbox"
-              checked={form.watermark_delivery}
-              onChange={(e) => setForm({ ...form, watermark_delivery: e.target.checked })}
-            />
-            Watermark cả ở giai đoạn Giao khách
-          </label>
+          {canDelivery && (
+            <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
+              <input
+                type="checkbox"
+                checked={form.watermark_delivery}
+                onChange={(e) => setForm({ ...form, watermark_delivery: e.target.checked })}
+              />
+              Watermark cả ở giai đoạn Giao khách
+            </label>
+          )}
+
+          {canDelivery && canPinHome && (
+            <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
+              <input
+                type="checkbox"
+                checked={form.gallery_pinned}
+                onChange={(e) => setForm({ ...form, gallery_pinned: e.target.checked })}
+              />
+              Hiện ở trang chủ công khai (khách xem không cần mật khẩu)
+            </label>
+          )}
+          {canDelivery && !canPinHome && (
+            <Link href="/dashboard/upgrade" className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm" style={{ color: "var(--text3)" }}>
+              🔒 Hiện ở trang chủ công khai — nâng cấp gói Photographer/Studio
+            </Link>
+          )}
 
           <div>
             <label className="label">{t("status")}</label>
@@ -451,7 +482,7 @@ export default function AlbumEditor({
                 }
               >
                 <option value="selection">Ảnh chọn</option>
-                <option value="delivery">Ảnh giao</option>
+                {canDelivery && <option value="delivery">Ảnh giao</option>}
               </select>
               <input
                 className="input"

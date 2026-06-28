@@ -90,6 +90,17 @@ export function limitsFor(plan: Plan, isAdmin: boolean): PlanLimits {
   return isAdmin ? ADMIN_LIMITS : PLAN_LIMITS[plan];
 }
 
+/** Album delivery phase (giao khách): every paid plan except free. */
+export function planAllowsDelivery(plan: Plan, isAdmin = false): boolean {
+  return isAdmin || plan !== "free";
+}
+
+/** Publishing a delivery album to the public homepage (no-password gallery):
+ * Photographer & Studio only (reuses the canGalleries capability). */
+export function planAllowsPublicGallery(plan: Plan, isAdmin = false): boolean {
+  return isAdmin || PLAN_LIMITS[plan].canGalleries;
+}
+
 /** A paid plan whose expiry has passed is treated as 'free'. */
 export function effectivePlan(plan: Plan | null | undefined, expiresAt: string | null | undefined): Plan {
   const p = (plan ?? "free") as Plan;
