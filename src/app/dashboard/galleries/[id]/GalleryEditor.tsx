@@ -187,7 +187,7 @@ export default function GalleryEditor({
             <label className="label">Đổi SĐT / mật khẩu</label>
             <input className="input" placeholder={album.client_phone ? "•••• (đã đặt)" : "Nhập SĐT"} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
           </div>
-          <div><label className="label">Ngày cưới / đính hôn</label><DateInput value={form.event_date ?? ""} onChange={(v) => setForm({ ...form, event_date: v })} /></div>
+          <div><label className="label">Ngày cưới / đính hôn</label><DateInput value={form.event_date ?? ""} onChange={(v) => setForm({ ...form, event_date: v })} allowPast /></div>
           <div>
             <label className="label">Phân loại (tự nhập)</label>
             <input

@@ -182,7 +182,7 @@ export default function NewGalleryPage() {
           </div>
           <div>
             <label className="label">Ngày cưới / đính hôn</label>
-            <DateInput value={eventDate} onChange={(v) => setEventDate(v)} />
+            <DateInput value={eventDate} onChange={(v) => setEventDate(v)} allowPast />
           </div>
           <div>
             <label className="label">Phân loại (tự nhập)</label>

@@ -313,7 +313,7 @@ export default function ReportsView({
               <option key={k} value={k}>{EXPENSE_CATEGORY_LABEL[k]}</option>
             ))}
           </select>
-          <DateInput wrapperClassName="sm:col-span-3" value={exp.spent_at} onChange={(v) => setExp((p) => ({ ...p, spent_at: v }))} />
+          <DateInput wrapperClassName="sm:col-span-3" value={exp.spent_at} onChange={(v) => setExp((p) => ({ ...p, spent_at: v }))} allowPast />
         </div>
         <button onClick={addExpense} disabled={busy} className="btn-primary mt-3">
           <Plus size={15} /> {busy ? "Đang thêm…" : "Thêm chi phí"}
