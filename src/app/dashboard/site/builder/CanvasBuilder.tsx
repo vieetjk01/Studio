@@ -1025,7 +1025,8 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
     if (!f) return;
     const check = checkImageFile(f);
     if (!check.ok) { alert(check.error); return; }
-    const url = await compressImage(f);
+    // Compress aggressively to keep published pages as light as possible.
+    const url = await compressImage(f, { maxDim: 1280, quality: 0.55, mime: "image/webp" });
     onBeforeEdit();
     onEdit(uploadKey, url, true);
   }

@@ -5,7 +5,7 @@
 // Largest original file we accept for an upload. Bigger files are rejected
 // before processing (decoding a huge image can hang/crash the browser); the
 // result is then downscaled + re-encoded so stored pages stay light.
-export const MAX_IMAGE_UPLOAD_MB = 15;
+export const MAX_IMAGE_UPLOAD_MB = 2;
 
 /** True if a picked file is an acceptable image within the size limit. */
 export function checkImageFile(file: File): { ok: true } | { ok: false; error: string } {
