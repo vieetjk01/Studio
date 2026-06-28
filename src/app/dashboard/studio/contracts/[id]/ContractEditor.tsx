@@ -432,7 +432,9 @@ export default function ContractEditor({
 
   // ── Payments ───────────────────────────────────────────────────
   async function deletePayment(id: string) {
+    const old = payments.find((x) => x.id === id)?.proof_url;
     await supabase.from("contract_payments").delete().eq("id", id);
+    await removeProofFile(old);
     setPayments((p) => p.filter((x) => x.id !== id));
   }
 
@@ -576,6 +578,15 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     return supabase.storage.from("payment-proofs").getPublicUrl(path).data.publicUrl;
   }
 
+  // Delete a proof image from storage to reclaim space (best-effort).
+  async function removeProofFile(url: string | null | undefined) {
+    if (!url) return;
+    const marker = "/payment-proofs/";
+    const i = url.indexOf(marker);
+    if (i === -1) return;
+    try { await supabase.storage.from("payment-proofs").remove([url.slice(i + marker.length)]); } catch { /* ignore */ }
+  }
+
   async function pickPlanProof(file: File | null) {
     if (!file) return;
     setProofBusy(true);
@@ -588,9 +599,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
   async function attachProof(paymentId: string, file: File | null) {
     if (!file) return;
     setProofBusy(true);
+    const old = payments.find((x) => x.id === paymentId)?.proof_url;
     const url = await uploadProof(file);
     if (url) {
       await supabase.from("contract_payments").update({ proof_url: url }).eq("id", paymentId);
+      if (old && old !== url) await removeProofFile(old); // reclaim the replaced image
       setPayments((p) => p.map((x) => (x.id === paymentId ? { ...x, proof_url: url } : x)));
     }
     setProofBusy(false);
@@ -639,7 +652,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
   async function markPlanPaid(it: ContractPaymentPlan) {
     if (it.paid) {
       if (it.payment_id) {
+        const old = payments.find((x) => x.id === it.payment_id)?.proof_url;
         await supabase.from("contract_payments").delete().eq("id", it.payment_id);
+        await removeProofFile(old);
         setPayments((p) => p.filter((x) => x.id !== it.payment_id));
       }
       await supabase.from("contract_payment_plan").update({ paid: false, paid_at: null, payment_id: null }).eq("id", it.id);
@@ -671,7 +686,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
   }
   async function deletePlan(it: ContractPaymentPlan) {
     if (it.payment_id) {
+      const old = payments.find((x) => x.id === it.payment_id)?.proof_url;
       await supabase.from("contract_payments").delete().eq("id", it.payment_id);
+      await removeProofFile(old);
       setPayments((p) => p.filter((x) => x.id !== it.payment_id));
     }
     await supabase.from("contract_payment_plan").delete().eq("id", it.id);
