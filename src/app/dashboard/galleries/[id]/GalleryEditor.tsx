@@ -100,7 +100,7 @@ export default function GalleryEditor({
     const kind: SourceKind = isFolderLink(newSource.url) ? "folder" : "file";
     const { data, error } = await supabase
       .from("album_sources")
-      .insert({ album_id: album.id, name: newSource.name || (kind === "folder" ? "Folder" : "File"), drive_url: newSource.url.trim(), kind, position: sources.length })
+      .insert({ album_id: album.id, name: newSource.name || (kind === "folder" ? "Folder" : "File"), drive_url: newSource.url.trim(), kind, stage: "delivery", position: sources.length })
       .select("*")
       .single();
     if (error) return flash(error.message);

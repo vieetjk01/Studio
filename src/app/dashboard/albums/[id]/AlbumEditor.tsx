@@ -12,6 +12,9 @@ import {
   ExternalLink,
   Users,
   Save,
+  Images,
+  PackageCheck,
+  ArrowRight,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -19,7 +22,7 @@ import { appUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
-import type { Album, AlbumSource, Photo, SourceKind } from "@/lib/types";
+import type { Album, AlbumSource, Photo, SourceKind, AlbumPhase, SourceStage } from "@/lib/types";
 
 export default function AlbumEditor({
   album,
@@ -55,6 +58,7 @@ export default function AlbumEditor({
     selection_limit: album.selection_limit ?? "",
     watermark_enabled: album.watermark_enabled,
     watermark_text: album.watermark_text ?? "Vieetjk",
+    watermark_delivery: album.watermark_delivery ?? false,
     download_enabled: album.download_enabled ?? true,
     status: album.status,
     cover_url: album.cover_url,
@@ -65,10 +69,12 @@ export default function AlbumEditor({
   const [hasPassword, setHasPassword] = useState(!!album.password_hash);
   const [newPassword, setNewPassword] = useState("");
 
+  const [phase, setPhase] = useState<AlbumPhase>(album.phase ?? "selection");
+  const [phaseBusy, setPhaseBusy] = useState(false);
   const [sources, setSources] = useState<AlbumSource[]>(initialSources);
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
 
-  const [newSource, setNewSource] = useState({ name: "", url: "" });
+  const [newSource, setNewSource] = useState<{ name: string; url: string; stage: SourceStage }>({ name: "", url: "", stage: "selection" });
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -77,6 +83,11 @@ export default function AlbumEditor({
     setMsg(m);
     setTimeout(() => setMsg(null), 2500);
   }
+
+  // A photo's stage comes from the source it was synced from.
+  const stageById = new Map(sources.map((s) => [s.id, s.stage]));
+  const deliveryCount = photos.filter((p) => stageById.get(p.source_id ?? "") === "delivery").length;
+  const selectionCount = photos.length - deliveryCount;
 
   async function saveSettings() {
     setSaving(true);
@@ -90,6 +101,7 @@ export default function AlbumEditor({
           form.selection_limit === "" ? null : Number(form.selection_limit),
         watermark_enabled: form.watermark_enabled,
         watermark_text: form.watermark_text || null,
+        watermark_delivery: form.watermark_delivery,
         download_enabled: form.download_enabled,
         status: form.status,
         cover_url: form.cover_url,
@@ -128,15 +140,26 @@ export default function AlbumEditor({
         name: newSource.name || (kind === "folder" ? "Folder" : "File"),
         drive_url: newSource.url.trim(),
         kind,
+        stage: newSource.stage,
         position: sources.length,
       })
       .select("*")
       .single();
     if (error) return flash(error.message);
     setSources([...sources, data as AlbumSource]);
-    setNewSource({ name: "", url: "" });
+    setNewSource({ name: "", url: "", stage: newSource.stage });
     // Auto-sync so photos & thumbnails appear immediately after adding a source.
     await sync();
+  }
+
+  // Switch which phase the client link exposes (selection ↔ delivery).
+  async function switchPhase(next: AlbumPhase) {
+    setPhaseBusy(true);
+    const { error } = await supabase.from("albums").update({ phase: next }).eq("id", album.id);
+    setPhaseBusy(false);
+    if (error) return flash(error.message);
+    setPhase(next);
+    flash(next === "delivery" ? "Đã chuyển sang giai đoạn Giao khách" : "Đã chuyển về giai đoạn Chọn ảnh");
   }
 
   async function removeSource(id: string) {
@@ -216,6 +239,36 @@ export default function AlbumEditor({
           {msg}
         </div>
       )}
+
+      {/* Project phase: which set of photos the client link currently shows. */}
+      <div className="card mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className={`flex h-9 w-9 items-center justify-center rounded-full ${phase === "delivery" ? "bg-emerald-500/15 text-emerald-400" : "bg-accent-gold/15 text-accent-gold"}`}>
+            {phase === "delivery" ? <PackageCheck size={18} /> : <Images size={18} />}
+          </span>
+          <div>
+            <p className="text-sm font-medium text-accent">
+              Giai đoạn hiện tại: {phase === "delivery" ? "Giao khách (ảnh hoàn thiện)" : "Chọn ảnh (ảnh gốc)"}
+            </p>
+            <p className="text-xs" style={{ color: "var(--text3)" }}>
+              {phase === "delivery"
+                ? "Khách đang xem & tải ảnh hoàn thiện qua link dự án."
+                : "Khách đang chọn ảnh gốc qua link dự án."}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => switchPhase(phase === "delivery" ? "selection" : "delivery")}
+          disabled={phaseBusy}
+          className="btn-ghost whitespace-nowrap"
+        >
+          {phase === "delivery" ? (
+            <><ArrowLeft size={15} /> Về giai đoạn Chọn ảnh</>
+          ) : (
+            <>Chuyển sang Giao khách <ArrowRight size={15} /></>
+          )}
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Settings */}
@@ -302,6 +355,15 @@ export default function AlbumEditor({
             Cho phép khách tải ảnh xuống
           </label>
 
+          <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
+            <input
+              type="checkbox"
+              checked={form.watermark_delivery}
+              onChange={(e) => setForm({ ...form, watermark_delivery: e.target.checked })}
+            />
+            Watermark cả ở giai đoạn Giao khách
+          </label>
+
           <div>
             <label className="label">{t("status")}</label>
             <select
@@ -360,6 +422,9 @@ export default function AlbumEditor({
                       <span className="rounded bg-ink-700 px-1.5 py-0.5 text-[10px] uppercase text-accent-muted">
                         {s.kind}
                       </span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${s.stage === "delivery" ? "bg-emerald-500/15 text-emerald-400" : "bg-accent-gold/15 text-accent-gold"}`}>
+                        {s.stage === "delivery" ? "Giao" : "Chọn"}
+                      </span>
                       {s.name}
                     </div>
                     <div className="truncate text-xs text-ink-600">{s.drive_url}</div>
@@ -377,7 +442,17 @@ export default function AlbumEditor({
               )}
             </ul>
 
-            <form onSubmit={addSource} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_auto]">
+            <form onSubmit={addSource} className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr_2fr_auto]">
+              <select
+                className="input"
+                value={newSource.stage}
+                onChange={(e) =>
+                  setNewSource({ ...newSource, stage: e.target.value as SourceStage })
+                }
+              >
+                <option value="selection">Ảnh chọn</option>
+                <option value="delivery">Ảnh giao</option>
+              </select>
               <input
                 className="input"
                 placeholder={t("sourceName")}
@@ -411,8 +486,14 @@ export default function AlbumEditor({
 
           {/* Photos */}
           <div className="card p-6">
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-accent-muted">
+            <h2 className="mb-4 flex flex-wrap items-center gap-2 text-sm font-medium uppercase tracking-wide text-accent-muted">
               {photos.length} {t("photos")}
+              {deliveryCount > 0 && (
+                <span className="flex gap-1.5 normal-case">
+                  <span className="rounded bg-accent-gold/15 px-1.5 py-0.5 text-[10px] text-accent-gold">{selectionCount} chọn</span>
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-400">{deliveryCount} giao</span>
+                </span>
+              )}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {photos.map((p) => (
