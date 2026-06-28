@@ -60,7 +60,7 @@ interface P { id: string; drive_file_id: string; name: string; source_id: string
 
 const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
-interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; }
+interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
   gallery, initialPhotos, initialSources, feedback, shareIds,
@@ -71,6 +71,7 @@ export default function GalleryView({
   feedback: Feedback[];
   shareIds?: string[] | null;
 }) {
+  const wm = gallery.watermark || null;
   const [unlocked, setUnlocked] = useState(!gallery.hasPassword);
   const [photos, setPhotos] = useState<P[]>(initialPhotos ?? []);
   const [sources, setSources] = useState<S[]>(initialSources ?? []);
@@ -184,7 +185,7 @@ export default function GalleryView({
     setZipProgress(0);
     const blob = await buildZip(
       visible.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
-      { watermark: null, onProgress: (d, t) => setZipProgress(Math.round((d / t) * 100)) }
+      { watermark: wm, onProgress: (d, t) => setZipProgress(Math.round((d / t) * 100)) }
     );
     triggerDownload(blob, `${gallery.slug}.zip`);
     setZipProgress(null);
@@ -290,7 +291,14 @@ export default function GalleryView({
                   return (
                   <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    {wm && (
+                      <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
+                        {Array.from({ length: 8 }).map((_, wi) => (
+                          <span key={wi} className="rotate-[-30deg] whitespace-nowrap text-xs font-semibold tracking-widest text-white">{wm}</span>
+                        ))}
+                      </div>
+                    )}
                     {isSel && <div className="pointer-events-none absolute inset-0 z-[2]" style={{ boxShadow: "inset 0 0 0 3px var(--gold)" }} />}
                     {isVideo(p) && (
                       <span onClick={() => setLbIdx(i)} className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
@@ -379,8 +387,17 @@ export default function GalleryView({
                 style={{ border: "none", boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} className="max-h-[82vh] max-w-full rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }} />
+              <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="max-h-[82vh] max-w-full select-none rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }} />
+                {wm && (
+                  <div className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-x-12 gap-y-10 opacity-20">
+                    {Array.from({ length: 12 }).map((_, wi) => (
+                      <span key={wi} className="rotate-[-30deg] whitespace-nowrap text-base font-semibold tracking-widest text-white">{wm}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <button onClick={() => setLbIdx(Math.min(visible.length - 1, lbIdx + 1))} disabled={lbIdx >= visible.length - 1} className="absolute right-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronRight size={22} /></button>
           </div>
