@@ -22,7 +22,7 @@ export default async function QuotesList() {
   const supabase = createClient();
   const { data } = await supabase
     .from("studio_quotes")
-    .select("*, quote_items(qty, unit_price, selected, is_optional, is_discount), quote_adjustments(id, resolved)")
+    .select("id, code, title, client_name, client_phone, client_token, status, quote_items(qty, unit_price, selected, is_optional, is_discount), quote_adjustments(id, resolved)")
     .eq("owner_id", profile.id)
     .order("created_at", { ascending: false });
 
