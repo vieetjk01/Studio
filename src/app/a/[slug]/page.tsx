@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { effectivePlan, planAllowsDelivery } from "@/lib/plans";
 import { fetchAllPhotos } from "@/lib/photos";
 import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -44,9 +45,20 @@ export default async function PublicAlbumPage({
     .single();
 
   // Unified project: once the studio switches to the delivery phase, the same
-  // client link leads to the finished-photo delivery experience.
+  // client link leads to the finished-photo delivery experience. Free-plan
+  // owners don't get delivery, so their albums stay on the selection view even
+  // if a stale phase value says otherwise.
   if (album && album.phase === "delivery") {
-    redirect(`/album/${params.slug}`);
+    const { data: ownerPlan } = await admin
+      .from("profiles")
+      .select("plan, plan_expires_at, role")
+      .eq("id", album.owner_id)
+      .maybeSingle();
+    const ownerIsAdmin = ownerPlan?.role === "admin";
+    const ownerEffective = ownerPlan ? effectivePlan(ownerPlan.plan, ownerPlan.plan_expires_at) : "free";
+    if (planAllowsDelivery(ownerEffective, ownerIsAdmin)) {
+      redirect(`/album/${params.slug}`);
+    }
   }
 
   if (!album || album.status !== "published") {

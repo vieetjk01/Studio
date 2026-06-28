@@ -158,9 +158,11 @@ export default function AlbumEditor({
     await sync();
   }
 
-  // Switch which phase the client link exposes (selection ↔ delivery).
+  // Switch which phase the client link exposes (selection ↔ delivery). Plans
+  // without delivery can still switch BACK to selection (escape a stuck album),
+  // but can't switch into delivery.
   async function switchPhase(next: AlbumPhase) {
-    if (!canDelivery) return;
+    if (!canDelivery && next === "delivery") return;
     setPhaseBusy(true);
     const { error } = await supabase.from("albums").update({ phase: next }).eq("id", album.id);
     setPhaseBusy(false);
@@ -276,6 +278,11 @@ export default function AlbumEditor({
               <>Chuyển sang Giao khách <ArrowRight size={15} /></>
             )}
           </button>
+        ) : phase === "delivery" ? (
+          // Stuck in delivery on a plan that no longer allows it — let them out.
+          <button onClick={() => switchPhase("selection")} disabled={phaseBusy} className="btn-ghost whitespace-nowrap">
+            <ArrowLeft size={15} /> Về giai đoạn Chọn ảnh
+          </button>
         ) : (
           <Link href="/dashboard/upgrade" className="btn-ghost whitespace-nowrap" title="Nâng cấp để dùng giao khách">
             🔒 Giao khách (nâng cấp gói)
@@ -379,7 +386,8 @@ export default function AlbumEditor({
             </label>
           )}
 
-          {canDelivery && canPinHome && (
+          {/* "Show on homepage" only applies to the delivery phase. */}
+          {phase === "delivery" && canPinHome && (
             <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
               <input
                 type="checkbox"
@@ -389,7 +397,7 @@ export default function AlbumEditor({
               Hiện ở trang chủ công khai (khách xem không cần mật khẩu)
             </label>
           )}
-          {canDelivery && !canPinHome && (
+          {phase === "delivery" && canDelivery && !canPinHome && (
             <Link href="/dashboard/upgrade" className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm" style={{ color: "var(--text3)" }}>
               🔒 Hiện ở trang chủ công khai — nâng cấp gói Photographer/Studio
             </Link>
