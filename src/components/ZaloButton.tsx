@@ -26,15 +26,13 @@ export default function ZaloButton({
   return (
     <button
       type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard?.writeText(message);
-        } catch {
-          /* clipboard may be blocked; still open the chat */
-        }
+      onClick={() => {
+        // Open synchronously first so the tap stays a user gesture → the Zalo
+        // app opens on mobile instead of the web/install page.
+        window.open(url, "_blank", "noopener,noreferrer");
+        navigator.clipboard?.writeText(message).catch(() => {});
         setDone(true);
         setTimeout(() => setDone(false), 2000);
-        window.open(url, "_blank", "noopener,noreferrer");
       }}
       className={className}
       title="Chép sẵn lời nhắc rồi mở Zalo để gửi"

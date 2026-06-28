@@ -45,7 +45,7 @@ function makeThumb(t: SiteTheme, label: string): string {
   const text = t.text || "#eee";
   const accent = t.accent || "#c7a76b";
   const serif = t.font !== "sans";
-  const family = serif ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
+  const family = serif ? "Georgia,serif" : "Helvetica,Arial,sans-serif";
   const r = t.radius === "sharp" ? 0 : 12;
   const center = t.heroAlign !== "left";
   const titleX = center ? 300 : 40;
@@ -194,6 +194,54 @@ const RAW_TEMPLATES: Omit<SiteTemplate, "thumb">[] = [
       { type: "cta", config: { heading: "Kể câu chuyện của bạn", text: "Còn vài lịch trống cho mùa cuối năm 2026.", button: "Liên hệ với tôi" } },
       { type: "social", config: { heading: "Theo dõi", facebook: "", instagram: "" } },
       { type: "contact", config: { heading: "Liên hệ", email: "hello@studio.vn", address: "27 Trần Phú, Hải Châu, Đà Nẵng" } },
+    ],
+  },
+
+  // 6) Sự kiện — media/event company, nền đen acid-yellow (từ mediadynamic.dc.html).
+  {
+    key: "media-event",
+    name: "Sự kiện",
+    tag: "Media sự kiện · nền đen, nhấn xanh neon",
+    theme: { mode: "dark", accent: "#c6ff3d", bg: "#08090c", text: "#f3f5f8", font: "sans", heroAlign: "left", galleryCols: 3, radius: "rounded", heroSize: "large", contentWidth: "full" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Chúng tôi quay sự kiện sống động · Concert, ra mắt, hội nghị", image: img("vk-media-ev-hero") } },
+      { type: "stats", config: { items: "500+ | Sự kiện đã quay\n12 | Năm kinh nghiệm\n4K | Chuẩn sản xuất\n48h | Giao aftermovie" } },
+      { type: "services", config: { heading: "Chúng tôi làm gì", items: "Aftermovie sự kiện | Dựng video highlight cảm xúc cao, giao trong 48 giờ.\nLivestream đa camera | Phát trực tiếp nhiều góc máy, chuyển cảnh chuyên nghiệp.\nẢnh phóng sự | Ekip ảnh bắt trọn không khí và khoảnh khắc quan trọng.\nTVC & quảng cáo | Sản xuất video thương hiệu từ ý tưởng đến hậu kỳ." } },
+      { type: "gallery", config: { heading: "Dự án nổi bật" } },
+      { type: "cta", config: { heading: "Sẵn sàng lên sóng?", text: "Liên hệ để nhận báo giá và tư vấn miễn phí.", button: "Bắt đầu dự án" } },
+      { type: "contact", config: { heading: "Liên hệ", email: "hi@studio.vn", address: "TP. Hồ Chí Minh" } },
+    ],
+  },
+
+  // 7) Doanh nghiệp — corporate media, xanh dương sạch (từ mediacorporate.dc.html).
+  {
+    key: "media-corporate",
+    name: "Doanh nghiệp",
+    tag: "Corporate · nền trắng, xanh dương chuyên nghiệp",
+    theme: { mode: "light", accent: "#1d5fd6", bg: "#ffffff", text: "#0f1b2d", font: "sans", heroAlign: "left", galleryCols: 3, radius: "rounded", heroSize: "large", contentWidth: "compact" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Sản xuất media sự kiện chuyên nghiệp cho doanh nghiệp", image: img("vk-media-corp-hero") } },
+      { type: "services", config: { heading: "Dịch vụ toàn diện", items: "Quay phim sự kiện | Đội ngũ nhiều máy quay, ghi hình hội nghị và sự kiện quy mô lớn.\nChụp ảnh phóng sự | Ảnh chất lượng cao, bàn giao nhanh ngay trong sự kiện.\nLivestream chuyên nghiệp | Phát trực tiếp đa nền tảng, ổn định, đồ hoạ thương hiệu.\nHậu kỳ & aftermovie | Dựng phim recap, TVC và nội dung truyền thông sau sự kiện." } },
+      { type: "stats", config: { items: "800+ | Sự kiện\n150+ | Khách doanh nghiệp\n15 | Năm hoạt động\n24h | Phản hồi báo giá" } },
+      { type: "gallery", config: { heading: "Dự án tiêu biểu" } },
+      { type: "cta", config: { heading: "Cùng tạo nên sự kiện đáng nhớ", text: "Nhận tư vấn và báo giá trong vòng 24 giờ.", button: "Liên hệ ngay" } },
+      { type: "contact", config: { heading: "Thông tin liên hệ", email: "contact@studio.vn", address: "Hà Nội" } },
+      { type: "map", config: { heading: "Ghé văn phòng", address: "Hà Nội" } },
+    ],
+  },
+
+  // 8) Tối giản — nhiếp ảnh cá nhân, trắng tinh serif (từ photographerminimal.dc.html).
+  {
+    key: "photographer-minimal",
+    name: "Tối giản",
+    tag: "Nhiếp ảnh cá nhân · trắng tinh, serif thanh nhã",
+    theme: { mode: "light", accent: "#16160f", bg: "#fbfbfa", text: "#16160f", font: "serif", heroAlign: "left", galleryCols: 2, radius: "sharp", heroSize: "large", contentWidth: "full" },
+    blocks: [
+      { type: "hero", config: { heading: "", subheading: "Ánh sáng & con người · Tuyển tập 2020–2026", image: img("vk-photo-min-hero") } },
+      { type: "gallery", config: { heading: "Tác phẩm" } },
+      { type: "quote", config: { text: "Tôi không sắp đặt khoảnh khắc. Tôi chờ nó đến, rồi giữ lại bằng ánh sáng.", author: "" } },
+      { type: "about", config: { heading: "Về tôi", text: "Tôi cầm máy lần đầu với chiếc máy phim của bố. Từ đó, nhiếp ảnh trở thành cách tôi nhìn và hiểu thế giới.\nHôm nay tôi chụp chân dung, đôi lứa và những dự án cá nhân — luôn đặt cảm xúc thật lên trên mọi kỹ thuật.", image: img("vk-photo-min-about", 800, 600) } },
+      { type: "contact", config: { heading: "Cùng chụp nhé?", email: "hello@studio.vn", address: "" } },
     ],
   },
 

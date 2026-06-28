@@ -35,10 +35,11 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     "--s-bg": t.bg || "#0c0c0d",
     "--s-text": t.text || "#ececec",
     "--s-accent": t.accent || "#c7a76b",
+    "--s-accentInk": isLightHex(t.accent) ? "#171717" : "#ffffff",
     "--s-border": dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
     "--s-radius": t.radius === "sharp" ? "0px" : "14px",
-    "--s-maxw": t.contentWidth === "full" ? "1360px" : "1040px",
+    "--s-maxw": "100%",
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
@@ -63,11 +64,16 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
         </div>
       </div>
     ) : (
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
+      <div style={{ maxWidth: t.contentWidth === "full" ? "100%" : 1040, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
         {blocks.map((b) => {
-          const half = b.config?.width === "half" && b.type !== "hero";
+          const isHero = b.type === "hero";
+          const half = b.config?.width === "half" && !isHero;
+          // Hero breaks out to full-bleed; half blocks split the content column.
+          const style: React.CSSProperties = isHero
+            ? { flex: "1 1 100%", width: "100vw", marginLeft: "calc(50% - 50vw)" }
+            : { flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 300 : 0 };
           return (
-            <div id={`sec-${b.id}`} key={b.id} style={{ flex: half ? "1 1 420px" : "1 1 100%", minWidth: 0 }}>
+            <div id={`sec-${b.id}`} key={b.id} style={style}>
               <Block block={b} data={data} fontVar={fontVar} demo={demo} />
             </div>
           );
@@ -87,22 +93,49 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     </footer>
   );
 
-  // Top navigation (default).
-  if (navPos === "top") {
+  // Top / bottom navigation — a modern pill bar.
+  if (navPos === "top" || navPos === "bottom") {
+    const bottom = navPos === "bottom";
+    const bar = blocks.length > 0 && (
+      <header
+        style={{
+          position: bottom ? "fixed" : "sticky",
+          top: bottom ? undefined : 0,
+          bottom: bottom ? 0 : undefined,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          justifyContent: "space-between",
+          padding: "12px 24px",
+          borderBottom: bottom ? undefined : "1px solid var(--s-border)",
+          borderTop: bottom ? "1px solid var(--s-border)" : undefined,
+          background: "color-mix(in srgb, var(--s-bg) 80%, transparent)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>{brand}</div>
+        <nav style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, fontSize: 14, justifyContent: "center" }}>
+          {navItems.map((n) => (
+            <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
+          ))}
+        </nav>
+        {owner?.booking_token ? (
+          <a href={mainUrl(`/book/${owner.booking_token}`)} className="s-cta">Đặt lịch</a>
+        ) : <span style={{ width: 1 }} />}
+      </header>
+    );
     return (
       <div style={wrap}>
-        {blocks.length > 0 && (
-          <header style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", gap: 20, justifyContent: "space-between", padding: "12px 24px", borderBottom: "1px solid var(--s-border)", background: "color-mix(in srgb, var(--s-bg) 82%, transparent)", backdropFilter: "blur(8px)" }}>
-            {brand}
-            <nav style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 14 }}>
-              {navItems.map((n) => (
-                <a key={n.id} href={`#sec-${n.id}`} style={{ color: "inherit", opacity: 0.85, textDecoration: "none" }}>{n.label}</a>
-              ))}
-            </nav>
-          </header>
-        )}
+        {!bottom && bar}
         {content}
         {footer}
+        {/* leave room so the fixed bottom bar doesn't cover the footer */}
+        {bottom && blocks.length > 0 && <div style={{ height: 72 }} />}
+        {bottom && bar}
       </div>
     );
   }
@@ -129,13 +162,13 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
             }}
           >
             <div>{brand}</div>
-            <nav style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
+            <nav style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, alignItems: "flex-start" }}>
               {navItems.map((n) => (
-                <a key={n.id} href={`#sec-${n.id}`} style={{ color: "inherit", opacity: 0.85, textDecoration: "none" }}>{n.label}</a>
+                <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
               ))}
             </nav>
             {owner?.booking_token && (
-              <a href={mainUrl(`/book/${owner.booking_token}`)} style={{ marginTop: "auto", padding: "10px 16px", borderRadius: 999, background: "var(--s-accent)", color: "#171717", fontWeight: 600, textAlign: "center", textDecoration: "none", fontSize: 14 }}>Đặt lịch</a>
+              <a href={mainUrl(`/book/${owner.booking_token}`)} className="s-cta" style={{ marginTop: "auto", justifyContent: "center" }}>Đặt lịch</a>
             )}
           </aside>
         )}
@@ -220,7 +253,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
               ? picked.map((a) => (
                   <a key={a.id} href={mainUrl(`/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
                     <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
-                      {a.cover_url && <img src={a.cover_url} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                      {a.cover_url && <img src={a.cover_url} alt={a.title} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     </div>
                     <p style={{ marginTop: 8, fontSize: 14 }}>{a.title}</p>
                   </a>
@@ -239,11 +272,13 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
       );
     }
     case "pricing": {
-      if (pricelist.length === 0) return null;
+      const plKey = str(c.list_key);
+      const shownPl = plKey ? pricelist.filter((p) => (p.list_key || "") === plKey) : pricelist;
+      if (shownPl.length === 0) return null;
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Bảng giá")}>
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-            {pricelist.map((p) => (
+            {shownPl.map((p) => (
               <div key={p.id} style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: 20 }}>
                 {p.category && <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1, opacity: 0.6 }}>{p.category}</p>}
                 <p style={{ fontFamily: fontVar, fontSize: 20, marginTop: 2 }}>{p.name}</p>

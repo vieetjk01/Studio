@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import NewQuoteForm from "./NewQuoteForm";
 
@@ -16,5 +17,13 @@ export default async function NewQuotePage() {
     );
   }
 
-  return <NewQuoteForm ownerId={profile.id} />;
+  const supabase = createClient();
+  const { data: services } = await supabase
+    .from("studio_services")
+    .select("id, name")
+    .eq("owner_id", profile.id)
+    .eq("active", true)
+    .order("position", { ascending: true });
+
+  return <NewQuoteForm ownerId={profile.id} services={(services ?? []) as { id: string; name: string }[]} />;
 }

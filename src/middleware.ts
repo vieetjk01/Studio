@@ -1,10 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { cookieDomainForHost } from "@/lib/hosts";
 
 // Domain split (set these on Vercel to enable it). When unset (local dev,
 // *.vercel.app previews) the full app is served on one host.
 //   MAIN_HOST  = mstudo.com        -> landing + studio management
-//   APP_HOST   = album.mstudo.com  -> album dashboard, create, filter, /a/
+//   APP_HOST   = album.mstudo.com  -> RETIRED (album app now served by MAIN_HOST;
+//                                     kept only as a known system host)
 //   IMG_HOST   = img.mstudo.com    -> image-compress tool
 //   ADMIN_HOST = admin.mstudo.com  -> site administration + settings
 const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
@@ -29,23 +31,18 @@ function hostForPath(path: string): string | undefined {
   // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
 
-  // Image-compress tool → img.mstudo.com (or app host).
-  if (path.startsWith(COMPRESS_PATH)) return IMG_HOST || APP_HOST;
-
-  // Album-only paths live on album.mstudo.com: the album dashboard, album
-  // creation, photo filter and the public album viewer.
+  // Photo tools (create selection-album, filter, compress) run IN-APP inside the
+  // studio admin — never force them onto another subdomain. Serve on whatever
+  // host the request arrived at (img.mstudo.com still works too, not forced).
   if (
-    path === "/dashboard" ||
+    path.startsWith(COMPRESS_PATH) ||
     path.startsWith("/dashboard/create") ||
-    path.startsWith("/dashboard/filter") ||
-    path.startsWith("/a/") ||
-    path === "/start"
-  ) return APP_HOST;
+    path.startsWith("/dashboard/filter")
+  ) return undefined;
 
-  // Everything else under /dashboard is the studio management app → force it
-  // onto the MAIN host so studio never runs on album.mstudo.com. Admin/settings
-  // included (they're role-guarded server-side).
-  if (path.startsWith("/dashboard")) return MAIN_HOST;
+  // album.mstudo.com is retired — the album app (library, public viewer /a/,
+  // and the whole dashboard) is served by the main host now.
+  if (path.startsWith("/dashboard") || path.startsWith("/a/") || path === "/start") return MAIN_HOST;
 
   return undefined;
 }
@@ -78,11 +75,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ── Main workspace is the studio dashboard ───────────────────────────────
+  // On mstudo.com the studio management app is the user's home, so the bare
+  // /dashboard goes to /dashboard/studio instead of bouncing to the album host.
+  // (Free/Basic accounts have no studio tier — StudioOverview sends them on to
+  // the album dashboard, so there's no loop.) Album host keeps /dashboard = albums.
+  if (MAIN_HOST && host === MAIN_HOST && pathname === "/dashboard") {
+    return NextResponse.redirect(new URL("/dashboard/studio", request.url));
+  }
+
   // ── Host-based routing ────────────────────────────────────────
-  if (MAIN_HOST && APP_HOST && host) {
+  if (MAIN_HOST && host) {
     // Per-host home pages.
     if (pathname === "/") {
-      if (host === APP_HOST) return NextResponse.rewrite(new URL("/start", request.url));
       if (IMG_HOST && host === IMG_HOST) return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));
       if (ADMIN_HOST && host === ADMIN_HOST) return NextResponse.redirect(new URL(ADMIN_PATH, request.url));
       // MAIN_HOST / = marketing landing — fall through.
@@ -119,7 +124,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      ...(MAIN_HOST ? { cookieOptions: { domain: `.${MAIN_HOST}` } } : {}),
+      ...((() => { const d = cookieDomainForHost(host); return d ? { cookieOptions: { domain: d } } : {}; })()),
       cookies: {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
@@ -134,6 +139,12 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Affiliate ref tracking: set a 30-day cookie when ?ref=CODE is present.
+  const refParam = request.nextUrl.searchParams.get("ref");
+  if (refParam && /^[A-Z0-9]{4,16}$/.test(refParam) && !request.cookies.get("aff_ref")) {
+    response.cookies.set("aff_ref", refParam, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", httpOnly: true });
+  }
 
   // Only enforce auth for dashboard routes.
   if (!user && pathname.startsWith("/dashboard")) {

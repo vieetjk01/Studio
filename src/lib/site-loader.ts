@@ -7,7 +7,7 @@ export type SiteData = {
   blocks: SiteBlock[];
   owner: { full_name: string | null; pl_phone: string | null; pl_facebook: string | null; booking_token: string | null } | null;
   albums: { id: string; slug: string; title: string; cover_url: string | null }[];
-  pricelist: { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null }[];
+  pricelist: { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null; list_key: string | null }[];
   feedback: { id: string; client_name: string | null; rating: number | null; content: string }[];
 };
 
@@ -25,7 +25,7 @@ export async function loadSiteBundle(db: SupabaseClient, site: Site, onlyVisible
     db.from("profiles").select("full_name, pl_phone, pl_facebook, booking_token").eq("id", ownerId).maybeSingle(),
     blocksQ.order("position"),
     db.from("albums").select("id, slug, title, cover_url").eq("owner_id", ownerId).eq("status", "published").order("created_at", { ascending: false }).limit(24),
-    db.from("studio_pricelist").select("id, name, price, unit, category, description").eq("owner_id", ownerId).eq("active", true).gt("price", 0).order("position"),
+    db.from("studio_pricelist").select("id, name, price, unit, category, description, list_key").eq("owner_id", ownerId).eq("active", true).gt("price", 0).order("position"),
   ]);
 
   const albumList = (albums ?? []) as SiteData["albums"];

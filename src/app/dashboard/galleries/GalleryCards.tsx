@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, ExternalLink, Image as ImageIcon, Pin, Settings2 } from "lucide-react";
+import { Calendar, ExternalLink, Image as ImageIcon, Pin, Settings2, Share2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mainUrl } from "@/lib/hosts";
+import ShareDialog from "@/components/ShareDialog";
 import { thumbnailUrl } from "@/lib/drive";
-import { GALLERY_CATEGORIES } from "@/lib/types";
 
 export interface GalleryRow {
   id: string;
@@ -23,8 +24,7 @@ export interface GalleryRow {
 }
 
 function catLabel(cat: string | null, custom: string | null) {
-  if (cat === "khac" && custom) return custom;
-  return GALLERY_CATEGORIES.find((c) => c.value === cat)?.label ?? "Khác";
+  return cat?.trim() || custom?.trim() || "Khác";
 }
 
 export default function GalleryCards({ galleries }: { galleries: GalleryRow[] }) {
@@ -43,6 +43,12 @@ function Card({ g }: { g: GalleryRow }) {
   const [status, setStatus] = useState(g.status);
   const [pinned, setPinned] = useState(g.gallery_pinned);
   const [download, setDownload] = useState(g.download_enabled);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  function openShare() {
+    const base = mainUrl(`/album/${g.slug}`);
+    setShareUrl(/^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`);
+  }
 
   const cover = g.cover_url || (g.photos?.[0]?.drive_file_id ? thumbnailUrl(g.photos[0].drive_file_id, 800) : null);
 
@@ -55,7 +61,7 @@ function Card({ g }: { g: GalleryRow }) {
       <Link href={`/dashboard/galleries/${g.id}`} className="relative block aspect-[4/3] bg-ink-850">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={g.title} className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+          <img src={cover} alt={g.title} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-600">
             <ImageIcon size={32} />
@@ -91,6 +97,9 @@ function Card({ g }: { g: GalleryRow }) {
           <button onClick={() => setMenu((v) => !v)} className="btn-ghost py-1.5 text-xs" title="Bật/tắt nhanh">
             <Settings2 size={13} /> Sửa
           </button>
+          <button onClick={openShare} title="Chia sẻ link album" className="btn-ghost py-1.5 text-xs">
+            <Share2 size={13} />
+          </button>
           <Link href={`/album/${g.slug}`} target="_blank" className="btn-ghost py-1.5 text-xs">
             <ExternalLink size={13} />
           </Link>
@@ -108,6 +117,13 @@ function Card({ g }: { g: GalleryRow }) {
           </div>
         </div>
       )}
+
+      <ShareDialog
+        url={shareUrl}
+        title="Chia sẻ album"
+        subtitle="Gửi link này cho khách để xem album."
+        onClose={() => setShareUrl(null)}
+      />
     </div>
   );
 }

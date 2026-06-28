@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2 } from "lucide-react";
+import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
+import StudioTrialButton from "@/components/StudioTrialButton";
 
 interface AlbumRow {
   id: string;
@@ -16,22 +17,40 @@ interface AlbumRow {
   status: "draft" | "published";
   watermark_enabled: boolean;
   download_enabled: boolean;
+  phase?: "selection" | "delivery";
   photos: { drive_file_id: string }[];
   selections: { count: number }[];
 }
 
-export default function AlbumList({ albums }: { albums: AlbumRow[] }) {
+export default function AlbumList({ albums, showTrial = false, trialUsed = false }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean }) {
   const { t } = useLang();
 
   return (
     <div className="animate-fade-in">
       <PlanUsage />
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-light text-accent">{t("myAlbums")}</h1>
-        <Link href="/dashboard/create" className="btn-primary">
-          <Plus size={16} /> {t("newAlbum")}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/site" className="btn-ghost">
+            <Globe size={16} /> Website riêng
+          </Link>
+          <Link href="/dashboard/create" className="btn-primary">
+            <Plus size={16} /> {t("newAlbum")}
+          </Link>
+        </div>
       </div>
+
+      {showTrial && (
+        <div className="mb-6 card p-4 flex flex-col sm:flex-row sm:items-center gap-3" style={{ borderColor: "rgba(214,164,74,.4)", background: "rgba(214,164,74,.06)" }}>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" style={{ color: "#d6a44a" }}>Trải nghiệm gói Studio miễn phí 1 ngày</p>
+            <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>Hợp đồng, lịch chụp, quản lý khách hàng và toàn bộ tính năng Studio trong 24 giờ.</p>
+          </div>
+          <div className="shrink-0">
+            <StudioTrialButton used={trialUsed} />
+          </div>
+        </div>
+      )}
 
       {albums.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
@@ -58,6 +77,7 @@ function AlbumCard({ a }: { a: AlbumRow }) {
   const [status, setStatus] = useState(a.status);
   const [watermark, setWatermark] = useState(a.watermark_enabled);
   const [download, setDownload] = useState(a.download_enabled);
+  const [phase, setPhase] = useState<"selection" | "delivery">(a.phase ?? "selection");
 
   const cover =
     a.cover_url || (a.photos?.[0]?.drive_file_id ? thumbnailUrl(a.photos[0].drive_file_id, 800) : null);
@@ -72,7 +92,7 @@ function AlbumCard({ a }: { a: AlbumRow }) {
       <Link href={`/dashboard/albums/${a.id}`} className="relative block aspect-[4/3] bg-ink-850">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={a.title} className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+          <img src={cover} alt={a.title} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-600">
             <ImageIcon size={32} />
@@ -84,6 +104,13 @@ function AlbumCard({ a }: { a: AlbumRow }) {
           }`}
         >
           {status === "published" ? t("published") : t("draft")}
+        </span>
+        <span
+          className={`absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+            phase === "delivery" ? "bg-emerald-500/20 text-emerald-300" : "bg-accent-gold/20 text-accent-gold"
+          }`}
+        >
+          {phase === "delivery" ? "Giao khách" : "Chọn ảnh"}
         </span>
       </Link>
 
@@ -114,6 +141,7 @@ function AlbumCard({ a }: { a: AlbumRow }) {
       {menu && (
         <div className="absolute inset-x-3 bottom-3 z-20 rounded-xl p-3 shadow-xl" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
           <Toggle label="Đã xuất bản" on={status === "published"} onChange={(v) => { setStatus(v ? "published" : "draft"); patch({ status: v ? "published" : "draft" }); }} />
+          <Toggle label="Giao khách (ảnh hoàn thiện)" on={phase === "delivery"} onChange={(v) => { const next = v ? "delivery" : "selection"; setPhase(next); patch({ phase: next }); }} />
           <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
           <Toggle label="Cho tải xuống" on={download} onChange={(v) => { setDownload(v); patch({ download_enabled: v }); }} />
           <div className="mt-2 flex gap-2">

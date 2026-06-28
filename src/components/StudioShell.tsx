@@ -7,12 +7,14 @@ import {
   LayoutDashboard, CalendarDays, Clock, Users, Wallet, FileText, FileEdit,
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
-  Menu, X as XIcon, ShieldCheck, Settings,
+  Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
+  UserCircle, ChevronDown,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
+import MobileSearch from "@/components/MobileSearch";
 import InstallPwaButton from "@/components/InstallPwaButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
@@ -26,7 +28,8 @@ type Item = {
   label: string;
   icon: typeof LayoutDashboard;
   minTier: StudioTier;
-  roles?: string[] | null; // allowed studio roles (null = everyone with the tier)
+  roles?: string[] | null;
+  external?: boolean; // opens in new tab / uses <a> instead of Link
 };
 type Group = { label: string; items: Item[] };
 
@@ -49,6 +52,7 @@ const GROUPS: Group[] = [
     label: "Bán hàng",
     items: [
       { href: "/dashboard/studio/pricing", label: "Bảng giá", icon: Package, minTier: "booking" },
+      { href: "/dashboard/studio/services", label: "Dịch vụ & điều khoản", icon: ClipboardList, minTier: "booking" },
       { href: "/dashboard/studio/quotes", label: "Báo giá", icon: FileEdit, minTier: "full" },
       { href: "/dashboard/studio/contracts/new", label: "Tạo hợp đồng", icon: Plus, minTier: "full" },
       { href: "/dashboard/studio/contracts", label: "Quản lý HĐ", icon: FileText, minTier: "full" },
@@ -81,6 +85,16 @@ const GROUPS: Group[] = [
       { href: "/dashboard/studio/messages", label: "Mẫu tin", icon: MessageSquare, minTier: "full" },
     ],
   },
+  {
+    label: "Công cụ",
+    items: [
+      { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
+      { href: "/dashboard/create", label: "Tạo album", icon: Plus, minTier: "booking" },
+      { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
+      { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
+      { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },
+    ],
+  },
 ];
 
 // Page titles + subtitles keyed by route prefix (longest match wins).
@@ -89,6 +103,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/calendar", "Lịch chụp", "Lịch chụp theo tuần"],
   ["/dashboard/studio/team", "Lịch đội", "Lịch làm việc của đội ngũ"],
   ["/dashboard/studio/pricing", "Bảng giá", "Bảng giá dịch vụ"],
+  ["/dashboard/studio/services", "Dịch vụ & điều khoản", "Loại dịch vụ & điều khoản riêng"],
   ["/dashboard/studio/quotes", "Báo giá", "Danh sách báo giá"],
   ["/dashboard/studio/contracts/new", "Tạo hợp đồng", "Thông tin hợp đồng"],
   ["/dashboard/studio/contracts", "Quản lý hợp đồng", "Danh sách hợp đồng"],
@@ -105,6 +120,19 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/ranking", "Xếp hạng", "Xếp hạng đội ngũ"],
   ["/dashboard/studio/messages", "Mẫu tin", "Mẫu tin nhắn"],
   ["/dashboard/studio", "Tổng quan", "Tổng quan hoạt động studio"],
+  ["/dashboard/albums", "Thư viện album", "Tất cả album của bạn"],
+  ["/dashboard/create", "Tạo album", "Tạo album giao khách mới"],
+  ["/dashboard/filter", "Lọc ảnh", "Lọc & đối chiếu ảnh chọn"],
+  ["/dashboard/compress", "Nén ảnh", "Nén ảnh & đóng dấu watermark"],
+  ["/dashboard/site", "Website riêng", "Trang web portfolio cá nhân"],
+  ["/dashboard/upgrade", "Nâng cấp gói", "Gói dịch vụ & bảng giá"],
+  ["/dashboard/connections", "Kết nối", "Tích hợp dịch vụ bên ngoài"],
+  ["/dashboard/affiliate", "Affiliate", "Giới thiệu & hoa hồng"],
+  ["/dashboard/admin/affiliate", "Quản lý Affiliate", "Danh sách hoa hồng"],
+  ["/dashboard/settings", "Cài đặt", "Cài đặt hệ thống"],
+  ["/dashboard/account", "Tài khoản", "Thông tin & bảo mật tài khoản"],
+  // Most-general last so specific routes above always match first.
+  ["/dashboard", "Thư viện album", "Tất cả album của bạn"],
 ];
 
 export default function StudioShell({
@@ -122,9 +150,10 @@ export default function StudioShell({
   const pathname = usePathname();
   const { theme, toggle: toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
-  // Close drawer on route change
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  // Close drawer + avatar menu on route change
+  useEffect(() => { setDrawerOpen(false); setAvatarOpen(false); }, [pathname]);
 
   async function signOut() {
     const supabase = createClient();
@@ -146,7 +175,9 @@ export default function StudioShell({
   })).filter((g) => g.items.length > 0);
 
   const isActive = (href: string) =>
-    href === "/dashboard/studio" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+    href === "/dashboard/studio" || href === "/dashboard"
+      ? pathname === href
+      : pathname === href || pathname.startsWith(href + "/");
 
   const [title, sub] =
     TITLES.find(([p]) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p))?.slice(1) ??
@@ -220,16 +251,15 @@ export default function StudioShell({
               </p>
               {g.items.map((it) => {
                 const active = isActive(it.href);
-                return (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className="mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
-                    style={{
-                      color: active ? "var(--brand)" : "var(--text)",
-                      background: active ? "var(--brandSoft)" : "transparent",
-                    }}
-                  >
+                const cls = `nav-item mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold${active ? " nav-active" : ""}`;
+                const style = { color: active ? "var(--brand)" : "var(--text)" };
+                return it.external ? (
+                  <a key={it.href} href={it.href} className={cls} style={style}>
+                    <it.icon size={18} style={{ flex: "none" }} />
+                    {it.label}
+                  </a>
+                ) : (
+                  <Link key={it.href} href={it.href} className={cls} style={style} aria-current={active ? "page" : undefined}>
                     <it.icon size={18} style={{ flex: "none" }} />
                     {it.label}
                   </Link>
@@ -245,6 +275,7 @@ export default function StudioShell({
               </p>
               {[
                 { href: "/dashboard/admin", label: "Quản trị", icon: ShieldCheck },
+                { href: "/dashboard/admin/affiliate", label: "Affiliate", icon: Gift },
                 { href: "/dashboard/settings", label: "Cài đặt", icon: Settings },
               ].map((it) => {
                 const active = isActive(it.href);
@@ -252,11 +283,9 @@ export default function StudioShell({
                   <Link
                     key={it.href}
                     href={it.href}
-                    className="mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
-                    style={{
-                      color: active ? "var(--brand)" : "var(--text)",
-                      background: active ? "var(--brandSoft)" : "transparent",
-                    }}
+                    aria-current={active ? "page" : undefined}
+                    className={`nav-item mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold${active ? " nav-active" : ""}`}
+                    style={{ color: active ? "var(--brand)" : "var(--text)" }}
                   >
                     <it.icon size={18} style={{ flex: "none" }} />
                     {it.label}
@@ -268,6 +297,15 @@ export default function StudioShell({
 
           {/* Drawer footer actions */}
           <div className="mt-auto pt-6 flex flex-col gap-2">
+            <Link
+              href="/dashboard/affiliate"
+              onClick={() => setDrawerOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+              style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+            >
+              <Gift size={18} />
+              Affiliate · Hoa hồng
+            </Link>
             <InstallPwaButton />
             <button
               onClick={toggleTheme}
@@ -311,16 +349,15 @@ export default function StudioShell({
               </p>
               {g.items.map((it) => {
                 const active = isActive(it.href);
-                return (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className="mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors"
-                    style={{
-                      color: active ? "var(--brand)" : "var(--text)",
-                      background: active ? "var(--brandSoft)" : "transparent",
-                    }}
-                  >
+                const cls = `nav-item mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold${active ? " nav-active" : ""}`;
+                const style = { color: active ? "var(--brand)" : "var(--text)" };
+                return it.external ? (
+                  <a key={it.href} href={it.href} className={cls} style={style}>
+                    <it.icon size={18} style={{ flex: "none" }} />
+                    {it.label}
+                  </a>
+                ) : (
+                  <Link key={it.href} href={it.href} className={cls} style={style} aria-current={active ? "page" : undefined}>
                     <it.icon size={18} style={{ flex: "none" }} />
                     {it.label}
                   </Link>
@@ -336,6 +373,7 @@ export default function StudioShell({
               </p>
               {[
                 { href: "/dashboard/admin", label: "Quản trị", icon: ShieldCheck },
+                { href: "/dashboard/admin/affiliate", label: "Affiliate", icon: Gift },
                 { href: "/dashboard/settings", label: "Cài đặt", icon: Settings },
               ].map((it) => {
                 const active = isActive(it.href);
@@ -343,11 +381,9 @@ export default function StudioShell({
                   <Link
                     key={it.href}
                     href={it.href}
-                    className="mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors"
-                    style={{
-                      color: active ? "var(--brand)" : "var(--text)",
-                      background: active ? "var(--brandSoft)" : "transparent",
-                    }}
+                    aria-current={active ? "page" : undefined}
+                    className={`nav-item mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold${active ? " nav-active" : ""}`}
+                    style={{ color: active ? "var(--brand)" : "var(--text)" }}
                   >
                     <it.icon size={18} style={{ flex: "none" }} />
                     {it.label}
@@ -356,8 +392,16 @@ export default function StudioShell({
               })}
             </div>
           )}
-          {/* Sidebar install button */}
-          <div className="mt-auto pt-4">
+          {/* Sidebar footer */}
+          <div className="mt-auto pt-4 flex flex-col gap-2">
+            <Link
+              href="/dashboard/affiliate"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors"
+              style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+            >
+              <Gift size={16} />
+              Affiliate
+            </Link>
             <InstallPwaButton />
           </div>
         </aside>
@@ -379,18 +423,58 @@ export default function StudioShell({
               <Menu size={18} />
             </button>
 
+            {/* Mobile: avatar dropdown */}
+            <div className="relative lg:hidden">
+              <button
+                onClick={() => setAvatarOpen((v) => !v)}
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-[11px] font-bold"
+                style={{ background: "var(--brandSoft)", color: "var(--brand)", border: avatarOpen ? "2px solid var(--brand)" : "2px solid transparent" }}
+                aria-label="Tài khoản"
+              >
+                {initials}
+              </button>
+              {avatarOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} />
+                  <div
+                    className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl p-1.5 shadow-lg"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                  >
+                    <div className="px-3 py-2 mb-1" style={{ borderBottom: "1px solid var(--border)" }}>
+                      <p className="truncate text-sm font-semibold">{profile.full_name || "Tài khoản"}</p>
+                      <p className="truncate text-[11px]" style={{ color: "var(--text3)" }}>{profile.email}</p>
+                    </div>
+                    <Link href="/dashboard/account" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <UserCircle size={15} style={{ color: "var(--brand)" }} /> Cài đặt tài khoản
+                    </Link>
+                    <Link href="/dashboard/connections" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <Link2 size={15} style={{ color: "var(--brand)" }} /> Kết nối Calendar
+                    </Link>
+                    <Link href="/dashboard/upgrade" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <Gift size={15} style={{ color: "var(--s-amber)" }} /> Nâng cấp gói
+                    </Link>
+                    <div className="my-1" style={{ borderTop: "1px solid var(--border)" }} />
+                    <button onClick={signOut} className="nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--s-red)" }}>
+                      <LogOut size={15} /> Đăng xuất
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-[17px] font-extrabold tracking-tight sm:text-[18px]">{title}</h1>
               {sub ? <p className="hidden truncate text-[12px] sm:block" style={{ color: "var(--text3)" }}>{sub}</p> : null}
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Search: tablet+ */}
+              {/* Search: full overlay on mobile, inline on tablet+ */}
+              <MobileSearch />
               <div className="hidden sm:block">
                 <StudioSearch />
               </div>
               <NotificationBell />
-              {/* Language + theme: desktop only (in drawer on mobile) */}
+              {/* Language + theme: desktop only */}
               <div className="hidden lg:flex lg:items-center lg:gap-1.5">
                 <LanguageSwitcher />
                 <button
@@ -401,27 +485,81 @@ export default function StudioShell({
                 >
                   {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                 </button>
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold"
-                  style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
-                  title={profile.full_name || profile.email || ""}
-                >
-                  {initials}
-                </span>
-                <button
-                  onClick={signOut}
-                  aria-label="Đăng xuất"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg"
-                  style={{ border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}
-                >
-                  <LogOut size={16} />
-                </button>
+
+                {/* Avatar dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setAvatarOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2 transition-colors"
+                    style={{ background: avatarOpen ? "var(--surface2)" : "transparent", border: "1px solid var(--border)" }}
+                    aria-label="Tài khoản"
+                  >
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
+                      style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+                    >
+                      {initials}
+                    </span>
+                    <ChevronDown size={13} style={{ color: "var(--text3)", transform: avatarOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                  </button>
+
+                  {avatarOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} />
+                      {/* Dropdown */}
+                      <div
+                        className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl p-1.5 shadow-lg"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                      >
+                        {/* User info */}
+                        <div className="px-3 py-2 mb-1" style={{ borderBottom: "1px solid var(--border)" }}>
+                          <p className="truncate text-sm font-semibold">{profile.full_name || "Tài khoản"}</p>
+                          <p className="truncate text-[11px]" style={{ color: "var(--text3)" }}>{profile.email}</p>
+                        </div>
+
+                        <Link href="/dashboard/account"
+                          className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          <UserCircle size={15} style={{ color: "var(--brand)" }} />
+                          Cài đặt tài khoản
+                        </Link>
+                        <Link href="/dashboard/connections"
+                          className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          <Link2 size={15} style={{ color: "var(--brand)" }} />
+                          Kết nối Calendar
+                        </Link>
+                        <Link href="/dashboard/upgrade"
+                          className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--text)" }}
+                        >
+                          <Gift size={15} style={{ color: "var(--s-amber)" }} />
+                          Nâng cấp gói
+                        </Link>
+
+                        <div className="my-1" style={{ borderTop: "1px solid var(--border)" }} />
+
+                        <button
+                          onClick={signOut}
+                          className="nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium"
+                          style={{ color: "var(--s-red)" }}
+                        >
+                          <LogOut size={15} />
+                          Đăng xuất
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </header>
 
           {/* Page content */}
-          <main className="px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
+          <main className="page-in px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
         </div>
       </div>
 

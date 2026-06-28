@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import DateInput from "@/components/DateInput";
+import { fmtDate, fmtDateLunar } from "@/lib/date";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,18 +18,17 @@ import {
   Star,
   FileText,
   Upload,
+  X,
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
-import ZaloButton from "@/components/ZaloButton";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
 import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
-import ClauseInserter from "@/components/ClauseInserter";
 import { PRESET_ITEMS, PRESET_TASKS, nextContractCode } from "@/lib/contract-code";
 import { shootReminderMessage } from "@/lib/zalo";
 import {
@@ -34,7 +36,6 @@ import {
   vnd,
   sumAmounts,
   SHOOT_TYPE_LABEL,
-  SHOOT_TYPES,
   CONTRACT_STATUS_LABEL,
   CREW_ROLE_LABEL,
   CREW_STATUS_LABEL,
@@ -104,6 +105,8 @@ export default function ContractEditor({
   bank,
   sameDayContracts,
   pricelist,
+  initialClientProofs,
+  services = [],
 }: {
   contract: StudioContract;
   initialItems: ContractItem[];
@@ -126,6 +129,8 @@ export default function ContractEditor({
   bank: BankInfo;
   sameDayContracts: { id: string; title: string; client_name: string | null }[];
   pricelist: { name: string; price: number; unit: string | null }[];
+  initialClientProofs: { id: string; url: string; note: string | null; uploaded_at: string; plan_id: string | null }[];
+  services?: { id: string; name: string; clauses: string }[];
 }) {
   const conflictFor = (phone: string) => conflictByPhone[(phone || "").replace(/\D/g, "")] || null;
   const router = useRouter();
@@ -138,6 +143,7 @@ export default function ContractEditor({
     client_phone: contract.client_phone ?? "",
     client_email: contract.client_email ?? "",
     shoot_type: contract.shoot_type as ShootType,
+    service_id: contract.service_id ?? "",
     status: contract.status as ContractStatus,
     event_date: contract.event_date ?? "",
     event_time: contract.event_time ?? "",
@@ -150,8 +156,58 @@ export default function ContractEditor({
     source: contract.source ?? "",
     assigned_to: contract.assigned_to ?? "",
   });
+  const contractSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [contractSaved, setContractSaved] = useState<"idle" | "saving" | "saved">("idle");
+
+  async function autosaveContract(data: typeof f) {
+    setContractSaved("saving");
+    const { error } = await supabase
+      .from("studio_contracts")
+      .update({
+        title: data.title.trim() || "Hợp đồng",
+        code: data.code.trim() || null,
+        client_name: data.client_name.trim() || null,
+        client_phone: data.client_phone.replace(/\D/g, "") || null,
+        client_email: data.client_email.trim() || null,
+        shoot_type: data.shoot_type,
+        service_id: data.service_id || null,
+        status: data.status,
+        event_date: data.event_date || null,
+        event_time: data.event_time.trim() || null,
+        location: data.location.trim() || null,
+        note: data.note.trim() || null,
+        gallery_album_id: data.gallery_album_id || null,
+        delivery_due: data.delivery_due || null,
+        client_messenger: data.client_messenger.trim() || null,
+        selection_album_id: data.selection_album_id || null,
+        source: data.source || null,
+        ...(canAssign ? { assigned_to: data.assigned_to || null } : {}),
+      })
+      .eq("id", contract.id);
+    if (error) {
+      setContractSaved("idle");
+      toast(`Lỗi lưu: ${error.message}`);
+      return;
+    }
+    setContractSaved("saved");
+    setTimeout(() => setContractSaved("idle"), 1500);
+    // Sync to Google Calendar if a shoot date is set (fire-and-forget).
+    if (data.event_date) {
+      fetch("/api/gcal/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "contract", id: contract.id, action: "upsert" }),
+      }).catch(() => {});
+    }
+  }
+
   const set = (k: keyof typeof f, v: string | number) =>
-    setF((p) => ({ ...p, [k]: v }) as typeof p);
+    setF((p) => {
+      const next = { ...p, [k]: v } as typeof p;
+      if (contractSaveTimer.current) clearTimeout(contractSaveTimer.current);
+      contractSaveTimer.current = setTimeout(() => autosaveContract(next), 700);
+      return next;
+    });
 
   const [items, setItems] = useState<ItemRow[]>(
     initialItems.map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price }))
@@ -177,8 +233,26 @@ export default function ContractEditor({
   const [exp, setExp] = useState({ title: "", amount: 0, spent_at: today(), client_visible: true });
   const [plan, setPlan] = useState<ContractPaymentPlan[]>(initialPlan);
   const [planForm, setPlanForm] = useState({ label: "", amount: 0, due_date: "" });
+  const planSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  function autosavePlan(id: string, patch: Partial<ContractPaymentPlan>) {
+    setPlan((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    clearTimeout(planSaveTimers.current[id]);
+    planSaveTimers.current[id] = setTimeout(async () => {
+      await supabase.from("contract_payment_plan").update(patch).eq("id", id);
+    }, 600);
+  }
+  const [clientProofs, setClientProofs] = useState(initialClientProofs);
   const [planProof, setPlanProof] = useState<string>(""); // proof image for the next instalment
   const [proofBusy, setProofBusy] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null); // zoomed transfer-proof image
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
   const [products, setProducts] = useState<ContractProduct[]>(initialProducts);
   const [prodForm, setProdForm] = useState({ name: "", qty: 1, cost: 0 });
   const [quoteOptions, setQuoteOptions] = useState<ContractQuoteOption[]>(initialQuoteOptions);
@@ -202,6 +276,39 @@ export default function ContractEditor({
   const total = contractTotal(items);
   const collected = sumAmounts(payments);
   const balance = total - collected;
+
+  // Default deposit = 25% of contract total, rounded to nearest 500k (min 500k).
+  const depositOf = (t: number) => (t > 0 ? Math.max(500_000, Math.round((t * 0.25) / 500_000) * 500_000) : 0);
+  const depositAmt = depositOf(total);
+  const creatingDeposit = useRef(false);
+  const prevTotal = useRef(total);
+
+  // Auto-create the default "Cọc hợp đồng" instalment once the contract has a value.
+  useEffect(() => {
+    if (total <= 0 || plan.length > 0 || creatingDeposit.current) return;
+    creatingDeposit.current = true;
+    (async () => {
+      const { data } = await supabase
+        .from("contract_payment_plan")
+        .insert({ contract_id: contract.id, label: "Cọc hợp đồng", amount: depositAmt, position: 0 })
+        .select("*")
+        .single();
+      if (data) setPlan((p) => (p.length === 0 ? [data as ContractPaymentPlan] : p));
+      creatingDeposit.current = false;
+    })();
+  }, [total, plan.length, depositAmt, contract.id, supabase]);
+
+  // Keep the deposit synced to the item total — until studio edits it or marks it paid.
+  useEffect(() => {
+    if (prevTotal.current === total) return;
+    const oldDeposit = depositOf(prevTotal.current);
+    prevTotal.current = total;
+    const dep = plan.find((p) => p.label === "Cọc hợp đồng" && !p.paid);
+    if (dep && dep.amount === oldDeposit && dep.amount !== depositAmt) {
+      setPlan((p) => p.map((x) => (x.id === dep.id ? { ...x, amount: depositAmt } : x)));
+      supabase.from("contract_payment_plan").update({ amount: depositAmt }).eq("id", dep.id);
+    }
+  }, [total, plan, depositAmt, supabase]);
   const payroll = crew.reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const paidPayroll = crew.filter((c) => c.paid).reduce((s, c) => s + (Number(c.salary) || 0), 0);
   const expenseTotal = expenses.reduce((s, e) => s + (e.amount || 0), 0);
@@ -240,52 +347,6 @@ export default function ContractEditor({
   }
 
   // ── Save contract fields ───────────────────────────────────────
-  async function saveContract() {
-    if (reqMissing.title || reqMissing.code || reqMissing.client_name) {
-      toast("Cần nhập: Tên HĐ, Mã HĐ, Tên khách.");
-      return;
-    }
-    if (reqMissing.client_phone) {
-      toast("SĐT khách phải đủ 10 số.");
-      return;
-    }
-    if (!studioSigned) {
-      toast("Cần chữ ký studio (Bên A) trước khi lưu — ký ở mục “Chữ ký Bên A (Studio)”.");
-      return;
-    }
-    setBusy("contract");
-    const pendingStudioSig =
-      !contract.studio_signed_at && studioSignName.trim() && studioSignature
-        ? { studio_signed_name: studioSignName.trim(), studio_signature: studioSignature, studio_signed_at: new Date().toISOString() }
-        : {};
-    const { error } = await supabase
-      .from("studio_contracts")
-      .update({
-        title: f.title.trim() || "Hợp đồng",
-        code: f.code.trim() || null,
-        client_name: f.client_name.trim() || null,
-        client_phone: f.client_phone.replace(/\D/g, "") || null,
-        ...pendingStudioSig,
-        client_email: f.client_email.trim() || null,
-        shoot_type: f.shoot_type,
-        status: f.status,
-        event_date: f.event_date || null,
-        event_time: f.event_time.trim() || null,
-        location: f.location.trim() || null,
-        note: f.note.trim() || null,
-        gallery_album_id: f.gallery_album_id || null,
-        delivery_due: f.delivery_due || null,
-        client_messenger: f.client_messenger.trim() || null,
-        selection_album_id: f.selection_album_id || null,
-        source: f.source || null,
-        ...(canAssign ? { assigned_to: f.assigned_to || null } : {}),
-      })
-      .eq("id", contract.id);
-    setBusy(null);
-    toast(error ? `Lỗi: ${error.message}` : "Đã lưu thông tin hợp đồng.");
-    if (!error) router.refresh();
-  }
-
   // ── Items ──────────────────────────────────────────────────────
   async function saveItems() {
     setBusy("items");
@@ -585,6 +646,17 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
       if (payment) setPayments((p) => [payment as ContractPayment, ...p]);
       await supabase.from("contract_payment_plan").update({ paid: true, paid_at: nowIso, payment_id: pid }).eq("id", it.id);
       setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: true, paid_at: nowIso, payment_id: pid } : x)));
+      // Compute updated plan
+      const updatedPlan = plan.map((x) => (x.id === it.id ? { ...x, paid: true } : x));
+      const stillUnpaid = updatedPlan.filter((x) => !x.paid);
+      const newBalance = total - updatedPlan.reduce((s, x) => (x.paid ? s + x.amount : s), 0) - (payments.filter(p2 => !updatedPlan.some(pl => pl.payment_id === p2.id)).reduce((s, p2) => s + p2.amount, 0));
+      if (stillUnpaid.length === 0 && newBalance > 0) {
+        const { data: next } = await supabase
+          .from("contract_payment_plan")
+          .insert({ contract_id: contract.id, label: "Thanh toán toàn bộ hợp đồng", amount: newBalance, position: plan.length + 1 })
+          .select("*").single();
+        if (next) setPlan((p) => [...p, next as ContractPaymentPlan]);
+      }
     }
   }
   async function deletePlan(it: ContractPaymentPlan) {
@@ -735,7 +807,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1.5">{SHOOT_TYPE_LABEL[f.shoot_type]}{f.code ? ` · ${f.code}` : ""}</p>
+          <p className="eyebrow mb-1.5">{services.find((s) => s.id === f.service_id)?.name || SHOOT_TYPE_LABEL[f.shoot_type]}{f.code ? ` · ${f.code}` : ""}</p>
           <h1 className="font-serif text-3xl font-medium">{f.title || "Hợp đồng"}</h1>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -754,10 +826,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </select>
           </label>
           <div className="flex flex-col items-end">
-            <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary px-4 py-2 text-xs">
-              <Check size={14} /> {busy === "contract" ? "Đang lưu…" : "Lưu hợp đồng"}
-            </button>
-            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "#c77b7b" }}>Cần chữ ký studio để lưu</span>}
+            <span className="flex items-center gap-1 px-3 py-2 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
+              {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu</> : "Tự động lưu"}
+            </span>
+            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "#c77b7b" }}>Chưa có chữ ký studio</span>}
           </div>
           <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">
             Xem như khách
@@ -765,9 +837,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           <button onClick={duplicateContract} disabled={busy === "dup"} className="btn-ghost px-3 py-2 text-xs">
             <Copy size={14} /> {busy === "dup" ? "Đang sao…" : "Nhân bản"}
           </button>
-          <button onClick={deleteContract} disabled={busy === "delete"} className="btn-danger px-3 py-2 text-xs">
-            <Trash2 size={14} /> Xoá
-          </button>
+          {f.status === "cancelled" && (
+            <button onClick={deleteContract} disabled={busy === "delete"} className="btn-danger px-3 py-2 text-xs">
+              <Trash2 size={14} /> Xoá
+            </button>
+          )}
         </div>
       </div>
 
@@ -804,14 +878,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               : "Khách chưa mở link"}
           </p>
         </div>
-        <ZaloButton
-          phone={f.client_phone}
-          label="Gửi khách qua Zalo"
-          message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
-        />
         <MessengerButton
           link={f.client_messenger}
-          label="Nhắn Messenger"
+          label="Gửi cho khách"
           message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
         />
         <EmailButton
@@ -842,8 +911,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
           return (
             <>
-              <ZaloButton phone={f.client_phone} label="Zalo" message={reviewMsg} />
-              <MessengerButton link={f.client_messenger} label="Messenger" message={reviewMsg} />
+              <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
               <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
             </>
           );
@@ -951,15 +1019,32 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="label">Loại dịch vụ</label>
-                  <select className="input" value={f.shoot_type} onChange={(e) => set("shoot_type", e.target.value)}>
-                    {SHOOT_TYPES.map((k) => (
-                      <option key={k} value={k}>{SHOOT_TYPE_LABEL[k]}</option>
-                    ))}
-                  </select>
+                  {services.length > 0 ? (
+                    <select
+                      className="input"
+                      value={f.service_id}
+                      onChange={(e) => {
+                        const svc = services.find((s) => s.id === e.target.value);
+                        // Switching service: link it, force legacy type to "other",
+                        // and refresh the (read-only) clauses from the service.
+                        setF((p) => ({ ...p, service_id: e.target.value, shoot_type: "other", note: svc ? svc.clauses : p.note }));
+                        if (contractSaveTimer.current) clearTimeout(contractSaveTimer.current);
+                        const next = { ...f, service_id: e.target.value, shoot_type: "other" as ShootType, note: svc ? svc.clauses : f.note };
+                        autosaveContract(next);
+                      }}
+                    >
+                      <option value="">Khác</option>
+                      {services.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className="input" value="Khác" disabled />
+                  )}
                 </div>
                 <div>
                   <label className="label">Ngày</label>
-                  <input type="date" className="input" value={f.event_date} onChange={(e) => set("event_date", e.target.value)} />
+                  <DateInput value={f.event_date} onChange={(v) => set("event_date", v)} />
                 </div>
                 <div>
                   <label className="label">Giờ</label>
@@ -991,7 +1076,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
               <div>
                 <label className="label">Hạn giao ảnh</label>
-                <input type="date" className="input" value={f.delivery_due} onChange={(e) => set("delivery_due", e.target.value)} />
+                <DateInput value={f.delivery_due} onChange={(v) => set("delivery_due", v)} />
               </div>
               {canAssign && staffList.length > 0 && (
                 <div>
@@ -1027,20 +1112,27 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                     <option key={a.id} value={a.id}>{a.title}</option>
                   ))}
                 </select>
-                {selectionAlbums.length === 0 && (
+                {selectionAlbums.length === 0 ? (
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
                     Chưa có album chọn ảnh. Tạo album ở “Tạo album” rồi quay lại gắn.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                    Mẹo: nếu dùng Dự án hợp nhất, chỉ cần gắn ô này — link sẽ tự chuyển sang ảnh giao khách khi bạn đổi giai đoạn.
                   </p>
                 )}
               </div>
               <div>
-                <label className="label">Ghi chú / Điều khoản</label>
-                <textarea className="input min-h-[80px]" value={f.note} onChange={(e) => set("note", e.target.value)} />
-                <ClauseInserter onInsert={(t) => set("note", f.note.trim() ? `${f.note.trim()}\n\n${t}` : t)} />
+                <label className="label">Điều khoản hợp đồng</label>
+                <textarea className="input min-h-[120px]" value={f.note} readOnly style={{ opacity: 0.85, cursor: "default" }} />
+                <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                  Điều khoản cố định theo dịch vụ — không sửa ở đây.{" "}
+                  <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Sửa trong Dịch vụ &amp; điều khoản</Link>
+                </p>
               </div>
-              <button onClick={saveContract} disabled={busy === "contract"} className="btn-primary">
-                {busy === "contract" ? "Đang lưu…" : "Lưu thông tin"}
-              </button>
+              <p className="flex items-center gap-1 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
+                {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu tự động</> : "Thông tin tự động lưu khi nhập"}
+              </p>
             </div>
           </div>
 
@@ -1103,36 +1195,6 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </button>
           </div>
 
-          {/* Quote options */}
-          <div className="card p-6">
-            <h2 className="mb-1 font-serif text-lg font-medium">Báo giá nhiều phương án</h2>
-            <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>Tạo 2–3 gói cho khách chọn ngay trong cổng. Khi khách chọn, bạn sẽ nhận thông báo.</p>
-            {quoteOptions.length === 0 ? (
-              <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có phương án nào.</p>
-            ) : (
-              <ul className="space-y-2">
-                {quoteOptions.map((o) => {
-                  const chosen = contract.chosen_quote_option_id === o.id;
-                  return (
-                    <li key={o.id} className="flex items-start justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)", border: chosen ? "1px solid var(--accent)" : "1px solid transparent" }}>
-                      <div>
-                        <p className="text-sm font-medium">{o.name} · {vnd(o.price)} {chosen && <span style={{ color: "var(--accent)" }}>· ✓ khách chọn</span>}</p>
-                        {o.description && <p className="text-[11px]" style={{ color: "var(--text3)" }}>{o.description}</p>}
-                      </div>
-                      <button onClick={() => deleteOption(o.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <div className="mt-3 grid gap-2 sm:grid-cols-12">
-              <input className="input sm:col-span-5" placeholder="Tên gói (Cơ bản…)" value={optForm.name} onChange={(e) => setOptForm((p) => ({ ...p, name: e.target.value }))} />
-              <MoneyInput className="input sm:col-span-3" placeholder="Giá" value={optForm.price} onChange={(n) => setOptForm((p) => ({ ...p, price: n }))} />
-              <input className="input sm:col-span-4" placeholder="Mô tả ngắn" value={optForm.description} onChange={(e) => setOptForm((p) => ({ ...p, description: e.target.value }))} />
-            </div>
-            <button onClick={addOption} className="btn-ghost mt-3"><Plus size={15} /> Thêm phương án</button>
-          </div>
-
           {/* Payments — unified schedule + collection */}
           <div className="card p-6">
             <div className="mb-1 flex items-center justify-between">
@@ -1151,22 +1213,50 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   const overdue = !it.paid && it.due_date && it.due_date < todayStr;
                   const linked = it.payment_id ? payments.find((p) => p.id === it.payment_id) : undefined;
                   return (
-                    <li key={it.id} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                      <div>
-                        <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
-                        <p className="text-[11px]" style={{ color: overdue ? "#c77b7b" : it.paid ? "#7bb38a" : "var(--text3)" }}>
-                          {it.paid
-                            ? `Đã thu${it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}`
-                            : `${it.due_date ? `hạn ${it.due_date}` : "không hạn"}${overdue ? " · quá hạn" : ""}`}
-                        </p>
-                      </div>
+                    <li key={it.id} className="rounded-xl px-3 py-2.5 space-y-2" style={{ background: "var(--surface2)" }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-1.5 min-w-0">
+                          {it.paid ? (
+                            <>
+                              <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
+                              <p className="text-[11px]" style={{ color: "#7bb38a" }}>✓ Đã thu{it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}</p>
+                            </>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              <input
+                                className="input h-8 text-sm font-medium flex-1 min-w-[120px]"
+                                value={it.label}
+                                onChange={(e) => autosavePlan(it.id, { label: e.target.value })}
+                              />
+                              <MoneyInput
+                                className="input h-8 text-sm w-32"
+                                value={it.amount}
+                                onChange={(n) => autosavePlan(it.id, { amount: n })}
+                              />
+                              <DateInput
+                                className="input h-8 text-sm"
+                                wrapperClassName="w-36"
+                                value={it.due_date ?? ""}
+                                onChange={(v) => autosavePlan(it.id, { due_date: v || null })}
+                              />
+                              {overdue && <span className="text-[11px] self-center" style={{ color: "#c77b7b" }}>quá hạn</span>}
+                            </div>
+                          )}
+                          {/* Client proofs for this instalment */}
+                          {clientProofs.filter((cp) => cp.plan_id === it.id).map((cp) => (
+                            <button key={cp.id} type="button" onClick={() => setLightbox(cp.url)} className="inline-block cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={cp.url} alt="CK" className="h-10 w-10 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                            </button>
+                          ))}
+                        </div>
                       <div className="flex items-center gap-3">
                         {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
                         {it.paid && linked?.proof_url && (
-                          <a href={linked.proof_url} target="_blank" rel="noreferrer" title="Xem ảnh chuyển khoản">
+                          <button type="button" onClick={() => setLightbox(linked.proof_url!)} className="cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={linked.proof_url} alt="CK" className="h-7 w-7 rounded object-cover" style={{ border: "1px solid var(--border)" }} />
-                          </a>
+                          </button>
                         )}
                         {it.paid && linked && (
                           <label className="cursor-pointer text-[11px]" style={{ color: "var(--text3)" }} title="Tải ảnh đã chuyển khoản">
@@ -1182,6 +1272,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                         </button>
                         <button onClick={() => deletePlan(it)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
                       </div>
+                      </div>
                     </li>
                   );
                 })}
@@ -1189,10 +1280,20 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
 
             {/* Add an instalment — optionally mark it collected immediately */}
+            {plan.length === 0 && total > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  className="btn-ghost text-xs"
+                  onClick={() => setPlanForm({ label: "Cọc hợp đồng", amount: depositAmt, due_date: "" })}
+                >
+                  Cọc 25% · {vnd(depositAmt)}
+                </button>
+              </div>
+            )}
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-5" placeholder="Tên đợt (vd: Cọc, Đợt 2)" value={planForm.label} onChange={(e) => setPlanForm((p) => ({ ...p, label: e.target.value }))} />
               <MoneyInput className="input sm:col-span-4" placeholder="Số tiền" value={planForm.amount} onChange={(n) => setPlanForm((p) => ({ ...p, amount: n }))} />
-              <input type="date" className="input sm:col-span-3" value={planForm.due_date} onChange={(e) => setPlanForm((p) => ({ ...p, due_date: e.target.value }))} />
+              <DateInput wrapperClassName="sm:col-span-3" value={planForm.due_date} onChange={(v) => setPlanForm((p) => ({ ...p, due_date: v }))} />
             </div>
             {/* Quick amounts */}
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1214,16 +1315,31 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => pickPlanProof(e.target.files?.[0] ?? null)} />
               </label>
               {planProof && (
-                <a href={planProof} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs" style={{ color: "var(--text2)" }}>
+                <button type="button" onClick={() => setLightbox(planProof)} className="flex items-center gap-1 text-xs cursor-zoom-in" style={{ color: "var(--text2)" }} title="Phóng to ảnh">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={planProof} alt="proof" className="h-8 w-8 rounded object-cover" style={{ border: "1px solid var(--border)" }} /> đính kèm khi “đã thu”
-                </a>
+                </button>
               )}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={() => addPlan(false)} disabled={busy === "plan"} className="btn-ghost"><Plus size={15} /> {busy === "plan" ? "Đang thêm…" : "Thêm đợt thu"}</button>
               <button onClick={() => addPlan(true)} disabled={busy === "planPaid"} className="btn-ghost" style={{ color: "#7bb38a" }}><Check size={15} /> {busy === "planPaid" ? "Đang lưu…" : "Thêm & đã thu"}</button>
             </div>
+
+            {/* Unlinked client proofs (not tied to any instalment) */}
+            {clientProofs.filter(cp => !cp.plan_id).length > 0 && (
+              <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                <p className="mb-2 text-xs font-medium" style={{ color: "var(--text3)" }}>Ảnh CK từ khách (chưa gắn đợt):</p>
+                <div className="flex flex-wrap gap-2">
+                  {clientProofs.filter(cp => !cp.plan_id).map(cp => (
+                    <button key={cp.id} type="button" onClick={() => setLightbox(cp.url)} className="cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={cp.url} alt="CK" className="h-14 w-14 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Backward-compat: payments recorded before the merge (no instalment) */}
             {orphanPayments.length > 0 && (
@@ -1286,7 +1402,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-6" placeholder="Nội dung chi" value={exp.title} onChange={(e) => setExp((p) => ({ ...p, title: e.target.value }))} />
               <MoneyInput className="input sm:col-span-3" placeholder="Số tiền" value={exp.amount} onChange={(n) => setExp((p) => ({ ...p, amount: n }))} />
-              <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
+              <DateInput wrapperClassName="sm:col-span-3" value={exp.spent_at} onChange={(v) => setExp((p) => ({ ...p, spent_at: v }))} />
             </div>
             <label className="mt-3 flex items-center gap-2 text-xs" style={{ color: "var(--text2)" }}>
               <input type="checkbox" checked={exp.client_visible} onChange={(e) => setExp((p) => ({ ...p, client_visible: e.target.checked }))} />
@@ -1309,7 +1425,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </p>
             {f.event_date && (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                <span className="text-sm">Buổi chính · {f.event_date}{f.event_time ? ` · ${f.event_time}` : ""}</span>
+                <span className="text-sm">Buổi chính · {fmtDateLunar(f.event_date)}{f.event_time ? ` · ${f.event_time}` : ""}</span>
                 <CalendarButtons compact event={{ date: f.event_date, time: f.event_time, title: f.title, location: f.location }} />
               </div>
             )}
@@ -1321,7 +1437,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                     <div>
                       <p className="text-sm font-medium">{m.title}</p>
-                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text3)" }}>{fmtDate(m.event_date)}{m.event_time ? ` · ${m.event_time}` : ""}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: f.location }} />
@@ -1333,7 +1449,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             )}
             <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-12" style={{ borderColor: "var(--border)" }}>
               <input className="input sm:col-span-6" placeholder="Tên mốc (vd: Ngày cưới)" value={ms.title} onChange={(e) => setMs((p) => ({ ...p, title: e.target.value }))} />
-              <input type="date" className="input sm:col-span-4" value={ms.event_date} onChange={(e) => setMs((p) => ({ ...p, event_date: e.target.value }))} />
+              <DateInput wrapperClassName="sm:col-span-4" value={ms.event_date} onChange={(v) => setMs((p) => ({ ...p, event_date: v }))} />
               <input className="input sm:col-span-2" placeholder="08:00" value={ms.event_time} onChange={(e) => setMs((p) => ({ ...p, event_time: e.target.value }))} />
             </div>
             <button onClick={addMilestone} disabled={busy === "milestone"} className="btn-ghost mt-3">
@@ -1442,9 +1558,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           </button>
                         </div>
                         <div className="flex items-center gap-2">
-                          <ZaloButton
-                            phone={c.phone}
-                            label="Nhắc Zalo"
+                          <MessengerButton
+                            label="Gửi cho thợ"
                             message={shootReminderMessage({
                               name: c.name,
                               title: f.title,
@@ -1595,6 +1710,45 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           </div>
         </div>
       </div>
+
+      {/* Lightbox: zoom a transfer-proof image in place (no new tab).
+          Portalled to <body> so the fixed overlay covers the full viewport and
+          isn't trapped by the studio shell's transformed (.page-in) ancestor. */}
+      {mounted && lightbox && createPortal(
+        <div
+          onClick={() => setLightbox(null)}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 cursor-zoom-out"
+          style={{ background: "rgba(0,0,0,.85)", backdropFilter: "blur(4px)" }}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            aria-label="Đóng"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}
+          >
+            <X size={20} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Ảnh chuyển khoản"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-[92vw] rounded-lg object-contain cursor-default"
+            style={{ boxShadow: "0 12px 48px rgba(0,0,0,.5)" }}
+          />
+          <a
+            href={lightbox}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-xs font-semibold"
+            style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}
+          >
+            Mở ảnh gốc ↗
+          </a>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

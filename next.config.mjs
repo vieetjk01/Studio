@@ -18,14 +18,35 @@ const nextConfig = {
     ],
   },
   async headers() {
+    // Content-Security-Policy. Deliberately scoped to script-src + a few
+    // structural directives: this blocks injected external <script> (the main
+    // XSS vector) and base-tag / plugin / clickjacking abuse, WITHOUT
+    // restricting img/connect/frame/style — so the Google Picker, Supabase
+    // calls, Drive images and VietQR/YouTube/Vimeo embeds can't break.
+    // 'unsafe-inline'/'unsafe-eval' are kept because Next ships an inline
+    // bootstrap and the Google Picker (gapi) relies on eval.
+    const csp = [
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.google.com https://*.gstatic.com https://*.googleapis.com https://apis.google.com https://accounts.google.com https://challenges.cloudflare.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://accounts.google.com",
+      "frame-ancestors 'self'",
+      "upgrade-insecure-requests",
+    ].join("; ");
     return [
       {
-        // Allow the Google Identity Services / Picker popup to work: a stricter
-        // COOP severs the opener↔popup link and breaks window.closed polling
-        // (Google then reports "popup_closed"). This value keeps popup access.
         source: "/:path*",
         headers: [
+          // Allow the Google Identity Services / Picker popup to work
           { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          // H-4: Security headers
+          { key: "Content-Security-Policy", value: csp },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
         ],
       },
     ];

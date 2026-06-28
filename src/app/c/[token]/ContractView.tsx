@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package } from "lucide-react";
+import { fmtDate, fmtDateLunar } from "@/lib/date";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package, Upload } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
@@ -49,11 +50,12 @@ type Item = { id: string; name: string; qty: number; unit_price: number };
 type Payment = { id: string; amount: number; kind: PaymentKind; paid_at: string };
 type Milestone = { id: string; title: string; event_date: string; event_time: string | null; note: string | null };
 type QuoteOption = { id: string; name: string; price: number; description: string | null };
-type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean };
+type PlanRow = { id: string; label: string; amount: number; due_date: string | null; paid: boolean; paid_at: string | null };
 type ExpenseRow = { id: string; title: string; amount: number; category: string | null; spent_at: string };
 type TaskRow = { id: string; label: string; done: boolean };
 type ProductRow = { id: string; name: string; qty: number; cost: number; status: string };
 type Gallery = { slug: string; title: string };
+type Selection = { slug: string; title: string; phase?: string };
 
 type Lang = "vi" | "en";
 const TR = {
@@ -108,7 +110,7 @@ export default function ContractView({ token }: { token: string }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
-  const [selection, setSelection] = useState<Gallery | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanRow[]>([]);
@@ -117,6 +119,9 @@ export default function ContractView({ token }: { token: string }) {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [bank, setBank] = useState<BankInfo>({ bin: null, account: null, holder: null, name: null });
   const [paidReported, setPaidReported] = useState(false);
+  const [proofUploading, setProofUploading] = useState(false);
+  const [proofUrls, setProofUrls] = useState<string[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
   const [qr, setQr] = useState("");
   const [lang, setLang] = useState<Lang>("vi");
   const t = (k: keyof typeof TR.vi) => TR[lang][k];
@@ -218,6 +223,8 @@ export default function ContractView({ token }: { token: string }) {
       setSent(true);
       setEditMsg("");
       setTimeout(() => setSent(false), 4000);
+    } else {
+      alert(t("genericErr"));
     }
   }
 
@@ -228,6 +235,23 @@ export default function ContractView({ token }: { token: string }) {
       body: JSON.stringify({ action: "paid", phone }),
     });
     if (res.ok) setPaidReported(true);
+    else alert(t("genericErr"));
+  }
+
+  async function uploadProof(file: File, planId?: string) {
+    setProofUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    if (planId) form.append("plan_id", planId);
+    const res = await fetch(`/api/c/${token}/proof`, { method: "POST", body: form });
+    if (res.ok) {
+      const { url } = await res.json();
+      setProofUrls((p) => [...p, url]);
+      setPaidReported(true);
+    } else {
+      alert(t("genericErr"));
+    }
+    setProofUploading(false);
   }
 
   async function chooseQuote(optionId: string) {
@@ -237,6 +261,7 @@ export default function ContractView({ token }: { token: string }) {
       body: JSON.stringify({ action: "choose_quote", phone, option_id: optionId }),
     });
     if (res.ok) setChosenQuote(optionId);
+    else alert(t("genericErr"));
   }
 
   async function submitBrief() {
@@ -289,6 +314,7 @@ export default function ContractView({ token }: { token: string }) {
     });
     setSigning(false);
     if (res.ok) await fetchContract(phone);
+    else setErr(t("genericErr"));
   }
 
   if (!contract) {
@@ -304,7 +330,9 @@ export default function ContractView({ token }: { token: string }) {
           <h1 className="mt-4 font-serif text-2xl font-medium">{t("portalTitle")}</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>{t("gatePrompt")}</p>
           <input className="input mt-5 text-center" placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} />
-          {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
+          {err && (
+            <p className="mt-3 rounded-lg px-3 py-2 text-sm font-medium" style={{ background: "var(--s-redS)", color: "var(--s-red)" }}>{err}</p>
+          )}
           <button type="submit" disabled={loading} className="btn-primary mt-4 w-full">
             {loading ? t("opening") : t("view")}
           </button>
@@ -358,7 +386,7 @@ export default function ContractView({ token }: { token: string }) {
           <div className="mt-4 space-y-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center gap-2"><FileText size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Gói dịch vụ" : "Service"}: <b>{SHOOT_TYPE_LABEL[contract.shoot_type]}</b></div>
             {(contract.event_date || contract.event_time) && (
-              <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Ngày chính" : "Main date"}: {contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
+              <div className="flex items-center gap-2"><Calendar size={15} style={{ color: "var(--text3)" }} /> {lang === "vi" ? "Ngày chính" : "Main date"}: {fmtDateLunar(contract.event_date)}{contract.event_time ? ` · ${contract.event_time}` : ""}</div>
             )}
             {contract.location && (
               <div className="flex items-center gap-2"><MapPin size={15} style={{ color: "var(--text3)" }} /> {contract.location}</div>
@@ -408,7 +436,7 @@ export default function ContractView({ token }: { token: string }) {
                     <p className="font-medium">{lang === "vi" ? "Buổi chính" : "Main session"}{contract.title ? ` — ${contract.title}` : ""}</p>
                     {contract.location && <p className="text-xs" style={{ color: "var(--text3)" }}>📍 {contract.location}</p>}
                   </div>
-                  <span style={{ color: "var(--text2)" }}>{contract.event_date}{contract.event_time ? ` · ${contract.event_time}` : ""}</span>
+                  <span style={{ color: "var(--text2)" }}>{fmtDateLunar(contract.event_date)}{contract.event_time ? ` · ${contract.event_time}` : ""}</span>
                   <CalendarButtons compact event={{ date: contract.event_date, time: contract.event_time, title: contract.title, location: contract.location }} />
                 </li>
               )}
@@ -419,7 +447,7 @@ export default function ContractView({ token }: { token: string }) {
                     <p>{m.title}</p>
                     {m.note && <p className="text-xs" style={{ color: "var(--text3)" }}>{m.note}</p>}
                   </div>
-                  <span style={{ color: "var(--text2)" }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</span>
+                  <span style={{ color: "var(--text2)" }}>{fmtDateLunar(m.event_date)}{m.event_time ? ` · ${m.event_time}` : ""}</span>
                   <CalendarButtons compact event={{ date: m.event_date, time: m.event_time, title: m.title, location: contract.location }} />
                 </li>
               ))}
@@ -434,10 +462,10 @@ export default function ContractView({ token }: { token: string }) {
             rel="noreferrer"
             className="card mt-6 flex items-center gap-3 p-5 transition-colors hover:bg-[var(--surface2)]"
           >
-            <ImagePlus size={20} style={{ color: "var(--accent)" }} />
+            {selection.phase === "delivery" ? <Images size={20} style={{ color: "var(--accent)" }} /> : <ImagePlus size={20} style={{ color: "var(--accent)" }} />}
             <div className="flex-1">
-              <p className="font-serif text-lg font-medium">{t("pickPhotos")}</p>
-              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · {t("pickPhotosSub")}</p>
+              <p className="font-serif text-lg font-medium">{selection.phase === "delivery" ? t("viewPhotos") : t("pickPhotos")}</p>
+              <p className="text-xs" style={{ color: "var(--text3)" }}>{selection.title} · {selection.phase === "delivery" ? t("viewPhotosSub") : t("pickPhotosSub")}</p>
             </div>
             <span className="text-sm" style={{ color: "var(--accent)" }}>{t("open")}</span>
           </a>
@@ -488,44 +516,116 @@ export default function ContractView({ token }: { token: string }) {
             <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Đã thanh toán / cọc" : "Paid / deposit"}</dt><dd style={{ color: "#7bb38a" }}>− {vnd(collected)}</dd></div>
             <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</dd></div>
           </dl>
-          {payments.length > 0 && (
-            <ul className="mt-3 space-y-1 text-xs" style={{ color: "var(--text3)" }}>
-              {payments.map((p) => (
-                <li key={p.id} className="flex justify-between">
-                  <span>{PAYMENT_KIND_LABEL[p.kind]} · {p.paid_at}</span>
-                  <span>{vnd(p.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {balance > 0 && (
+          {/* Payment plan — all instalments */}
+          {plan.length > 0 && (
             <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-              <p className="text-sm font-medium">{lang === "vi" ? "Thanh toán / chuyển khoản" : "Payment"}</p>
-              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Bấm vào nút bên dưới để hiện mã QR chuyển khoản." : "Tap a button below to reveal the transfer QR."}</p>
-              {bank.bin && bank.account ? (
-                <div className="flex flex-wrap gap-2">
-                  {plan.filter((p) => !p.paid && p.amount > 0).length > 0 ? (
-                    plan.filter((p) => !p.paid && p.amount > 0).map((p) => (
-                      <VietQRButton key={p.id} bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${p.label} · ${vnd(p.amount)}`} />
-                    ))
-                  ) : (
-                    <VietQRButton bank={bank} amount={balance} addInfo={(contract.code || contract.title || "").slice(0, 25)} label={`${lang === "vi" ? "Thanh toán" : "Pay"} · ${vnd(balance)}`} />
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
-              )}
-              <div className="mt-3">
-                {paidReported ? (
-                  <p className="text-sm" style={{ color: "#7bb38a" }}>✓ {lang === "vi" ? "Đã gửi thông báo, studio sẽ đối soát." : "Sent — the studio will reconcile."}</p>
-                ) : (
-                  <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
-                    {lang === "vi" ? "Tôi đã chuyển khoản" : "I have transferred"}
-                  </button>
-                )}
-              </div>
+              <p className="mb-3 text-sm font-medium">{lang === "vi" ? "Kế hoạch thanh toán" : "Payment schedule"}</p>
+              <ul className="space-y-2">
+                {plan.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--surface2)" }}>
+                    <div>
+                      <p className="font-medium">{p.label} · {vnd(p.amount)}</p>
+                      <p className="text-[11px]" style={{ color: p.paid ? "#7bb38a" : "var(--text3)" }}>
+                        {p.paid
+                          ? `✓ ${lang === "vi" ? "Đã thanh toán" : "Paid"}${p.paid_at ? ` · ${p.paid_at.slice(0, 10)}` : ""}`
+                          : p.due_date
+                            ? `${lang === "vi" ? "Hạn" : "Due"}: ${fmtDate(p.due_date)}`
+                            : lang === "vi" ? "Chưa thanh toán" : "Pending"}
+                      </p>
+                    </div>
+                    {!p.paid && bank.bin && (
+                      <VietQRButton bank={bank} amount={p.amount} addInfo={(contract.code || contract.title || "").slice(0, 25)} label="QR" />
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
+
+          {/* Bank info + upload proof */}
+          <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium">{lang === "vi" ? "Thông tin chuyển khoản" : "Bank transfer"}</p>
+            {bank.account ? (
+              <div className="mb-3 rounded-lg p-3 text-xs space-y-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                {bank.name && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Ngân hàng" : "Bank"}:</span><span className="font-medium">{bank.name}</span></div>}
+                <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Số tài khoản" : "Account"}:</span><span className="font-medium tracking-wider">{bank.account}</span></div>
+                {bank.holder && <div className="flex gap-2"><span style={{ color: "var(--text3)" }}>{lang === "vi" ? "Chủ tài khoản" : "Holder"}:</span><span className="font-medium uppercase">{bank.holder}</span></div>}
+              </div>
+            ) : (
+              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Liên hệ studio để nhận thông tin chuyển khoản." : "Contact the studio for transfer details."}</p>
+            )}
+
+            {/* Uploaded proofs */}
+            {proofUrls.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-2 text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Ảnh chuyển khoản đã gửi:" : "Transfer proofs sent:"}</p>
+                <div className="flex flex-wrap gap-2">
+                  {proofUrls.map((u) => (
+                    <a key={u} href={u} target="_blank" rel="noreferrer">
+                      <img src={u} alt="proof" className="h-16 w-16 rounded-lg object-cover" style={{ border: "1px solid var(--border)" }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Select which instalment the proof belongs to */}
+            {plan.filter((p) => !p.paid).length > 0 && (
+              <select
+                className="input mb-2 text-sm"
+                value={selectedPlanId}
+                onChange={(e) => setSelectedPlanId(e.target.value)}
+              >
+                <option value="">{lang === "vi" ? "— Chọn đợt thanh toán —" : "— Select instalment —"}</option>
+                {plan.filter((p) => !p.paid).map((p) => (
+                  <option key={p.id} value={p.id}>{p.label} · {vnd(p.amount)}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Drag-drop upload zone */}
+            <label
+              className="relative block w-full cursor-pointer rounded-2xl border-2 border-dashed py-8 text-center transition-colors"
+              style={{
+                borderColor: proofUploading ? "var(--brand)" : "var(--border2)",
+                background: proofUploading ? "var(--brandSoft)" : "transparent",
+                opacity: proofUploading ? 0.8 : 1,
+              }}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.background = "var(--brandSoft)"; }}
+              onDragLeave={(e) => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.background = ""; }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderColor = "";
+                e.currentTarget.style.background = "";
+                const f = e.dataTransfer.files?.[0];
+                if (f && f.type.startsWith("image/")) uploadProof(f, selectedPlanId || undefined);
+              }}
+            >
+              <input type="file" accept="image/*" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" disabled={proofUploading}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f, selectedPlanId || undefined); e.target.value = ""; }} />
+              <Upload size={22} className="mx-auto mb-2" style={{ color: proofUploading ? "var(--brand)" : "var(--text3)" }} />
+              <p className="text-sm font-medium" style={{ color: proofUploading ? "var(--brand)" : "var(--text2)" }}>
+                {proofUploading
+                  ? (lang === "vi" ? "Đang tải lên…" : "Uploading…")
+                  : (lang === "vi" ? "Kéo ảnh vào đây hoặc bấm để chọn" : "Drag photo here or tap to select")}
+              </p>
+              {!proofUploading && (
+                <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>
+                  {lang === "vi" ? "Ảnh chuyển khoản ngân hàng • Tối đa 10MB" : "Bank transfer screenshot • Max 10MB"}
+                </p>
+              )}
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {!paidReported && (
+                <button onClick={reportPaid} className="btn-ghost px-4 py-2 text-sm">
+                  {lang === "vi" ? "Tôi đã chuyển khoản (không có ảnh)" : "I have transferred (no screenshot)"}
+                </button>
+              )}
+              {paidReported && (
+                <p className="py-2 text-sm" style={{ color: "var(--s-green)" }}>✓ {lang === "vi" ? "Đã thông báo, studio sẽ đối soát." : "Notified — studio will reconcile."}</p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Surcharges / extra costs */}
@@ -772,7 +872,7 @@ function PrintDoc({
           <tr><td style={{ padding: "3px 0", width: 130 }}>Bên A (Studio):</td><td><b>{studioName}</b>{studioPhone ? ` · ĐT: ${studioPhone}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Bên B (Khách hàng):</td><td><b>{contract.client_name || "—"}</b>{contract.client_phone ? ` · ĐT: ${contract.client_phone}` : ""}{contract.client_email ? ` · ${contract.client_email}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Gói dịch vụ:</td><td>{SHOOT_TYPE_LABEL[contract.shoot_type]}</td></tr>
-          <tr><td style={{ padding: "3px 0" }}>Ngày chính:</td><td>{contract.event_date || "—"}{contract.event_time ? ` · ${contract.event_time}` : ""}</td></tr>
+          <tr><td style={{ padding: "3px 0" }}>Ngày chính:</td><td>{fmtDateLunar(contract.event_date) || "—"}{contract.event_time ? ` · ${contract.event_time}` : ""}</td></tr>
           <tr><td style={{ padding: "3px 0" }}>Địa điểm:</td><td>{contract.location || "—"}</td></tr>
         </tbody>
       </table>
@@ -785,7 +885,7 @@ function PrintDoc({
               {milestones.map((m) => (
                 <tr key={m.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "4px 0" }}>{m.title}</td>
-                  <td style={{ padding: "4px 0", textAlign: "right", width: 180 }}>{m.event_date}{m.event_time ? ` · ${m.event_time}` : ""}</td>
+                  <td style={{ padding: "4px 0", textAlign: "right", width: 180 }}>{fmtDateLunar(m.event_date)}{m.event_time ? ` · ${m.event_time}` : ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -846,7 +946,7 @@ function PrintDoc({
               </div>
               <div>{contract.studio_signed_name || studioName}</div>
               {contract.studio_signed_at && (
-                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {new Date(contract.studio_signed_at).toLocaleDateString("vi-VN")}</div>
+                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {fmtDate(contract.studio_signed_at)}</div>
               )}
             </td>
             <td style={{ width: "50%" }}>
@@ -859,7 +959,7 @@ function PrintDoc({
               </div>
               <div>{contract.client_signed_name || contract.client_name || ""}</div>
               {contract.client_signed_at && (
-                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {new Date(contract.client_signed_at).toLocaleDateString("vi-VN")}</div>
+                <div style={{ fontSize: 11, color: "#555" }}>Ký ngày {fmtDate(contract.client_signed_at)}</div>
               )}
             </td>
           </tr>

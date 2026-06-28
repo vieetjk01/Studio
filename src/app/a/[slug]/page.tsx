@@ -1,34 +1,53 @@
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllPhotos } from "@/lib/photos";
 import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Brand from "@/components/Brand";
+import { buildAlbumMetadata } from "@/lib/album-meta";
+import { MAIN_HOST } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { data } = await createAdminClient()
     .from("albums")
-    .select("title")
+    .select("title, description, cover_url, owner_id")
     .eq("slug", params.slug)
     .maybeSingle();
-  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+  if (!data?.title) return { title: "mstudo" };
+  return buildAlbumMetadata({
+    title: data.title,
+    description: data.description,
+    coverUrl: data.cover_url,
+    host: MAIN_HOST,
+    path: `/a/${params.slug}`,
+    ownerId: data.owner_id,
+  });
 }
 
 export default async function PublicAlbumPage({
   params,
+  searchParams,
 }: {
   params: { slug: string };
+  searchParams?: { share?: string; s?: string };
 }) {
   const admin = createAdminClient();
 
   const { data: album } = await admin
     .from("albums")
     .select(
-      "id, owner_id, slug, title, description, status, password_hash, selection_limit, watermark_enabled, watermark_text, download_enabled"
+      "id, owner_id, slug, title, description, status, password_hash, selection_limit, watermark_enabled, watermark_text, download_enabled, phase"
     )
     .eq("slug", params.slug)
     .single();
+
+  // Unified project: once the studio switches to the delivery phase, the same
+  // client link leads to the finished-photo delivery experience.
+  if (album && album.phase === "delivery") {
+    redirect(`/album/${params.slug}`);
+  }
 
   if (!album || album.status !== "published") {
     return (
@@ -45,6 +64,18 @@ export default async function PublicAlbumPage({
   }
 
   const hasPassword = !!album.password_hash;
+
+  // View only specific photos (read-only): ?s=token (short link) or the legacy
+  // ?share=id1,id2,id3. Token links keep the URL short for large selections.
+  let shareIds: string[] | null = searchParams?.share ? searchParams.share.split(",").filter(Boolean) : null;
+  if (!shareIds && searchParams?.s) {
+    const { data: sh } = await admin
+      .from("album_shares")
+      .select("photo_ids")
+      .eq("token", searchParams.s)
+      .maybeSingle();
+    if (sh?.photo_ids?.length) shareIds = sh.photo_ids as string[];
+  }
 
   // Owner permissions gate customer download (ZIP) and notes.
   const { data: owner } = await admin
@@ -65,7 +96,7 @@ export default async function PublicAlbumPage({
       fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position"),
       admin
         .from("album_sources")
-        .select("id, name, position")
+        .select("id, name, position, stage")
         .eq("album_id", album.id)
         .order("position"),
       admin
@@ -73,8 +104,11 @@ export default async function PublicAlbumPage({
         .select("photo_id, client_note")
         .eq("album_id", album.id),
     ]);
-    photos = p ?? [];
-    sources = s ?? [];
+    // Selection view shows only selection-stage photos. (Legacy albums have all
+    // sources backfilled to 'selection', so nothing changes for them.)
+    const selSourceIds = new Set((s ?? []).filter((x) => x.stage !== "delivery").map((x) => x.id));
+    photos = (p ?? []).filter((ph) => !ph.source_id || selSourceIds.has(ph.source_id));
+    sources = (s ?? []).filter((x) => x.stage !== "delivery").map(({ id, name, position }) => ({ id, name, position }));
     selected = (sel ?? []).map((r) => r.photo_id);
     for (const r of sel ?? []) if (r.client_note) notes[r.photo_id] = r.client_note;
   }
@@ -97,6 +131,7 @@ export default async function PublicAlbumPage({
       initialSources={sources}
       initialSelected={selected}
       initialNotes={notes}
+      shareIds={shareIds}
     />
   );
 }

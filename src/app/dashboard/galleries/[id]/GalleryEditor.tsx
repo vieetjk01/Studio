@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, RefreshCw, Trash2, Plus, Star, ExternalLink, Save, Pin, MessageSquare, Star as StarIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mainUrl } from "@/lib/hosts";
+import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
-import { GALLERY_CATEGORIES } from "@/lib/types";
+import { fetchMyGalleryCategories } from "@/lib/gallery-cats";
 import type { Album, AlbumSource, Photo, Feedback, SourceKind } from "@/lib/types";
 
 export default function GalleryEditor({
@@ -30,14 +33,22 @@ export default function GalleryEditor({
     title: album.title,
     client_name: album.client_name ?? "",
     event_date: album.event_date ?? "",
-    category: album.category ?? "cuoi-hoi",
-    category_label: album.category_label ?? "",
+    category: album.category ?? "",
     status: album.status,
     gallery_pinned: album.gallery_pinned,
     download_enabled: album.download_enabled ?? true,
     cover_url: album.cover_url,
   });
   const [newPhone, setNewPhone] = useState("");
+  const [catSuggestions, setCatSuggestions] = useState<string[]>([]);
+  useEffect(() => {
+    fetchMyGalleryCategories().then(setCatSuggestions);
+    const warn = sessionStorage.getItem("gallerySyncWarning");
+    if (warn) {
+      sessionStorage.removeItem("gallerySyncWarning");
+      flash(warn);
+    }
+  }, []);
   const [sources, setSources] = useState<AlbumSource[]>(initialSources);
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [newSource, setNewSource] = useState({ name: "", url: "" });
@@ -59,8 +70,8 @@ export default function GalleryEditor({
         title: form.title,
         client_name: form.client_name || null,
         event_date: form.event_date || null,
-        category: form.category,
-        category_label: form.category === "khac" ? form.category_label || "Khác" : null,
+        category: form.category.trim() || null,
+        category_label: null,
         status: form.status,
         gallery_pinned: form.gallery_pinned,
         download_enabled: form.download_enabled,
@@ -69,12 +80,15 @@ export default function GalleryEditor({
       .eq("id", album.id);
     if (!error && newPhone.trim()) {
       await supabase.from("albums").update({ client_phone: newPhone.trim() }).eq("id", album.id);
-      await fetch(`/api/albums/${album.id}/password`, {
+      const pwRes = await fetch(`/api/albums/${album.id}/password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: newPhone.trim() }),
       });
+      setSaving(false);
+      if (!pwRes.ok) return flash("Đã lưu thông tin nhưng không đặt được mật khẩu mới. Vui lòng thử lại.");
       setNewPhone("");
+      return flash("Đã lưu");
     }
     setSaving(false);
     flash(error ? error.message : "Đã lưu");
@@ -86,12 +100,14 @@ export default function GalleryEditor({
     const kind: SourceKind = isFolderLink(newSource.url) ? "folder" : "file";
     const { data, error } = await supabase
       .from("album_sources")
-      .insert({ album_id: album.id, name: newSource.name || (kind === "folder" ? "Folder" : "File"), drive_url: newSource.url.trim(), kind, position: sources.length })
+      .insert({ album_id: album.id, name: newSource.name || (kind === "folder" ? "Folder" : "File"), drive_url: newSource.url.trim(), kind, stage: "delivery", position: sources.length })
       .select("*")
       .single();
     if (error) return flash(error.message);
     setSources([...sources, data as AlbumSource]);
     setNewSource({ name: "", url: "" });
+    // Auto-sync so photos & thumbnails appear immediately after adding a source.
+    await sync();
   }
 
   async function removeSource(id: string) {
@@ -104,7 +120,11 @@ export default function GalleryEditor({
   async function sync() {
     setSyncing(true);
     const res = await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setSyncing(false);
+      return flash(data.error || "Đồng bộ thất bại. Vui lòng thử lại.");
+    }
     const fresh = await fetchAllPhotos(supabase, album.id, "*");
     setPhotos(fresh as Photo[]);
     const { data: fs } = await supabase.from("album_sources").select("*").eq("album_id", album.id).order("position");
@@ -144,6 +164,7 @@ export default function GalleryEditor({
           <Link href={`/album/${album.slug}`} target="_blank" className="btn-ghost">
             <ExternalLink size={15} /> Xem
           </Link>
+          <ShareButton path={mainUrl(`/album/${album.slug}`)} title={form.title} />
           <button onClick={deleteGallery} disabled={deleting} className="btn-danger">
             <Trash2 size={15} /> {deleting ? "Đang xóa…" : "Xóa"}
           </button>
@@ -166,16 +187,37 @@ export default function GalleryEditor({
             <label className="label">Đổi SĐT / mật khẩu</label>
             <input className="input" placeholder={album.client_phone ? "•••• (đã đặt)" : "Nhập SĐT"} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
           </div>
-          <div><label className="label">Ngày cưới / đính hôn</label><input type="date" className="input" value={form.event_date ?? ""} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></div>
+          <div><label className="label">Ngày cưới / đính hôn</label><DateInput value={form.event_date ?? ""} onChange={(v) => setForm({ ...form, event_date: v })} /></div>
           <div>
-            <label className="label">Phân loại</label>
-            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-              {GALLERY_CATEGORIES.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
-            </select>
+            <label className="label">Phân loại (tự nhập)</label>
+            <input
+              className="input"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              list="gallery-cat-suggestions"
+              placeholder="VD: Cưới hỏi, Kỷ yếu, Sự kiện…"
+            />
+            <datalist id="gallery-cat-suggestions">
+              {catSuggestions.map((c) => (<option key={c} value={c} />))}
+            </datalist>
+            {catSuggestions.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {catSuggestions.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: c })}
+                    className="rounded-full px-2.5 py-1 text-[12px]"
+                    style={form.category === c
+                      ? { background: "var(--gold)", color: "#1a1205" }
+                      : { background: "var(--surface2)", color: "var(--text2)" }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {form.category === "khac" && (
-            <div><label className="label">Tên phân loại</label><input className="input" value={form.category_label} onChange={(e) => setForm({ ...form, category_label: e.target.value })} /></div>
-          )}
           <div>
             <label className="label">Trạng thái</label>
             <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Album["status"] })}>

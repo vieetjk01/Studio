@@ -18,19 +18,30 @@ const DEFAULT_APPEARANCE: Appearance = { pl_bg: "#e7ebdf", pl_text: "#23402c", p
 export default function PricingManager({
   ownerId,
   initial,
+  hiddenLists: initialHidden = [],
+  listLabels: initialListLabels = {},
   shareUrl,
   contact,
   appearance,
+  services = [],
+  showClauses: initialShowClauses = false,
 }: {
   ownerId: string;
   initial: PricelistItem[];
+  hiddenLists?: string[];
+  listLabels?: Record<string, string>;
   shareUrl: string; // base /gia/<token>
   contact: Contact;
   appearance: Appearance;
+  services?: { id: string; name: string }[];
+  showClauses?: boolean;
 }) {
   const supabase = createClient();
   const [list, setList] = useState<PricelistItem[]>(initial);
-  const [activeList, setActiveList] = useState(PRICE_LISTS[0].key);
+  // Built-in lists the studio has hidden (e.g. removed "Cưới" / "Đính hôn").
+  const [hiddenLists, setHiddenLists] = useState<string[]>(initialHidden);
+  const visibleBuiltIns = PRICE_LISTS.filter((l) => !hiddenLists.includes(l.key));
+  const [activeList, setActiveList] = useState((visibleBuiltIns[0] ?? PRICE_LISTS[0]).key);
   const [f, setF] = useState({ name: "", price: 0, unit: "", category: "", description: "" });
   const [c, setC] = useState<Contact>(contact);
   const [savedContact, setSavedContact] = useState(false);
@@ -46,32 +57,122 @@ export default function PricingManager({
   const [customLists, setCustomLists] = useState<{ key: string; label: string; title: string }[]>([]);
   const [newListName, setNewListName] = useState("");
   const [showNewList, setShowNewList] = useState(false);
+  // Per-key label overrides (both built-in and custom lists).
+  const [listLabels, setListLabels] = useState<Record<string, string>>(initialListLabels);
+  const [renamingKey, setRenamingKey] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
+  const [showClauses, setShowClauses] = useState(initialShowClauses);
 
-  // Load custom lists from localStorage on mount
+  async function toggleShowClauses() {
+    const next = !showClauses;
+    setShowClauses(next);
+    await supabase.from("profiles").update({ pl_show_clauses: next }).eq("id", ownerId);
+  }
+
+  // Load custom lists from localStorage on mount. Lists created before labels
+  // were stored in the DB only have their readable name in localStorage, so the
+  // public page would show the bare slug (e.g. "k-yu" for "Kỷ yếu"). Back-fill
+  // any missing labels into pl_list_labels so the public page shows them too.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(`pl_custom_lists_${ownerId}`);
-      if (raw) setCustomLists(JSON.parse(raw));
+      const parsed = raw ? (JSON.parse(raw) as { key: string; label: string; title: string }[]) : [];
+      // Studio services are the price-list categories: ensure each active service
+      // has a list entry (key = service id, label = service name). Existing
+      // built-in/custom lists with data are preserved untouched.
+      const byKey = new Map(parsed.map((l) => [l.key, l]));
+      for (const s of services) {
+        byKey.set(s.id, { key: s.id, label: s.name, title: `Bảng giá ${s.name}` });
+      }
+      const merged = Array.from(byKey.values());
+      setCustomLists(merged);
+      localStorage.setItem(`pl_custom_lists_${ownerId}`, JSON.stringify(merged));
+      // Back-fill readable labels into the DB so the public page shows names.
+      const missing: Record<string, string> = {};
+      for (const l of merged) {
+        if (l.label && l.label !== l.key && initialListLabels[l.key] !== l.label) missing[l.key] = l.label;
+      }
+      if (Object.keys(missing).length) {
+        const nextLabels = { ...initialListLabels, ...missing };
+        setListLabels(nextLabels);
+        supabase.from("profiles").update({ pl_list_labels: nextLabels }).eq("id", ownerId);
+      }
+      // Prefer a service tab as the default active list.
+      if (services[0]) setActiveList((cur) => (byKey.has(cur) ? cur : services[0].id));
     } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId]);
 
-  const allLists = [...PRICE_LISTS, ...customLists];
+  const allLists = [...visibleBuiltIns, ...customLists];
 
   function saveCustomLists(next: typeof customLists) {
     setCustomLists(next);
     localStorage.setItem(`pl_custom_lists_${ownerId}`, JSON.stringify(next));
   }
 
-  function addCustomList() {
+  async function saveHiddenLists(next: string[]) {
+    setHiddenLists(next);
+    await supabase.from("profiles").update({ pl_hidden_lists: next }).eq("id", ownerId);
+  }
+
+  // "Delete" a built-in list (Cưới / Đính hôn): hide its tab everywhere
+  // (dashboard + public). Reversible via "restore". Items are kept so nothing
+  // is lost; an empty hidden list simply never shows.
+  async function removeBuiltinList(key: string) {
+    const label = PRICE_LISTS.find((l) => l.key === key)?.label ?? key;
+    if (!confirm(`Xóa bảng giá "${label}"? Bạn có thể khôi phục lại sau.`)) return;
+    const next = [...new Set([...hiddenLists, key])];
+    await saveHiddenLists(next);
+    if (activeList === key) {
+      const remaining = [...PRICE_LISTS.filter((l) => !next.includes(l.key)), ...customLists];
+      setActiveList((remaining[0] ?? PRICE_LISTS[0]).key);
+    }
+  }
+
+  async function restoreBuiltinList(key: string) {
+    await saveHiddenLists(hiddenLists.filter((k) => k !== key));
+    setActiveList(key);
+  }
+
+  function getLabel(key: string, fallback: string) {
+    return listLabels[key] || fallback;
+  }
+
+  function startRename(key: string, currentLabel: string) {
+    setRenamingKey(key);
+    setRenameVal(listLabels[key] || currentLabel);
+  }
+
+  async function saveRename(key: string) {
+    const label = renameVal.trim();
+    if (!label) { setRenamingKey(null); return; }
+    const next = { ...listLabels, [key]: label };
+    setListLabels(next);
+    setRenamingKey(null);
+    await supabase.from("profiles").update({ pl_list_labels: next }).eq("id", ownerId);
+  }
+
+  async function addCustomList() {
     const label = newListName.trim();
     if (!label) return;
-    const key = label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    // Slugify for the URL/list_key. Vietnamese chars are stripped here, so the
+    // human-readable label is stored separately in pl_list_labels (and shown on
+    // both dashboard and the public price page).
+    const base = label
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d").replace(/Đ/g, "D")
+      .toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const key = base || `loai-${Object.keys(listLabels).length + customLists.length + 1}`;
     if (allLists.some((l) => l.key === key)) return;
     const entry = { key, label, title: `Bảng giá ${label}` };
     saveCustomLists([...customLists, entry]);
+    // Persist the readable label so the public page shows it (not the slug).
+    const nextLabels = { ...listLabels, [key]: label };
+    setListLabels(nextLabels);
     setActiveList(key);
     setNewListName("");
     setShowNewList(false);
+    await supabase.from("profiles").update({ pl_list_labels: nextLabels }).eq("id", ownerId);
   }
 
   function removeCustomList(key: string) {
@@ -214,27 +315,53 @@ export default function PricingManager({
 
       {/* List tabs */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {allLists.map((l) => (
-          <div key={l.key} className="relative flex items-center">
-            <button
-              onClick={() => setActiveList(l.key)}
-              className="rounded-full px-4 py-2 text-sm font-medium"
-              style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: customLists.some(c => c.key === l.key) ? 28 : undefined }}
-            >
-              Bảng giá {l.label}
-            </button>
-            {customLists.some((c) => c.key === l.key) && (
-              <button
-                onClick={() => removeCustomList(l.key)}
-                className="absolute right-1 flex h-5 w-5 items-center justify-center rounded-full"
-                style={{ color: "var(--text3)" }}
-                title="Xoá loại bảng giá"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </div>
-        ))}
+        {allLists.map((l) => {
+          const isCustom = customLists.some((c) => c.key === l.key);
+          const displayLabel = getLabel(l.key, l.label);
+          return (
+            <div key={l.key} className="relative flex items-center">
+              {renamingKey === l.key ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    autoFocus
+                    className="input h-9 w-36 rounded-full px-3 text-sm"
+                    value={renameVal}
+                    onChange={(e) => setRenameVal(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveRename(l.key); if (e.key === "Escape") setRenamingKey(null); }}
+                  />
+                  <button onClick={() => saveRename(l.key)} className="btn-primary rounded-full px-2 py-1.5 text-xs"><Check size={13} /></button>
+                  <button onClick={() => setRenamingKey(null)} className="btn-ghost rounded-full px-2 py-1.5 text-xs"><X size={13} /></button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setActiveList(l.key)}
+                    className="rounded-full px-4 py-2 text-sm font-medium"
+                    style={{ background: activeList === l.key ? "var(--surface2)" : "transparent", border: "1px solid var(--border2)", color: activeList === l.key ? "var(--accent)" : "var(--text2)", paddingRight: 48 }}
+                  >
+                    Bảng giá {displayLabel}
+                  </button>
+                  <button
+                    onClick={() => startRename(l.key, l.label)}
+                    className="absolute right-7 flex h-5 w-5 items-center justify-center rounded-full"
+                    style={{ color: "var(--text3)" }}
+                    title="Đổi tên bảng giá"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                  <button
+                    onClick={() => (isCustom ? removeCustomList(l.key) : removeBuiltinList(l.key))}
+                    className="absolute right-1 flex h-5 w-5 items-center justify-center rounded-full"
+                    style={{ color: "var(--text3)" }}
+                    title="Xoá bảng giá này"
+                  >
+                    <X size={11} />
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
 
         {/* Add new list type */}
         {showNewList ? (
@@ -261,11 +388,29 @@ export default function PricingManager({
         )}
       </div>
 
+      {/* Restore hidden built-in lists */}
+      {PRICE_LISTS.some((l) => hiddenLists.includes(l.key)) && (
+        <div className="mb-6 -mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text3)" }}>
+          <span>Đã ẩn:</span>
+          {PRICE_LISTS.filter((l) => hiddenLists.includes(l.key)).map((l) => (
+            <button
+              key={l.key}
+              onClick={() => restoreBuiltinList(l.key)}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1"
+              style={{ border: "1px dashed var(--border2)" }}
+              title="Khôi phục bảng giá"
+            >
+              <Plus size={11} /> {l.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {listUrl && (
         <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
           <LinkIcon size={16} style={{ color: "var(--text3)" }} />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {allLists.find((l) => l.key === activeList)?.label} gửi khách</p>
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Link bảng giá {getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "")} gửi khách</p>
             <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{listUrl}</p>
           </div>
           <a href={listUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">Xem thử</a>
@@ -320,6 +465,10 @@ export default function PricingManager({
       <div className="card mb-6 p-6">
         <h2 className="mb-1 font-serif text-lg font-medium">Giao diện bảng giá</h2>
         <p className="mb-4 text-sm" style={{ color: "var(--text2)" }}>Chọn màu nền, màu chữ, màu nhấn và logo hiển thị trên bảng giá gửi khách.</p>
+        <label className="mb-4 flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+          <input type="checkbox" checked={showClauses} onChange={toggleShowClauses} />
+          Hiện điều khoản của dịch vụ trên bảng giá công khai
+        </label>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {([
             ["pl_bg", "Màu nền"],
@@ -386,8 +535,8 @@ export default function PricingManager({
         <div className="lg:col-span-2 space-y-6">
           {visible.length === 0 ? (
             <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
-              <p>Bảng giá {allLists.find((l) => l.key === activeList)?.label} đang trống.</p>
-              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {allLists.find((l) => l.key === activeList)?.label}</button>
+              <p>Bảng giá {getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "")} đang trống.</p>
+              <button onClick={seedActive} disabled={busy} className="btn-primary"><Sparkles size={15} /> Dùng mẫu giá {getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "")}</button>
             </div>
           ) : (
             <>

@@ -48,17 +48,24 @@ export interface Album {
   category: string | null;
   category_label: string | null;
   gallery_pinned: boolean;
+  // Unified project model: which phase the client link currently exposes, and a
+  // separate watermark toggle for the delivery phase.
+  phase: AlbumPhase;
+  watermark_delivery: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export const GALLERY_CATEGORIES = [
-  { value: "cuoi-hoi", label: "Cưới hỏi" },
-  { value: "su-kien", label: "Sự kiện" },
-  { value: "gia-dinh", label: "Gia đình" },
-  { value: "video", label: "Video" },
-  { value: "khac", label: "Khác" },
-] as const;
+// A project moves from "selection" (client picks originals) to "delivery"
+// (client downloads finished photos). Each album_source is tagged with the
+// stage it belongs to.
+export type AlbumPhase = "selection" | "delivery";
+export type SourceStage = "selection" | "delivery";
+
+// Gallery categories are free-text, entered per studio (saved & suggested from
+// the user's own past galleries). "video" is the one reserved value — galleries
+// tagged with it appear under the Video tab on the public browse page.
+export const VIDEO_CATEGORY = "video";
 
 export interface Feedback {
   id: string;
@@ -144,6 +151,7 @@ export interface AlbumSource {
   name: string;
   drive_url: string;
   kind: SourceKind;
+  stage: SourceStage;
   position: number;
   created_at: string;
 }
@@ -193,6 +201,16 @@ export type ContractStatus =
 export type CrewRole = "photographer" | "cameraman" | "assistant" | "editor" | "other";
 export type CrewStatus = "pending" | "accepted" | "declined";
 
+export interface StudioService {
+  id: string;
+  owner_id: string;
+  name: string;
+  clauses: string;
+  position: number;
+  active: boolean;
+  created_at: string;
+}
+
 export interface StudioContract {
   id: string;
   owner_id: string;
@@ -202,6 +220,7 @@ export interface StudioContract {
   client_phone: string | null;
   client_email: string | null;
   shoot_type: ShootType;
+  service_id: string | null;
   event_date: string | null;
   event_time: string | null;
   location: string | null;
@@ -249,6 +268,7 @@ export type NotificationKind =
   | "crew_declined"
   | "review"
   | "payment"
+  | "quote_accepted"
   | "info";
 
 export interface StudioNotification {
@@ -376,7 +396,7 @@ export interface StudioBooking {
   package_name: string | null;
   package_price: number | null;
   facebook: string | null;
-  status: "new" | "handled" | "archived";
+  status: "new" | "accepted" | "pending" | "declined" | "handled" | "archived";
   created_at: string;
 }
 
@@ -559,7 +579,7 @@ export type SiteTheme = {
   heroAlign?: "center" | "left";    // hero text alignment
   galleryCols?: number;             // gallery columns (2–4)
   radius?: "rounded" | "sharp";     // corner style
-  navPosition?: "top" | "left" | "right"; // menu placement
+  navPosition?: "top" | "left" | "right" | "bottom"; // menu placement
   heroSize?: "small" | "medium" | "large"; // cover height
   contentWidth?: "full" | "compact";       // published page width
 };

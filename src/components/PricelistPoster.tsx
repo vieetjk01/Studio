@@ -40,6 +40,7 @@ export default function PricelistPoster({
   tabBase,
   bookHref,
   theme,
+  clauses = "",
 }: {
   contact: PosterContact;
   items: PricelistItem[]; // already filtered to the selected list
@@ -48,6 +49,7 @@ export default function PricelistPoster({
   tabBase: string; // URL without ?list
   bookHref: string; // /book/<token>
   theme?: PosterTheme;
+  clauses?: string; // optional service clauses to show under the prices
 }) {
   const o = contact;
 
@@ -138,7 +140,8 @@ export default function PricelistPoster({
                       {g.items.map((it) => {
                         const featured = it.price === top && g.items.length > 1;
                         const pkg = `${selectedList?.label || ""} · ${it.name}`;
-                        const href = bookHref.includes("/book/") ? `${bookHref}?pkg=${encodeURIComponent(pkg)}` : bookHref;
+                        const sep = bookHref.includes("?") ? "&" : "?";
+                        const href = bookHref.includes("/book/") ? `${bookHref}${sep}pkg=${encodeURIComponent(pkg)}` : bookHref;
                         return (
                           <div key={it.id} className="relative flex flex-col rounded-2xl p-6"
                             style={{ background: P.panel, border: `1px solid ${featured ? P.green : P.line}`, boxShadow: featured ? `0 0 0 1px ${P.green}` : "none" }}>
@@ -184,6 +187,13 @@ export default function PricelistPoster({
                     </ul>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {clauses.trim() && (
+              <div className="mt-10 rounded-2xl p-6" style={{ border: `1px solid ${P.line}`, background: P.panel }}>
+                <h3 className="mb-3 font-serif text-lg" style={{ color: P.ink }}>Điều khoản dịch vụ</h3>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: P.muted }}>{clauses}</p>
               </div>
             )}
 

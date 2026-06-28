@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp } from "lucide-react";
+import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { appUrl } from "@/lib/hosts";
-import ZaloButton from "@/components/ZaloButton";
+import StudioTrialButton from "@/components/StudioTrialButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
 import AutoEmailToggle from "@/components/AutoEmailToggle";
@@ -14,11 +13,15 @@ import {
   sumAmounts,
   vnd,
   CONTRACT_STATUS_LABEL,
+  QUOTE_STATUS_LABEL,
   SHOOT_TYPE_LABEL,
   CREW_ROLE_LABEL,
+  quoteSelectedTotal,
   type ContractStatus,
+  type QuoteStatus,
   type CrewRole,
 } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 /* ── Design tokens (ported from the mstudo app mockup) ─────────────────────
    Status tones with a soft background, matching the green-accent mstudo look.
@@ -127,6 +130,15 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
   const supabase = createClient();
   const today = new Date().toISOString().slice(0, 10);
 
+  // Check if user already used the Studio trial
+  const { data: trialRed } = await supabase
+    .from("discount_redemptions")
+    .select("id")
+    .eq("user_id", ownerId)
+    .eq("code", "TRIAL_STUDIO_1D")
+    .maybeSingle();
+  const trialUsed = !!trialRed;
+
   const { data } = await supabase
     .from("studio_bookings")
     .select("id, name, phone, service, preferred_date, package_name, package_price, status, created_at")
@@ -162,9 +174,13 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-1 flex items-center gap-3">
         <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
-        <Link href="/dashboard/studio/bookings" className="btn-primary ml-auto">
+        <Link href="/dashboard/site" className="btn-ghost ml-auto">
+          <Globe size={16} /> Website riêng
+        </Link>
+        <Link href="/dashboard/studio/bookings" className="btn-primary">
           <CalendarDays size={16} /> Đặt lịch
         </Link>
+
       </div>
       <p className="mb-6 text-[13px]" style={{ color: "var(--text3)" }}>Quản lý lịch chụp & yêu cầu đặt lịch của khách</p>
 
@@ -176,7 +192,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {quickLinks.map((q) => (
-          <Link key={q.href} href={q.href} className="card p-5 transition-colors hover:border-[var(--border2)]">
+          <Link key={q.href} href={q.href} className="card card-interactive p-5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: ACCENT_SOFT, color: ACCENT }}>
               <q.icon size={16} />
             </span>
@@ -184,6 +200,20 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
             <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>{q.desc}</p>
           </Link>
         ))}
+      </div>
+
+      {/* Upgrade to Studio CTA */}
+      <div className="mb-6 card p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ borderColor: "rgba(214,164,74,.4)", background: "rgba(214,164,74,.06)" }}>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium" style={{ color: "#d6a44a" }}>Nâng cấp lên Studio</p>
+          <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>
+            Mở khóa quản lý hợp đồng, tài chính, đội ngũ và toàn bộ tính năng studio chuyên nghiệp.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <StudioTrialButton used={trialUsed} />
+          <Link href="/dashboard/upgrade" className="btn-primary text-sm">Xem gói Studio</Link>
+        </div>
       </div>
 
       <div className="card p-6">
@@ -204,7 +234,7 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm" style={{ color: ACCENT }}>{b.preferred_date}</p>
+                  <p className="text-sm" style={{ color: ACCENT }}>{fmtDate(b.preferred_date)}</p>
                   {b.package_price ? <p className="text-[11px]" style={{ color: "var(--text3)" }}>{vnd(b.package_price)}</p> : null}
                 </div>
               </li>
@@ -220,9 +250,9 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
 export default async function StudioOverview() {
   const profile = await requireStudio("booking");
-  // Free/Basic accounts have no studio tier — send them to the album dashboard
-  // (on the app host) instead of the studio workspace.
-  if (!profile) redirect(appUrl("/dashboard"));
+  // Free/Basic accounts have no studio tier — send them to the album library
+  // (not /dashboard, which redirects back here and would loop).
+  if (!profile) redirect("/dashboard/albums");
 
   const supabase = createClient();
 
@@ -264,6 +294,7 @@ export default async function StudioOverview() {
     { data: paySixMonths },
     { count: newBookings },
     { count: bookingsAll },
+    { data: recentQuotes },
   ] = await Promise.all([
     cq.order("event_date", { ascending: true, nullsFirst: false }),
     supabase
@@ -286,6 +317,12 @@ export default async function StudioOverview() {
       .gte("paid_at", chartStart),
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id).eq("status", "new"),
     supabase.from("studio_bookings").select("id", { count: "exact", head: true }).eq("owner_id", profile.id),
+    supabase
+      .from("studio_quotes")
+      .select("id, code, title, client_name, client_phone, status, created_at, quote_items(qty, unit_price, selected, is_optional, is_discount)")
+      .eq("owner_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
   type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
@@ -312,7 +349,13 @@ export default async function StudioOverview() {
 
   const active = list.filter((c) => c.status !== "cancelled" && c.status !== "completed");
   const upcoming = list
-    .filter((c) => c.event_date && c.event_date >= today && c.status !== "cancelled")
+    // Lịch chụp sắp tới chỉ tính hợp đồng đã xác nhận/ký (bỏ nháp & mới gửi).
+    .filter((c) => c.event_date && c.event_date >= today && ["approved", "in_progress", "completed"].includes(c.status))
+    .slice(0, 6);
+  // Hợp đồng đang chờ xử lý: nháp / đã gửi nhưng khách chưa ký xác nhận.
+  const pending = list
+    .filter((c) => c.status === "draft" || c.status === "sent")
+    .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""))
     .slice(0, 6);
   const totalValue = list
     .filter((c) => c.status !== "cancelled")
@@ -407,7 +450,10 @@ export default async function StudioOverview() {
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-1 flex items-center gap-3">
         <h1 className="font-serif text-2xl font-medium">Tổng quan</h1>
-        <Link href="/dashboard/studio/contracts/new" className="btn-primary ml-auto hidden sm:inline-flex">
+        <Link href="/dashboard/site" className="btn-ghost ml-auto hidden sm:inline-flex">
+          <Globe size={16} /> Website riêng
+        </Link>
+        <Link href="/dashboard/studio/contracts/new" className="btn-primary hidden sm:inline-flex">
           <Plus size={16} /> Hợp đồng mới
         </Link>
       </div>
@@ -501,25 +547,24 @@ export default async function StudioOverview() {
         </div>
       </div>
 
-      {/* Recent contracts table */}
+      {/* Contracts pending action (draft / sent, client not signed yet) */}
       <div className="card mb-6 p-6">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-serif text-lg font-medium">Hợp đồng gần đây</h2>
+          <h2 className="font-serif text-lg font-medium">Hợp đồng đang chờ xử lý</h2>
           <Link href="/dashboard/studio/contracts" className="text-xs hover:underline" style={{ color: ACCENT }}>
             Tất cả →
           </Link>
         </div>
-        {list.length === 0 ? (
+        {pending.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--text3)" }}>
-            Chưa có hợp đồng nào.{" "}
-            <Link href="/dashboard/studio/contracts/new" style={{ color: ACCENT }} className="hover:underline">Tạo ngay</Link>.
+            Không có hợp đồng nào đang chờ xử lý.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
-                  <th className="px-2 py-2.5 font-bold">Mã</th>
+                  <th className="px-2 py-2.5 font-bold">Tên hợp đồng</th>
                   <th className="px-2 py-2.5 font-bold">Khách hàng</th>
                   <th className="px-2 py-2.5 font-bold">Loại</th>
                   <th className="px-2 py-2.5 font-bold">Giá trị</th>
@@ -527,11 +572,11 @@ export default async function StudioOverview() {
                 </tr>
               </thead>
               <tbody>
-                {list.slice(0, 8).map((c) => (
+                {pending.map((c) => (
                   <tr key={c.id} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td className="px-2 py-3 font-bold font-mono">
+                    <td className="px-2 py-3 font-bold">
                       <Link href={`/dashboard/studio/contracts/${c.id}`} className="hover:underline">
-                        {c.code || c.id.slice(0, 6)}
+                        {c.title || "(chưa đặt tên)"}
                       </Link>
                     </td>
                     <td className="px-2 py-3">{c.client_name || "—"}</td>
@@ -547,6 +592,56 @@ export default async function StudioOverview() {
           </div>
         )}
       </div>
+
+      {/* Recent quotes */}
+      {recentQuotes && recentQuotes.length > 0 && (
+        <div className="card mb-6 p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-serif text-lg font-medium">Báo giá gần đây</h2>
+            <Link href="/dashboard/studio/quotes" className="text-xs hover:underline" style={{ color: ACCENT }}>
+              Tất cả →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[13.5px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
+                  <th className="px-2 py-2.5 font-bold">Tên báo giá</th>
+                  <th className="px-2 py-2.5 font-bold">Khách hàng</th>
+                  <th className="px-2 py-2.5 font-bold">Tổng</th>
+                  <th className="px-2 py-2.5 font-bold">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(recentQuotes as Array<{ id: string; code: string | null; title: string | null; client_name: string | null; client_phone: string | null; status: QuoteStatus; created_at: string; quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount?: boolean }[] }>).map((q) => {
+                  const total = quoteSelectedTotal(q.quote_items || []);
+                  const QUOTE_TONE: Record<string, ToneKey> = {
+                    draft: "gray", sent: "blue", viewed: "blue",
+                    adjust_requested: "amber", accepted: "green",
+                    converted: "green", expired: "gray", cancelled: "red",
+                  };
+                  return (
+                    <tr key={q.id} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td className="px-2 py-3 font-bold">
+                        <Link href={`/dashboard/studio/quotes/${q.id}`} className="hover:underline">
+                          {q.title || "(chưa đặt tên)"}
+                        </Link>
+                      </td>
+                      <td className="px-2 py-3">{q.client_name || "—"}</td>
+                      <td className="px-2 py-3 font-bold">{vnd(total)}</td>
+                      <td className="px-2 py-3">
+                        <span style={badgeStyle(QUOTE_TONE[q.status] ?? "gray")}>
+                          {QUOTE_STATUS_LABEL[q.status] || q.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Reminders: unsigned + debts + crew awaiting response + late deliveries + due installments */}
       {(unsigned.length > 0 || debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (
@@ -566,9 +661,9 @@ export default async function StudioOverview() {
                         {c.client_name || "—"} · đã gửi {days > 0 ? `${days} ngày trước` : "hôm nay"}
                       </p>
                     </Link>
-                    <ZaloButton
-                      phone={c.client_phone}
-                      label="Nhắc ký"
+                    <MessengerButton
+                      link={c.client_messenger}
+                      label="Gửi cho khách"
                       message={`Xin chào ${c.client_name || "anh/chị"}, studio gửi lại hợp đồng "${c.title}" để anh/chị xem & ký xác nhận giúp em nhé. Cảm ơn ạ!`}
                     />
                   </li>
@@ -589,7 +684,7 @@ export default async function StudioOverview() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{d.contract?.title || "Hợp đồng"} · {d.label}</p>
                         <p className="text-[11px]" style={{ color: d.due_date < today ? TONE.red.fg : "var(--text3)" }}>
-                          {vnd(d.amount)} · hạn {d.due_date}{d.due_date < today ? " · quá hạn" : ""}
+                          {vnd(d.amount)} · hạn {fmtDate(d.due_date)}{d.due_date < today ? " · quá hạn" : ""}
                         </p>
                       </div>
                     </Link>
@@ -609,7 +704,7 @@ export default async function StudioOverview() {
                   <li key={c.id}>
                     <Link href={`/dashboard/studio/contracts/${c.id}`} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                       <p className="truncate text-sm font-medium">{c.title}</p>
-                      <span className="shrink-0 text-[11px]" style={{ color: TONE.red.fg }}>hạn {c.delivery_due}</span>
+                      <span className="shrink-0 text-[11px]" style={{ color: TONE.red.fg }}>hạn {fmtDate(c.delivery_due)}</span>
                     </Link>
                   </li>
                 ))}
@@ -631,14 +726,9 @@ export default async function StudioOverview() {
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
                       <VietQRButton bank={bank} amount={due} addInfo={(c.code || c.title || "").slice(0, 25)} label="QR" />
-                      <ZaloButton
-                        phone={c.client_phone}
-                        label="Zalo"
-                        message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
-                      />
                       <MessengerButton
                         link={c.client_messenger}
-                        label="Messenger"
+                        label="Gửi cho khách"
                         message={`Xin chào ${c.client_name || "anh/chị"}, studio xin nhắc khoản còn lại của hợp đồng "${c.title}" là ${vnd(due)}. Anh/chị thanh toán giúp em nhé. Cảm ơn ạ!`}
                       />
                     </div>
@@ -661,9 +751,8 @@ export default async function StudioOverview() {
                       <p className="truncate text-sm font-medium">{cr.name || cr.phone || "—"}</p>
                       <p className="text-[11px]" style={{ color: "var(--text3)" }}>{CREW_ROLE_LABEL[cr.role]} · {c.title}</p>
                     </Link>
-                    <ZaloButton
-                      phone={cr.phone}
-                      label="Nhắc"
+                    <MessengerButton
+                      label="Gửi cho thợ"
                       message={shootReminderMessage({ name: cr.name, title: c.title, date: c.event_date, time: c.event_time, location: c.location, role: CREW_ROLE_LABEL[cr.role] })}
                     />
                   </li>

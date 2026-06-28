@@ -23,6 +23,18 @@ type Dict = {
   footer: { copy: string };
 };
 
+/* Admin-configurable pricing (from site_settings). When absent we fall back to
+   the static prices baked into the dictionary below. */
+export type LandingPricing = {
+  basicMonth: number; basicYear: number;
+  photographerMonth: number; photographerYear: number;
+  studioMonth: number; studioYear: number;
+  basicDiscount: number; photographerDiscount: number;
+  studioDiscount: number; studioPromo: number;
+};
+
+const fmtVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}₫`;
+
 const D: Record<"vi" | "en", Dict> = {
   vi: {
     nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", login: "Đăng nhập", start: "Bắt đầu miễn phí", website: "Website riêng" },
@@ -179,7 +191,32 @@ const cardBase: CSSProperties = { border: "1px solid var(--border)", background:
 const navLink: CSSProperties = { color: "var(--muted)", textDecoration: "none", fontSize: 14.5, fontWeight: 500 };
 
 /* ── Contact / Feedback section ───────────────────────────────────────────── */
+const CONTACT_TR = {
+  vi: {
+    eyebrow: "Liên hệ & góp ý", title: "Bạn có câu hỏi hoặc góp ý?",
+    sub: "Chúng tôi luôn lắng nghe — hãy nhắn tin và chúng tôi sẽ phản hồi sớm nhất có thể.",
+    done: "✓ Cảm ơn bạn! Chúng tôi sẽ phản hồi sớm.",
+    name: "Tên *", namePh: "Nguyễn Văn A",
+    email: "Email (tuỳ chọn)",
+    message: "Nội dung *", messagePh: "Câu hỏi, góp ý, hoặc phản hồi của bạn…",
+    error: "Gửi thất bại, vui lòng thử lại.",
+    sending: "Đang gửi…", send: "Gửi góp ý",
+  },
+  en: {
+    eyebrow: "Contact & feedback", title: "Have a question or feedback?",
+    sub: "We're always listening — send us a message and we'll get back to you as soon as possible.",
+    done: "✓ Thank you! We'll reply shortly.",
+    name: "Name *", namePh: "Jane Smith",
+    email: "Email (optional)",
+    message: "Message *", messagePh: "Your question, suggestion or feedback…",
+    error: "Failed to send, please try again.",
+    sending: "Sending…", send: "Send message",
+  },
+} as const;
+
 function ContactSection() {
+  const { lang } = useLang();
+  const ct = CONTACT_TR[lang === "en" ? "en" : "vi"];
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
 
@@ -206,33 +243,33 @@ function ContactSection() {
     <section id="contact" style={{ padding: "80px 0", background: "var(--surface)" }}>
       <div style={{ ...wrap }}>
         <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>Liên hệ & góp ý</p>
-          <h2 style={{ fontSize: "clamp(26px,3.5vw,38px)", fontWeight: 800, lineHeight: 1.15, marginBottom: 12 }}>Bạn có câu hỏi hoặc góp ý?</h2>
-          <p style={{ color: "var(--muted)", fontSize: 16, marginBottom: 36 }}>Chúng tôi luôn lắng nghe — hãy nhắn tin và chúng tôi sẽ phản hồi sớm nhất có thể.</p>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>{ct.eyebrow}</p>
+          <h2 style={{ fontSize: "clamp(26px,3.5vw,38px)", fontWeight: 800, lineHeight: 1.15, marginBottom: 12 }}>{ct.title}</h2>
+          <p style={{ color: "var(--muted)", fontSize: 16, marginBottom: 36 }}>{ct.sub}</p>
 
           {state === "done" ? (
             <div style={{ padding: "28px 24px", borderRadius: 14, background: "color-mix(in srgb, var(--accent) 10%, transparent)", color: "var(--accent)", fontWeight: 600, fontSize: 15 }}>
-              ✓ Cảm ơn bạn! Chúng tôi sẽ phản hồi sớm.
+              {ct.done}
             </div>
           ) : (
             <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>Tên *</label>
-                  <input required style={inp} value={form.name} placeholder="Nguyễn Văn A" onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.name}</label>
+                  <input required style={inp} value={form.name} placeholder={ct.namePh} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>Email (tuỳ chọn)</label>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.email}</label>
                   <input type="email" style={inp} value={form.email} placeholder="email@example.com" onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>Nội dung *</label>
-                <textarea required rows={4} style={{ ...inp, resize: "vertical", minHeight: 110 }} value={form.message} placeholder="Câu hỏi, góp ý, hoặc phản hồi của bạn…" onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.message}</label>
+                <textarea required rows={4} style={{ ...inp, resize: "vertical", minHeight: 110 }} value={form.message} placeholder={ct.messagePh} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
               </div>
-              {state === "error" && <p style={{ color: "#e0746f", fontSize: 13 }}>Gửi thất bại, vui lòng thử lại.</p>}
+              {state === "error" && <p style={{ color: "#e0746f", fontSize: 13 }}>{ct.error}</p>}
               <button type="submit" disabled={state === "sending"} style={{ height: 46, border: "none", background: "var(--accent)", color: "var(--accentFg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                {state === "sending" ? "Đang gửi…" : "Gửi góp ý"}
+                {state === "sending" ? ct.sending : ct.send}
               </button>
             </form>
           )}
@@ -242,7 +279,7 @@ function ContactSection() {
   );
 }
 
-export default function LandingPage() {
+export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
   const { lang, setLang } = useLang();
   const L = D[lang === "en" ? "en" : "vi"];
   const loginUrl = mainUrl("/login");
@@ -251,6 +288,25 @@ export default function LandingPage() {
   const isDark = theme === "dark";
 
   const [openFaq, setOpenFaq] = useState<number>(0);
+  const [cycle, setCycle] = useState<"month" | "year">("month");
+
+  // Map a plan card (by name) to its admin-configured price + discount and
+  // produce the display strings for the selected billing cycle.
+  function planPricing(name: string): { price: string; period: string; full?: string; off?: number } | null {
+    if (!pricing) return null;
+    const per = (m: number, y: number) => (cycle === "month" ? m : y);
+    let base: number, disc: number;
+    if (name === "Basic") { base = per(pricing.basicMonth, pricing.basicYear); disc = pricing.basicDiscount; }
+    else if (name === "Photographer") { base = per(pricing.photographerMonth, pricing.photographerYear); disc = pricing.photographerDiscount; }
+    else if (name === "Studio") {
+      base = per(pricing.studioMonth, pricing.studioYear);
+      disc = Math.max(pricing.studioDiscount, cycle === "year" ? pricing.studioPromo : 0);
+    } else return null; // Free (and anything else) keeps its static price
+    const off = Math.max(0, Math.min(100, disc));
+    const now = Math.round(base * (1 - off / 100));
+    const period = cycle === "month" ? (lang === "en" ? "/mo" : "/tháng") : (lang === "en" ? "/yr" : "/năm");
+    return { price: fmtVnd(now), period, full: off > 0 ? fmtVnd(base) : undefined, off: off > 0 ? off : undefined };
+  }
 
   const primaryBtn: CSSProperties = { height: 36, padding: "0 16px", border: "none", background: "var(--accent)", color: "var(--accentFg)", borderRadius: 9, fontFamily: "inherit", fontWeight: 700, fontSize: 14, cursor: "pointer", display: "inline-flex", alignItems: "center", textDecoration: "none" };
   const ghostBtn: CSSProperties = { height: 36, padding: "0 14px", border: "1px solid var(--border)", background: "transparent", color: "var(--fg)", borderRadius: 9, fontFamily: "inherit", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "inline-flex", alignItems: "center", textDecoration: "none" };
@@ -306,7 +362,6 @@ export default function LandingPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z" /></svg>
               {L.hero.ctaWebsite}
             </Link>
-            <a href="#guide" style={{ ...ghostBtn, height: 50, padding: "0 26px", background: "transparent", borderRadius: 11, fontSize: 15, fontWeight: 600 }}>{L.hero.ctaSecondary}</a>
           </div>
           <p style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 18 }}>{L.hero.note}</p>
 
@@ -355,18 +410,39 @@ export default function LandingPage() {
 
         {/* PRICING */}
         <section id="pricing" style={{ ...wrap, padding: "72px 24px" }}>
-          <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 48px" }}>
+          <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 28px" }}>
             <h2 style={h2}>{L.pricing.title}</h2>
             <p style={sectionSub}>{L.pricing.sub}</p>
           </div>
+          {/* Month / Year toggle */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
+            <div style={{ display: "inline-flex", gap: 4, padding: 4, border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 999 }}>
+              {(["month", "year"] as const).map((c) => (
+                <button key={c} onClick={() => setCycle(c)} style={{
+                  border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5,
+                  padding: "8px 20px", borderRadius: 999,
+                  background: cycle === c ? "var(--accent)" : "transparent",
+                  color: cycle === c ? "var(--accentFg)" : "var(--muted)",
+                }}>
+                  {c === "month" ? (lang === "en" ? "Monthly" : "Theo tháng") : (lang === "en" ? "Yearly" : "Theo năm")}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18, alignItems: "stretch" }}>
-            {L.pricing.plans.map((p) => (
+            {L.pricing.plans.map((p) => {
+              const dyn = planPricing(p.name);
+              const price = dyn?.price ?? p.price;
+              const period = dyn?.period ?? p.period;
+              return (
               <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
                 {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
                 <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 4, margin: "14px 0 4px" }}>
-                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-.03em" }}>{p.price}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 15 }}>{p.period}</span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "14px 0 4px", flexWrap: "wrap" }}>
+                  {dyn?.full && <span style={{ color: "var(--muted)", fontSize: 16, textDecoration: "line-through" }}>{dyn.full}</span>}
+                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-.03em" }}>{price}</span>
+                  <span style={{ color: "var(--muted)", fontSize: 15 }}>{period}</span>
+                  {dyn?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{`-${dyn.off}%`}</span>}
                 </div>
                 <p style={{ color: "var(--muted)", fontSize: 14, margin: "0 0 20px", minHeight: 40 }}>{p.desc}</p>
                 <Link href={loginUrl} style={{ width: "100%", height: 44, border: p.accent ? "none" : "1px solid var(--border)", background: p.accent ? "var(--accent)" : "var(--bg)", color: p.accent ? "var(--accentFg)" : "var(--fg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, cursor: "pointer", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{p.cta}</Link>
@@ -376,7 +452,8 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

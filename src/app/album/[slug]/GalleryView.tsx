@@ -1,11 +1,57 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+
+type Lang = "vi" | "en";
+const TR = {
+  vi: {
+    enterPw: "Nhập mật khẩu để xem album",
+    pwHint: "Mật khẩu là",
+    pwHintBold: "số điện thoại",
+    pwHintSuffix: "của bạn.",
+    pwWrong: "Mật khẩu không đúng",
+    pwOpening: "Đang mở…",
+    pwEnter: "Vào xem",
+    downloadAll: "Tải cả album",
+    photoCount: "ảnh",
+    tabAll: "Tất cả",
+    feedbackTitle: "Cảm nhận của bạn",
+    fbThanks: "Cảm ơn bạn đã gửi cảm nhận!",
+    fbNamePh: "Tên của bạn",
+    fbContentPh: "Chia sẻ cảm nhận của bạn về bộ ảnh…",
+    fbSend: "Gửi cảm nhận",
+    fbEmpty: "Chưa có cảm nhận nào.",
+    fbGuest: "Khách",
+  },
+  en: {
+    enterPw: "Enter password to view this album",
+    pwHint: "Password is your",
+    pwHintBold: "phone number",
+    pwHintSuffix: ".",
+    pwWrong: "Wrong password",
+    pwOpening: "Opening…",
+    pwEnter: "Enter",
+    downloadAll: "Download album",
+    photoCount: "photos",
+    tabAll: "All",
+    feedbackTitle: "Your feedback",
+    fbThanks: "Thank you for your feedback!",
+    fbNamePh: "Your name",
+    fbContentPh: "Share your thoughts about this photo set…",
+    fbSend: "Send feedback",
+    fbEmpty: "No feedback yet.",
+    fbGuest: "Guest",
+  },
+} as const;
 import {
-  Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play,
+  Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play, Heart, Share2,
 } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import Turnstile from "@/components/Turnstile";
+import ShareButton from "@/components/ShareButton";
+import ShareDialog from "@/components/ShareDialog";
+import { mainUrl } from "@/lib/hosts";
 import { thumbnailUrl, fullImageUrl } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
 import type { Feedback } from "@/lib/types";
@@ -14,16 +60,18 @@ interface P { id: string; drive_file_id: string; name: string; source_id: string
 
 const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
-interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; }
+interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, feedback,
+  gallery, initialPhotos, initialSources, feedback, shareIds,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
   initialSources: S[] | null;
   feedback: Feedback[];
+  shareIds?: string[] | null;
 }) {
+  const wm = gallery.watermark || null;
   const [unlocked, setUnlocked] = useState(!gallery.hasPassword);
   const [photos, setPhotos] = useState<P[]>(initialPhotos ?? []);
   const [sources, setSources] = useState<S[]>(initialSources ?? []);
@@ -35,12 +83,61 @@ export default function GalleryView({
   const [lbIdx, setLbIdx] = useState<number | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
 
+  // Client-side photo selection → build a "share only these" link.
+  const shareMode = shareIds != null && shareIds.length > 0;
+  const shareSet = useMemo(() => (shareIds ? new Set(shareIds) : null), [shareIds]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function shareSelected() {
+    if (selected.size === 0 || shareBusy) return;
+    setShareBusy(true);
+    const base = mainUrl(`/album/${gallery.slug}`);
+    const abs = /^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`;
+    try {
+      // Store the picks server-side and use a short ?s=token link.
+      const res = await fetch(`/api/album/${gallery.slug}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoIds: [...selected] }),
+      });
+      if (res.ok) {
+        const { token } = await res.json();
+        setShareUrl(`${abs}?s=${token}`);
+      } else {
+        setShareUrl(`${abs}?share=${[...selected].join(",")}`); // fallback
+      }
+    } catch {
+      setShareUrl(`${abs}?share=${[...selected].join(",")}`); // offline fallback
+    }
+    setShareBusy(false);
+  }
+
+  const [lang, setLang] = useState<Lang>("vi");
+  useEffect(() => {
+    const stored = localStorage.getItem("vk_lang") as Lang | null;
+    if (stored === "en") setLang("en");
+  }, []);
+  const tr = TR[lang];
+
   // feedback form
   const [fbName, setFbName] = useState("");
   const [fbRating, setFbRating] = useState(5);
   const [fbContent, setFbContent] = useState("");
   const [fbList, setFbList] = useState<Feedback[]>(feedback);
   const [fbSent, setFbSent] = useState(false);
+  const [fbCaptcha, setFbCaptcha] = useState<string | null>(null);
+  const onFbCaptcha = useCallback((t: string) => setFbCaptcha(t), []);
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +153,11 @@ export default function GalleryView({
   }
 
   const tabSources = useMemo(() => sources.filter((s) => photos.some((p) => p.source_id === s.id)), [sources, photos]);
-  const visible = useMemo(() => (activeTab === "all" ? photos : photos.filter((p) => p.source_id === activeTab)), [photos, activeTab]);
+  const visible = useMemo(() => {
+    let base = activeTab === "all" ? photos : photos.filter((p) => p.source_id === activeTab);
+    if (shareSet) base = base.filter((p) => shareSet.has(p.id));
+    return base;
+  }, [photos, activeTab, shareSet]);
   const sections = useMemo(() => {
     const idx = visible.map((p, i) => ({ p, i }));
     if (activeTab !== "all" || tabSources.length <= 1) return [{ id: "all", name: "", items: idx }];
@@ -84,17 +185,17 @@ export default function GalleryView({
     setZipProgress(0);
     const blob = await buildZip(
       visible.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
-      { watermark: null, onProgress: (d, t) => setZipProgress(Math.round((d / t) * 100)) }
+      { watermark: wm, onProgress: (d, t) => setZipProgress(Math.round((d / t) * 100)) }
     );
     triggerDownload(blob, `${gallery.slug}.zip`);
     setZipProgress(null);
   }
 
   async function sendFeedback() {
-    if (!fbContent.trim()) return;
+    if (!fbContent.trim() || !fbCaptcha) return;
     const res = await fetch("/api/feedback", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ albumId: gallery.id, clientName: fbName, rating: fbRating, content: fbContent }),
+      body: JSON.stringify({ albumId: gallery.id, clientName: fbName, rating: fbRating, content: fbContent, captcha: fbCaptcha }),
     });
     if (res.ok) {
       setFbSent(true);
@@ -112,11 +213,11 @@ export default function GalleryView({
           <form onSubmit={unlock} className="card w-full max-w-sm p-8 text-center">
             <Lock className="mx-auto mb-4" size={26} style={{ color: "var(--gold)" }} />
             <h1 className="font-serif text-2xl font-medium">{gallery.title}</h1>
-            <p className="mb-1 mt-2 text-sm" style={{ color: "var(--text2)" }}>Nhập mật khẩu để xem album</p>
-            <p className="mb-6 text-[12.5px]" style={{ color: "var(--gold)" }}>Mật khẩu là <b>số điện thoại</b> của bạn.</p>
+            <p className="mb-1 mt-2 text-sm" style={{ color: "var(--text2)" }}>{tr.enterPw}</p>
+            <p className="mb-6 text-[12.5px]" style={{ color: "var(--gold)" }}>{tr.pwHint} <b>{tr.pwHintBold}</b>{tr.pwHintSuffix}</p>
             <input type="text" inputMode="numeric" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} className="input mb-4 text-center" placeholder="09xx xxx xxx" />
-            {pwError && <p className="mb-4 text-sm text-red-400">Mật khẩu không đúng</p>}
-            <button disabled={pwLoading} className="btn-primary w-full">{pwLoading ? "Đang mở…" : "Vào xem"}</button>
+            {pwError && <p className="mb-4 text-sm text-red-400">{tr.pwWrong}</p>}
+            <button disabled={pwLoading} className="btn-primary w-full">{pwLoading ? tr.pwOpening : tr.pwEnter}</button>
           </form>
         </div>
       </main>
@@ -130,11 +231,18 @@ export default function GalleryView({
       <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 md:px-10" style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}>
         <Brand />
         <div className="flex items-center gap-3">
-          {gallery.allowDownload !== false && (
-            <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
-              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : "Tải cả album"}
+          {!shareMode && selected.size > 0 && (
+            <button onClick={shareSelected} disabled={shareBusy} className="btn-primary px-3 py-1.5 text-[13px]">
+              <Share2 size={14} />
+              {shareBusy ? "Đang tạo link…" : `Chia sẻ ${selected.size} ảnh đã chọn`}
             </button>
           )}
+          {gallery.allowDownload !== false && (
+            <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
+              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.downloadAll}
+            </button>
+          )}
+          {!shareMode && <ShareButton path={mainUrl(`/album/${gallery.slug}`)} title={gallery.title} className="btn-ghost px-3 py-1.5 text-[13px]" />}
           <LanguageSwitcher />
         </div>
       </header>
@@ -151,14 +259,23 @@ export default function GalleryView({
       <div className="mx-auto max-w-[1500px] px-6 md:px-10" style={{ marginTop: gallery.cover_url ? "-60px" : "28px", position: "relative" }}>
         <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{gallery.title}</h1>
         <p className="mt-2 flex items-center gap-3 text-[13.5px]" style={{ color: "var(--text2)" }}>
-          {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString("vi-VN")}</span>)}
-          <span>{photos.length} ảnh</span>
+          {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>)}
+          <span>{shareMode ? visible.length : photos.length} {tr.photoCount}</span>
         </p>
+        {shareMode ? (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--gold)" }}>
+            <Share2 size={14} /> {shareIds!.length} ảnh được chia sẻ
+          </div>
+        ) : (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}>
+            <Heart size={14} /> Nhấn vào trái tim ở mỗi ảnh để chọn rồi bấm “Chia sẻ ảnh đã chọn”
+          </div>
+        )}
 
         {/* tabs */}
         {tabSources.length > 1 && (
           <div className="mt-6 flex flex-wrap gap-2">
-            <Tab active={activeTab === "all"} onClick={() => setActiveTab("all")}>Tất cả</Tab>
+            <Tab active={activeTab === "all"} onClick={() => setActiveTab("all")}>{tr.tabAll}</Tab>
             {tabSources.map((s) => (<Tab key={s.id} active={activeTab === s.id} onClick={() => setActiveTab(s.id)}>{s.name} <span className="opacity-60">{photos.filter((p) => p.source_id === s.id).length}</span></Tab>))}
           </div>
         )}
@@ -169,17 +286,40 @@ export default function GalleryView({
             <section key={sec.id}>
               {sec.name && <h2 className="mb-3 font-serif text-xl font-medium">{sec.name}</h2>}
               <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-                {sec.items.map(({ p, i }) => (
-                  <div key={p.id} onClick={() => setLbIdx(i)} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
+                {sec.items.map(({ p, i }) => {
+                  const isSel = selected.has(p.id);
+                  return (
+                  <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    {wm && (
+                      <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
+                        {Array.from({ length: 8 }).map((_, wi) => (
+                          <span key={wi} className="rotate-[-30deg] whitespace-nowrap text-xs font-semibold tracking-widest text-white">{wm}</span>
+                        ))}
+                      </div>
+                    )}
+                    {isSel && <div className="pointer-events-none absolute inset-0 z-[2]" style={{ boxShadow: "inset 0 0 0 3px var(--gold)" }} />}
                     {isVideo(p) && (
-                      <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
+                      <span onClick={() => setLbIdx(i)} className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full" style={{ background: "rgba(10,10,12,.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
                         <Play size={20} fill="currentColor" strokeWidth={0} />
                       </span>
                     )}
+                    {!shareMode && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
+                        title="Chọn ảnh để chia sẻ"
+                        className="absolute right-2 top-2 z-[4] flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-90"
+                        style={isSel
+                          ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
+                          : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }}
+                      >
+                        <Heart size={18} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
+                      </button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ))}
@@ -187,14 +327,14 @@ export default function GalleryView({
 
         {/* Feedback */}
         <section className="mt-16 border-t pt-10" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-serif text-2xl font-medium">Cảm nhận của bạn</h2>
+          <h2 className="font-serif text-2xl font-medium">{tr.feedbackTitle}</h2>
           <div className="mt-5 grid gap-6 lg:grid-cols-2">
             <div className="card p-5">
               {fbSent ? (
-                <div className="flex items-center gap-2.5 text-sm" style={{ color: "#5fd29a" }}><Check size={18} /> Cảm ơn bạn đã gửi cảm nhận!</div>
+                <div className="flex items-center gap-2.5 text-sm" style={{ color: "#5fd29a" }}><Check size={18} /> {tr.fbThanks}</div>
               ) : (
                 <>
-                  <input value={fbName} onChange={(e) => setFbName(e.target.value)} placeholder="Tên của bạn" className="input mb-3" />
+                  <input value={fbName} onChange={(e) => setFbName(e.target.value)} placeholder={tr.fbNamePh} className="input mb-3" />
                   <div className="mb-3 flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} onClick={() => setFbRating(n)} style={{ color: n <= fbRating ? "var(--gold)" : "var(--text3)" }}>
@@ -202,18 +342,19 @@ export default function GalleryView({
                       </button>
                     ))}
                   </div>
-                  <textarea value={fbContent} onChange={(e) => setFbContent(e.target.value)} placeholder="Chia sẻ cảm nhận của bạn về bộ ảnh…" className="input min-h-[90px] resize-y" />
-                  <button onClick={sendFeedback} className="btn-primary mt-3 w-full"><Send size={15} /> Gửi cảm nhận</button>
+                  <textarea value={fbContent} onChange={(e) => setFbContent(e.target.value)} placeholder={tr.fbContentPh} className="input min-h-[90px] resize-y" />
+                  <Turnstile onVerify={onFbCaptcha} onExpire={() => setFbCaptcha(null)} onError={() => setFbCaptcha(null)} className="mt-3" />
+                  <button onClick={sendFeedback} disabled={!fbCaptcha} className="btn-primary mt-3 w-full"><Send size={15} /> {tr.fbSend}</button>
                 </>
               )}
             </div>
             <div className="space-y-3">
               {fbList.length === 0 ? (
-                <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có cảm nhận nào.</p>
+                <p className="text-sm" style={{ color: "var(--text3)" }}>{tr.fbEmpty}</p>
               ) : fbList.map((f) => (
                 <div key={f.id} className="card p-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{f.client_name || "Khách"}</span>
+                    <span className="text-sm font-medium">{f.client_name || tr.fbGuest}</span>
                     {f.rating ? <span className="flex items-center gap-0.5" style={{ color: "var(--gold)" }}>{Array.from({ length: f.rating }).map((_, i) => <Star key={i} size={12} fill="currentColor" strokeWidth={0} />)}</span> : null}
                   </div>
                   <p className="mt-1 text-[13.5px]" style={{ color: "var(--text2)" }}>{f.content}</p>
@@ -246,13 +387,29 @@ export default function GalleryView({
                 style={{ border: "none", boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} className="max-h-[82vh] max-w-full rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }} />
+              <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="max-h-[82vh] max-w-full select-none rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }} />
+                {wm && (
+                  <div className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-x-12 gap-y-10 opacity-20">
+                    {Array.from({ length: 12 }).map((_, wi) => (
+                      <span key={wi} className="rotate-[-30deg] whitespace-nowrap text-base font-semibold tracking-widest text-white">{wm}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <button onClick={() => setLbIdx(Math.min(visible.length - 1, lbIdx + 1))} disabled={lbIdx >= visible.length - 1} className="absolute right-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronRight size={22} /></button>
           </div>
         </div>
       )}
+
+      <ShareDialog
+        url={shareUrl}
+        title={`Chia sẻ ${selected.size} ảnh đã chọn`}
+        subtitle="Gửi link này cho người khác — họ sẽ chỉ xem đúng những ảnh bạn đã chọn."
+        onClose={() => setShareUrl(null)}
+      />
     </main>
   );
 }

@@ -3,24 +3,50 @@ import { fetchAllPhotos } from "@/lib/photos";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import GalleryView from "./GalleryView";
+import { buildAlbumMetadata } from "@/lib/album-meta";
+import { MAIN_HOST } from "@/lib/hosts";
 import type { Feedback } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const { data } = await createAdminClient().from("albums").select("title").eq("slug", params.slug).maybeSingle();
-  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+  const { data } = await createAdminClient()
+    .from("albums")
+    .select("title, description, cover_url, owner_id")
+    .eq("slug", params.slug)
+    .maybeSingle();
+  if (!data?.title) return { title: "mstudo" };
+  return buildAlbumMetadata({
+    title: data.title,
+    description: data.description,
+    coverUrl: data.cover_url,
+    host: MAIN_HOST,
+    path: `/album/${params.slug}`,
+    ownerId: data.owner_id,
+  });
 }
 
-export default async function GalleryPage({ params }: { params: { slug: string } }) {
+export default async function GalleryPage({ params, searchParams }: { params: { slug: string }; searchParams?: { share?: string; s?: string } }) {
   const admin = createAdminClient();
+  let shareIds: string[] | null = searchParams?.share ? searchParams.share.split(",").filter(Boolean) : null;
+  if (!shareIds && searchParams?.s) {
+    const { data: sh } = await admin
+      .from("album_shares")
+      .select("photo_ids")
+      .eq("token", searchParams.s)
+      .maybeSingle();
+    if (sh?.photo_ids?.length) shareIds = sh.photo_ids as string[];
+  }
   const { data: album } = await admin
     .from("albums")
-    .select("id, slug, title, status, is_gallery, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled")
+    .select("id, slug, title, status, is_gallery, phase, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled, watermark_delivery, watermark_text")
     .eq("slug", params.slug)
     .single();
 
-  if (!album || !album.is_gallery || album.status !== "published") {
+  // Accept both legacy galleries (is_gallery) and unified projects switched to
+  // the delivery phase.
+  const isDelivery = album?.is_gallery || album?.phase === "delivery";
+  if (!album || !isDelivery || album.status !== "published") {
     return (
       <main className="flex min-h-screen flex-col">
         <header className="flex items-center justify-between px-6 py-5 md:px-10">
@@ -39,9 +65,14 @@ export default async function GalleryPage({ params }: { params: { slug: string }
   let photos = null;
   let sources = null;
   if (!hasPassword) {
-    photos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
-    const { data: s } = await admin.from("album_sources").select("id, name, position").eq("album_id", album.id).order("position");
-    sources = s ?? [];
+    const allPhotos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
+    const { data: s } = await admin.from("album_sources").select("id, name, position, stage").eq("album_id", album.id).order("position");
+    // Delivery view shows only delivery-stage photos. For a unified project this
+    // hides the original selection photos; legacy galleries have all sources
+    // backfilled to 'delivery' so they are unaffected.
+    const delSourceIds = new Set((s ?? []).filter((x) => x.stage === "delivery").map((x) => x.id));
+    photos = (allPhotos ?? []).filter((ph) => !ph.source_id || delSourceIds.has(ph.source_id));
+    sources = (s ?? []).filter((x) => x.stage === "delivery").map(({ id, name, position }) => ({ id, name, position }));
   }
 
   const { data: feedback } = await admin
@@ -61,10 +92,12 @@ export default async function GalleryPage({ params }: { params: { slug: string }
         cover_url: album.cover_url,
         hasPassword,
         allowDownload: album.download_enabled !== false,
+        watermark: album.watermark_delivery ? (album.watermark_text || "Vieetjk") : null,
       }}
       initialPhotos={photos}
       initialSources={sources}
       feedback={(feedback ?? []) as Feedback[]}
+      shareIds={shareIds}
     />
   );
 }

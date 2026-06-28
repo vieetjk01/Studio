@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
+import Turnstile from "@/components/Turnstile";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 
@@ -28,12 +29,15 @@ function LoginForm() {
   const params = useSearchParams();
   // Default landing = studio management. Free/Basic accounts (no studio tier)
   // are redirected on to the album dashboard by the studio page itself.
-  const next = params.get("next") || "/dashboard/studio";
+  const rawNext = params.get("next") || "/dashboard/studio";
+  // C-1: Prevent open redirect — only allow relative paths
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard/studio";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   // Surface OAuth callback errors (?error=...) so the user isn't left wondering
   // why Google sign-in bounced them back here.
@@ -46,6 +50,12 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (!captchaToken) {
+      setError("Vui lòng xác minh bạn không phải robot.");
+      setLoading(false);
+      return;
+    }
 
     // Guard: NEXT_PUBLIC_* vars are inlined at build time. If they're missing
     // the auth request would hang forever — fail fast with a clear message.
@@ -139,15 +149,22 @@ function LoginForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="input mb-6"
+            className="input mb-5"
             placeholder="••••••••"
+          />
+
+          <Turnstile
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+            onError={() => setCaptchaToken(null)}
+            className="mb-4"
           />
 
           {error && (
             <p className="mb-4 text-sm text-red-400">{error}</p>
           )}
 
-          <button type="submit" disabled={loading} className="btn-primary w-full">
+          <button type="submit" disabled={loading || !captchaToken} className="btn-primary w-full">
             {loading ? t("signingIn") : t("login")}
           </button>
 

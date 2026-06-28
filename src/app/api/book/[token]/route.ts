@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToOwner } from "@/lib/push";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
     package_name?: string;
     package_price?: number;
     facebook?: string;
+    captcha?: string;
   };
+
+  const captchaOk = await verifyTurnstile(body.captcha);
+  if (!captchaOk) return NextResponse.json({ error: "captcha_failed" }, { status: 400 });
+
   if (!body.name?.trim() || !body.phone?.trim()) {
     return NextResponse.json({ error: "missing" }, { status: 400 });
   }

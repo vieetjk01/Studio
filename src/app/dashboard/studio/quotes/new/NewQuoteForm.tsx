@@ -1,19 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import DateInput from "@/components/DateInput";
 import { useState } from "react";
 import { Plus, Trash2, Lock, LockOpen, ArrowLeft, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { nextQuoteCode, newShareToken } from "@/lib/contract-code";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
+import { fmtDate } from "@/lib/date";
 import { vnd } from "@/lib/types";
 
 type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean; is_discount: boolean; package_group: string };
 
-export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
+export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: string; services?: { id: string; name: string }[] }) {
   const router = useRouter();
   const supabase = createClient();
-  const [title, setTitle] = useState("Báo giá");
+  const [title, setTitle] = useState("");
+  const [serviceId, setServiceId] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -62,12 +65,15 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
     try {
       const code = await nextQuoteCode(supabase, ownerId);
       const token = newShareToken();
+      // Auto-title from service + chosen date when the studio didn't type one.
+      const svcName = services.find((s) => s.id === serviceId)?.name;
+      const autoTitle = `Báo giá${svcName ? ` ${svcName}` : ""} ${fmtDate(eventDate || new Date())}`;
       const { data: quote, error: qErr } = await supabase
         .from("studio_quotes")
         .insert({
           owner_id: ownerId,
           code,
-          title: title.trim() || "Báo giá",
+          title: title.trim() || autoTitle,
           client_name: clientName.trim() || null,
           client_phone: clientPhone.trim() || null,
           client_email: clientEmail.trim() || null,
@@ -75,6 +81,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
           event_date: eventDate || null,
           location: location.trim() || null,
           intro: intro.trim() || null,
+          ...(serviceId ? { service_id: serviceId } : {}),
           client_token: token,
           status: "draft",
           bulk_discount_amount: bulkDiscountAmount || 0,
@@ -125,8 +132,24 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Field label="Tiêu đề báo giá">
-            <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="quote-title" />
+            <input
+              className="input"
+              placeholder={`Báo giá${services.find((s) => s.id === serviceId)?.name ? ` ${services.find((s) => s.id === serviceId)?.name}` : ""} ${fmtDate(eventDate || new Date())}`}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              data-testid="quote-title"
+            />
           </Field>
+          {services.length > 0 && (
+            <Field label="Dịch vụ (điều khoản riêng)">
+              <select className="input" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+                <option value="">— Không chọn —</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Tên khách (nếu đã biết)">
             <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} data-testid="quote-client-name" />
           </Field>
@@ -140,7 +163,7 @@ export default function NewQuoteForm({ ownerId }: { ownerId: string }) {
             <input className="input" value={clientFacebook} onChange={(e) => setClientFacebook(e.target.value)} placeholder="https://facebook.com/..." />
           </Field>
           <Field label="Ngày sự kiện">
-            <input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+            <DateInput value={eventDate} onChange={(v) => setEventDate(v)} />
           </Field>
           <Field label="Địa điểm" className="md:col-span-2">
             <input className="input" value={location} onChange={(e) => setLocation(e.target.value)} />

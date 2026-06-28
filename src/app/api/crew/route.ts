@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToOwner } from "@/lib/push";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +23,18 @@ export async function POST(req: Request) {
     status?: string;
     date?: string;
     note?: string;
+    captcha?: string;
   };
   const phone = digits(body.phone);
   if (!phone) return NextResponse.json({ error: "no_phone" }, { status: 400 });
+
+  // Require CAPTCHA on initial phone lookup (not on follow-up actions that already have id)
+  if (!body.action || body.action === "lookup") {
+    const captchaOk = await verifyTurnstile(body.captcha);
+    if (!captchaOk) {
+      return NextResponse.json({ error: "captcha_failed" }, { status: 400 });
+    }
+  }
 
   const db = createAdminClient();
 

@@ -6,11 +6,13 @@ import type { PricelistItem } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function buildLists(allItems: PricelistItem[]) {
-  const builtIn = PRICE_LISTS.filter((l) => allItems.some((i) => (i.list_key || "cuoi") === l.key));
+function buildLists(allItems: PricelistItem[], hidden: string[] = [], labels: Record<string, string> = {}) {
+  const builtIn = PRICE_LISTS.filter(
+    (l) => !hidden.includes(l.key) && allItems.some((i) => (i.list_key || "cuoi") === l.key)
+  ).map((l) => ({ ...l, label: labels[l.key] || l.label, title: labels[l.key] ? `Bảng giá ${labels[l.key]}` : l.title }));
   const builtInKeys = new Set(PRICE_LISTS.map((l) => l.key));
   const customKeys = [...new Set(allItems.map((i) => i.list_key || "cuoi"))].filter((k) => !builtInKeys.has(k));
-  const custom = customKeys.map((k) => ({ key: k, label: k, title: `Bảng giá ${k}` }));
+  const custom = customKeys.map((k) => { const lb = labels[k] || k; return { key: k, label: lb, title: `Bảng giá ${lb}` }; });
   const combined = [...builtIn, ...custom];
   return combined.length ? combined : PRICE_LISTS.slice(0, 1);
 }
@@ -42,16 +44,31 @@ export default async function PublicPricelist({ params, searchParams }: { params
     .order("position");
   const allItems = (data ?? []) as PricelistItem[];
 
-  const lists = buildLists(allItems);
+  const { data: th } = await db
+    .from("profiles")
+    .select("pl_bg, pl_text, pl_accent, pl_logo_url, pl_hidden_lists, pl_list_labels, pl_show_clauses")
+    .eq("id", owner.id)
+    .maybeSingle();
+  const hidden = ((th?.pl_hidden_lists as string[] | null) ?? []);
+  const labels = ((th?.pl_list_labels as Record<string, string> | null) ?? {});
+
+  const lists = buildLists(allItems, hidden, labels);
   const selected = (searchParams?.list && lists.find((l) => l.key === searchParams.list)?.key) || lists[0].key;
   const items = allItems.filter((i) => (i.list_key || "cuoi") === selected);
 
+  // Optionally show the selected service's contract clauses under the prices.
+  let clauses = "";
+  if (th?.pl_show_clauses) {
+    const { data: svc } = await db
+      .from("studio_services")
+      .select("clauses")
+      .eq("id", selected)
+      .eq("owner_id", owner.id)
+      .maybeSingle();
+    clauses = (svc?.clauses as string) || "";
+  }
+
   let theme: { bg?: string | null; text?: string | null; accent?: string | null; logo?: string | null } | undefined;
-  const { data: th } = await db
-    .from("profiles")
-    .select("pl_bg, pl_text, pl_accent, pl_logo_url")
-    .eq("id", owner.id)
-    .maybeSingle();
   if (th) theme = { bg: th.pl_bg, text: th.pl_text, accent: th.pl_accent, logo: th.pl_logo_url };
 
   return (
@@ -61,8 +78,9 @@ export default async function PublicPricelist({ params, searchParams }: { params
       lists={lists}
       selected={selected}
       tabBase={`/gia/${params.token}`}
-      bookHref={`/book/${params.token}`}
+      bookHref={`/book/${params.token}?list=${encodeURIComponent(selected)}`}
       theme={theme}
+      clauses={clauses}
     />
   );
 }

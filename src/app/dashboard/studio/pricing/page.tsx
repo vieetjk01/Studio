@@ -28,14 +28,20 @@ export default async function PricingPage() {
     await supabase.from("profiles").update({ booking_token: token }).eq("id", profile.id);
   }
 
-  let { data } = await supabase
-    .from("studio_pricelist")
-    .select("*")
-    .eq("owner_id", profile.id)
-    .order("position");
+  // Price list + services in parallel (services drive the list categories).
+  let [{ data }, { data: services }] = await Promise.all([
+    supabase.from("studio_pricelist").select("*").eq("owner_id", profile.id).order("position"),
+    supabase.from("studio_services").select("id, name").eq("owner_id", profile.id).eq("active", true).order("position", { ascending: true }),
+  ]);
+
+  const hiddenLists = (profile.pl_hidden_lists as string[] | null) ?? [];
+  const listLabels = (profile.pl_list_labels as Record<string, string> | null) ?? {};
+  const showClauses = !!profile.pl_show_clauses;
 
   // First visit: auto-fill the wedding + engagement lists from the studio's cards.
-  if ((!data || data.length === 0) && profile.actingRole !== "staff") {
+  // Skip any built-in list the studio has explicitly hidden so it is not
+  // re-seeded after being removed.
+  if ((!data || data.length === 0) && profile.actingRole !== "staff" && hiddenLists.length === 0) {
     await supabase.from("studio_pricelist").insert(
       ALL_SEED.map((s, i) => ({ ...s, owner_id: profile.id, position: i }))
     );
@@ -46,6 +52,10 @@ export default async function PricingPage() {
     <PricingManager
       ownerId={profile.id}
       initial={(data ?? []) as PricelistItem[]}
+      hiddenLists={hiddenLists}
+      listLabels={listLabels}
+      services={(services ?? []) as { id: string; name: string }[]}
+      showClauses={showClauses}
       shareUrl={token ? mainUrl(`/gia/${token}`) : ""}
       contact={{
         pl_phone: profile.pl_phone ?? "",

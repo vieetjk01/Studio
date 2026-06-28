@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { convertQuoteToContract } from "@/lib/quote-convert";
 import { effectivePlan, studioTier } from "@/lib/plans";
+import { sendEmail } from "@/lib/email";
+import { sendPushToOwner } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const db = createAdminClient();
   const { data: quote } = await db
     .from("studio_quotes")
-    .select("id, status, owner_id")
+    .select("id, status, owner_id, title")
     .eq("client_token", params.token)
     .maybeSingle();
   if (!quote) return NextResponse.json({ error: "Báo giá không tồn tại." }, { status: 404 });
@@ -104,15 +106,42 @@ export async function POST(req: Request, { params }: { params: { token: string }
       })
       .eq("id", quote.id);
 
-    // 2) If the client ticked auto-create AND the studio is on the full tier,
+    // 2) Fetch owner info once — used for both notification and tier check.
+    const { data: owner } = await db
+      .from("profiles")
+      .select("plan, plan_expires_at, role, email")
+      .eq("id", quote.owner_id)
+      .maybeSingle();
+
+    // 3) Notify the studio owner: in-app + push + email.
+    const quoteTitle = (quote as { title?: string }).title || "Báo giá";
+    const msg = `${clientName} đã chấp nhận báo giá "${quoteTitle}"`;
+    await db.from("studio_notifications").insert({
+      owner_id: quote.owner_id,
+      contract_id: null,
+      kind: "quote_accepted",
+      message: msg,
+    });
+    await sendPushToOwner(quote.owner_id, {
+      title: "Khách chấp nhận báo giá",
+      body: msg,
+      url: `/dashboard/studio/quotes`,
+      tag: `quote-accepted-${quote.id}`,
+    }).catch(() => {});
+    if (owner?.email) {
+      const host = process.env.NEXT_PUBLIC_STUDIO_HOST;
+      const link = host ? `https://${host}/dashboard/studio/quotes` : "";
+      await sendEmail({
+        to: owner.email,
+        subject: `Studio: ${msg}`,
+        html: `<div style="font-family:Arial,sans-serif;color:#222"><p>${msg}</p>${link ? `<p><a href="${link}">Xem báo giá →</a></p>` : ""}<p style="color:#888;font-size:12px">Thông báo tự động từ cổng khách.</p></div>`,
+      }).catch(() => {});
+    }
+
+    // 4) If the client ticked auto-create AND the studio is on the full tier,
     //    spawn the contract right away. Photographers (booking tier) only get
     //    the quote acceptance — they don't have the contract feature.
     if (autoCreate) {
-      const { data: owner } = await db
-        .from("profiles")
-        .select("plan, plan_expires_at, role")
-        .eq("id", quote.owner_id)
-        .maybeSingle();
       const tier = owner
         ? studioTier(effectivePlan(owner.plan, owner.plan_expires_at), owner.role === "admin")
         : "none";

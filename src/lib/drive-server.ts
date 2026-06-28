@@ -15,10 +15,33 @@ function key() {
   return k;
 }
 
+/**
+ * Referer to send with Drive API calls. Google rejects server-side requests
+ * ("Requests from referer <empty> are blocked") when the API key has an HTTP
+ * referrer restriction, because server fetches carry no Referer header. Setting
+ * one to an allowed origin lets a referrer-restricted key work without removing
+ * the restriction. Configure GOOGLE_API_REFERER to a value matching the key's
+ * allowed referrers; falls back to the main site host.
+ */
+function apiReferer(): string | null {
+  if (process.env.GOOGLE_API_REFERER) return process.env.GOOGLE_API_REFERER;
+  const host = process.env.NEXT_PUBLIC_MAIN_HOST;
+  return host ? `https://${host}/` : null;
+}
+
+/** fetch() wrapper that attaches the Referer header for referrer-restricted keys. */
+function driveFetch(url: string): Promise<Response> {
+  const referer = apiReferer();
+  return fetch(url, {
+    cache: "no-store",
+    headers: referer ? { Referer: referer } : undefined,
+  });
+}
+
 /** Fetch metadata for a single shared file. */
 export async function getFileMeta(fileId: string): Promise<DriveFile | null> {
   const url = `${API}/files/${fileId}?fields=id,name,mimeType&key=${key()}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await driveFetch(url);
   if (!res.ok) return null;
   return (await res.json()) as DriveFile;
 }
@@ -38,9 +61,7 @@ export async function listFolderImages(folderId: string): Promise<DriveFile[]> {
     });
     if (pageToken) params.set("pageToken", pageToken);
 
-    const res = await fetch(`${API}/files?${params.toString()}`, {
-      cache: "no-store",
-    });
+    const res = await driveFetch(`${API}/files?${params.toString()}`);
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`Drive API error (${res.status}): ${body.slice(0, 200)}`);
@@ -72,7 +93,7 @@ export async function listSubFolders(folderId: string): Promise<DriveFile[]> {
     orderBy: "name_natural",
     key: key(),
   });
-  const res = await fetch(`${API}/files?${params.toString()}`, { cache: "no-store" });
+  const res = await driveFetch(`${API}/files?${params.toString()}`);
   if (!res.ok) return [];
   const data = (await res.json()) as { files?: DriveFile[] };
   return data.files ?? [];

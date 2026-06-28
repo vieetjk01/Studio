@@ -4,6 +4,7 @@ import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 import { ThemeProvider, THEME_BOOT_SCRIPT } from "@/lib/theme";
 import { createAdminClient } from "@/lib/supabase/admin";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 const hanken = Hanken_Grotesk({
   subsets: ["latin", "vietnamese"],
@@ -78,6 +79,7 @@ export default function RootLayout({
         <ThemeProvider>
           <LangProvider>{children}</LangProvider>
         </ThemeProvider>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

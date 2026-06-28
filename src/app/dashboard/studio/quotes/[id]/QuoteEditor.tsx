@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import DateInput from "@/components/DateInput";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Copy, ExternalLink, Plus, Trash2, Lock, LockOpen, Send, FileSignature, X, Check, Save, Tag, CloudOff } from "lucide-react";
@@ -249,6 +250,18 @@ export default function QuoteEditor({
     flash("Đã hủy báo giá.");
   }
 
+  async function deleteQuote() {
+    if (!confirm("Xoá báo giá này? Mọi hạng mục sẽ bị xoá theo.")) return;
+    setBusy(true);
+    const { error } = await supabase.from("studio_quotes").delete().eq("id", quote.id);
+    if (error) {
+      setBusy(false);
+      setErr(`Lỗi: ${error.message}`);
+      return;
+    }
+    router.push("/dashboard/studio/quotes");
+  }
+
   async function convertToContract() {
     if (!confirm(`Tạo hợp đồng từ báo giá này?\n\nTổng tiền: ${vnd(total)}\nCọc đề xuất: ${vnd(deposit)}`)) return;
     setBusy(true);
@@ -352,6 +365,11 @@ export default function QuoteEditor({
               <FileSignature size={12} /> Mở hợp đồng
             </Link>
           )}
+          {quote.status === "cancelled" && (
+            <button onClick={deleteQuote} disabled={busy} className="btn-danger px-3 py-2 text-xs">
+              <Trash2 size={12} /> Xoá
+            </button>
+          )}
         </div>
       </header>
 
@@ -427,7 +445,7 @@ export default function QuoteEditor({
             <input className="input" value={quote.client_facebook || ""} disabled={locked} placeholder="https://facebook.com/..." onChange={(e) => patchLocal({ client_facebook: e.target.value })} />
           </Field>
           <Field label="Ngày sự kiện">
-            <input type="date" className="input" value={quote.event_date || ""} disabled={locked} onChange={(e) => patchLocal({ event_date: e.target.value || null })} />
+            <DateInput value={quote.event_date || ""} disabled={locked} onChange={(v) => patchLocal({ event_date: v || null })} />
           </Field>
           <Field label="Địa điểm">
             <input className="input" value={quote.location || ""} disabled={locked} onChange={(e) => patchLocal({ location: e.target.value })} />

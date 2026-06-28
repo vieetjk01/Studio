@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Link2, FolderTree, ArrowRight, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isFolderLink } from "@/lib/drive";
-import { GALLERY_CATEGORIES } from "@/lib/types";
+import { fetchMyGalleryCategories } from "@/lib/gallery-cats";
 
 function slugify(s: string) {
   const base = s
@@ -30,8 +31,12 @@ export default function NewGalleryPage() {
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
   const [eventDate, setEventDate] = useState("");
-  const [category, setCategory] = useState("cuoi-hoi");
-  const [customCat, setCustomCat] = useState("");
+  const [category, setCategory] = useState("");
+  const [catSuggestions, setCatSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchMyGalleryCategories().then(setCatSuggestions);
+  }, []);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +65,7 @@ export default function NewGalleryPage() {
   async function create() {
     setError(null);
     if (!title.trim()) return setError("Hãy nhập tên album.");
-    const viewPassword = phone.trim() || "0974374744"; // default password
+    const viewPassword = phone.trim();
     setBusy(true);
     try {
       const {
@@ -76,10 +81,10 @@ export default function NewGalleryPage() {
           slug: slugify(title),
           is_gallery: true,
           client_name: clientName.trim() || null,
-          client_phone: viewPassword,
+          client_phone: viewPassword || null,
           event_date: eventDate || null,
-          category,
-          category_label: category === "khac" ? customCat.trim() || "Khác" : null,
+          category: category.trim() || null,
+          category_label: null,
           status: "published",
           watermark_enabled: false,
         })
@@ -100,15 +105,22 @@ export default function NewGalleryPage() {
         );
       }
 
-      // Password = client phone (hashed server-side).
-      await fetch(`/api/albums/${album.id}/password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: viewPassword }),
-      });
-
+      // Password = client phone (hashed server-side). Skip if no phone provided.
+      // Fail loudly: a gallery that silently stays unprotected is worse than an error.
+      if (viewPassword) {
+        const pwRes = await fetch(`/api/albums/${album.id}/password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: viewPassword }),
+        });
+        if (!pwRes.ok) throw new Error("Không đặt được mật khẩu cho gallery. Vui lòng thử lại.");
+      }
+      // Sync failure isn't fatal — the gallery exists and can be re-synced — but warn.
       if (links.length > 0) {
-        await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
+        const syncRes = await fetch(`/api/albums/${album.id}/sync`, { method: "POST" });
+        if (!syncRes.ok) {
+          sessionStorage.setItem("gallerySyncWarning", "Đồng bộ ảnh chưa xong, hãy bấm Đồng bộ lại trong trang gallery.");
+        }
       }
 
       router.push(`/dashboard/galleries/${album.id}`);
@@ -170,26 +182,44 @@ export default function NewGalleryPage() {
           </div>
           <div>
             <label className="label">Ngày cưới / đính hôn</label>
-            <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="input" />
+            <DateInput value={eventDate} onChange={(v) => setEventDate(v)} />
           </div>
           <div>
-            <label className="label">Phân loại</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="input">
-              {GALLERY_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+            <label className="label">Phân loại (tự nhập)</label>
+            <input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              list="gallery-cat-suggestions"
+              className="input"
+              placeholder="VD: Cưới hỏi, Kỷ yếu, Sự kiện…"
+            />
+            <datalist id="gallery-cat-suggestions">
+              {catSuggestions.map((c) => (
+                <option key={c} value={c} />
               ))}
-            </select>
+            </datalist>
+            {catSuggestions.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {catSuggestions.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCategory(c)}
+                    className="rounded-full px-2.5 py-1 text-[12px]"
+                    style={category === c
+                      ? { background: "var(--gold)", color: "#1a1205" }
+                      : { background: "var(--surface2)", color: "var(--text2)" }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        {category === "khac" && (
-          <div>
-            <label className="label">Tên phân loại (tự nhập)</label>
-            <input value={customCat} onChange={(e) => setCustomCat(e.target.value)} className="input" placeholder="VD: Kỷ yếu" />
-          </div>
-        )}
 
         <p className="rounded-lg px-3 py-2 text-[12.5px]" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
-          Khách xem album bằng mật khẩu là <b>số điện thoại</b> ở trên. Nếu để trống, mật khẩu mặc định là <b>0974374744</b>. Bạn có thể ghim album ra trang chủ (xem không cần mật khẩu) trong phần chỉnh sửa.
+          Khách xem album bằng mật khẩu là <b>số điện thoại</b> ở trên. Nếu để trống, album sẽ <b>không có mật khẩu</b> — ai có link đều xem được. Bạn có thể đặt mật khẩu sau trong phần chỉnh sửa.
         </p>
 
         {error && <p className="text-sm text-red-400">{error}</p>}

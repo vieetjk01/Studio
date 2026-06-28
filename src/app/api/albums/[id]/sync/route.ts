@@ -52,6 +52,7 @@ export async function POST(
       name: string;
       drive_url: string;
       kind: string;
+      stage: string;
       position: number;
     }[] = [];
 
@@ -70,7 +71,7 @@ export async function POST(
         if (existingUrls.has(url)) continue;
         existingUrls.add(url);
         maxPos += 1;
-        newRows.push({ album_id: albumId, name: sub.name, drive_url: url, kind: "folder", position: maxPos });
+        newRows.push({ album_id: albumId, name: sub.name, drive_url: url, kind: "folder", stage: src.stage ?? "selection", position: maxPos });
       }
     }
     if (newRows.length > 0) {

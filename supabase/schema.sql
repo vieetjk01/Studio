@@ -119,6 +119,22 @@ begin
 end $$;
 
 -- ============================================================================
+-- album_shares: short-token links to a hand-picked subset of an album's photos.
+-- Lets "share N selected photos" produce a short URL (?s=token) instead of
+-- cramming every photo id into the query string.
+-- ============================================================================
+create table if not exists public.album_shares (
+  token       text primary key,
+  album_id    uuid not null references public.albums (id) on delete cascade,
+  photo_ids   text[] not null default '{}',
+  created_at  timestamptz not null default now()
+);
+create index if not exists album_shares_album_idx on public.album_shares (album_id);
+alter table public.album_shares enable row level security;
+drop policy if exists album_shares_public_read on public.album_shares;
+create policy album_shares_public_read on public.album_shares for select using (true);
+
+-- ============================================================================
 -- updated_at trigger for albums
 -- ============================================================================
 create or replace function public.set_updated_at()
@@ -259,6 +275,32 @@ alter table public.photos add column if not exists is_video boolean not null def
 alter table public.profiles add column if not exists can_galleries boolean not null default false;
 alter table public.site_settings add column if not exists featured_images text[] not null default '{}';
 alter table public.albums add column if not exists download_enabled boolean not null default true;
+
+-- ============================================================================
+-- Unified project model (gộp Album + Gallery): one album record can carry BOTH
+-- a "selection" phase (original photos the client picks from) and a "delivery"
+-- phase (finished photos to download). Each Drive source is tagged with its
+-- stage; the album exposes one stage at a time to the client via `phase`.
+-- Legacy records keep working unchanged: an old album = a project with only
+-- selection sources, an old gallery = a project with only delivery sources.
+-- ============================================================================
+alter table public.album_sources add column if not exists stage text not null default 'selection'
+  check (stage in ('selection', 'delivery'));
+alter table public.albums add column if not exists phase text not null default 'selection'
+  check (phase in ('selection', 'delivery'));
+-- Watermark for the delivery phase (selection phase keeps using watermark_enabled).
+alter table public.albums add column if not exists watermark_delivery boolean not null default false;
+
+-- Backfill so existing rows behave exactly as before (idempotent):
+--   galleries (is_gallery=true) -> phase 'delivery' and their sources -> 'delivery'
+--   albums    (is_gallery=false) -> phase 'selection' (the column default)
+update public.albums set phase = 'delivery' where is_gallery = true and phase <> 'delivery';
+update public.album_sources s set stage = 'delivery'
+  from public.albums a
+  where s.album_id = a.id and a.is_gallery = true and s.stage <> 'delivery';
+
+create index if not exists album_sources_stage_idx on public.album_sources (album_id, stage);
+create index if not exists albums_phase_idx on public.albums (phase, status);
 
 -- ============================================================================
 -- feedback: client testimonials for a gallery / the photographer
@@ -751,8 +793,15 @@ alter table public.studio_contracts add column if not exists client_messenger te
 -- their photos straight from the unified portal.
 alter table public.studio_contracts add column if not exists selection_album_id uuid references public.albums (id) on delete set null;
 
+-- Per-contract calendar colour (hex) so multiple shoots on the same day are
+-- easy to tell apart. Null = use the default gold marker.
+alter table public.studio_contracts add column if not exists calendar_color text;
+
 -- Monthly revenue target (mục tiêu doanh thu) per studio account.
 alter table public.profiles add column if not exists monthly_revenue_target integer not null default 0;
+
+-- Show the service's contract clauses on the public price list (studio toggle).
+alter table public.profiles add column if not exists pl_show_clauses boolean not null default false;
 
 -- Print / physical product orders per contract (album in, ảnh ép gỗ…).
 create table if not exists public.contract_products (
@@ -896,6 +945,10 @@ alter table public.profiles add column if not exists pl_bg           text;
 alter table public.profiles add column if not exists pl_text         text;
 alter table public.profiles add column if not exists pl_accent       text;
 alter table public.profiles add column if not exists pl_logo_url     text;
+-- Built-in price lists (e.g. 'cuoi', 'dinh-hon') the studio has hidden/removed.
+alter table public.profiles add column if not exists pl_hidden_lists text[] not null default '{}';
+-- Per-user custom labels for price list tabs (built-in + custom), key → label.
+alter table public.profiles add column if not exists pl_list_labels  jsonb not null default '{}';
 alter table public.profiles add column if not exists auto_client_emails boolean not null default false;  -- opt-in: auto-email clients (shoot reminder, review request)
 
 -- Widen the shoot_type check to the fuller service list (idempotent).
@@ -1106,6 +1159,23 @@ create index if not exists contract_payments_contract_idx on public.contract_pay
 -- Optional proof-of-transfer image (uploaded to the payment-proofs bucket).
 alter table public.contract_payments add column if not exists proof_url text;
 
+-- Client-submitted payment proof images (uploaded via the public contract portal).
+create table if not exists public.contract_client_proofs (
+  id          uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references public.studio_contracts (id) on delete cascade,
+  url         text not null,
+  note        text,
+  uploaded_at timestamptz not null default now()
+);
+create index if not exists contract_client_proofs_contract_idx on public.contract_client_proofs (contract_id);
+alter table public.contract_client_proofs add column if not exists plan_id uuid references public.contract_payment_plan(id) on delete set null;
+alter table public.contract_client_proofs enable row level security;
+drop policy if exists contract_client_proofs_owner on public.contract_client_proofs;
+create policy contract_client_proofs_owner on public.contract_client_proofs
+  for all using (
+    exists (select 1 from public.studio_contracts c where c.id = contract_id and c.owner_id = auth.uid())
+  );
+
 -- Misc studio expenses (chi phí khác ngoài lương) for the monthly report.
 create table if not exists public.studio_expenses (
   id         uuid primary key default gen_random_uuid(),
@@ -1212,6 +1282,27 @@ create policy studio_packages_owner_all on public.studio_packages
 drop policy if exists studio_pricelist_owner_all on public.studio_pricelist;
 create policy studio_pricelist_owner_all on public.studio_pricelist
   for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+
+-- Studio-defined service types (loại dịch vụ) with their own contract clauses.
+-- Picking a service in a contract/quote loads that service's clauses.
+create table if not exists public.studio_services (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles (id) on delete cascade,
+  name       text not null default 'Dịch vụ',
+  clauses    text not null default '',
+  position   integer not null default 0,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists studio_services_owner_idx on public.studio_services (owner_id);
+alter table public.studio_services enable row level security;
+drop policy if exists studio_services_owner_all on public.studio_services;
+create policy studio_services_owner_all on public.studio_services
+  for all using (public.is_studio_member(owner_id)) with check (public.is_studio_member(owner_id));
+
+-- Link a contract / quote to the chosen studio service (for its clauses & label).
+alter table public.studio_contracts add column if not exists service_id uuid references public.studio_services (id) on delete set null;
+alter table public.studio_quotes    add column if not exists service_id uuid references public.studio_services (id) on delete set null;
 
 -- Contract-child tables: gated via the parent contract's owner.
 do $$
@@ -1395,3 +1486,68 @@ alter table public.studio_quotes add column if not exists bulk_discount_min_item
 -- package). If the client selects the studio's designated package
 -- (discount_package_group), bulk_discount_amount is knocked off the total.
 alter table public.studio_quotes add column if not exists discount_package_group text null;
+
+-- ============================================================================
+-- Affiliate / referral system
+-- ============================================================================
+
+-- Each user gets one affiliate code (generated on demand).
+create table if not exists public.affiliate_codes (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  code        text not null unique,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+alter table public.affiliate_codes enable row level security;
+drop policy if exists affiliate_codes_owner on public.affiliate_codes;
+create policy affiliate_codes_owner on public.affiliate_codes
+  for all using (user_id = auth.uid());
+drop policy if exists affiliate_codes_admin on public.affiliate_codes;
+create policy affiliate_codes_admin on public.affiliate_codes
+  for all using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+-- Commission records: created when a referred user buys a plan.
+create table if not exists public.affiliate_commissions (
+  id                  uuid primary key default gen_random_uuid(),
+  referrer_id         uuid not null references public.profiles(id) on delete cascade,
+  referred_user_id    uuid references public.profiles(id) on delete set null,
+  referred_email      text,
+  plan                text not null,
+  cycle               text not null default 'month',
+  sale_amount         bigint not null default 0,  -- VND
+  commission_pct      int not null default 0,      -- %
+  commission_amount   bigint not null default 0,   -- VND
+  status              text not null default 'pending', -- pending | paid | cancelled
+  upgrade_request_id  uuid,
+  note                text,
+  created_at          timestamptz not null default now(),
+  paid_at             timestamptz
+);
+alter table public.affiliate_commissions enable row level security;
+drop policy if exists affiliate_commissions_owner on public.affiliate_commissions;
+create policy affiliate_commissions_owner on public.affiliate_commissions
+  for select using (referrer_id = auth.uid());
+drop policy if exists affiliate_commissions_admin on public.affiliate_commissions;
+create policy affiliate_commissions_admin on public.affiliate_commissions
+  for all using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+-- Track which affiliate code referred each user (set on first sign-up/visit).
+alter table public.profiles add column if not exists referred_by text; -- affiliate code
+
+-- Commission % per plan (stored in site_settings).
+alter table public.site_settings add column if not exists affiliate_commission_basic        int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_photographer  int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_studio        int not null default 10;
+
+-- ============================================================================
+-- Google Calendar integration
+-- ============================================================================
+-- Encrypted OAuth2 refresh token for each user who connects Google Calendar.
+alter table public.profiles add column if not exists google_refresh_token text;
+-- Which Google Calendar ID to sync to (default: 'primary').
+alter table public.profiles add column if not exists google_calendar_id   text;
+
+-- Store the Google Calendar event ID on each local event so we can update/delete it.
+alter table public.studio_events    add column if not exists gcal_event_id text;
+alter table public.studio_contracts add column if not exists gcal_event_id text;

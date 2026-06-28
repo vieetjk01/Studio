@@ -30,8 +30,23 @@ export default function DashboardChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  // Use the studio shell (green sidebar) for all studio workspace paths.
+  // Also pull in adjacent pages (site builder, upgrade, settings) when the
+  // user has a studio tier so they stay in the same design context.
   const isStudio =
-    pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/galleries");
+    pathname.startsWith("/dashboard/studio") ||
+    pathname.startsWith("/dashboard/galleries") ||
+    (tier !== "none" && (
+      pathname.startsWith("/dashboard/site") ||
+      pathname.startsWith("/dashboard/upgrade") ||
+      pathname.startsWith("/dashboard/settings") ||
+      // Bộ công cụ ảnh chạy ngay trong shell studio (không chuyển hướng ra ngoài)
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/albums") ||
+      pathname.startsWith("/dashboard/create") ||
+      pathname.startsWith("/dashboard/filter") ||
+      pathname.startsWith("/dashboard/compress")
+    ));
 
   if (isStudio && tier !== "none") {
     return (

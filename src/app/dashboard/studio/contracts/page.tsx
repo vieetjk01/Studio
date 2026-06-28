@@ -22,7 +22,7 @@ export default async function ContractsList() {
   const supabase = createClient();
   let q = supabase
     .from("studio_contracts")
-    .select("*, contract_items(qty, unit_price), contract_payments(amount)")
+    .select("id, code, title, client_name, client_phone, event_date, status, shoot_type, contract_items(qty, unit_price), contract_payments(amount)")
     .eq("owner_id", profile.id);
   if (profile.actingRole === "staff") q = q.eq("assigned_to", profile.actingUserId);
   const { data } = await q.order("created_at", { ascending: false });

@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wallet, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import { vnd, EXPENSE_CATEGORY_LABEL, PAYMENT_KIND_LABEL, type StudioExpense, type PaymentKind } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 export type PaymentRow = {
   id: string;
@@ -263,7 +265,7 @@ export default function ReportsView({
             <ul className="space-y-2 text-sm">
               {monthPayments.map((p) => (
                 <li key={p.id} className="flex justify-between">
-                  <span>{p.contract?.title || "Hợp đồng"} <span style={{ color: "var(--text3)" }}>· {p.paid_at}</span></span>
+                  <span>{p.contract?.title || "Hợp đồng"} <span style={{ color: "var(--text3)" }}>· {fmtDate(p.paid_at)}</span></span>
                   <span className="font-medium">{vnd(p.amount)}</span>
                 </li>
               ))}
@@ -311,7 +313,7 @@ export default function ReportsView({
               <option key={k} value={k}>{EXPENSE_CATEGORY_LABEL[k]}</option>
             ))}
           </select>
-          <input type="date" className="input sm:col-span-3" value={exp.spent_at} onChange={(e) => setExp((p) => ({ ...p, spent_at: e.target.value }))} />
+          <DateInput wrapperClassName="sm:col-span-3" value={exp.spent_at} onChange={(v) => setExp((p) => ({ ...p, spent_at: v }))} />
         </div>
         <button onClick={addExpense} disabled={busy} className="btn-primary mt-3">
           <Plus size={15} /> {busy ? "Đang thêm…" : "Thêm chi phí"}

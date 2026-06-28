@@ -51,7 +51,8 @@ export async function DELETE(request: NextRequest) {
   if (!endpoint) return NextResponse.json({ error: "missing endpoint" }, { status: 400 });
 
   const db = createAdminClient();
-  await db.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  // C-2: Scope delete to the authenticated user's subscription to prevent IDOR
+  await db.from("push_subscriptions").delete().eq("endpoint", endpoint).eq("user_id", user.id);
 
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,134 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type Lang = "vi" | "en";
+const TR = {
+  vi: {
+    errToggle: "Lỗi",
+    errSend: "Lỗi gửi",
+    errAccept: "Lỗi",
+    confirmTitle: "Xác nhận đồng ý báo giá này?",
+    confirmTotal: "Tổng tiền:",
+    confirmDeposit: "Cọc đề xuất:",
+    confirmAutoContract: "✅ Studio sẽ TỰ ĐỘNG tạo hợp đồng cho bạn ngay sau khi xác nhận.\n",
+    confirmManual: "Studio sẽ liên hệ riêng để gửi hợp đồng.\n",
+    lockedCancelled: "bị huỷ",
+    lockedExpired: "hết hạn",
+    lockedMsg: "và không thể thay đổi.",
+    quotePrefix: "Báo giá này đã",
+    codeLabel: "Mã:",
+    eventTitle: "Sự kiện",
+    dateLabel: "Ngày:",
+    locationLabel: "Địa điểm:",
+    itemsTitle: "Hạng mục báo giá",
+    itemsHint: "Bấm vào hạng mục có ô vuông để chọn/bỏ. Hạng mục khoá",
+    itemsHint2: "là bắt buộc.",
+    choosePackage: "Chọn 1 gói dịch vụ",
+    discount: "Giảm",
+    standaloneTitle: "Hạng mục riêng lẻ",
+    packageOffer: "Ưu đãi gói",
+    selectPackageHint: "Chọn gói",
+    selectPackageHint2: "để được giảm",
+    depositLabel: "Cọc đề xuất (~",
+    depositLabel2: "%, làm tròn 500K):",
+    adjustTitle: "Yêu cầu chỉnh sửa",
+    adjustHint: "Nếu cần thay đổi giá / thêm bớt hạng mục / điều khác, ghi rõ ở đây.",
+    adjustPh: "Vd: Em muốn bớt khoản makeup, thêm 1 photographer phụ…",
+    sending: "Đang gửi…",
+    sendBtn: "Gửi yêu cầu",
+    chatTitle: "Trao đổi với studio",
+    you: "Bạn",
+    yourInfoTitle: "Thông tin của bạn",
+    yourInfoHint: "Vui lòng điền để studio liên hệ và (nếu chọn) tự tạo hợp đồng.",
+    namePh: "Nguyễn Văn A",
+    nameLabel: "Họ và tên *",
+    phoneLabel: "Số điện thoại *",
+    emailLabel: "Email",
+    fbLabel: "Link Facebook",
+    phoneErr: "SĐT phải có 9–11 chữ số.",
+    autoContract: "Tự động tạo hợp đồng cho mình",
+    autoContractHint: "Khi xác nhận, hệ thống sẽ tự tạo hợp đồng dựa trên báo giá này (kèm hạng mục đã chọn và mức cọc đề xuất). Studio có thể chỉnh thêm điều khoản trước khi gửi cho bạn ký.",
+    processing: "Đang xử lý…",
+    acceptBtn: "Tôi đồng ý với báo giá này",
+    acceptedMsg: "Bạn đã đồng ý với báo giá này",
+    contractCreated: "Hợp đồng đã được tạo tự động. Bấm nút dưới để xem chi tiết và ký xác nhận khi sẵn sàng.",
+    viewContract: "Xem hợp đồng",
+    copied: "Đã copy ✓",
+    copyLink: "Copy link hợp đồng để lưu lại",
+    keepLink: "Giữ link này — bạn có thể quay lại xem hợp đồng bất cứ lúc nào.",
+    studioContact: "sẽ liên hệ để gửi hợp đồng cho bạn. Cảm ơn bạn!",
+    contractNotice: "Lưu ý về hợp đồng",
+    contractRef: "Hợp đồng tạo tự động từ báo giá này là",
+    contractRefLabel: "hợp đồng tham khảo",
+    contractRefHint: "Studio sẽ chỉnh sửa đầy đủ các điều khoản, thông tin chi tiết và gửi lại để bạn xem xét và ký chính thức.",
+    cantModify: "Báo giá này không thể thao tác.",
+    footer: "Báo giá tạo bởi",
+    dateLocale: "vi-VN",
+  },
+  en: {
+    errToggle: "Error",
+    errSend: "Error sending",
+    errAccept: "Error",
+    confirmTitle: "Confirm acceptance of this quote?",
+    confirmTotal: "Total:",
+    confirmDeposit: "Proposed deposit:",
+    confirmAutoContract: "✅ Studio will AUTOMATICALLY create a contract for you right after confirmation.\n",
+    confirmManual: "Studio will contact separately to send the contract.\n",
+    lockedCancelled: "cancelled",
+    lockedExpired: "expired",
+    lockedMsg: "and cannot be changed.",
+    quotePrefix: "This quote has been",
+    codeLabel: "Code:",
+    eventTitle: "Event",
+    dateLabel: "Date:",
+    locationLabel: "Location:",
+    itemsTitle: "Quote items",
+    itemsHint: "Click items with checkboxes to select/deselect. Locked items",
+    itemsHint2: "are required.",
+    choosePackage: "Choose 1 service package",
+    discount: "Discount",
+    standaloneTitle: "Standalone items",
+    packageOffer: "Package offer",
+    selectPackageHint: "Choose package",
+    selectPackageHint2: "to get discount",
+    depositLabel: "Proposed deposit (~",
+    depositLabel2: "%, rounded to 500K):",
+    adjustTitle: "Request adjustment",
+    adjustHint: "If you need to change price / add/remove items / anything else, specify clearly here.",
+    adjustPh: "E.g.: I want to reduce makeup, add 1 additional photographer…",
+    sending: "Sending…",
+    sendBtn: "Send request",
+    chatTitle: "Exchange with studio",
+    you: "You",
+    yourInfoTitle: "Your information",
+    yourInfoHint: "Please fill in so the studio can contact and (if chosen) auto-create a contract.",
+    namePh: "Jane Smith",
+    nameLabel: "Full name *",
+    phoneLabel: "Phone number *",
+    emailLabel: "Email",
+    fbLabel: "Facebook link",
+    phoneErr: "Phone must have 9–11 digits.",
+    autoContract: "Auto-create contract for me",
+    autoContractHint: "When confirmed, the system will auto-create a contract based on this quote (with selected items and proposed deposit). Studio can adjust terms before sending for your signature.",
+    processing: "Processing…",
+    acceptBtn: "I agree with this quote",
+    acceptedMsg: "You have agreed with this quote",
+    contractCreated: "Contract has been auto-created. Click the button below to view details and sign when ready.",
+    viewContract: "View contract",
+    copied: "Copied ✓",
+    copyLink: "Copy contract link to save",
+    keepLink: "Keep this link — you can return to view the contract anytime.",
+    studioContact: "will contact to send the contract to you. Thank you!",
+    contractNotice: "Contract notice",
+    contractRef: "The contract auto-created from this quote is",
+    contractRefLabel: "a reference contract",
+    contractRefHint: "Studio will fully edit the terms, details and send back for you to review and sign officially.",
+    cantModify: "This quote cannot be modified.",
+    footer: "Quote created by",
+    dateLocale: "en-GB",
+  },
+} as const;
 import {
   Check, MessageSquare, ShieldCheck, Lock, Facebook, Phone, Mail, User as UserIcon,
   Sparkles, FileSignature, ExternalLink, Copy, Tag, ChevronDown, ChevronUp, Package,
@@ -14,6 +142,7 @@ import {
   type QuoteAdjustment,
 } from "@/lib/types";
 import { computeRoundedDeposit, depositRatio } from "@/lib/quote-deposit";
+import { fmtDateLunar } from "@/lib/date";
 import { mainUrl } from "@/lib/hosts";
 
 export default function QuoteClientView({
@@ -31,6 +160,13 @@ export default function QuoteClientView({
   studioCanContract: boolean;
   initialContractToken: string | null;
 }) {
+  const [lang, setLangState] = useState<Lang>("vi");
+  useEffect(() => {
+    const stored = localStorage.getItem("vk_lang") as Lang | null;
+    if (stored === "en") setLangState("en");
+  }, []);
+  const tr = TR[lang];
+
   const [items, setItems] = useState(initialItems);
   const [adjustments, setAdjustments] = useState(initialAdjustments);
   const [message, setMessage] = useState("");
@@ -104,10 +240,10 @@ export default function QuoteClientView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "toggle", item_id: it.id, selected: next }),
       });
-      if (!r.ok) throw new Error((await r.json()).error || "Lỗi");
+      if (!r.ok) throw new Error((await r.json()).error || tr.errToggle);
     } catch (e) {
-      setItems(prevItems); // Rollback to the pre-toggle snapshot.
-      setError(e instanceof Error ? e.message : "Lỗi");
+      setItems(prevItems);
+      setError(e instanceof Error ? e.message : tr.errToggle);
     }
   }
 
@@ -122,11 +258,11 @@ export default function QuoteClientView({
         body: JSON.stringify({ action: "adjust", message: message.trim() }),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Lỗi gửi");
+      if (!r.ok) throw new Error(data.error || tr.errSend);
       setAdjustments((arr) => [...arr, data.adjustment as QuoteAdjustment]);
       setMessage("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi");
+      setError(e instanceof Error ? e.message : tr.errSend);
     } finally {
       setSending(false);
     }
@@ -135,12 +271,10 @@ export default function QuoteClientView({
   async function accept() {
     if (locked || !formValid) return;
     const confirmMsg =
-      `Xác nhận đồng ý báo giá này?\n\n` +
-      `Tổng tiền: ${vnd(effectiveTotal)}\n` +
-      `Cọc đề xuất: ${vnd(deposit)}\n` +
-      (autoCreate && studioCanContract
-        ? "✅ Studio sẽ TỰ ĐỘNG tạo hợp đồng cho bạn ngay sau khi xác nhận.\n"
-        : "Studio sẽ liên hệ riêng để gửi hợp đồng.\n");
+      `${tr.confirmTitle}\n\n` +
+      `${tr.confirmTotal} ${vnd(effectiveTotal)}\n` +
+      `${tr.confirmDeposit} ${vnd(deposit)}\n` +
+      (autoCreate && studioCanContract ? tr.confirmAutoContract : tr.confirmManual);
     if (!confirm(confirmMsg)) return;
     setAccepting(true);
     setError(null);
@@ -158,11 +292,11 @@ export default function QuoteClientView({
         }),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Lỗi");
+      if (!r.ok) throw new Error(data.error || tr.errAccept);
       setAccepted(true);
       if (data.contract_token) setContractToken(data.contract_token);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi");
+      setError(e instanceof Error ? e.message : tr.errAccept);
     } finally {
       setAccepting(false);
     }
@@ -175,14 +309,14 @@ export default function QuoteClientView({
         {/* Locked banner */}
         {locked && !accepted && (
           <div className="rounded-lg px-4 py-3 text-sm" style={{ background: "rgba(107,163,199,0.1)", border: "1px solid rgba(107,163,199,0.3)", color: "var(--text2)" }}>
-            Báo giá này đã {quote.status === "cancelled" ? "bị huỷ" : "hết hạn"} và không thể thay đổi.
+            {tr.quotePrefix} {quote.status === "cancelled" ? tr.lockedCancelled : tr.lockedExpired} {tr.lockedMsg}
           </div>
         )}
 
         <header className="text-center">
           <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text3)" }}>{studioName}</p>
           <h1 className="mt-2 font-serif text-3xl font-medium md:text-4xl">{quote.title}</h1>
-          {quote.code && <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>Mã: {quote.code}</p>}
+          {quote.code && <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{tr.codeLabel} {quote.code}</p>}
           <span
             className="mt-3 inline-block rounded-full px-3 py-1 text-xs"
             style={{ background: "var(--surface2)", color: accepted ? "#34d399" : "var(--text2)" }}
@@ -200,13 +334,13 @@ export default function QuoteClientView({
 
         {(quote.event_date || quote.location) && (
           <section className="card p-5">
-            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>Sự kiện</h2>
+            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>{tr.eventTitle}</h2>
             <dl className="mt-2 grid gap-2 text-sm md:grid-cols-2">
               {quote.event_date && (
-                <div><dt className="opacity-60">Ngày:</dt><dd>{new Date(quote.event_date).toLocaleDateString("vi-VN")}</dd></div>
+                <div><dt className="opacity-60">{tr.dateLabel}</dt><dd>{fmtDateLunar(quote.event_date)}</dd></div>
               )}
               {quote.location && (
-                <div><dt className="opacity-60">Địa điểm:</dt><dd>{quote.location}</dd></div>
+                <div><dt className="opacity-60">{tr.locationLabel}</dt><dd>{quote.location}</dd></div>
               )}
             </dl>
           </section>
@@ -214,10 +348,10 @@ export default function QuoteClientView({
 
         {/* Items section */}
         <section className="card p-5">
-          <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>Hạng mục báo giá</h2>
+          <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>{tr.itemsTitle}</h2>
           {!locked && (
             <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
-              Bấm vào hạng mục có ô vuông để chọn/bỏ. Hạng mục khoá <Lock size={10} className="inline" /> là bắt buộc.
+              {tr.itemsHint} <Lock size={10} className="inline" /> {tr.itemsHint2}
             </p>
           )}
 
@@ -225,7 +359,7 @@ export default function QuoteClientView({
           {packageGroups.size > 0 && (
             <div className="mt-3 space-y-3">
               <p className="text-xs font-medium" style={{ color: "var(--text3)" }}>
-                <Package size={11} className="inline mr-1" /> Chọn 1 gói dịch vụ
+                <Package size={11} className="inline mr-1" /> {tr.choosePackage}
               </p>
               {Array.from(packageGroups.entries()).map(([groupName, groupItems]) => {
                 const groupSelected = groupItems.some((i) => i.selected);
@@ -256,7 +390,7 @@ export default function QuoteClientView({
                         <span className="font-medium">{groupName}</span>
                         {quote.discount_package_group === groupName && quote.bulk_discount_amount > 0 && (
                           <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
-                            <Tag size={9} className="inline mr-0.5" /> Giảm {vnd(quote.bulk_discount_amount)}
+                            <Tag size={9} className="inline mr-0.5" /> {tr.discount} {vnd(quote.bulk_discount_amount)}
                           </span>
                         )}
                       </div>
@@ -277,7 +411,7 @@ export default function QuoteClientView({
           {standaloneItems.length > 0 && (
             <div className="mt-3 space-y-2">
               {packageGroups.size > 0 && (
-                <p className="text-xs font-medium" style={{ color: "var(--text3)" }}>Hạng mục riêng lẻ</p>
+                <p className="text-xs font-medium" style={{ color: "var(--text3)" }}>{tr.standaloneTitle}</p>
               )}
               {standaloneItems.map((it) => {
                 const isOn = !it.is_optional || it.selected;
@@ -338,17 +472,17 @@ export default function QuoteClientView({
           <div className="mt-4 space-y-1 border-t pt-4 text-right" style={{ borderColor: "var(--border)" }}>
             {bulkDiscountActive && (
               <p className="text-sm" style={{ color: "#fb923c" }}>
-                🏷️ Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount)}
+                🏷️ {tr.packageOffer} {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount)}
               </p>
             )}
             {quote.discount_package_group && quote.bulk_discount_amount > 0 && !bulkDiscountActive && !locked && (
               <p className="text-xs" style={{ color: "var(--text3)" }}>
-                Chọn gói <b style={{ color: "var(--text2)" }}>{quote.discount_package_group}</b> để được giảm {vnd(quote.bulk_discount_amount)}
+                {tr.selectPackageHint} <b style={{ color: "var(--text2)" }}>{quote.discount_package_group}</b> {tr.selectPackageHint2} {vnd(quote.bulk_discount_amount)}
               </p>
             )}
             <p className="text-2xl font-medium text-accent" data-testid="quote-client-total">{vnd(effectiveTotal)}</p>
             <p className="text-xs" style={{ color: "var(--text3)" }}>
-              Cọc đề xuất (~{depositPct.toFixed(0)}%, làm tròn 500K): <b style={{ color: "var(--text2)" }}>{vnd(deposit)}</b>
+              {tr.depositLabel}{depositPct.toFixed(0)}{tr.depositLabel2} <b style={{ color: "var(--text2)" }}>{vnd(deposit)}</b>
             </p>
           </div>
         </section>
@@ -357,21 +491,21 @@ export default function QuoteClientView({
         {!locked && (
           <section className="card p-5" data-testid="quote-adjust-section">
             <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>
-              <MessageSquare size={12} className="inline" /> Yêu cầu chỉnh sửa
+              <MessageSquare size={12} className="inline" /> {tr.adjustTitle}
             </h2>
             <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
-              Nếu cần thay đổi giá / thêm bớt hạng mục / điều khác, ghi rõ ở đây.
+              {tr.adjustHint}
             </p>
             <textarea
               className="input mt-2"
               rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Vd: Em muốn bớt khoản makeup, thêm 1 photographer phụ…"
+              placeholder={tr.adjustPh}
               data-testid="quote-adjust-input"
             />
             <button onClick={sendAdjustment} disabled={sending || !message.trim()} className="btn-ghost mt-2 text-xs" data-testid="quote-adjust-send">
-              {sending ? "Đang gửi…" : "Gửi yêu cầu"}
+              {sending ? tr.sending : tr.sendBtn}
             </button>
           </section>
         )}
@@ -379,7 +513,7 @@ export default function QuoteClientView({
         {/* Adjustment history */}
         {adjustments.length > 0 && (
           <section className="card p-5">
-            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>Trao đổi với studio</h2>
+            <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>{tr.chatTitle}</h2>
             <div className="mt-3 space-y-2">
               {adjustments.map((a) => (
                 <div
@@ -388,7 +522,7 @@ export default function QuoteClientView({
                   style={{ background: a.author === "client" ? "var(--surface2)" : "rgba(199,167,107,0.08)" }}
                 >
                   <p className="text-xs" style={{ color: "var(--text3)" }}>
-                    {a.author === "client" ? "Bạn" : studioName} · {new Date(a.created_at).toLocaleString("vi-VN")}
+                    {a.author === "client" ? tr.you : studioName} · {new Date(a.created_at).toLocaleString(tr.dateLocale)}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap">{a.message}</p>
                 </div>
@@ -401,25 +535,25 @@ export default function QuoteClientView({
         {!locked && (
           <section className="card p-5" data-testid="quote-accept-form">
             <h2 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text3)" }}>
-              <ShieldCheck size={12} className="inline" /> Thông tin của bạn
+              <ShieldCheck size={12} className="inline" /> {tr.yourInfoTitle}
             </h2>
             <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
-              Vui lòng điền để studio liên hệ và (nếu chọn) tự tạo hợp đồng.
+              {tr.yourInfoHint}
             </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <ClientField icon={<UserIcon size={14} />} label="Họ và tên *">
-                <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nguyễn Văn A" data-testid="accept-name" />
+              <ClientField icon={<UserIcon size={14} />} label={tr.nameLabel}>
+                <input className="input" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder={tr.namePh} data-testid="accept-name" />
               </ClientField>
-              <ClientField icon={<Phone size={14} />} label="Số điện thoại *">
+              <ClientField icon={<Phone size={14} />} label={tr.phoneLabel}>
                 <input className="input" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="0901234567" inputMode="numeric" data-testid="accept-phone" />
                 {clientPhone && !phoneValid && (
-                  <p className="mt-1 text-[11px] text-red-400">SĐT phải có 9–11 chữ số.</p>
+                  <p className="mt-1 text-[11px] text-red-400">{tr.phoneErr}</p>
                 )}
               </ClientField>
-              <ClientField icon={<Mail size={14} />} label="Email">
+              <ClientField icon={<Mail size={14} />} label={tr.emailLabel}>
                 <input className="input" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="abc@gmail.com" data-testid="accept-email" />
               </ClientField>
-              <ClientField icon={<Facebook size={14} />} label="Link Facebook">
+              <ClientField icon={<Facebook size={14} />} label={tr.fbLabel}>
                 <input className="input" value={clientFacebook} onChange={(e) => setClientFacebook(e.target.value)} placeholder="https://facebook.com/..." data-testid="accept-facebook" />
               </ClientField>
             </div>
@@ -437,10 +571,10 @@ export default function QuoteClientView({
                 <div className="text-sm">
                   <p className="font-medium">
                     <Sparkles size={12} className="mr-1 inline text-accent" />
-                    Tự động tạo hợp đồng cho mình
+                    {tr.autoContract}
                   </p>
                   <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>
-                    Khi xác nhận, hệ thống sẽ tự tạo hợp đồng dựa trên báo giá này (kèm hạng mục đã chọn và mức cọc đề xuất). Studio có thể chỉnh thêm điều khoản trước khi gửi cho bạn ký.
+                    {tr.autoContractHint}
                   </p>
                 </div>
               </label>
@@ -457,17 +591,17 @@ export default function QuoteClientView({
             className="btn-primary w-full py-4 text-base"
             data-testid="quote-accept-btn"
           >
-            <ShieldCheck size={18} /> {accepting ? "Đang xử lý…" : "Tôi đồng ý với báo giá này"}
+            <ShieldCheck size={18} /> {accepting ? tr.processing : tr.acceptBtn}
           </button>
         ) : accepted ? (
           <div className="space-y-3">
             <div className="rounded-lg p-6 text-center" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)" }} data-testid="quote-accepted-banner">
               <Check size={36} className="mx-auto text-green-400" />
-              <p className="mt-3 text-lg font-medium text-green-400">Bạn đã đồng ý với báo giá này</p>
+              <p className="mt-3 text-lg font-medium text-green-400">{tr.acceptedMsg}</p>
               {contractToken ? (
                 <>
                   <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-                    Hợp đồng đã được tạo tự động. Bấm nút dưới để xem chi tiết và ký xác nhận khi sẵn sàng.
+                    {tr.contractCreated}
                   </p>
                   <div className="mt-4 flex flex-col items-center gap-2">
                     <a
@@ -477,7 +611,7 @@ export default function QuoteClientView({
                       className="btn-primary inline-flex items-center gap-2 px-5 py-2.5"
                       data-testid="contract-view-link"
                     >
-                      <FileSignature size={16} /> Xem hợp đồng
+                      <FileSignature size={16} /> {tr.viewContract}
                       <ExternalLink size={12} />
                     </a>
                     <button
@@ -489,16 +623,16 @@ export default function QuoteClientView({
                       className="btn-ghost inline-flex items-center gap-1.5 text-xs"
                       data-testid="contract-copy-link"
                     >
-                      <Copy size={12} /> {copied ? "Đã copy ✓" : "Copy link hợp đồng để lưu lại"}
+                      <Copy size={12} /> {copied ? tr.copied : tr.copyLink}
                     </button>
                     <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
-                      Giữ link này — bạn có thể quay lại xem hợp đồng bất cứ lúc nào.
+                      {tr.keepLink}
                     </p>
                   </div>
                 </>
               ) : (
                 <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-                  {studioName} sẽ liên hệ để gửi hợp đồng cho bạn. Cảm ơn bạn!
+                  {studioName} {tr.studioContact}
                 </p>
               )}
             </div>
@@ -506,20 +640,20 @@ export default function QuoteClientView({
             <div className="rounded-lg px-4 py-3 text-sm" style={{ background: "rgba(199,167,107,0.08)", border: "1px solid rgba(199,167,107,0.25)" }}>
               <p className="font-medium" style={{ color: "var(--accent)" }}>
                 <FileSignature size={14} className="inline mr-1.5" />
-                Lưu ý về hợp đồng
+                {tr.contractNotice}
               </p>
               <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>
-                Hợp đồng tạo tự động từ báo giá này là <b>hợp đồng tham khảo</b>.
-                Studio sẽ chỉnh sửa đầy đủ các điều khoản, thông tin chi tiết và gửi lại để bạn xem xét và ký chính thức.
+                {tr.contractRef} <b>{tr.contractRefLabel}</b>.
+                {tr.contractRefHint}
               </p>
             </div>
           </div>
         ) : (
-          <p className="text-center text-sm" style={{ color: "var(--text3)" }}>Báo giá này không thể thao tác.</p>
+          <p className="text-center text-sm" style={{ color: "var(--text3)" }}>{tr.cantModify}</p>
         )}
 
         <footer className="pt-6 text-center text-xs" style={{ color: "var(--text3)" }}>
-          Báo giá tạo bởi <b>{studioName}</b> · Vieetjk
+          {tr.footer} <b>{studioName}</b> · Vieetjk
         </footer>
       </div>
     </main>
