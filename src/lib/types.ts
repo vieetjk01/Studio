@@ -614,7 +614,8 @@ export type SiteBlockType =
   | "team"
   | "quote"
   | "logos"
-  | "map";
+  | "map"
+  | "html";
 
 export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
   hero: "Ảnh bìa / Giới thiệu",
@@ -633,6 +634,7 @@ export const SITE_BLOCK_LABEL: Record<SiteBlockType, string> = {
   quote: "Trích dẫn nổi bật",
   logos: "Logo đối tác / báo chí",
   map: "Bản đồ địa chỉ",
+  html: "HTML / Nhúng mã (tự thiết kế)",
 };
 
 export interface SiteBlock {
