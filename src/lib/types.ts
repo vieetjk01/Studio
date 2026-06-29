@@ -689,12 +689,14 @@ export type WeddingConfig = {
   gift_note?: string;
   groom_bank?: WeddingBank;
   bride_bank?: WeddingBank;
-  music_url?: string;        // YouTube / mp3 nhạc nền
-  accent?: string;           // màu nhấn (#rrggbb)
-  font?: "serif" | "sans";
+  music_url?: string;        // URL nhạc nền (mp3/audio)
+  music_autoplay?: boolean;  // thử tự phát (trình duyệt có thể chặn)
+  guestbook_enabled?: boolean; // hiện sổ lưu bút (lời chúc của khách)
+  accent?: string;           // màu nhấn (#rrggbb) — ghi đè màu của template
+  font?: "serif" | "sans";   // ghi đè phông của template
 };
 
-export const WEDDING_TEMPLATES = ["classic"] as const;
+export const WEDDING_TEMPLATES = ["classic", "elegant", "floral", "modern"] as const;
 export type WeddingTemplate = (typeof WEDDING_TEMPLATES)[number];
 
 export interface WeddingInvitation {

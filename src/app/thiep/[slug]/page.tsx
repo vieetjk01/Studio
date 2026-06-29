@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { WeddingConfig, WeddingInvitation } from "@/lib/types";
-import WeddingClassic from "./WeddingClassic";
+import WeddingRenderer, { type Wish } from "./WeddingRenderer";
 
 export const dynamic = "force-dynamic";
 
@@ -35,5 +35,17 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function WeddingInvitationPage({ params }: { params: { slug: string } }) {
   const inv = await load(params.slug);
   if (!inv) notFound();
-  return <WeddingClassic inv={inv} />;
+
+  // Guestbook = well-wishes left through the RSVP form.
+  const db = createAdminClient();
+  const { data: wishRows } = await db
+    .from("wedding_rsvps")
+    .select("guest_name, wish, created_at")
+    .eq("invitation_id", inv.id)
+    .not("wish", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  const wishes = ((wishRows ?? []) as Wish[]).filter((w) => w.wish && w.guest_name);
+
+  return <WeddingRenderer inv={inv} wishes={wishes} />;
 }

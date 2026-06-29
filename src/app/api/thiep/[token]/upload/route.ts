@@ -3,9 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-// Hard server cap (the client already compresses to WebP ≤~2MB; this is a
-// backstop against abuse since the upload is token-gated, not login-gated).
-const MAX_BYTES = 3 * 1024 * 1024;
+// Hard server caps (the client compresses images to WebP ≤~2MB; audio for the
+// background music is allowed a bit more). The upload is token-gated.
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 
 /**
  * Token-gated image upload for the wedding-invitation editor. The client sends
@@ -24,10 +25,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "no_file" }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: "too_large" }, { status: 413 });
-  if (!file.type.startsWith("image/")) return NextResponse.json({ error: "not_image" }, { status: 415 });
+  const isAudio = file.type.startsWith("audio/");
+  const isImage = file.type.startsWith("image/");
+  if (!isImage && !isAudio) return NextResponse.json({ error: "bad_type" }, { status: 415 });
+  if (file.size > (isAudio ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES)) {
+    return NextResponse.json({ error: "too_large" }, { status: 413 });
+  }
 
-  const ext = file.type === "image/webp" ? "webp" : (file.type.split("/")[1] || "jpg");
+  const ext = file.type === "image/webp" ? "webp" : (file.type.split("/")[1] || (isAudio ? "mp3" : "jpg"));
   const path = `${inv.owner_id}/${inv.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
   const { error } = await db.storage
     .from("wedding-photos")

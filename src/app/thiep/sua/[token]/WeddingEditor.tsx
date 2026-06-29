@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart, Save, Eye, Plus, Trash2, Image as ImageIcon, Check, Loader2, ExternalLink, Gift, Users,
+  Music, LayoutTemplate, FolderOpen, X,
 } from "lucide-react";
 import { BANKS } from "@/lib/banks";
 import { checkImageFile, compressImage } from "@/lib/image";
 import { thiepUrl } from "@/lib/hosts";
+import { WEDDING_TEMPLATE_LIST } from "../../[slug]/templates";
 import type { WeddingBank, WeddingConfig, WeddingEventBlock, WeddingRsvp } from "@/lib/types";
 
 type Loaded = {
@@ -14,15 +16,19 @@ type Loaded = {
   rsvps: WeddingRsvp[];
 };
 
+type AlbumPhoto = { id: string; name: string; url: string; thumb: string };
+
 export default function WeddingEditor({ token }: { token: string }) {
   const [cfg, setCfg] = useState<WeddingConfig | null>(null);
   const [slug, setSlug] = useState("");
+  const [template, setTemplate] = useState("classic");
   const [published, setPublished] = useState(false);
   const [rsvps, setRsvps] = useState<WeddingRsvp[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "notfound">("loading");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [albumOpen, setAlbumOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -31,6 +37,7 @@ export default function WeddingEditor({ token }: { token: string }) {
       const data = (await res.json()) as Loaded;
       setCfg(data.invitation.config || {});
       setSlug(data.invitation.slug);
+      setTemplate(data.invitation.template || "classic");
       setPublished(data.invitation.published);
       setRsvps(data.rsvps || []);
       setStatus("ready");
@@ -47,7 +54,7 @@ export default function WeddingEditor({ token }: { token: string }) {
     const res = await fetch(`/api/thiep/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config: cfg, published: willPublish }),
+      body: JSON.stringify({ config: cfg, published: willPublish, template }),
     });
     setSaving(false);
     if (!res.ok) { setErr("Lưu không thành công, thử lại nhé."); return; }
@@ -69,6 +76,15 @@ export default function WeddingEditor({ token }: { token: string }) {
     fd.append("file", new File([blob], "photo.webp", { type: blob.type || "image/webp" }));
     const res = await fetch(`/api/thiep/${token}/upload`, { method: "POST", body: fd });
     if (!res.ok) { setErr("Tải ảnh thất bại."); return null; }
+    return ((await res.json()) as { url: string }).url;
+  }
+
+  async function uploadAudio(file: File): Promise<string | null> {
+    if (file.size > 10 * 1024 * 1024) { setErr("File nhạc quá lớn (tối đa 10MB)."); return null; }
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/thiep/${token}/upload`, { method: "POST", body: fd });
+    if (!res.ok) { setErr("Tải nhạc thất bại."); return null; }
     return ((await res.json()) as { url: string }).url;
   }
 
@@ -126,6 +142,24 @@ export default function WeddingEditor({ token }: { token: string }) {
           </button>
         </div>
 
+        {/* Template */}
+        <Section title="Mẫu thiệp" icon={<LayoutTemplate size={16} />}>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {WEDDING_TEMPLATE_LIST.map((t) => (
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => setTemplate(t.name)}
+                className={`rounded-lg border px-3 py-3 text-left text-sm transition ${template === t.name ? "border-rose-500 ring-2 ring-rose-100" : "border-stone-300 hover:border-rose-300"}`}
+              >
+                <span className="block font-medium">{t.label.split(" (")[0]}</span>
+                <span className="text-xs text-stone-400">{t.label.includes("(") ? t.label.split("(")[1].replace(")", "") : ""}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-stone-400">Chọn mẫu rồi bấm “Lưu” để áp dụng. Màu &amp; phông bên dưới sẽ ghi đè lên mẫu.</p>
+        </Section>
+
         {/* Cover */}
         <Section title="Trang bìa" icon={<ImageIcon size={16} />}>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -155,6 +189,13 @@ export default function WeddingEditor({ token }: { token: string }) {
 
         {/* Gallery */}
         <Section title="Album ảnh cưới" icon={<ImageIcon size={16} />}>
+          <button
+            type="button"
+            onClick={() => setAlbumOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700 hover:bg-rose-100"
+          >
+            <FolderOpen size={15} /> Lấy ảnh từ album cưới của bạn
+          </button>
           <GalleryEditor gallery={cfg.gallery ?? []} onUpload={uploadImage} onChange={(gallery) => patch({ gallery })} />
         </Section>
 
@@ -175,6 +216,7 @@ export default function WeddingEditor({ token }: { token: string }) {
         {/* RSVP */}
         <Section title="Xác nhận tham dự (RSVP)" icon={<Users size={16} />}>
           <Toggle checked={cfg.rsvp_enabled !== false} onChange={(v) => patch({ rsvp_enabled: v })} label="Cho phép khách xác nhận & gửi lời chúc" />
+          <Toggle checked={cfg.guestbook_enabled !== false} onChange={(v) => patch({ guestbook_enabled: v })} label="Hiện Sổ lưu bút (lời chúc của khách) trên thiệp" />
           <Field label="Lời nhắn RSVP (không bắt buộc)">
             <input className={inp} value={cfg.rsvp_note ?? ""} onChange={(e) => patch({ rsvp_note: e.target.value })} placeholder="Vui lòng phản hồi trước ngày…" />
           </Field>
@@ -209,7 +251,18 @@ export default function WeddingEditor({ token }: { token: string }) {
             </Field>
           </div>
         </Section>
+
+        {/* Music */}
+        <Section title="Nhạc nền" icon={<Music size={16} />}>
+          <Field label="Link nhạc (mp3) hoặc tải file nhạc lên">
+            <input className={inp} value={cfg.music_url ?? ""} onChange={(e) => patch({ music_url: e.target.value || undefined })} placeholder="https://…/nhac.mp3" />
+          </Field>
+          <AudioUpload onUpload={uploadAudio} onChange={(url) => patch({ music_url: url || undefined })} hasUrl={!!cfg.music_url} />
+          {cfg.music_url && <Toggle checked={cfg.music_autoplay ?? false} onChange={(v) => patch({ music_autoplay: v })} label="Thử tự phát khi khách mở thiệp (trình duyệt có thể chặn)" />}
+        </Section>
       </main>
+
+      {albumOpen && <AlbumPicker token={token} existing={cfg.gallery ?? []} onClose={() => setAlbumOpen(false)} onAdd={(urls) => { patch({ gallery: [...(cfg.gallery ?? []), ...urls] }); setAlbumOpen(false); }} />}
     </div>
   );
 }
@@ -346,6 +399,90 @@ function BankEditor({ title, bank, onChange }: { title: string; bank?: WeddingBa
         <input className={inp} value={b.account ?? ""} onChange={(e) => up({ account: e.target.value })} placeholder="Số tài khoản" />
       </div>
       <input className={`${inp} mt-2`} value={b.holder ?? ""} onChange={(e) => up({ holder: e.target.value })} placeholder="Tên chủ tài khoản" />
+    </div>
+  );
+}
+
+function AudioUpload({ onUpload, onChange, hasUrl }: { onUpload: (f: File) => Promise<string | null>; onChange: (url: string | null) => void; hasUrl: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="flex items-center gap-3">
+      <input ref={ref} type="file" accept="audio/*" hidden onChange={async (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        setBusy(true); const url = await onUpload(f); setBusy(false);
+        if (url) onChange(url);
+        if (ref.current) ref.current.value = "";
+      }} />
+      <button type="button" onClick={() => ref.current?.click()} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-stone-300 px-3 py-2 text-sm disabled:opacity-50">
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Music size={14} />} Tải file nhạc (≤10MB)
+      </button>
+      {hasUrl && <button type="button" onClick={() => onChange(null)} className="text-stone-400 hover:text-red-500"><Trash2 size={16} /></button>}
+    </div>
+  );
+}
+
+/** Modal: pick photos from the couple's own album (linked to the contract). */
+function AlbumPicker({ token, existing, onClose, onAdd }: { token: string; existing: string[]; onClose: () => void; onAdd: (urls: string[]) => void }) {
+  const [photos, setPhotos] = useState<AlbumPhoto[] | null>(null);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch(`/api/thiep/${token}/album-photos`);
+      const data = res.ok ? ((await res.json()) as { photos: AlbumPhoto[] }) : { photos: [] };
+      setPhotos(data.photos);
+    })().catch(() => setPhotos([]));
+  }, [token]);
+
+  const have = new Set(existing);
+  function toggle(url: string) {
+    setSel((s) => { const n = new Set(s); n.has(url) ? n.delete(url) : n.add(url); return n; });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={onClose}>
+      <div className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
+          <p className="font-medium">Chọn ảnh từ album cưới của bạn</p>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-700"><X size={18} /></button>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          {photos === null && <div className="grid place-items-center py-16 text-stone-400"><Loader2 className="animate-spin" /></div>}
+          {photos !== null && photos.length === 0 && (
+            <p className="py-12 text-center text-sm text-stone-500">Chưa có album ảnh nào được liên kết với hợp đồng của bạn.</p>
+          )}
+          {photos && photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              {photos.map((p) => {
+                const added = have.has(p.url);
+                const picked = sel.has(p.url);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={added}
+                    onClick={() => toggle(p.url)}
+                    className={`relative aspect-square overflow-hidden rounded-lg border-2 ${picked ? "border-rose-500" : "border-transparent"} disabled:opacity-40`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    {(picked || added) && (
+                      <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-rose-600 text-white"><Check size={12} /></span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between border-t border-stone-200 px-4 py-3">
+          <span className="text-sm text-stone-500">{sel.size} ảnh đã chọn</span>
+          <button onClick={() => onAdd(Array.from(sel))} disabled={sel.size === 0} className="rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            Thêm vào thiệp
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
