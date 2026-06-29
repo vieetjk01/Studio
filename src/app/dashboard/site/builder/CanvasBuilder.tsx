@@ -8,6 +8,7 @@ import {
   Trash2, ImagePlus, X, Type as TypeIcon, Check, ExternalLink,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { MAIN_HOST } from "@/lib/hosts";
 import {
   SITE_BLOCK_LABEL,
   vnd,
@@ -535,6 +536,8 @@ export default function CanvasBuilder({
               <Inspector
                 key={selected.id}
                 block={selected}
+                blocks={blocks}
+                siteUrl={savedSub && MAIN_HOST ? `https://${savedSub}.${MAIN_HOST}` : ""}
                 albums={albums}
                 priceLists={priceLists}
                 accent={accent}
@@ -984,8 +987,11 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       );
     case "html": {
       const raw = S("html");
+      // Full-bleed by default so the canvas matches the published full-width
+      // embed; "contained" keeps it boxed like other sections.
+      const contained = c.width === "contained";
       return (
-        <section style={sec}>
+        <section style={contained ? sec : { width: "100%", padding: 0 }}>
           {S("heading") && heading("heading", "")}
           {raw ? (
             <HtmlEmbed html={raw} />
@@ -1003,8 +1009,10 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
 }
 
 /* ── Inspector (right panel for the selected block) ───────────────────── */
-function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdit }: {
+function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], accent, onEdit, onBeforeEdit }: {
   block: SiteBlock;
+  blocks?: SiteBlock[];
+  siteUrl?: string;
   albums: AlbumLite[];
   priceLists?: { key: string; label: string }[];
   accent: string;
@@ -1088,19 +1096,28 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
       )}
 
       {block.type === "html" && (
-        <Field label="Mã HTML / nhúng (tự thiết kế)">
-          <textarea
-            style={{ ...insInput, minHeight: 200, fontFamily: "monospace", fontSize: 12 }}
-            placeholder="<div>...</div>  hoặc dán mã nhúng (YouTube, form, widget...)"
-            value={S("html")}
-            onFocus={onBeforeEdit}
-            onChange={(e) => onEdit("html", e.target.value)}
-            onBlur={(e) => onEdit("html", e.target.value, true)}
-          />
-          <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)" }}>
-            Dán HTML của riêng bạn. Mã nhúng từ nguồn lạ có thể bị chặn vì lý do bảo mật.
-          </p>
-        </Field>
+        <>
+          <Field label="Mã HTML / nhúng (tự thiết kế)">
+            <textarea
+              style={{ ...insInput, minHeight: 200, fontFamily: "monospace", fontSize: 12 }}
+              placeholder="<div>...</div>  hoặc dán mã nhúng (YouTube, form, widget...)"
+              value={S("html")}
+              onFocus={onBeforeEdit}
+              onChange={(e) => onEdit("html", e.target.value)}
+              onBlur={(e) => onEdit("html", e.target.value, true)}
+            />
+            <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)" }}>
+              Dán HTML của riêng bạn. Mã nhúng từ nguồn lạ có thể bị chặn vì lý do bảo mật.
+            </p>
+          </Field>
+          <Field label="Chiều rộng">
+            <select style={insInput} value={S("width") === "contained" ? "contained" : "full"} onFocus={onBeforeEdit} onChange={(e) => onEdit("width", e.target.value, true)}>
+              <option value="full">Toàn trang (full width)</option>
+              <option value="contained">Trong khung (gọn giữa trang)</option>
+            </select>
+          </Field>
+          <LinkRefs block={block} blocks={blocks} siteUrl={siteUrl} />
+        </>
       )}
 
       {hasItems && (
@@ -1155,8 +1172,9 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
         </Field>
       )}
 
-      {/* Layout: width (half/full) for non-hero blocks */}
-      {block.type !== "hero" && (
+      {/* Layout: width (half/full) for non-hero, non-html blocks
+          (html has its own full/contained control above). */}
+      {block.type !== "hero" && block.type !== "html" && (
         <Field label="Bố cục">
           <div style={{ display: "flex", gap: 8 }}>
             {(["full", "half"] as const).map((w) => (
@@ -1167,6 +1185,9 @@ function Inspector({ block, albums, priceLists = [], accent, onEdit, onBeforeEdi
           </div>
         </Field>
       )}
+
+      {/* Copyable anchor link to THIS block's content (for custom HTML nav). */}
+      <BlockLink block={block} siteUrl={siteUrl} />
 
       {(block.type === "pricing" || block.type === "testimonials") && (
         <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 8, lineHeight: 1.5 }}>
@@ -1182,6 +1203,56 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div style={{ marginBottom: 14 }}>
       <label style={insLabel}>{label}</label>
       {children}
+    </div>
+  );
+}
+
+/* A read-only link + copy button (for wiring custom HTML to site sections). */
+function CopyLine({ label, value }: { label: string; value: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 3 }}>{label}</div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input readOnly value={value} onFocus={(e) => e.currentTarget.select()} style={{ ...insInput, fontFamily: "monospace", fontSize: 11 }} />
+        <button
+          onClick={() => { navigator.clipboard?.writeText(value); setDone(true); setTimeout(() => setDone(false), 1200); }}
+          style={{ ...insInput, width: 44, flexShrink: 0, cursor: "pointer", background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          title="Sao chép"
+        >
+          {done ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* Anchor link to the current block's section (designers paste into nav <a>). */
+function BlockLink({ block, siteUrl }: { block: SiteBlock; siteUrl: string }) {
+  const anchor = `#sec-${block.id}`;
+  return (
+    <Field label="Link tới khối này (để gắn vào menu / mã HTML)">
+      <CopyLine label="Trong trang (anchor)" value={anchor} />
+      {siteUrl && <CopyLine label="Link đầy đủ" value={`${siteUrl}/${anchor}`} />}
+    </Field>
+  );
+}
+
+/* Reference list shown in the HTML block: links to every section + the site. */
+function LinkRefs({ block, blocks, siteUrl }: { block: SiteBlock; blocks: SiteBlock[]; siteUrl: string }) {
+  const others = blocks.filter((b) => b.id !== block.id);
+  return (
+    <div style={{ marginTop: 4, marginBottom: 14, padding: 12, borderRadius: 10, background: "var(--surface2)" }}>
+      <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Liên kết để gắn vào thiết kế của bạn</p>
+      <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 10, lineHeight: 1.5 }}>
+        Dùng các link này trong mã HTML (vd <code>{'<a href="#sec-...">'}</code>) để chuyển tới từng phần của trang hoặc tới các dịch vụ.
+      </p>
+      {siteUrl && <CopyLine label="Trang web của bạn" value={siteUrl} />}
+      {others.length === 0 ? (
+        <p style={{ fontSize: 11, color: "var(--text3)" }}>Chưa có khối nào khác để liên kết.</p>
+      ) : (
+        others.map((b) => <CopyLine key={b.id} label={SITE_BLOCK_LABEL[b.type] || b.type} value={`#sec-${b.id}`} />)
+      )}
     </div>
   );
 }

@@ -71,9 +71,12 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
       <div style={{ maxWidth: t.contentWidth === "full" ? "100%" : 1040, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
         {blocks.map((b) => {
           const isHero = b.type === "hero";
+          // HTML embeds default to full-bleed so designers can use the whole
+          // page width with their own layout (set width:"contained" to box it).
+          const isFullHtml = b.type === "html" && b.config?.width !== "contained";
           const half = b.config?.width === "half" && !isHero;
-          // Hero breaks out to full-bleed; half blocks split the content column.
-          const style: React.CSSProperties = isHero
+          // Hero & full HTML break out to full-bleed; half blocks split the column.
+          const style: React.CSSProperties = isHero || isFullHtml
             ? { flex: "1 1 100%", width: "100vw", marginLeft: "calc(50% - 50vw)" }
             : { flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 300 : 0 };
           return (
@@ -493,10 +496,20 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
       const html = str(c.html);
       if (!html) return null;
       const heading = str(c.heading);
+      // Contained = boxed widget; otherwise full-bleed (the wrapper already
+      // breaks it out to 100vw) so the embed owns the whole page width.
+      if (c.width === "contained") {
+        return (
+          <Section fontVar={fontVar} heading={heading || undefined}>
+            <HtmlEmbed html={html} />
+          </Section>
+        );
+      }
       return (
-        <Section fontVar={fontVar} heading={heading || undefined}>
+        <div style={{ width: "100%" }}>
+          {heading && <h2 style={{ fontFamily: fontVar, fontSize: 30, textAlign: "center", margin: "32px 0 0" }}>{heading}</h2>}
           <HtmlEmbed html={html} />
-        </Section>
+        </div>
       );
     }
     default:
