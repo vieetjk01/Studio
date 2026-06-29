@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { fmtDate, fmtDateLunar } from "@/lib/date";
-import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package, Upload } from "lucide-react";
+import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images, ImagePlus, Star, ListChecks, Package, Upload, Heart } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
-import { mainUrl } from "@/lib/hosts";
+import { mainUrl, thiepUrl } from "@/lib/hosts";
 import { compressImage, checkImageFile } from "@/lib/image";
 import {
   contractTotal,
@@ -112,6 +112,7 @@ export default function ContractView({ token }: { token: string }) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [wedding, setWedding] = useState<{ slug: string; edit_token: string; published: boolean } | null>(null);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanRow[]>([]);
@@ -183,6 +184,7 @@ export default function ContractView({ token }: { token: string }) {
     setMilestones(j.milestones ?? []);
     setGallery(j.gallery ?? null);
     setSelection(j.selection ?? null);
+    setWedding(j.wedding ?? null);
     setQuoteOptions(j.quote_options ?? []);
     setChosenQuote(j.contract?.chosen_quote_option_id ?? null);
     setPlan(j.plan ?? []);
@@ -495,6 +497,40 @@ export default function ContractView({ token }: { token: string }) {
             </div>
             <span className="text-sm" style={{ color: "var(--accent)" }}>{t("open")}</span>
           </a>
+        )}
+
+        {wedding && (
+          <div className="card mt-6 p-5">
+            <div className="flex items-center gap-3">
+              <Heart size={20} style={{ color: "#d96e8f" }} />
+              <div className="min-w-0 flex-1">
+                <p className="font-serif text-lg font-medium">🎁 Thiệp cưới online tặng bạn</p>
+                <p className="text-xs" style={{ color: "var(--text3)" }}>
+                  Studio tặng bạn một thiệp cưới online — bạn tự điền thông tin, chọn ảnh & chia sẻ cho khách mời.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a
+                href={thiepUrl(`/sua/${wedding.edit_token}`)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-primary inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+              >
+                <PenLine size={15} /> Chỉnh sửa thiệp của tôi
+              </a>
+              {wedding.published && (
+                <a
+                  href={thiepUrl(`/${wedding.slug}`)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-ghost inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+                >
+                  <Images size={15} /> Xem thiệp
+                </a>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="card mt-6 p-6">

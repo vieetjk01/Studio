@@ -213,6 +213,17 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (s && s.status === "published") selection = { slug: s.slug, title: s.title, phase: s.phase ?? "selection" };
   }
 
+  // Free wedding-invitation gift linked to this contract (if the studio made one).
+  let wedding: { slug: string; edit_token: string; published: boolean } | null = null;
+  {
+    const { data: w } = await db
+      .from("wedding_invitations")
+      .select("slug, edit_token, published")
+      .eq("contract_id", contract.id)
+      .maybeSingle();
+    if (w) wedding = { slug: w.slug, edit_token: w.edit_token, published: w.published };
+  }
+
   // Never expose internal crew/salary to the client (gallery/selection ids hidden).
   return NextResponse.json({
     contract: { ...contract, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
@@ -229,5 +240,6 @@ export async function POST(req: Request, { params }: { params: { token: string }
     products: products ?? [],
     gallery,
     selection,
+    wedding,
   });
 }
