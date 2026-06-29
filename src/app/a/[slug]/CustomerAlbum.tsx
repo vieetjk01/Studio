@@ -59,6 +59,7 @@ export default function CustomerAlbum({
   initialSelected,
   initialNotes,
   shareIds,
+  studioName = "Studio",
 }: {
   album: PublicAlbum;
   initialPhotos: PublicPhoto[] | null;
@@ -66,6 +67,7 @@ export default function CustomerAlbum({
   initialSelected?: string[];
   initialNotes?: Record<string, string>;
   shareIds?: string[] | null;
+  studioName?: string;
 }) {
   const { t } = useLang();
 
@@ -91,7 +93,7 @@ export default function CustomerAlbum({
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const wm = album.watermark_enabled ? album.watermark_text || "Vieetjk" : null;
+  const wm = album.watermark_enabled ? album.watermark_text || studioName : null;
 
   // Share-mode: viewing a pre-filtered set of photos shared by the customer.
   const shareMode = shareIds != null && shareIds.length > 0;
@@ -448,7 +450,7 @@ export default function CustomerAlbum({
       <div className="mx-auto max-w-[1500px] px-6 pt-7 md:px-10">
         <div className="animate-[vkFade_.5s_ease_both]">
           <p className="mb-2 text-[12px] uppercase tracking-[0.2em]" style={{ color: "var(--text3)" }}>
-            Vieetjk đã chia sẻ với bạn
+            {studioName} đã chia sẻ với bạn
           </p>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>

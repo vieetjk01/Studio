@@ -39,7 +39,7 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   }
   const { data: album } = await admin
     .from("albums")
-    .select("id, slug, title, status, is_gallery, phase, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled, watermark_delivery, watermark_text")
+    .select("id, slug, title, status, is_gallery, phase, password_hash, gallery_pinned, event_date, cover_url, category, category_label, client_name, download_enabled, watermark_delivery, watermark_text, owner_id")
     .eq("slug", params.slug)
     .single();
 
@@ -61,6 +61,10 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   }
 
   const hasPassword = !album.gallery_pinned && !!album.password_hash;
+
+  // Studio's own name for the watermark fallback (instead of a fixed brand).
+  const { data: galOwner } = await admin.from("profiles").select("full_name").eq("id", album.owner_id).maybeSingle();
+  const studioName = (galOwner?.full_name ?? "").trim() || "Studio";
 
   let photos = null;
   let sources = null;
@@ -94,7 +98,7 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
         cover_url: album.cover_url,
         hasPassword,
         allowDownload: album.download_enabled !== false,
-        watermark: album.watermark_delivery ? (album.watermark_text || "Vieetjk") : null,
+        watermark: album.watermark_delivery ? (album.watermark_text || studioName) : null,
       }}
       initialPhotos={photos}
       initialSources={sources}

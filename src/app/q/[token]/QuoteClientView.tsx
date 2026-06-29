@@ -653,7 +653,7 @@ export default function QuoteClientView({
         )}
 
         <footer className="pt-6 text-center text-xs" style={{ color: "var(--text3)" }}>
-          {tr.footer} <b>{studioName}</b> · Vieetjk
+          {tr.footer} <b>{studioName}</b>
         </footer>
       </div>
     </main>

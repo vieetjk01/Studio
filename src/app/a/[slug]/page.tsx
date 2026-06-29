@@ -92,9 +92,10 @@ export default async function PublicAlbumPage({
   // Owner permissions gate customer download (ZIP) and notes.
   const { data: owner } = await admin
     .from("profiles")
-    .select("role, can_zip, can_notes")
+    .select("role, can_zip, can_notes, full_name")
     .eq("id", album.owner_id)
     .maybeSingle();
+  const studioName = (owner?.full_name ?? "").trim() || "Studio";
   const isAdminOwner = owner?.role === "admin";
   const allowZip = (isAdminOwner || !!owner?.can_zip) && album.download_enabled !== false;
   const allowNotes = isAdminOwner || !!owner?.can_notes;
@@ -144,6 +145,7 @@ export default async function PublicAlbumPage({
       initialSelected={selected}
       initialNotes={notes}
       shareIds={shareIds}
+      studioName={studioName}
     />
   );
 }

@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     .select("title")
     .eq("id", params.id)
     .maybeSingle();
-  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+  return { title: data?.title ? `${data.title} · mstudo` : "mstudo" };
 }
 
 export default async function AlbumEditPage({
@@ -28,13 +28,14 @@ export default async function AlbumEditPage({
     supabase.from("albums").select("*").eq("id", params.id).single(),
     supabase.from("album_sources").select("*").eq("album_id", params.id).order("position"),
     fetchAllPhotos(supabase, params.id, "*"),
-    user ? supabase.from("profiles").select("plan, plan_expires_at, role").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    user ? supabase.from("profiles").select("plan, plan_expires_at, role, full_name").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   if (!album) notFound();
 
   const isAdmin = profile?.role === "admin";
   const plan = profile ? effectivePlan(profile.plan, profile.plan_expires_at) : "free";
+  const studioName = (profile?.full_name ?? "").trim() || "Studio";
 
   return (
     <AlbumEditor
@@ -43,6 +44,7 @@ export default async function AlbumEditPage({
       initialPhotos={(photos ?? []) as Photo[]}
       canDelivery={planAllowsDelivery(plan, isAdmin)}
       canPinHome={planAllowsPublicGallery(plan, isAdmin)}
+      studioName={studioName}
     />
   );
 }

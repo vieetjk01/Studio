@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const UA = "Mozilla/5.0 (compatible; VieetjkGallery/1.0)";
+const UA = "Mozilla/5.0 (compatible; mstudoGallery/1.0)";
 
 /**
  * Proxy a Google Drive image so it embeds reliably (no hotlink/referrer issues)

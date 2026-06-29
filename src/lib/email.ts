@@ -16,7 +16,7 @@ export async function sendEmail({
   html: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || "Vieetjk Studio <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "mstudo <onboarding@resend.dev>";
   if (!key) return { ok: false, error: "not_configured" };
 
   const res = await fetch("https://api.resend.com/emails", {

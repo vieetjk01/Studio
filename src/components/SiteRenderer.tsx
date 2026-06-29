@@ -90,7 +90,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
       {site.template !== "studio-pro" && (
         <>
           {" · "}
-          <a href={mainUrl("/")} style={{ color: "inherit" }}>Tạo bởi Vieetjk</a>
+          <a href={mainUrl("/")} style={{ color: "inherit" }}>Tạo bởi mstudo</a>
         </>
       )}
     </footer>

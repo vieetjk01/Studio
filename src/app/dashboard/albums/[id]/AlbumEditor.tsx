@@ -30,12 +30,14 @@ export default function AlbumEditor({
   initialPhotos,
   canDelivery = true,
   canPinHome = true,
+  studioName = "Studio",
 }: {
   album: Album;
   initialSources: AlbumSource[];
   initialPhotos: Photo[];
   canDelivery?: boolean;
   canPinHome?: boolean;
+  studioName?: string;
 }) {
   const { t } = useLang();
   const supabase = createClient();
@@ -61,7 +63,7 @@ export default function AlbumEditor({
     slug: album.slug,
     selection_limit: album.selection_limit ?? "",
     watermark_enabled: album.watermark_enabled,
-    watermark_text: album.watermark_text ?? "Vieetjk",
+    watermark_text: album.watermark_text ?? studioName,
     watermark_delivery: album.watermark_delivery ?? false,
     gallery_pinned: album.gallery_pinned ?? false,
     download_enabled: album.download_enabled ?? true,

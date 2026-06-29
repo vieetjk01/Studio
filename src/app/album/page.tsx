@@ -3,7 +3,7 @@ import AlbumBrowse, { type GalleryCard } from "./AlbumBrowse";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Album khách hàng · Vieetjk" };
+export const metadata = { title: "Album khách hàng · mstudo" };
 
 export default async function AlbumDirectoryPage() {
   const db = createAdminClient();

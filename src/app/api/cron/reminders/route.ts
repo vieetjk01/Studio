@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
 <h2 style="margin:0 0 4px">Nhắc việc studio</h2>
 <p style="color:#666;margin:0 0 8px">Chào ${esc(owner.full_name || "bạn")}, đây là tóm tắt cần xử lý hôm nay.</p>
 ${parts.join("")}
-<p style="margin-top:22px;color:#888;font-size:12px">Email tự động từ Vieetjk Studio.</p>
+<p style="margin-top:22px;color:#888;font-size:12px">Email tự động từ mstudo.</p>
 </div>`;
 
     const r = await sendEmail({ to: owner.email, subject: `Nhắc việc studio — ${tomorrow}`, html });

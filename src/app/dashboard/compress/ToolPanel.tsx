@@ -125,7 +125,7 @@ export default function ToolPanel({
 
   // Watermark options
   const [wmType, setWmType] = useState<"text" | "image">("text");
-  const [wmText, setWmText] = useState("Vieetjk");
+  const [wmText, setWmText] = useState("");
   const [wmColor, setWmColor] = useState<"white" | "black">("white");
   const [wmPos, setWmPos] = useState<WmPosition>("bottom-right");
   const [wmOpacity, setWmOpacity] = useState(35);

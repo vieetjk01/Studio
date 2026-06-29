@@ -43,7 +43,7 @@ create table if not exists public.albums (
   -- max photos a customer may select (null = unlimited)
   selection_limit integer,
   watermark_enabled boolean not null default true,
-  watermark_text  text default 'Vieetjk',
+  watermark_text  text,   -- null → app falls back to the studio's own name
   status          text not null default 'draft'
                     check (status in ('draft', 'published')),
   created_at      timestamptz not null default now(),
@@ -255,6 +255,9 @@ create policy selections_owner_rw on public.selections
 -- ============================================================================
 alter table public.albums add column if not exists is_showcase boolean not null default false;
 alter table public.albums add column if not exists is_pinned   boolean not null default false;
+-- Drop the legacy fixed-brand watermark default; the app now falls back to the
+-- studio's OWN name when watermark_text is null.
+alter table public.albums alter column watermark_text drop default;
 alter table public.albums add column if not exists kind        text;  -- e.g. "Phóng sự cưới"
 
 -- ============================================================================

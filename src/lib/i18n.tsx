@@ -13,7 +13,7 @@ export type Lang = "vi" | "en";
 type Dict = Record<string, { vi: string; en: string }>;
 
 export const dict: Dict = {
-  brand: { vi: "Vieetjk", en: "Vieetjk" },
+  brand: { vi: "mstudo", en: "mstudo" },
   tagline: {
     vi: "Bộ sưu tập ảnh dành cho khách hàng",
     en: "Photo collection for customers",

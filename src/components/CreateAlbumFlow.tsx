@@ -43,7 +43,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
   const [drives, setDrives] = useState<string[]>([""]);
   const [password, setPassword] = useState("");
   const [max, setMax] = useState("");
-  const [watermark, setWatermark] = useState("Vieetjk Studio");
+  const [watermark, setWatermark] = useState("");
   const [allowNote, setAllowNote] = useState(true);
   const [allowDownload, setAllowDownload] = useState(true);
   // Plan permissions — free accounts cannot enable download / notes.
@@ -96,7 +96,10 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
       setLoggedIn(!!user);
 
       if (user) {
-        const { data: p } = await supabase.from("profiles").select("can_zip, can_notes").eq("id", user.id).maybeSingle();
+        const { data: p } = await supabase.from("profiles").select("can_zip, can_notes, full_name").eq("id", user.id).maybeSingle();
+        // Default the watermark to the studio's OWN name (not a fixed brand).
+        const studioName = (p?.full_name ?? "").trim() || "Studio";
+        setWatermark((w) => w || studioName);
         if (p) {
           setCanZip(!!p.can_zip);
           setCanNotes(!!p.can_notes);
@@ -113,7 +116,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
           setDrives(f.drives?.length ? f.drives : [""]);
           setPassword(f.password ?? "");
           setMax(f.max ?? "");
-          setWatermark(f.watermark ?? "Vieetjk Studio");
+          if (f.watermark) setWatermark(f.watermark);
           setAllowNote(f.allowNote ?? true);
         } catch {}
         window.sessionStorage.removeItem(PENDING_KEY);

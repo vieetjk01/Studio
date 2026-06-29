@@ -44,7 +44,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   const body: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Vieetjk//Studio//VI",
+    "PRODID:-//mstudo//Studio//VI",
     "CALSCALE:GREGORIAN",
     `X-WR-CALNAME:${esc((owner.full_name || "Studio") + " — Lịch chụp")}`,
   ];

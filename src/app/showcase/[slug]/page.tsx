@@ -5,12 +5,18 @@ import ShowcaseAlbum from "./ShowcaseAlbum";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const { data } = await createAdminClient()
+  const db = createAdminClient();
+  const { data } = await db
     .from("albums")
-    .select("title")
+    .select("title, owner_id")
     .eq("slug", params.slug)
     .maybeSingle();
-  return { title: data?.title ? `${data.title} · Vieetjk` : "Vieetjk" };
+  let studio = "mstudo";
+  if (data?.owner_id) {
+    const { data: owner } = await db.from("profiles").select("full_name").eq("id", data.owner_id).maybeSingle();
+    studio = (owner?.full_name ?? "").trim() || studio;
+  }
+  return { title: data?.title ? `${data.title} · ${studio}` : studio };
 }
 
 export default async function ShowcasePage({
