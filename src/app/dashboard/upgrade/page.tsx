@@ -220,11 +220,11 @@ export default function UpgradePage() {
     );
   }
 
-  const cards: { plan: Plan; icon: typeof Sparkles; accent: boolean; promo?: string }[] = [
+  const cards: { plan: Plan; icon: typeof Sparkles; accent: boolean }[] = [
     { plan: "free", icon: Sparkles, accent: false },
     { plan: "basic", icon: Zap, accent: true },
     { plan: "photographer", icon: Camera, accent: true },
-    { plan: "studio", icon: Crown, accent: true, promo: "Đăng ký trong thời gian này: ưu đãi 50%/năm vĩnh viễn + nhận mọi tính năng nâng cấp sau này." },
+    { plan: "studio", icon: Crown, accent: true },
   ];
 
   // Cell convention: "✓" -> check, "✗"/"" -> cross, anything else -> text.
@@ -284,7 +284,7 @@ export default function UpgradePage() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(({ plan, icon: Icon, accent, promo }) => (
+        {cards.map(({ plan, icon: Icon, accent }) => (
           <div key={plan} className="card flex flex-col p-7" style={accent ? { borderColor: "var(--gold)" } : undefined}>
             <div className="mb-4 flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: accent ? "var(--gold)" : "var(--surface2)", color: accent ? "#1a1205" : "var(--text2)" }}>
@@ -307,7 +307,7 @@ export default function UpgradePage() {
               ))}
             </ul>
 
-            {promo && <p className="mb-4 rounded-lg px-3 py-2 text-[12.5px]" style={{ background: "color-mix(in srgb, var(--gold) 14%, transparent)", color: "var(--gold)" }}>{promo}</p>}
+            {content.plans[plan].promo && <p className="mb-4 rounded-lg px-3 py-2 text-[12.5px]" style={{ background: "color-mix(in srgb, var(--gold) 14%, transparent)", color: "var(--gold)" }}>{content.plans[plan].promo}</p>}
 
             <div className="mt-auto">
               {plan === "free" ? (

@@ -10,7 +10,7 @@ export type CompareRow =
   | { section: string }
   | { label: string; free: string; basic: string; photographer: string; studio: string };
 
-export type PlanContent = { label: string; features: string[] };
+export type PlanContent = { label: string; features: string[]; promo?: string };
 
 export type UpgradeContent = {
   headline: string;
@@ -31,7 +31,11 @@ export const UPGRADE_DEFAULTS: UpgradeContent = {
     free: { label: PLAN_LABEL.free, features: PLAN_FEATURES.free },
     basic: { label: PLAN_LABEL.basic, features: PLAN_FEATURES.basic },
     photographer: { label: PLAN_LABEL.photographer, features: PLAN_FEATURES.photographer },
-    studio: { label: PLAN_LABEL.studio, features: PLAN_FEATURES.studio },
+    studio: {
+      label: PLAN_LABEL.studio,
+      features: PLAN_FEATURES.studio,
+      promo: "Đăng ký trong thời gian này: ưu đãi 50%/năm vĩnh viễn + nhận mọi tính năng nâng cấp sau này.",
+    },
   },
   compare: [
     { section: "Album & ảnh" },
@@ -91,6 +95,8 @@ export function mergeUpgradeContent(raw: unknown): UpgradeContent {
     plans[k] = {
       label: p?.label?.trim() || UPGRADE_DEFAULTS.plans[k].label,
       features: Array.isArray(p?.features) && p!.features.length ? p!.features.filter((f) => typeof f === "string") : UPGRADE_DEFAULTS.plans[k].features,
+      // Respect an explicitly-saved promo (incl. cleared = ""); else fall back.
+      promo: p && typeof p.promo === "string" ? (p.promo.trim() || undefined) : UPGRADE_DEFAULTS.plans[k].promo,
     };
   }
   return {

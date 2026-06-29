@@ -69,6 +69,10 @@ export default function UpgradeContentEditor({ initial }: { initial: unknown }) 
                 onChange={(e) => setUc({ ...uc, plans: { ...uc.plans, [key]: { ...uc.plans[key], features: e.target.value.split("\n") } } })}
                 placeholder="Mỗi dòng là một điểm nổi bật" />
               <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Mỗi dòng = 1 gạch đầu dòng.</p>
+              <textarea className={`${inp} mt-2 min-h-[60px] text-[13px]`} value={uc.plans[key].promo ?? ""}
+                onChange={(e) => setUc({ ...uc, plans: { ...uc.plans, [key]: { ...uc.plans[key], promo: e.target.value } } })}
+                placeholder="Banner khuyến mãi (tùy chọn) — để trống nếu không hiện" />
+              <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Dòng nổi bật màu vàng dưới danh sách tính năng. Để trống để ẩn.</p>
             </div>
           ))}
         </div>
