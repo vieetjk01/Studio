@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, ExternalLink, Pencil, Copy, Check, Download, Users, FileText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Heart, ExternalLink, Pencil, Copy, Check, Download, Users, FileText, Plus, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { thiepUrl } from "@/lib/hosts";
 import type { WeddingConfig, WeddingRsvp } from "@/lib/types";
+
+function slugify(s: string): string {
+  const base = s
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d").replace(/Đ/g, "d")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+    .slice(0, 40);
+  return `${base || "thiep-cuoi"}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 export type InvitationRow = {
   id: string;
@@ -26,10 +36,33 @@ function csvCell(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export default function ThiepListView({ rows }: { rows: InvitationRow[] }) {
+export default function ThiepListView({ rows, ownerId }: { rows: InvitationRow[]; ownerId: string }) {
   const supabase = createClient();
+  const router = useRouter();
   const [copied, setCopied] = useState<string | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function createNew() {
+    setCreating(true);
+    setErr(null);
+    const editToken = (crypto.randomUUID?.() ?? `${Date.now()}${Math.random()}`).replace(/-/g, "");
+    const { data, error } = await supabase
+      .from("wedding_invitations")
+      .insert({
+        owner_id: ownerId,
+        slug: slugify("thiep-cuoi"),
+        edit_token: editToken,
+        config: { rsvp_enabled: true },
+      })
+      .select("edit_token")
+      .single();
+    setCreating(false);
+    if (error || !data) { setErr(error?.message || "Không tạo được thiệp."); return; }
+    window.open(thiepUrl(`/sua/${data.edit_token}`), "_blank");
+    router.refresh();
+  }
 
   function copy(text: string, key: string) {
     navigator.clipboard?.writeText(text);
@@ -69,19 +102,24 @@ export default function ThiepListView({ rows }: { rows: InvitationRow[] }) {
 
   return (
     <div>
-      <header className="mb-6 flex items-center gap-3">
+      <header className="mb-6 flex flex-wrap items-center gap-3">
         <Heart style={{ color: "#d96e8f" }} />
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-serif text-2xl font-medium">Thiệp cưới online</h1>
           <p className="text-sm" style={{ color: "var(--text2)" }}>Quản lý thiệp cưới tặng khách & danh sách khách mời (RSVP).</p>
         </div>
+        <button onClick={createNew} disabled={creating} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">
+          {creating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Tạo thiệp cưới mới
+        </button>
       </header>
+
+      {err && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
 
       {rows.length === 0 ? (
         <div className="card p-8 text-center">
           <Heart className="mx-auto mb-3" style={{ color: "var(--text3)" }} />
           <p className="text-sm" style={{ color: "var(--text2)" }}>
-            Chưa có thiệp cưới nào. Mở một hợp đồng loại <b>Cưới</b> hoặc <b>Prewedding</b> rồi bấm “🎁 Tạo thiệp cưới tặng khách”.
+            Chưa có thiệp cưới nào. Bấm <b>“Tạo thiệp cưới mới”</b> ở trên, hoặc mở một hợp đồng rồi bấm “🎁 Tạo thiệp cưới tặng khách”.
           </p>
         </div>
       ) : (

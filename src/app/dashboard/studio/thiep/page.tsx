@@ -37,5 +37,5 @@ export default async function ThiepManagePage() {
     rsvp_count: Array.isArray(r.wedding_rsvps) && r.wedding_rsvps[0] ? (r.wedding_rsvps[0] as { count: number }).count : 0,
   }));
 
-  return <ThiepListView rows={rows} />;
+  return <ThiepListView rows={rows} ownerId={profile.id} />;
 }
