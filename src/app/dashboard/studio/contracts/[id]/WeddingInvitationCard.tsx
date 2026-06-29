@@ -16,7 +16,7 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 40);
-  return `${base || "thiep-cuoi"}-${Math.random().toString(36).slice(2, 7)}`;
+  return `${base || "le-cuoi"}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 type Existing = { slug: string; edit_token: string; published: boolean } | null;

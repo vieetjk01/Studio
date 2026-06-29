@@ -69,12 +69,15 @@ export async function middleware(request: NextRequest) {
   // at the root, so we prefix everything with /thiep internally. /api and
   // Next internals are left untouched.
   if (THIEP_HOST && host === THIEP_HOST) {
-    if (!pathname.startsWith("/thiep") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
+    // Only treat an EXACT "/thiep" or "/thiep/..." as already-prefixed; a slug
+    // like "/thiep-cuoi-x" must still be rewritten to "/thiep/thiep-cuoi-x".
+    const alreadyPrefixed = pathname === "/thiep" || pathname.startsWith("/thiep/");
+    if (!alreadyPrefixed && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
       const url = request.nextUrl.clone();
       url.pathname = pathname === "/" ? "/thiep" : `/thiep${pathname}`;
       return NextResponse.rewrite(url);
     }
-    // Already a /thiep, /api or asset path — serve as-is on this host.
+    // Already a /thiep route, /api or asset path — serve as-is on this host.
     return NextResponse.next();
   }
 

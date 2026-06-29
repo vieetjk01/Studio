@@ -14,7 +14,7 @@ function slugify(s: string): string {
     .replace(/đ/g, "d").replace(/Đ/g, "d")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
     .slice(0, 40);
-  return `${base || "thiep-cuoi"}-${Math.random().toString(36).slice(2, 7)}`;
+  return `${base || "le-cuoi"}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export type InvitationRow = {
@@ -52,7 +52,7 @@ export default function ThiepListView({ rows, ownerId }: { rows: InvitationRow[]
       .from("wedding_invitations")
       .insert({
         owner_id: ownerId,
-        slug: slugify("thiep-cuoi"),
+        slug: slugify("le-cuoi"),
         edit_token: editToken,
         config: { rsvp_enabled: true },
       })

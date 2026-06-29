@@ -61,6 +61,10 @@ export function adminUrl(path: string): string {
  * single-host setup the link stays at /thiep/<slug>.
  */
 export function thiepUrl(path: string): string {
-  const clean = path.startsWith("/thiep") ? path.slice("/thiep".length) || "/" : path;
+  // Only strip the "/thiep" ROUTE prefix (exact "/thiep" or "/thiep/..."), never
+  // a slug that merely starts with "thiep" (e.g. "/thiep-cuoi-x") — otherwise the
+  // host + slug would fuse into "thiep.mstudo.com-cuoi-x".
+  const isRoutePrefix = path === "/thiep" || path.startsWith("/thiep/");
+  const clean = isRoutePrefix ? path.slice("/thiep".length) || "/" : path;
   return THIEP_HOST ? `https://${THIEP_HOST}${clean}` : `/thiep${clean === "/" ? "" : clean}`;
 }
