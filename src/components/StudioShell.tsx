@@ -24,6 +24,9 @@ import type { Profile } from "@/lib/types";
 type StudioTier = "none" | "booking" | "full";
 const TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, full: 2 };
 
+// Zalo support group for studios using the app.
+const ZALO_SUPPORT_URL = "https://zalo.me/g/rycw0pqcgss14ib6u2xj";
+
 type Item = {
   href: string;
   label: string;
@@ -305,6 +308,17 @@ export default function StudioShell({
               <Gift size={18} />
               Affiliate · Hoa hồng
             </Link>
+            <a
+              href={ZALO_SUPPORT_URL}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setDrawerOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
+              style={{ background: "var(--surface2)", color: "var(--text)" }}
+            >
+              <MessageSquare size={18} style={{ color: "var(--brand)" }} />
+              Nhóm Zalo hỗ trợ
+            </a>
             <InstallPwaButton />
             <button
               onClick={toggleTheme}
@@ -402,6 +416,16 @@ export default function StudioShell({
               <Gift size={16} />
               Affiliate
             </Link>
+            <a
+              href={ZALO_SUPPORT_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+              style={{ background: "var(--surface2)", color: "var(--text)" }}
+            >
+              <MessageSquare size={16} style={{ color: "var(--brand)" }} />
+              Nhóm Zalo hỗ trợ
+            </a>
             <InstallPwaButton />
           </div>
         </aside>
@@ -453,6 +477,9 @@ export default function StudioShell({
                     <Link href="/dashboard/upgrade" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
                       <Gift size={15} style={{ color: "var(--s-amber)" }} /> Nâng cấp gói
                     </Link>
+                    <a href={ZALO_SUPPORT_URL} target="_blank" rel="noreferrer" className="nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+                      <MessageSquare size={15} style={{ color: "var(--brand)" }} /> Nhóm Zalo hỗ trợ
+                    </a>
                     <div className="my-1" style={{ borderTop: "1px solid var(--border)" }} />
                     <button onClick={signOut} className="nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: "var(--s-red)" }}>
                       <LogOut size={15} /> Đăng xuất
