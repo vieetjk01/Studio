@@ -6,6 +6,7 @@ export const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST || "";
 export const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST || "";
 export const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST || "";
 export const ADMIN_HOST = process.env.NEXT_PUBLIC_ADMIN_HOST || "";
+export const THIEP_HOST = process.env.NEXT_PUBLIC_THIEP_HOST || "";
 
 /**
  * Cookie domain shared across the apex + all subdomains so the auth session is
@@ -51,4 +52,15 @@ export function imgUrl(path: string): string {
 /** URL to a route on the admin subdomain (admin.mstudo.com). */
 export function adminUrl(path: string): string {
   return ADMIN_HOST ? `https://${ADMIN_HOST}${path}` : path;
+}
+
+/**
+ * URL to a wedding-invitation page on the thiệp subdomain (thiep.mstudo.com).
+ * The thiệp host serves paths at the root (e.g. thiep.mstudo.com/<slug>), so we
+ * strip the internal "/thiep" prefix when a dedicated host is configured. On a
+ * single-host setup the link stays at /thiep/<slug>.
+ */
+export function thiepUrl(path: string): string {
+  const clean = path.startsWith("/thiep") ? path.slice("/thiep".length) || "/" : path;
+  return THIEP_HOST ? `https://${THIEP_HOST}${clean}` : `/thiep${clean === "/" ? "" : clean}`;
 }

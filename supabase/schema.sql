@@ -1557,3 +1557,63 @@ alter table public.studio_contracts add column if not exists gcal_event_id text;
 -- records when it did so (and notifies the studio).
 alter table public.studio_contracts add column if not exists completed_at      timestamptz;
 alter table public.studio_contracts add column if not exists proofs_purged_at  timestamptz;
+
+-- ============================================================================
+-- THIỆP CƯỚI ONLINE (online wedding invitation) — see supabase/wedding_invitations.sql
+-- A free gift attached to a wedding contract. Studio creates a draft; the
+-- client edits via a token link (no account); guests view at thiep.<domain>/<slug>.
+-- ============================================================================
+create table if not exists public.wedding_invitations (
+  id           uuid primary key default gen_random_uuid(),
+  owner_id     uuid not null references public.profiles (id) on delete cascade,
+  contract_id  uuid references public.studio_contracts (id) on delete set null,
+  slug         text not null unique,
+  edit_token   text not null unique,
+  template     text not null default 'classic',
+  config       jsonb not null default '{}'::jsonb,
+  published    boolean not null default false,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists wedding_invitations_owner_idx on public.wedding_invitations (owner_id);
+create index if not exists wedding_invitations_contract_idx on public.wedding_invitations (contract_id);
+create index if not exists wedding_invitations_slug_idx on public.wedding_invitations (slug);
+
+drop trigger if exists wedding_invitations_set_updated_at on public.wedding_invitations;
+create trigger wedding_invitations_set_updated_at
+  before update on public.wedding_invitations
+  for each row execute function public.set_updated_at();
+
+alter table public.wedding_invitations enable row level security;
+drop policy if exists wedding_invitations_owner_all on public.wedding_invitations;
+create policy wedding_invitations_owner_all on public.wedding_invitations
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+create table if not exists public.wedding_rsvps (
+  id            uuid primary key default gen_random_uuid(),
+  invitation_id uuid not null references public.wedding_invitations (id) on delete cascade,
+  guest_name    text not null default '',
+  side          text not null default 'both' check (side in ('groom', 'bride', 'both')),
+  attending     boolean not null default true,
+  num_guests    integer not null default 1,
+  wish          text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists wedding_rsvps_invitation_idx on public.wedding_rsvps (invitation_id);
+
+alter table public.wedding_rsvps enable row level security;
+drop policy if exists wedding_rsvps_owner_read on public.wedding_rsvps;
+create policy wedding_rsvps_owner_read on public.wedding_rsvps
+  for select using (exists (
+    select 1 from public.wedding_invitations w
+    where w.id = invitation_id and (w.owner_id = auth.uid() or public.is_admin())
+  ));
+
+insert into storage.buckets (id, name, public)
+values ('wedding-photos', 'wedding-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists wedding_photos_read on storage.objects;
+create policy wedding_photos_read on storage.objects
+  for select using (bucket_id = 'wedding-photos');

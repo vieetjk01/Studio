@@ -649,6 +649,78 @@ export interface SiteBlock {
   created_at: string;
 }
 
+// ============================================================================
+// THIỆP CƯỚI ONLINE (online wedding invitation)
+// ============================================================================
+
+/** Bank details for a "mừng cưới" (gift) QR, reused from the contract bank shape. */
+export type WeddingBank = {
+  holder?: string;     // chủ tài khoản
+  account?: string;    // số tài khoản
+  bin?: string;        // mã ngân hàng (VietQR BIN)
+  name?: string;       // tên ngân hàng
+};
+
+/** One ceremony / party block (Lễ Vu Quy, Lễ Thành Hôn, Tiệc cưới…). */
+export type WeddingEventBlock = {
+  label?: string;      // "Lễ Vu Quy" / "Tiệc cưới"
+  date?: string;       // ISO date (yyyy-mm-dd)
+  time?: string;       // "11:00"
+  venue?: string;      // tên địa điểm (Tư gia / Trung tâm tiệc cưới…)
+  address?: string;
+  map_url?: string;    // link Google Maps
+};
+
+/** Full editable content of an invitation (stored in wedding_invitations.config). */
+export type WeddingConfig = {
+  groom_name?: string;
+  bride_name?: string;
+  groom_subtitle?: string;   // ví dụ: "Con ông … & bà …"
+  bride_subtitle?: string;
+  cover_url?: string;        // ảnh bìa
+  cover_quote?: string;      // lời mở / "Save the date"
+  wedding_date?: string;     // ngày cưới chính (ISO) — dùng cho đếm ngược
+  story?: string;            // chuyện tình yêu
+  events?: WeddingEventBlock[];
+  gallery?: string[];        // ảnh cưới (URL)
+  rsvp_enabled?: boolean;
+  rsvp_note?: string;
+  gift_enabled?: boolean;    // hộp mừng cưới
+  gift_note?: string;
+  groom_bank?: WeddingBank;
+  bride_bank?: WeddingBank;
+  music_url?: string;        // YouTube / mp3 nhạc nền
+  accent?: string;           // màu nhấn (#rrggbb)
+  font?: "serif" | "sans";
+};
+
+export const WEDDING_TEMPLATES = ["classic"] as const;
+export type WeddingTemplate = (typeof WEDDING_TEMPLATES)[number];
+
+export interface WeddingInvitation {
+  id: string;
+  owner_id: string;
+  contract_id: string | null;
+  slug: string;
+  edit_token: string;
+  template: WeddingTemplate | string;
+  config: WeddingConfig;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WeddingRsvp {
+  id: string;
+  invitation_id: string;
+  guest_name: string;
+  side: "groom" | "bride" | "both";
+  attending: boolean;
+  num_guests: number;
+  wish: string | null;
+  created_at: string;
+}
+
 /** Reserved subdomains that tenants may not claim. */
 export const RESERVED_SUBDOMAINS = new Set([
   "www", "app", "album", "img", "image", "images", "studio", "api", "admin",

@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/client";
 import { mainUrl } from "@/lib/hosts";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
+import WeddingInvitationCard from "./WeddingInvitationCard";
 import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
@@ -932,6 +933,15 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Đã chép" : "Chép link"}
         </button>
       </div>
+
+      {/* Online wedding invitation (free gift) — most relevant for weddings */}
+      {(f.shoot_type === "wedding" || f.shoot_type === "prewedding") && (
+        <WeddingInvitationCard
+          contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
+          clientName={f.client_name}
+          clientMessenger={f.client_messenger}
+        />
+      )}
 
       {/* Ask for a review */}
       <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">

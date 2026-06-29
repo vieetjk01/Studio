@@ -13,6 +13,8 @@ const MAIN_HOST = process.env.NEXT_PUBLIC_MAIN_HOST;
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST;
 const IMG_HOST = process.env.NEXT_PUBLIC_IMG_HOST;
 const ADMIN_HOST = process.env.NEXT_PUBLIC_ADMIN_HOST;
+// thiep.mstudo.com -> online wedding invitations. Serves /thiep/* at the root.
+const THIEP_HOST = process.env.NEXT_PUBLIC_THIEP_HOST;
 const COMPRESS_PATH = "/dashboard/compress";
 const ADMIN_PATH = "/dashboard/admin";
 
@@ -44,6 +46,9 @@ function hostForPath(path: string): string | undefined {
   // and the whole dashboard) is served by the main host now.
   if (path.startsWith("/dashboard") || path.startsWith("/a/") || path === "/start") return MAIN_HOST;
 
+  // Wedding invitations belong on the thiệp host (canonical) when configured.
+  if (path.startsWith("/thiep")) return THIEP_HOST || undefined;
+
   return undefined;
 }
 
@@ -59,11 +64,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
   }
 
+  // ── Wedding invitations: thiep.mstudo.com/<slug> → /thiep/<slug> ─────────
+  // The thiệp host serves the (public) invitation pages and the client editor
+  // at the root, so we prefix everything with /thiep internally. /api and
+  // Next internals are left untouched.
+  if (THIEP_HOST && host === THIEP_HOST) {
+    if (!pathname.startsWith("/thiep") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname === "/" ? "/thiep" : `/thiep${pathname}`;
+      return NextResponse.rewrite(url);
+    }
+    // Already a /thiep, /api or asset path — serve as-is on this host.
+    return NextResponse.next();
+  }
+
   // ── Tenant sites: <subdomain>.mstudo.com → /site/<subdomain> ─────────────
   // Any *.MAIN_HOST that isn't a known system host is treated as a tenant site.
   if (MAIN_HOST && host.endsWith(`.${MAIN_HOST}`) && host !== MAIN_HOST) {
     const systemHosts = new Set(
-      [MAIN_HOST, APP_HOST, IMG_HOST, ADMIN_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
+      [MAIN_HOST, APP_HOST, IMG_HOST, ADMIN_HOST, THIEP_HOST, `www.${MAIN_HOST}`].filter(Boolean) as string[]
     );
     if (!systemHosts.has(host)) {
       const sub = host.slice(0, -(`.${MAIN_HOST}`.length));
