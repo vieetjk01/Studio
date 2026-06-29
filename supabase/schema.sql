@@ -361,6 +361,10 @@ alter table public.site_settings add column if not exists contact_youtube  text;
 alter table public.site_settings add column if not exists site_title       text;
 alter table public.site_settings add column if not exists site_description text;
 alter table public.site_settings add column if not exists favicon_url      text;
+-- Editable content of the upgrade page (headline, plan labels/features, the
+-- feature-comparison table, coming-soon list). Falls back to code defaults when
+-- empty. See src/lib/upgrade-content.ts.
+alter table public.site_settings add column if not exists upgrade_content  jsonb;
 
 alter table public.site_settings enable row level security;
 drop policy if exists site_settings_public_read on public.site_settings;

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Check, X, Crown, Sparkles, Send, Zap, Tag, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
-import { PLAN_FEATURES, PLAN_PRICING, PLAN_LABEL, formatVnd, type Plan } from "@/lib/plans";
+import { PLAN_PRICING, PLAN_LABEL, formatVnd, type Plan } from "@/lib/plans";
+import { mergeUpgradeContent, UPGRADE_DEFAULTS, type UpgradeContent } from "@/lib/upgrade-content";
 
 type Cycle = "month" | "year";
 
@@ -34,63 +35,12 @@ const DEFAULT_PRICES: Prices = {
   studioPromo: 50,
 };
 
-// Feature comparison rows. boolean -> ✓/✗ ; string -> text.
-type Cmp = string | boolean;
-
-// Section headers rendered as a divider row inside the table.
-type CmpRow =
-  | { section: string }
-  | { label: string; free: Cmp; basic: Cmp; photographer: Cmp; studio: Cmp };
-
-const COMPARE: CmpRow[] = [
-  { section: "Album & ảnh" },
-  { label: "Album / tháng", free: "5", basic: "15", photographer: "50", studio: "∞" },
-  { label: "Khách chọn ảnh (QR + link)", free: true, basic: true, photographer: true, studio: true },
-  { label: "Cho khách tải ảnh (ZIP)", free: false, basic: true, photographer: true, studio: true },
-  { label: "Ghi chú trên ảnh", free: false, basic: true, photographer: true, studio: true },
-  { label: "Gallery bàn giao khách", free: false, basic: false, photographer: true, studio: true },
-
-  { section: "Watermark & xử lý ảnh" },
-  { label: "Watermark chữ", free: true, basic: true, photographer: true, studio: true },
-  { label: "Watermark logo + nén kèm", free: false, basic: true, photographer: true, studio: true },
-  { label: "Lọc ảnh AI", free: "10 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
-  { label: "Nén ảnh (máy + link Drive)", free: "5 / tháng", basic: "∞", photographer: "∞", studio: "∞" },
-  { label: "Nén qua Google Drive (Picker)", free: "1 lần", basic: "5 / tháng", photographer: "15 / tháng", studio: "∞" },
-
-  { section: "Website" },
-  { label: "Trình tạo website portfolio", free: "Xem trước", basic: "Xem trước", photographer: true, studio: true },
-  { label: "Xuất bản website", free: false, basic: false, photographer: true, studio: true },
-  { label: "Tùy chỉnh giao diện & nội dung", free: false, basic: false, photographer: true, studio: true },
-  { label: "Tên miền cá nhân .com", free: false, basic: false, photographer: "Sắp ra mắt", studio: "Sắp ra mắt" },
-
-  { section: "Quản lý studio" },
-  { label: "Nhận đặt lịch online (link + QR)", free: false, basic: false, photographer: true, studio: true },
-  { label: "Bảng giá dịch vụ", free: false, basic: false, photographer: true, studio: true },
-  { label: "Danh bạ khách hàng", free: false, basic: false, photographer: true, studio: true },
-  { label: "Lịch chụp theo tuần + nhắc lịch", free: false, basic: false, photographer: true, studio: true },
-  { label: "Quản lý hợp đồng & báo giá", free: false, basic: false, photographer: false, studio: true },
-  { label: "Hợp đồng online (ký & chỉnh sửa)", free: false, basic: false, photographer: false, studio: true },
-  { label: "Tài chính — thu chi · công nợ · lương", free: false, basic: false, photographer: false, studio: true },
-  { label: "Quản lý đội ngũ & xếp hạng", free: false, basic: false, photographer: false, studio: true },
-  { label: "Thiết bị & tiến độ sản xuất", free: false, basic: false, photographer: false, studio: true },
-  { label: "Báo cáo doanh thu & tỉ lệ chốt", free: false, basic: false, photographer: false, studio: true },
-
-  { section: "Hỗ trợ & nâng cấp" },
-  { label: "Trải nghiệm Studio 1 ngày miễn phí", free: true, basic: true, photographer: true, studio: false },
-  { label: "Hỗ trợ riêng qua Zalo / email", free: false, basic: false, photographer: false, studio: true },
-  { label: "Nhận miễn phí tính năng nâng cấp", free: false, basic: false, photographer: false, studio: true },
-];
-
-const COMING_SOON = [
-  "Tên miền cá nhân (.com riêng)",
-  "Cổng thanh toán & hóa đơn tự động",
-  "Upload ảnh trực tiếp lên website portfolio",
-  "App di động cho studio (iOS & Android)",
-  "Tích hợp Google Calendar / iCal",
-];
+// Feature comparison rows, plan labels/features, headline & coming-soon list are
+// admin-editable — loaded from site_settings.upgrade_content (with code defaults).
 
 export default function UpgradePage() {
   const [currentPlan, setCurrentPlan] = useState<Plan>("free");
+  const [content, setContent] = useState<UpgradeContent>(UPGRADE_DEFAULTS);
   const [prices, setPrices] = useState<Prices>(DEFAULT_PRICES);
   const [cycle, setCycle] = useState<Cycle>("month");
   const [note, setNote] = useState("");
@@ -152,10 +102,11 @@ export default function UpgradePage() {
       }
       const { data: s } = await supabase
         .from("site_settings")
-        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent")
+        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent, upgrade_content")
         .eq("id", 1)
         .maybeSingle();
       if (s) {
+        setContent(mergeUpgradeContent((s as { upgrade_content?: unknown }).upgrade_content));
         setPrices({
           basicMonth: s.price_basic_month ?? DEFAULT_PRICES.basicMonth,
           basicYear: s.price_basic_year ?? DEFAULT_PRICES.basicYear,
@@ -276,12 +227,12 @@ export default function UpgradePage() {
     { plan: "studio", icon: Crown, accent: true, promo: "Đăng ký trong thời gian này: ưu đãi 50%/năm vĩnh viễn + nhận mọi tính năng nâng cấp sau này." },
   ];
 
-  const cellOf = (v: string | boolean) =>
-    typeof v === "boolean" ? (
-      v ? <Check size={16} style={{ color: "var(--gold)" }} /> : <X size={15} style={{ color: "var(--text3)" }} />
-    ) : (
-      <span style={{ color: "var(--text)" }}>{v}</span>
-    );
+  // Cell convention: "✓" -> check, "✗"/"" -> cross, anything else -> text.
+  const cellOf = (v: string) =>
+    v === "✓" ? <Check size={16} style={{ color: "var(--gold)" }} />
+    : (v === "✗" || v.trim() === "") ? <X size={15} style={{ color: "var(--text3)" }} />
+    : <span style={{ color: "var(--text)" }}>{v}</span>;
+  const planLabel = (p: Plan) => content.plans[p].label;
 
   return (
     <div
@@ -296,9 +247,9 @@ export default function UpgradePage() {
     >
       <div className="mb-8">
         <p className="eyebrow mb-1.5">Gói dịch vụ</p>
-        <h1 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">Nâng cấp gói</h1>
+        <h1 className="font-serif text-[clamp(28px,4vw,44px)] font-medium leading-none">{content.headline}</h1>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--text2)" }}>
-          Mở khoá thêm album, cho khách tải ảnh & ghi chú, watermark logo, nén/lọc ảnh không giới hạn.
+          {content.subheadline}
         </p>
       </div>
 
@@ -340,7 +291,7 @@ export default function UpgradePage() {
                 <Icon size={18} />
               </span>
               <div>
-                <h2 className="font-serif text-2xl font-medium">{PLAN_LABEL[plan]}</h2>
+                <h2 className="font-serif text-2xl font-medium">{planLabel(plan)}</h2>
                 {currentPlan === plan && <p className="text-[12px]" style={{ color: "var(--gold)" }}>Gói hiện tại</p>}
               </div>
             </div>
@@ -348,7 +299,7 @@ export default function UpgradePage() {
             <div className="mb-4">{plan === "free" ? <span className="font-serif text-3xl font-medium">Miễn phí</span> : priceBlock(plan)}</div>
 
             <ul className="mb-5 space-y-2.5">
-              {PLAN_FEATURES[plan].map((f) => (
+              {content.plans[plan].features.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--text2)" }}>
                   <Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: accent ? "var(--gold)" : "var(--text3)" }} />
                   {f}
@@ -368,7 +319,7 @@ export default function UpgradePage() {
                 </div>
               ) : (
                 <button onClick={() => { setError(null); setModalPlan(plan); }} className="btn-primary w-full rounded-xl py-3 text-[14px]">
-                  <Send size={15} /> {`Đăng ký ${PLAN_LABEL[plan]}`}
+                  <Send size={15} /> {`Đăng ký ${planLabel(plan)}`}
                 </button>
               )}
             </div>
@@ -389,7 +340,7 @@ export default function UpgradePage() {
             </tr>
           </thead>
           <tbody>
-            {COMPARE.map((row, i) => {
+            {content.compare.map((row, i) => {
               if ("section" in row) {
                 return (
                   <tr key={row.section}>
@@ -423,7 +374,7 @@ export default function UpgradePage() {
           <Sparkles size={15} /> Tính năng sắp ra mắt
         </h3>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {COMING_SOON.map((f) => (
+          {content.comingSoon.map((f) => (
             <div key={f} className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--text2)" }}>
               <span className="rounded-full px-2 py-0.5 text-[10px] uppercase" style={{ background: "var(--surface2)", color: "var(--text3)" }}>Sắp có</span>
               {f}
@@ -444,7 +395,7 @@ export default function UpgradePage() {
           onClick={() => sending === null && setModalPlan(null)}
         >
           <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-serif text-2xl font-medium">Đăng ký gói {PLAN_LABEL[modalPlan]}</h3>
+            <h3 className="font-serif text-2xl font-medium">Đăng ký gói {planLabel(modalPlan)}</h3>
             <p className="mt-1 text-[13px]" style={{ color: "var(--text2)" }}>
               {cycle === "month" ? "Theo tháng" : "Theo năm"} ·{" "}
               <b style={{ color: "var(--gold)" }}>

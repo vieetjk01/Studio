@@ -112,6 +112,7 @@ export interface SiteSettings {
   landing_hero_sub: string | null;
   landing_hero_badge: string | null;
   landing_hero_note: string | null;
+  upgrade_content: unknown | null;
   updated_at: string;
 }
 

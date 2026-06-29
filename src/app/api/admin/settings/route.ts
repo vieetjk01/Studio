@@ -51,6 +51,13 @@ export async function POST(req: Request) {
   if (Array.isArray(body.featured_images)) {
     patch.featured_images = (body.featured_images as string[]).map((s) => String(s).trim()).filter(Boolean);
   }
+  // Editable upgrade-page content (jsonb). Guard against oversized payloads.
+  if (body.upgrade_content !== undefined && body.upgrade_content !== null && typeof body.upgrade_content === "object") {
+    if (JSON.stringify(body.upgrade_content).length > 100_000) {
+      return NextResponse.json({ error: "too_large" }, { status: 413 });
+    }
+    patch.upgrade_content = body.upgrade_content;
+  }
 
   const db = createAdminClient();
   const { error } = await db

@@ -4,9 +4,10 @@ import { useState } from "react";
 import DateInput from "@/components/DateInput";
 import {
   Save, Tag, Trash2, Plus, Shuffle, Check, Crown, MessageSquare,
-  Globe, LayoutTemplate, BadgeDollarSign, Settings2, ChevronDown, ChevronRight,
+  Globe, LayoutTemplate, BadgeDollarSign, Settings2, ChevronDown, ChevronRight, Rocket,
 } from "lucide-react";
 import type { SiteSettings, UpgradeRequest, DiscountCode } from "@/lib/types";
+import UpgradeContentEditor from "./UpgradeContentEditor";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 export interface Feedback {
@@ -241,6 +242,14 @@ export default function SettingsPanel({
           ))}
         </div>
         <SaveBtn label="Lưu gói & giá" />
+      </Section>
+
+      {/* ── 3b. Nội dung trang nâng cấp ──────────────────────────────────── */}
+      <Section title="Nội dung trang nâng cấp" icon={Rocket}>
+        <p className="text-[12px]" style={{ color: "var(--text3)" }}>
+          Tiêu đề, tên &amp; điểm nổi bật của gói, bảng so sánh tính năng và mục “Sắp ra mắt” hiển thị tại <strong>/dashboard/upgrade</strong>. (Giá &amp; % giảm chỉnh ở mục “Gói &amp; giá” phía trên.)
+        </p>
+        <UpgradeContentEditor initial={settings?.upgrade_content ?? null} />
       </Section>
 
       {/* ── 4. Mã giảm giá ──────────────────────────────────────────────── */}
