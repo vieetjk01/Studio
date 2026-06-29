@@ -17,6 +17,7 @@ import {
   type SiteTheme,
 } from "@/lib/types";
 import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
+import HtmlEmbed from "@/components/HtmlEmbed";
 import { compressImage, checkImageFile, MAX_IMAGE_UPLOAD_MB } from "@/lib/image";
 import { useTheme } from "@/lib/theme";
 
@@ -987,7 +988,7 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
         <section style={sec}>
           {S("heading") && heading("heading", "")}
           {raw ? (
-            <div dangerouslySetInnerHTML={{ __html: raw }} />
+            <HtmlEmbed html={raw} />
           ) : (
             <div style={{ padding: 24, borderRadius: "var(--s-radius)", background: "var(--s-card)", textAlign: "center", opacity: 0.6, fontSize: 13 }}>
               {"</>"} Dán mã HTML / nhúng ở khung bên phải

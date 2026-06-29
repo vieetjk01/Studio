@@ -1,4 +1,5 @@
 import { mainUrl } from "@/lib/hosts";
+import HtmlEmbed from "@/components/HtmlEmbed";
 import { vnd, SITE_BLOCK_LABEL, type SiteBlock } from "@/lib/types";
 import type { SiteData } from "@/lib/site-loader";
 
@@ -494,7 +495,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
       const heading = str(c.heading);
       return (
         <Section fontVar={fontVar} heading={heading || undefined}>
-          <div dangerouslySetInnerHTML={{ __html: html }} />
+          <HtmlEmbed html={html} />
         </Section>
       );
     }
