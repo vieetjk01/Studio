@@ -35,8 +35,13 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
             <Globe size={16} /> Website riêng
           </Link>
           <Link href="/dashboard/create" className="btn-primary">
-            <Plus size={16} /> {t("newAlbum")}
+            <Plus size={16} /> Tạo album chọn ảnh
           </Link>
+          {canDelivery && (
+            <Link href="/dashboard/create?phase=delivery" className="btn-primary">
+              <Plus size={16} /> Tạo album hoàn thiện
+            </Link>
+          )}
         </div>
       </div>
 
@@ -56,7 +61,7 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
         <div className="card flex flex-col items-center justify-center py-20 text-center">
           <p className="text-accent-muted">{t("noAlbums")}</p>
           <Link href="/dashboard/create" className="btn-ghost mt-4">
-            <Plus size={16} /> {t("newAlbum")}
+            <Plus size={16} /> Tạo album chọn ảnh
           </Link>
         </div>
       ) : (

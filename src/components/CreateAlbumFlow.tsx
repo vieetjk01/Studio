@@ -34,9 +34,10 @@ function slugify(s: string) {
 
 const PENDING_KEY = "vk_pending_album";
 
-export default function CreateAlbumFlow() {
+export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "selection" | "delivery" }) {
   const { t } = useLang();
   const supabase = createClient();
+  const isDelivery = mode === "delivery";
 
   const [name, setName] = useState("");
   const [drives, setDrives] = useState<string[]>([""]);
@@ -164,10 +165,11 @@ export default function CreateAlbumFlow() {
           owner_id: user.id,
           title: name.trim(),
           slug,
-          selection_limit: max ? Number(max) : null,
+          selection_limit: isDelivery ? null : (max ? Number(max) : null),
           watermark_enabled: !!watermark.trim(),
           download_enabled: allowDownload,
           watermark_text: watermark.trim() || null,
+          phase: isDelivery ? "delivery" : "selection",
           status: "published",
         })
         .select("id, slug")
@@ -188,6 +190,7 @@ export default function CreateAlbumFlow() {
           name: isFolderLink(url) ? `Folder ${i + 1}` : `Nhóm ${i + 1}`,
           drive_url: url,
           kind: isFolderLink(url) ? "folder" : "file",
+          stage: isDelivery ? "delivery" : "selection",
           position: i,
         }));
         const { error: sErr } = await supabase.from("album_sources").insert(rows);
@@ -414,7 +417,8 @@ export default function CreateAlbumFlow() {
   );
 }
 
-export function CreateHero() {
+export function CreateHero({ mode = "selection" }: { mode?: "selection" | "delivery" }) {
+  const isDelivery = mode === "delivery";
   return (
     <div className="mb-10 max-w-2xl">
       <div className="mb-5 inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -424,13 +428,15 @@ export function CreateHero() {
         </span>
       </div>
       <h1 className="text-[clamp(32px,5vw,56px)] font-bold leading-[0.98] tracking-[-0.02em]">
-        Tạo trang chọn ảnh
+        {isDelivery ? "Tạo album giao khách" : "Tạo trang chọn ảnh"}
         <span className="block font-serif font-normal italic" style={{ color: "var(--gold)" }}>
           trong vài phút<span className="not-italic" style={{ color: "var(--text)" }}>.</span>
         </span>
       </h1>
       <p className="mt-4 text-[15px] leading-relaxed" style={{ color: "var(--text2)" }}>
-        Dán thư mục Google Drive, đặt khoá nếu cần, rồi gửi link hoặc mã QR cho khách.
+        {isDelivery
+          ? "Album ảnh đã hoàn thiện để khách xem và tải về. Dán thư mục Google Drive, đặt khoá nếu cần."
+          : "Dán thư mục Google Drive, đặt khoá nếu cần, rồi gửi link hoặc mã QR cho khách."}
       </p>
     </div>
   );

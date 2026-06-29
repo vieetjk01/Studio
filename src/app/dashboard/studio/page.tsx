@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp, Globe } from "lucide-react";
+import { Plus, FileText, CalendarDays, Users, AlertCircle, Wallet, UserCheck, Clock, TrendingUp, Globe, Images } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import StudioTrialButton from "@/components/StudioTrialButton";
@@ -157,8 +157,17 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
     .sort((a, b) => (a.preferred_date || "").localeCompare(b.preferred_date || ""))
     .slice(0, 8);
 
+  const { count: selectingAlbums } = await supabase
+    .from("albums")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", ownerId)
+    .eq("phase", "selection")
+    .eq("status", "published")
+    .eq("is_gallery", false);
+
   const stats: { icon: typeof FileText; label: string; value: string; delta?: string; deltaTone?: ToneKey }[] = [
     { icon: AlertCircle, label: "Đặt lịch mới", value: String(newCount), delta: newCount > 0 ? "cần xử lý" : undefined, deltaTone: "amber" },
+    { icon: Images, label: "Album đang được khách chọn", value: String(selectingAlbums ?? 0), delta: (selectingAlbums ?? 0) > 0 ? "khách đang chọn ảnh" : undefined, deltaTone: "amber" },
     { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length) },
     { icon: Users, label: "Tổng yêu cầu đặt lịch", value: String(bookings.length) },
   ];
@@ -295,6 +304,7 @@ export default async function StudioOverview() {
     { count: newBookings },
     { count: bookingsAll },
     { data: recentQuotes },
+    { count: selectingAlbums },
   ] = await Promise.all([
     cq.order("event_date", { ascending: true, nullsFirst: false }),
     supabase
@@ -323,6 +333,14 @@ export default async function StudioOverview() {
       .eq("owner_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(5),
+    // Published albums in the selection phase = clients are picking their photos.
+    supabase
+      .from("albums")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", profile.id)
+      .eq("phase", "selection")
+      .eq("status", "published")
+      .eq("is_gallery", false),
   ]);
 
   type CrewLite = { id: string; name: string; phone: string | null; role: CrewRole; status: string };
@@ -428,6 +446,7 @@ export default async function StudioOverview() {
       deltaTone: (revDeltaPct ?? 0) >= 0 ? "green" : "red",
     },
     { icon: FileText, label: "Hợp đồng đang hoạt động", value: String(active.length), delta: `${notCancelled.length} tổng hợp đồng`, deltaTone: "gray" },
+    { icon: Images, label: "Album đang được khách chọn", value: String(selectingAlbums ?? 0), delta: (selectingAlbums ?? 0) > 0 ? "khách đang chọn ảnh" : undefined, deltaTone: "amber" },
     { icon: CalendarDays, label: "Lịch sắp tới", value: String(upcoming.length), delta: `${uniqueClients} khách hàng`, deltaTone: "gray" },
     {
       icon: AlertCircle,
