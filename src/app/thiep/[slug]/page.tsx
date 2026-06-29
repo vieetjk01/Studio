@@ -13,7 +13,7 @@ async function load(slug: string): Promise<WeddingInvitation | null> {
     .select("id, owner_id, contract_id, slug, edit_token, template, config, published, created_at, updated_at")
     .eq("slug", slug.toLowerCase())
     .maybeSingle();
-  if (!data || !data.published) return null;
+  if (!data) return null;
   return data as WeddingInvitation;
 }
 
@@ -35,6 +35,21 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function WeddingInvitationPage({ params }: { params: { slug: string } }) {
   const inv = await load(params.slug);
   if (!inv) notFound();
+
+  // Draft (not published yet): show a clear notice instead of bouncing home, so
+  // the studio/couple immediately knows they just need to hit "Xuất bản".
+  if (!inv.published) {
+    return (
+      <main className="grid min-h-screen place-items-center px-6 text-center" style={{ background: "#fbf7f2", color: "#3a3530", fontFamily: "var(--font-cormorant)" }}>
+        <div className="max-w-md">
+          <h1 className="font-serif text-3xl" style={{ color: "#b08968" }}>Thiệp chưa được xuất bản</h1>
+          <p className="mx-auto mt-4 text-base" style={{ color: "rgba(58,53,48,0.62)" }}>
+            Thiệp này đang ở chế độ nháp. Hãy mở trình chỉnh sửa và bấm <b>“Xuất bản thiệp”</b> để khách có thể xem.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   // Guestbook = well-wishes left through the RSVP form.
   const db = createAdminClient();
