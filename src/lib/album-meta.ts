@@ -14,10 +14,10 @@ export async function albumOwnerName(ownerId?: string | null): Promise<string> {
     if (ownerId) {
       const { data } = await db
         .from("profiles")
-        .select("full_name, studio_brand_name")
+        .select("full_name")
         .eq("id", ownerId)
         .maybeSingle();
-      const name = (data?.studio_brand_name || data?.full_name)?.trim();
+      const name = data?.full_name?.trim();
       if (name) return name;
     }
     const { data: site } = await db

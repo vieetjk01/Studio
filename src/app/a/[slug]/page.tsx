@@ -6,7 +6,7 @@ import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Brand from "@/components/Brand";
 import { buildAlbumMetadata } from "@/lib/album-meta";
-import { brandFrom } from "@/lib/studio-brand";
+import { getStudioBrand } from "@/lib/studio-brand";
 import { MAIN_HOST } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
@@ -91,12 +91,16 @@ export default async function PublicAlbumPage({
   }
 
   // Owner permissions gate customer download (ZIP) and notes.
+  // Keep the core owner query to SAFE columns only, so an un-migrated brand
+  // column can never break download/notes permissions or photo loading.
   const { data: owner } = await admin
     .from("profiles")
-    .select("role, can_zip, can_notes, full_name, studio_brand_name, studio_logo_url, pl_logo_url")
+    .select("role, can_zip, can_notes, full_name")
     .eq("id", album.owner_id)
     .maybeSingle();
-  const brand = brandFrom(owner);
+  // Brand (logo/name) fetched separately, best-effort — missing columns just
+  // fall back to defaults without affecting anything else.
+  const brand = await getStudioBrand(admin, album.owner_id);
   const studioName = brand.name;
   const isAdminOwner = owner?.role === "admin";
   const allowZip = (isAdminOwner || !!owner?.can_zip) && album.download_enabled !== false;

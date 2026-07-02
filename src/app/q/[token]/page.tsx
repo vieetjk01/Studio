@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getStudioBrand } from "@/lib/studio-brand";
 import { effectivePlan, studioTier } from "@/lib/plans";
 import QuoteClientView from "./QuoteClientView";
 import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
@@ -42,7 +43,7 @@ export default async function QuoteClientPage({ params }: { params: { token: str
   const [{ data: items }, { data: adjustments }, { data: owner }, contractRes] = await Promise.all([
     db.from("quote_items").select("*").eq("quote_id", quote.id).order("position"),
     db.from("quote_adjustments").select("*").eq("quote_id", quote.id).order("created_at", { ascending: true }),
-    db.from("profiles").select("full_name, studio_brand_name, studio_logo_url, pl_logo_url, email, plan, plan_expires_at, role").eq("id", quote.owner_id).maybeSingle(),
+    db.from("profiles").select("full_name, email, plan, plan_expires_at, role").eq("id", quote.owner_id).maybeSingle(),
     // If a contract has already been spawned from this quote (auto-create on a
     // previous visit), fetch its client_token so we can show the link on reload.
     quote.contract_id
@@ -56,13 +57,15 @@ export default async function QuoteClientPage({ params }: { params: { token: str
     ? studioTier(effectivePlan(owner.plan, owner.plan_expires_at), owner.role === "admin") === "full"
     : false;
 
+  const brand = await getStudioBrand(db, quote.owner_id);
+
   return (
     <QuoteClientView
       quote={quote as StudioQuote}
       initialItems={(items ?? []) as QuoteItem[]}
       initialAdjustments={(adjustments ?? []) as QuoteAdjustment[]}
-      studioName={(owner?.studio_brand_name || owner?.full_name || "Studio") as string}
-      studioLogo={(owner?.studio_logo_url || owner?.pl_logo_url || null) as string | null}
+      studioName={brand.name}
+      studioLogo={brand.logoUrl}
       studioCanContract={studioCanContract}
       initialContractToken={contractRes?.data?.client_token ?? null}
     />
