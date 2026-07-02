@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Copy, ExternalLink, Plus, Trash2, Lock, LockOpen, Send, FileSignature, X, Check, Save, Tag, CloudOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { mainUrl } from "@/lib/hosts";
+import { studioUrl } from "@/lib/hosts";
 import {
   vnd,
   QUOTE_STATUS_LABEL,
@@ -48,11 +48,13 @@ export default function QuoteEditor({
   initialItems,
   initialAdjustments,
   canConvert,
+  studioSubdomain = null,
 }: {
   quote: StudioQuote;
   initialItems: QuoteItem[];
   initialAdjustments: QuoteAdjustment[];
   canConvert: boolean;
+  studioSubdomain?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -66,7 +68,7 @@ export default function QuoteEditor({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const shareUrl = mainUrl(`/q/${quote.client_token}`);
+  const shareUrl = studioUrl(studioSubdomain, `/q/${quote.client_token}`);
   const total = quoteSelectedTotal(items);
   const grossTotal = items.reduce(
     (s, i) => (i.is_discount ? s : s + (i.qty || 0) * (i.unit_price || 0)),

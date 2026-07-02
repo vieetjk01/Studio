@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllPhotos } from "@/lib/photos";
+import { getStudioSubdomain } from "@/lib/studio-site";
 import { effectivePlan, planAllowsDelivery, planAllowsPublicGallery } from "@/lib/plans";
 import AlbumEditor from "./AlbumEditor";
 import type { Album, AlbumSource, Photo } from "@/lib/types";
@@ -36,6 +37,7 @@ export default async function AlbumEditPage({
   const isAdmin = profile?.role === "admin";
   const plan = profile ? effectivePlan(profile.plan, profile.plan_expires_at) : "free";
   const studioName = (profile?.full_name ?? "").trim() || "Studio";
+  const studioSubdomain = user ? await getStudioSubdomain(supabase, user.id) : null;
 
   return (
     <AlbumEditor
@@ -45,6 +47,7 @@ export default async function AlbumEditPage({
       canDelivery={planAllowsDelivery(plan, isAdmin)}
       canPinHome={planAllowsPublicGallery(plan, isAdmin)}
       studioName={studioName}
+      studioSubdomain={studioSubdomain}
     />
   );
 }

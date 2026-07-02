@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
+import { getStudioSubdomain } from "@/lib/studio-site";
 import QuotesListView, { type QuoteRow } from "./QuotesListView";
 
 
@@ -26,5 +27,6 @@ export default async function QuotesList() {
     .eq("owner_id", profile.id)
     .order("created_at", { ascending: false });
 
-  return <QuotesListView list={(data ?? []) as unknown as QuoteRow[]} />;
+  const studioSubdomain = await getStudioSubdomain(supabase, profile.id);
+  return <QuotesListView list={(data ?? []) as unknown as QuoteRow[]} studioSubdomain={studioSubdomain} />;
 }

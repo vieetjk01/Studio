@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { mainUrl } from "@/lib/hosts";
+import { studioUrl } from "@/lib/hosts";
+import { getStudioSubdomain } from "@/lib/studio-site";
 import { ALL_SEED } from "@/lib/pricelist-seeds";
 import type { PricelistItem } from "@/lib/types";
 import PricingManager from "./PricingManager";
@@ -48,6 +49,8 @@ export default async function PricingPage() {
     ({ data } = await supabase.from("studio_pricelist").select("*").eq("owner_id", profile.id).order("position"));
   }
 
+  const studioSubdomain = await getStudioSubdomain(supabase, profile.id);
+
   return (
     <PricingManager
       ownerId={profile.id}
@@ -56,7 +59,7 @@ export default async function PricingPage() {
       listLabels={listLabels}
       services={(services ?? []) as { id: string; name: string }[]}
       showClauses={showClauses}
-      shareUrl={token ? mainUrl(`/gia/${token}`) : ""}
+      shareUrl={token ? studioUrl(studioSubdomain, `/gia/${token}`) : ""}
       contact={{
         pl_phone: profile.pl_phone ?? "",
         pl_facebook: profile.pl_facebook ?? "",

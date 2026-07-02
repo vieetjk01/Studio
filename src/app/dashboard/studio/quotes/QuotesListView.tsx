@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { FilePlus, Eye, Pencil, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { vnd, QUOTE_STATUS_LABEL, quoteSelectedTotal, type StudioQuote, type QuoteStatus } from "@/lib/types";
-import { mainUrl } from "@/lib/hosts";
+import { studioUrl } from "@/lib/hosts";
 
 export type QuoteRow = StudioQuote & {
   quote_items: { qty: number; unit_price: number; selected: boolean; is_optional: boolean; is_discount: boolean }[];
@@ -24,7 +24,7 @@ const STATUS_COLOR: Record<QuoteStatus, string> = {
   cancelled: "var(--text3)",
 };
 
-export default function QuotesListView({ list: initialList }: { list: QuoteRow[] }) {
+export default function QuotesListView({ list: initialList, studioSubdomain = null }: { list: QuoteRow[]; studioSubdomain?: string | null }) {
   const [rows, setRows] = useState<QuoteRow[]>(initialList);
   const [updating, setUpdating] = useState<string | null>(null);
   const supabase = createClient();
@@ -110,7 +110,7 @@ export default function QuotesListView({ list: initialList }: { list: QuoteRow[]
                     <Pencil size={12} /> Chỉnh sửa
                   </Link>
                   <a
-                    href={mainUrl(`/q/${q.client_token}`)}
+                    href={studioUrl(studioSubdomain, `/q/${q.client_token}`)}
                     target="_blank"
                     rel="noreferrer"
                     className="btn-ghost px-2.5 py-1.5"

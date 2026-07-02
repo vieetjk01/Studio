@@ -6,7 +6,7 @@ import { Lock, FileText, MapPin, Calendar, Send, Check, Printer, PenLine, Images
 import SignaturePad from "@/components/SignaturePad";
 import CalendarButtons from "@/components/CalendarButtons";
 import VietQRButton, { type BankInfo } from "@/components/VietQR";
-import { mainUrl, thiepUrl } from "@/lib/hosts";
+import { thiepUrl } from "@/lib/hosts";
 import { compressImage, checkImageFile } from "@/lib/image";
 import {
   contractTotal,
@@ -475,7 +475,7 @@ export default function ContractView({ token }: { token: string }) {
 
         {selection && (
           <a
-            href={mainUrl(`/a/${selection.slug}`)}
+            href={`/a/${selection.slug}`}
             target="_blank"
             rel="noreferrer"
             className="card mt-6 flex items-center gap-3 p-5 transition-colors hover:bg-[var(--surface2)]"
@@ -491,7 +491,7 @@ export default function ContractView({ token }: { token: string }) {
 
         {gallery && (
           <a
-            href={mainUrl(`/album/${gallery.slug}`)}
+            href={`/album/${gallery.slug}`}
             target="_blank"
             rel="noreferrer"
             className="card mt-6 flex items-center gap-3 p-5 transition-colors hover:bg-[var(--surface2)]"

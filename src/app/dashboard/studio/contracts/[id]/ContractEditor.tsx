@@ -22,7 +22,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { mainUrl } from "@/lib/hosts";
+import { mainUrl, studioUrl } from "@/lib/hosts";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
 import WeddingInvitationCard from "./WeddingInvitationCard";
@@ -87,6 +87,7 @@ function today() {
 
 export default function ContractEditor({
   contract,
+  studioSubdomain = null,
   initialItems,
   initialCrew,
   initialRequests,
@@ -111,6 +112,7 @@ export default function ContractEditor({
   services = [],
 }: {
   contract: StudioContract;
+  studioSubdomain?: string | null;
   initialItems: ContractItem[];
   initialCrew: ContractCrew[];
   initialRequests: ContractEditRequest[];
@@ -317,8 +319,9 @@ export default function ContractEditor({
   const productCost = products.reduce((s, p) => s + (Number(p.cost) || 0) * (Number(p.qty) || 1), 0);
   const profit = total - payroll - expenseTotal - productCost;
   const qrInfo = (contract.code || contract.title || "").slice(0, 25);
-  // Unified client portal lives on the main site (mstudo.com/c/<token>).
-  const shareUrl = mainUrl(`/c/${contract.client_token}`);
+  // Client portal runs on the studio's own subdomain once its site is published,
+  // otherwise on the main host.
+  const shareUrl = studioUrl(studioSubdomain, `/c/${contract.client_token}`);
 
   // Required fields — flagged red until valid. Phone must be 10 digits.
   const phoneOk = /^\d{10}$/.test(f.client_phone.replace(/\D/g, ""));

@@ -90,6 +90,17 @@ export async function middleware(request: NextRequest) {
     if (!systemHosts.has(host)) {
       const sub = host.slice(0, -(`.${MAIN_HOST}`.length));
       if (sub && !sub.includes(".")) {
+        // Studio admin & auth always live on the main host.
+        if (pathname.startsWith("/dashboard") || pathname === "/start" || pathname.startsWith("/login") || pathname.startsWith("/auth")) {
+          return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
+        }
+        // Customer/app routes are SERVED on the studio's own subdomain so every
+        // activity a studio shares runs under its personalised URL.
+        const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/quote", "/showcase"];
+        if (CUSTOMER.some((p) => pathname.startsWith(p))) {
+          return NextResponse.next();
+        }
+        // Everything else on the subdomain is the portfolio site.
         const url = request.nextUrl.clone();
         url.pathname = `/site/${sub}`;
         return NextResponse.rewrite(url);

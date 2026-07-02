@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
-import { appUrl } from "@/lib/hosts";
+import { studioUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
@@ -31,6 +31,7 @@ export default function AlbumEditor({
   canDelivery = true,
   canPinHome = true,
   studioName = "Studio",
+  studioSubdomain = null,
 }: {
   album: Album;
   initialSources: AlbumSource[];
@@ -38,6 +39,7 @@ export default function AlbumEditor({
   canDelivery?: boolean;
   canPinHome?: boolean;
   studioName?: string;
+  studioSubdomain?: string | null;
 }) {
   const { t } = useLang();
   const supabase = createClient();
@@ -235,10 +237,10 @@ export default function AlbumEditor({
           >
             <Users size={15} /> {t("customerSelections")}
           </Link>
-          <Link href={`/a/${form.slug}`} target="_blank" className="btn-ghost">
+          <a href={studioUrl(studioSubdomain, `/a/${form.slug}`)} target="_blank" rel="noreferrer" className="btn-ghost">
             <ExternalLink size={15} /> {t("view")}
-          </Link>
-          <ShareButton path={appUrl(`/a/${form.slug}`)} title={form.title} />
+          </a>
+          <ShareButton path={studioUrl(studioSubdomain, `/a/${form.slug}`)} title={form.title} />
           <button onClick={deleteAlbum} disabled={deleting} className="btn-danger">
             <Trash2 size={15} /> {deleting ? "Đang xóa…" : t("delete")}
           </button>

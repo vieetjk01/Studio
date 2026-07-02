@@ -55,6 +55,17 @@ export function adminUrl(path: string): string {
 }
 
 /**
+ * Customer-facing URL for a studio. When the studio has published a site with a
+ * subdomain, links (album, contract, quote, booking…) run on THAT subdomain
+ * (<sub>.mstudo.com) so every activity uses the studio's own URL. Falls back to
+ * the main host (or a relative path) when there is no subdomain.
+ */
+export function studioUrl(subdomain: string | null | undefined, path: string): string {
+  if (subdomain && MAIN_HOST) return `https://${subdomain}.${MAIN_HOST}${path}`;
+  return mainUrl(path);
+}
+
+/**
  * URL to a wedding-invitation page on the thiệp subdomain (thiep.mstudo.com).
  * The thiệp host serves paths at the root (e.g. thiep.mstudo.com/<slug>), so we
  * strip the internal "/thiep" prefix when a dedicated host is configured. On a

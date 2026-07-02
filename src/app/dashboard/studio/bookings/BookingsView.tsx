@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Pencil, Trash2, X, Save, ExternalLink,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { mainUrl } from "@/lib/hosts";
+import { studioUrl } from "@/lib/hosts";
 import { nextContractCode, DEFAULT_TASKS } from "@/lib/contract-code";
 import { fullClauseText } from "@/lib/contract-clauses";
 import { messengerUrl } from "@/components/MessengerButton";
@@ -54,25 +54,27 @@ export default function BookingsView({
   token,
   tokenSaved = true,
   initial,
+  studioSubdomain = null,
 }: {
   ownerId: string;
   token: string;
   tokenSaved?: boolean;
   initial: StudioBooking[];
+  studioSubdomain?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [list, setList] = useState<StudioBooking[]>(initial);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [bookingUrl, setBookingUrl] = useState(() => mainUrl(`/book/${token}`));
+  const [bookingUrl, setBookingUrl] = useState(() => studioUrl(studioSubdomain, `/book/${token}`));
   const [editState, setEditState] = useState<EditState | null>(null);
   const [editBusy, setEditBusy] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
-    setBookingUrl(`${window.location.origin}/book/${token}`);
-  }, [token]);
+    setBookingUrl(studioSubdomain ? studioUrl(studioSubdomain, `/book/${token}`) : `${window.location.origin}/book/${token}`);
+  }, [token, studioSubdomain]);
 
   async function updateStatus(id: string, status: BookingStatus) {
     setBusy(id);
