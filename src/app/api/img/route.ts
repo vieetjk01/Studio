@@ -45,10 +45,10 @@ export async function GET(req: Request) {
         return new NextResponse(buf, {
           headers: {
             "Content-Type": contentType,
-            // A given (id,w) is immutable, so cache hard in the browser AND on
-            // the Vercel CDN edge (s-maxage) — first view proxies from Drive,
-            // every later view / preload is served instantly from cache.
-            "Cache-Control": "public, max-age=31536000, s-maxage=31536000, stale-while-revalidate=604800, immutable",
+            // Browser-cache only (no s-maxage/immutable): edge-caching binary
+            // image bodies via the function CDN proved unreliable, so keep the
+            // proxy per-request and let the browser cache repeats.
+            "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
           },
         });
       }
