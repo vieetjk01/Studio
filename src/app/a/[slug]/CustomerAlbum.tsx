@@ -599,9 +599,9 @@ export default function CustomerAlbum({
         {visiblePhotos.length === 0 ? (
           <div className="py-20 text-center animate-[vkFade_.4s_ease_both]" style={{ color: "var(--text3)" }}>
             <p className="mb-1.5 font-serif text-2xl" style={{ color: "var(--text2)" }}>
-              {selectedOnly ? t("noSelectedPhotos") : t("loading")}
+              {selectedOnly ? t("noSelectedPhotos") : photos.length === 0 ? "Album chưa có ảnh nào" : t("loading")}
             </p>
-            <p className="text-[13.5px]">{t("heartHint")}</p>
+            {selectedOnly && <p className="text-[13.5px]">{t("heartHint")}</p>}
           </div>
         ) : (
           // Sections — each Drive source shown separately, left-to-right

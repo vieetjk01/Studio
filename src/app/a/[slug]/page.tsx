@@ -123,11 +123,16 @@ export default async function PublicAlbumPage({
         .select("photo_id, client_note")
         .eq("album_id", album.id),
     ]);
-    // Selection view shows only selection-stage photos. (Legacy albums have all
-    // sources backfilled to 'selection', so nothing changes for them.)
-    const selSourceIds = new Set((s ?? []).filter((x) => x.stage !== "delivery").map((x) => x.id));
-    photos = (p ?? []).filter((ph) => !ph.source_id || selSourceIds.has(ph.source_id));
-    sources = (s ?? []).filter((x) => x.stage !== "delivery").map(({ id, name, position }) => ({ id, name, position }));
+    // Selection view prefers selection-stage photos. Only apply the filter when
+    // there are BOTH selection and delivery sources — otherwise (e.g. every
+    // source is tagged 'delivery', or stages are unset) showing nothing would
+    // look like a stuck "Đang tải…". Fall back to all photos so the album is
+    // never mysteriously empty.
+    const selSources = (s ?? []).filter((x) => x.stage !== "delivery");
+    const selSourceIds = new Set(selSources.map((x) => x.id));
+    const filtered = (p ?? []).filter((ph) => !ph.source_id || selSourceIds.has(ph.source_id));
+    photos = filtered.length > 0 ? filtered : (p ?? []);
+    sources = (filtered.length > 0 ? selSources : (s ?? [])).map(({ id, name, position }) => ({ id, name, position }));
     selected = (sel ?? []).map((r) => r.photo_id);
     for (const r of sel ?? []) if (r.client_note) notes[r.photo_id] = r.client_note;
   }

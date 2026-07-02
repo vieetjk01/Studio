@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const UA = "Mozilla/5.0 (compatible; mstudoGallery/1.0)";
+// A real browser UA — some Google endpoints are picky about non-browser UAs.
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 /**
  * Proxy a Google Drive image so it embeds reliably (no hotlink/referrer issues)
@@ -32,11 +33,16 @@ export async function GET(req: Request) {
   let lastStatus = 0;
   for (const url of sources) {
     try {
+      // Hard timeout so a slow/hanging Drive endpoint can't stall the request
+      // (which shows as images stuck "loading") — bail and try the next source.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 7000);
       const res = await fetch(url, {
         cache: "no-store",
         redirect: "follow",
         headers: { "User-Agent": UA },
-      });
+        signal: ctrl.signal,
+      }).finally(() => clearTimeout(timer));
       lastStatus = res.status;
       const contentType = res.headers.get("content-type") ?? "";
       if (res.ok && contentType.startsWith("image/")) {
