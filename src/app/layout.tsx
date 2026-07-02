@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, Cormorant_Garamond, Manrope } from "next/font/google";
+import { Hanken_Grotesk, Cormorant_Garamond, Manrope, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 import { ThemeProvider, THEME_BOOT_SCRIPT } from "@/lib/theme";
@@ -24,6 +24,13 @@ const manrope = Manrope({
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-manrope",
+});
+
+// Script font for wedding-invitation templates (cinematic/story couple names).
+const dancing = Dancing_Script({
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700"],
+  variable: "--font-script",
 });
 
 const DEFAULT_TITLE = "mstudo — Phần mềm quản lý studio ảnh";
@@ -71,7 +78,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" data-theme="light" className={`${hanken.variable} ${cormorant.variable} ${manrope.variable}`}>
+    <html lang="vi" data-theme="light" className={`${hanken.variable} ${cormorant.variable} ${manrope.variable} ${dancing.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>

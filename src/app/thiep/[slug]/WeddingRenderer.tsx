@@ -4,6 +4,9 @@ import ClassicTemplate from "./designs/ClassicTemplate";
 import ElegantTemplate from "./designs/ElegantTemplate";
 import FloralTemplate from "./designs/FloralTemplate";
 import ModernTemplate from "./designs/ModernTemplate";
+import CinematicTemplate from "./designs/CinematicTemplate";
+import StorySlideTemplate from "./designs/StorySlideTemplate";
+import EditorialTemplate from "./designs/EditorialTemplate";
 
 export type { Wish };
 
@@ -12,6 +15,9 @@ const TEMPLATES = {
   elegant: ElegantTemplate,
   floral: FloralTemplate,
   modern: ModernTemplate,
+  cinematic: CinematicTemplate,
+  story: StorySlideTemplate,
+  editorial: EditorialTemplate,
 } as const;
 
 /** Dispatches to the chosen template — each is its own distinct design. */

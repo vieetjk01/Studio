@@ -698,7 +698,7 @@ export type WeddingConfig = {
   font?: "serif" | "sans";   // ghi đè phông của template
 };
 
-export const WEDDING_TEMPLATES = ["classic", "elegant", "floral", "modern"] as const;
+export const WEDDING_TEMPLATES = ["classic", "elegant", "floral", "modern", "cinematic", "story", "editorial"] as const;
 export type WeddingTemplate = (typeof WEDDING_TEMPLATES)[number];
 
 export interface WeddingInvitation {

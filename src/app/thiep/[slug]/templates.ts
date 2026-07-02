@@ -74,6 +74,21 @@ export const WEDDING_SKINS: Record<string, WeddingSkin> = {
     motif: "none",
     dark: false,
   },
+  cinematic: {
+    name: "cinematic", label: "Điện ảnh (tối · chữ viết tay)",
+    accent: "#e6c39c", bg: "#171013", surface: "rgba(255,255,255,0.045)", text: "#f4e9df",
+    muted: "rgba(244,233,223,0.62)", border: "rgba(230,195,156,0.28)", font: "serif", hero: "overlay", motif: "geo", dark: true,
+  },
+  story: {
+    name: "story", label: "Story trượt (tối · gold)",
+    accent: "#e8c9a8", bg: "#0d0a0b", surface: "rgba(255,255,255,0.05)", text: "#f0e6e2",
+    muted: "rgba(240,230,226,0.6)", border: "rgba(232,201,168,0.26)", font: "serif", hero: "overlay", motif: "geo", dark: true,
+  },
+  editorial: {
+    name: "editorial", label: "Tạp chí (sáng · cam đất)",
+    accent: "#b5624f", bg: "#f4f1ec", surface: "#ffffff", text: "#241f21",
+    muted: "#8f867f", border: "#e4ddd3", font: "serif", hero: "framed", motif: "none", dark: false,
+  },
 };
 
 export const WEDDING_TEMPLATE_LIST = Object.values(WEDDING_SKINS).map((s) => ({ name: s.name, label: s.label }));
