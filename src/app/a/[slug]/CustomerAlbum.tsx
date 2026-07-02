@@ -88,6 +88,8 @@ export default function CustomerAlbum({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const [swipeDx, setSwipeDx] = useState(0);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [copied, setCopied] = useState(false);
@@ -354,16 +356,39 @@ export default function CustomerAlbum({
   function onWheelZoom(e: React.WheelEvent) {
     zoomBy(e.deltaY < 0 ? 0.3 : -0.3);
   }
+  // Step to the prev/next photo (clamped to the visible list).
+  function go(delta: number) {
+    setLbIdx((i) => (i === null ? i : Math.max(0, Math.min(visiblePhotos.length - 1, i + delta))));
+  }
   function onPanDown(e: React.PointerEvent) {
-    if (zoom <= 1) return;
-    drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (zoom > 1) {
+      drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+    } else {
+      // Zoom == 1: start a horizontal swipe to change photo.
+      swipe.current = { x: e.clientX, y: e.clientY };
+    }
   }
   function onPanMove(e: React.PointerEvent) {
-    if (!drag.current) return;
-    setPan({ x: drag.current.px + (e.clientX - drag.current.x), y: drag.current.py + (e.clientY - drag.current.y) });
+    if (drag.current) {
+      setPan({ x: drag.current.px + (e.clientX - drag.current.x), y: drag.current.py + (e.clientY - drag.current.y) });
+      return;
+    }
+    if (swipe.current) {
+      const dx = e.clientX - swipe.current.x;
+      const dy = e.clientY - swipe.current.y;
+      // Only treat as a swipe when the gesture is mostly horizontal.
+      if (Math.abs(dx) > Math.abs(dy)) setSwipeDx(dx);
+    }
   }
   function onPanUp() {
+    if (swipe.current) {
+      const dx = swipeDx;
+      swipe.current = null;
+      setSwipeDx(0);
+      if (dx <= -50) go(1);
+      else if (dx >= 50) go(-1);
+    }
     drag.current = null;
   }
 
@@ -609,6 +634,7 @@ export default function CustomerAlbum({
                       src={thumbnailUrl(p.drive_file_id, 600)}
                       alt={p.name}
                       loading="lazy"
+                      decoding="async"
                       draggable={false}
                       onClick={() => setLbIdx(idx)}
                       onContextMenu={(e) => wm && e.preventDefault()}
@@ -741,11 +767,11 @@ export default function CustomerAlbum({
               <div
                 className="relative inline-flex"
                 style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  transform: `translate(${pan.x + (zoom <= 1 ? swipeDx : 0)}px, ${pan.y}px) scale(${zoom})`,
                   transformOrigin: "center",
-                  transition: drag.current ? "none" : "transform .15s ease",
+                  transition: drag.current || swipe.current ? "none" : "transform .18s ease",
                   cursor: zoom > 1 ? (drag.current ? "grabbing" : "grab") : "zoom-in",
-                  touchAction: "none",
+                  touchAction: "pan-y",
                 }}
                 onPointerDown={onPanDown}
                 onPointerMove={onPanMove}
@@ -758,6 +784,7 @@ export default function CustomerAlbum({
                   src={fullImageUrl(lbPhoto.drive_file_id, 1600)}
                   alt={lbPhoto.name}
                   draggable={false}
+                  decoding="async"
                   onContextMenu={(e) => wm && e.preventDefault()}
                   className="max-h-[46vh] max-w-full select-none rounded object-contain md:max-h-[78vh]"
                   style={{

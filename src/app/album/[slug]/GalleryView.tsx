@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 type Lang = "vi" | "en";
 const TR = {
@@ -81,6 +81,8 @@ export default function GalleryView({
 
   const [activeTab, setActiveTab] = useState("all");
   const [lbIdx, setLbIdx] = useState<number | null>(null);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const [swipeDx, setSwipeDx] = useState(0);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
 
   // Client-side photo selection → build a "share only these" link.
@@ -179,6 +181,37 @@ export default function GalleryView({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lbIdx, visible.length]);
+
+  // Preload neighbouring full images so prev/next feels instant.
+  useEffect(() => {
+    if (lbIdx === null) return;
+    for (const off of [1, -1, 2, -2]) {
+      const p = visible[lbIdx + off];
+      if (p && !isVideo(p)) { const im = new Image(); im.src = fullImageUrl(p.drive_file_id, 1600); }
+    }
+  }, [lbIdx, visible]);
+
+  function go(delta: number) {
+    setLbIdx((i) => (i === null ? i : Math.max(0, Math.min(visible.length - 1, i + delta))));
+  }
+  function onSwipeDown(e: React.PointerEvent) {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    swipe.current = { x: e.clientX, y: e.clientY };
+  }
+  function onSwipeMove(e: React.PointerEvent) {
+    if (!swipe.current) return;
+    const dx = e.clientX - swipe.current.x;
+    const dy = e.clientY - swipe.current.y;
+    if (Math.abs(dx) > Math.abs(dy)) setSwipeDx(dx);
+  }
+  function onSwipeUp() {
+    if (!swipe.current) return;
+    const dx = swipeDx;
+    swipe.current = null;
+    setSwipeDx(0);
+    if (dx <= -50) go(1);
+    else if (dx >= 50) go(-1);
+  }
 
   async function downloadAll() {
     if (visible.length === 0) return;
@@ -291,7 +324,7 @@ export default function GalleryView({
                   return (
                   <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" decoding="async" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
                     {wm && (
                       <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
                         {Array.from({ length: 8 }).map((_, wi) => (
@@ -376,7 +409,13 @@ export default function GalleryView({
             )}
             <button onClick={() => setLbIdx(null)} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
           </div>
-          <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10">
+          <div
+            className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={(e) => { if (!(e.target as HTMLElement).closest("button")) onSwipeDown(e); }}
+            onPointerMove={onSwipeMove}
+            onPointerUp={onSwipeUp}
+          >
             <button onClick={() => setLbIdx(Math.max(0, lbIdx - 1))} disabled={lbIdx === 0} className="absolute left-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronLeft size={22} /></button>
             {isVideo(lb) ? (
               <iframe
@@ -387,9 +426,12 @@ export default function GalleryView({
                 style={{ border: "none", boxShadow: "0 30px 80px rgba(0,0,0,.6)" }}
               />
             ) : (
-              <div className="relative inline-block">
+              <div
+                className="relative inline-block"
+                style={{ transform: `translateX(${swipeDx}px)`, transition: swipe.current ? "none" : "transform .18s ease" }}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="max-h-[82vh] max-w-full select-none rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }} />
+                <img key={lb.id} src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} draggable={false} decoding="async" onContextMenu={(e) => wm && e.preventDefault()} className="max-h-[82vh] max-w-full select-none rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)", backgroundImage: `url(${thumbnailUrl(lb.drive_file_id, 600)})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" }} />
                 {wm && (
                   <div className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-x-12 gap-y-10 opacity-20">
                     {Array.from({ length: 12 }).map((_, wi) => (
