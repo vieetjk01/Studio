@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, ExternalLink, Pencil, Copy, Check, Download, Users, FileText, Plus, Loader2 } from "lucide-react";
+import { Heart, ExternalLink, Pencil, Copy, Check, Download, Users, FileText, Plus, Loader2, QrCode, Printer, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { thiepUrl } from "@/lib/hosts";
 import type { WeddingConfig, WeddingRsvp } from "@/lib/types";
@@ -43,6 +43,26 @@ export default function ThiepListView({ rows, ownerId }: { rows: InvitationRow[]
   const [exporting, setExporting] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [qr, setQr] = useState<{ couple: string; url: string; img: string } | null>(null);
+
+  async function openQr(couple: string, url: string) {
+    const QRCode = (await import("qrcode")).default;
+    const img = await QRCode.toDataURL(url, { margin: 1, width: 640, color: { dark: "#1a1205", light: "#ffffff" } });
+    setQr({ couple, url, img });
+  }
+  function printQr() {
+    if (!qr) return;
+    const w = window.open("", "_blank", "width=520,height=680");
+    if (!w) return;
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${qr.couple}</title>
+      <style>body{font-family:Georgia,serif;text-align:center;padding:48px 24px;color:#1a1205}
+      h1{font-size:26px;margin:0 0 4px}p{color:#6b5a3a;margin:2px 0}img{width:340px;height:340px;margin:22px auto;display:block}
+      .u{font-size:12px;color:#8a7a5a;word-break:break-all}</style></head>
+      <body><h1>${qr.couple}</h1><p>Quét mã để mở thiệp cưới</p>
+      <img src="${qr.img}" alt="QR"/><p class="u">${qr.url}</p>
+      <script>window.onload=()=>{window.print()}</script></body></html>`);
+    w.document.close();
+  }
 
   async function createNew() {
     setCreating(true);
@@ -149,6 +169,9 @@ export default function ThiepListView({ rows, ownerId }: { rows: InvitationRow[]
                   <button onClick={() => copy(editUrl, `edit-${r.id}`)} className="btn-ghost px-2.5 py-1.5 text-xs">
                     {copied === `edit-${r.id}` ? <Check size={13} /> : <Copy size={13} />} Chép link sửa
                   </button>
+                  <button onClick={() => openQr(couple, viewUrl)} className="btn-ghost px-2.5 py-1.5 text-xs">
+                    <QrCode size={13} /> Mã QR / In
+                  </button>
                   <button onClick={() => exportCsv(r)} disabled={exporting === r.id} className="btn-ghost px-2.5 py-1.5 text-xs disabled:opacity-50">
                     <Download size={13} /> {exporting === r.id ? "Đang xuất…" : "Xuất DS khách (CSV)"}
                   </button>
@@ -159,6 +182,24 @@ export default function ThiepListView({ rows, ownerId }: { rows: InvitationRow[]
               </div>
             );
           })}
+        </div>
+      )}
+
+      {qr && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => setQr(null)}>
+          <div className="w-full max-w-xs rounded-2xl bg-white p-6 text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="font-medium">{qr.couple}</p>
+              <button onClick={() => setQr(null)} className="text-stone-400 hover:text-stone-700"><X size={18} /></button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr.img} alt="QR" className="mx-auto my-3 h-56 w-56" />
+            <p className="mb-4 break-all text-[11px] text-stone-400">{qr.url}</p>
+            <div className="flex justify-center gap-2">
+              <a href={qr.img} download={`qr-${qr.couple}.png`} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> Tải ảnh</a>
+              <button onClick={printQr} className="btn-primary px-3 py-2 text-xs"><Printer size={14} /> In mã QR</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
