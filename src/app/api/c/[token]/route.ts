@@ -42,10 +42,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
   // Owner / studio info fetched separately (failure here must not break access).
   const { data: ownerObj } = await db
     .from("profiles")
-    .select("full_name, email, pl_phone, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin")
+    .select("full_name, studio_brand_name, studio_logo_url, pl_logo_url, email, pl_phone, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin")
     .eq("id", contract.owner_id)
     .maybeSingle();
-  const studioName = ownerObj?.full_name || "Studio";
+  const studioName = ownerObj?.studio_brand_name || ownerObj?.full_name || "Studio";
+  const studioLogo = ownerObj?.studio_logo_url || ownerObj?.pl_logo_url || null;
   const bank = {
     bin: ownerObj?.pl_bank_bin ?? null,
     account: ownerObj?.pl_bank_account ?? null,
@@ -228,6 +229,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   return NextResponse.json({
     contract: { ...contract, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
     studio_name: studioName,
+    studio_logo: studioLogo,
     studio_phone: ownerObj?.pl_phone ?? null,
     bank,
     items: items ?? [],

@@ -7,6 +7,7 @@ import {
   Check, AlertCircle, Eye, EyeOff, Loader2, KeyRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import LogoUpload from "@/components/LogoUpload";
 
 const PLAN_LABEL: Record<string, string> = {
   free: "Miễn phí",
@@ -32,10 +33,13 @@ type Props = {
   createdAt: string;
   providers: string[];
   hasPassword: boolean;
+  role: string;
+  studioBrandName: string | null;
+  studioLogo: string | null;
 };
 
 export default function AccountPanel({
-  userId: _userId,
+  userId,
   email,
   fullName,
   plan,
@@ -44,6 +48,9 @@ export default function AccountPanel({
   createdAt,
   providers,
   hasPassword: initialHasPassword,
+  role,
+  studioBrandName,
+  studioLogo,
 }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -68,6 +75,24 @@ export default function AccountPanel({
   const [showNew, setShowNew] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // ── Studio brand (white-label) ────────────────────────────────────
+  const canBrand = plan === "studio" || role === "admin";
+  const [brandName, setBrandName] = useState(studioBrandName ?? "");
+  const [brandLogo, setBrandLogo] = useState(studioLogo ?? "");
+  const [brandSaving, setBrandSaving] = useState(false);
+  const [brandMsg, setBrandMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function saveBrand(nextLogo?: string) {
+    setBrandSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ studio_brand_name: brandName.trim() || null, studio_logo_url: (nextLogo ?? brandLogo) || null })
+      .eq("id", userId);
+    setBrandSaving(false);
+    flash(setBrandMsg, error ? { ok: false, text: "Lỗi: " + error.message } : { ok: true, text: "Đã lưu thương hiệu studio." });
+    if (!error) router.refresh();
+  }
 
   // ── Sign out ──────────────────────────────────────────────────────
   const [signingOut, setSigningOut] = useState(false);
@@ -228,6 +253,40 @@ export default function AccountPanel({
         </div>
         {nameMsg && <Feedback msg={nameMsg} />}
       </section>
+
+      {/* ── Studio brand (white-label) — Studio plan only ──────────────── */}
+      {canBrand && (
+        <section className="card p-5">
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-bold">
+            <Shield size={15} style={{ color: "var(--brand)" }} /> Thương hiệu studio
+          </h2>
+          <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
+            Logo &amp; tên hiển thị cho khách trên trang chọn ảnh, giao ảnh, hợp đồng, báo giá &amp; favicon — thay cho thương hiệu mstudo.
+          </p>
+          <div className="mb-3">
+            <LogoUpload
+              ownerId={userId}
+              value={brandLogo}
+              onChange={(url) => { setBrandLogo(url); saveBrand(url); }}
+              label="Logo studio"
+            />
+          </div>
+          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text2)" }}>Tên thương hiệu hiển thị cho khách</label>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+              placeholder={fullName ?? "Tên studio"}
+            />
+            <button onClick={() => saveBrand()} disabled={brandSaving} className="btn-primary px-4 text-sm">
+              {brandSaving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Lưu
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px]" style={{ color: "var(--text3)" }}>Để trống = dùng tên tài khoản ({fullName || "chưa đặt"}).</p>
+          {brandMsg && <Feedback msg={brandMsg} />}
+        </section>
+      )}
 
       {/* ── Email ────────────────────────────────────────────────────── */}
       <section className="card p-5">

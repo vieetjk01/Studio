@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllPhotos } from "@/lib/photos";
+import { brandFrom } from "@/lib/studio-brand";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import GalleryView from "./GalleryView";
@@ -63,8 +64,9 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   const hasPassword = !album.gallery_pinned && !!album.password_hash;
 
   // Studio's own name for the watermark fallback (instead of a fixed brand).
-  const { data: galOwner } = await admin.from("profiles").select("full_name").eq("id", album.owner_id).maybeSingle();
-  const studioName = (galOwner?.full_name ?? "").trim() || "Studio";
+  const { data: galOwner } = await admin.from("profiles").select("full_name, studio_brand_name, studio_logo_url, pl_logo_url").eq("id", album.owner_id).maybeSingle();
+  const brand = brandFrom(galOwner);
+  const studioName = brand.name;
 
   let photos = null;
   let sources = null;
@@ -104,6 +106,8 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
       initialSources={sources}
       feedback={(feedback ?? []) as Feedback[]}
       shareIds={shareIds}
+      studioName={studioName}
+      logoUrl={brand.logoUrl}
     />
   );
 }

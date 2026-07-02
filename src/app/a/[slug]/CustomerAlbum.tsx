@@ -16,7 +16,7 @@ import {
   ZoomOut,
   Share2,
 } from "lucide-react";
-import Brand from "@/components/Brand";
+import StudioBrand from "@/components/StudioBrand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ShareDialog from "@/components/ShareDialog";
 import { useLang } from "@/lib/i18n";
@@ -60,6 +60,7 @@ export default function CustomerAlbum({
   initialNotes,
   shareIds,
   studioName = "Studio",
+  logoUrl = null,
 }: {
   album: PublicAlbum;
   initialPhotos: PublicPhoto[] | null;
@@ -68,6 +69,7 @@ export default function CustomerAlbum({
   initialNotes?: Record<string, string>;
   shareIds?: string[] | null;
   studioName?: string;
+  logoUrl?: string | null;
 }) {
   const { t } = useLang();
 
@@ -420,7 +422,7 @@ export default function CustomerAlbum({
     return (
       <main className="flex min-h-screen flex-col">
         <header className="flex items-center justify-between px-6 py-5 md:px-10">
-          <Brand />
+          <StudioBrand name={studioName} logoUrl={logoUrl} />
           <LanguageSwitcher />
         </header>
         <div className="flex flex-1 items-center justify-center px-6">
@@ -461,7 +463,7 @@ export default function CustomerAlbum({
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <Brand />
+        <StudioBrand name={studioName} logoUrl={logoUrl} />
         <div
           className="ml-auto flex items-center gap-2.5 rounded-full px-3.5 py-1.5 text-[12.5px]"
           style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}

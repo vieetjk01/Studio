@@ -6,6 +6,7 @@ import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Brand from "@/components/Brand";
 import { buildAlbumMetadata } from "@/lib/album-meta";
+import { brandFrom } from "@/lib/studio-brand";
 import { MAIN_HOST } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
@@ -92,10 +93,11 @@ export default async function PublicAlbumPage({
   // Owner permissions gate customer download (ZIP) and notes.
   const { data: owner } = await admin
     .from("profiles")
-    .select("role, can_zip, can_notes, full_name")
+    .select("role, can_zip, can_notes, full_name, studio_brand_name, studio_logo_url, pl_logo_url")
     .eq("id", album.owner_id)
     .maybeSingle();
-  const studioName = (owner?.full_name ?? "").trim() || "Studio";
+  const brand = brandFrom(owner);
+  const studioName = brand.name;
   const isAdminOwner = owner?.role === "admin";
   const allowZip = (isAdminOwner || !!owner?.can_zip) && album.download_enabled !== false;
   const allowNotes = isAdminOwner || !!owner?.can_notes;
@@ -146,6 +148,7 @@ export default async function PublicAlbumPage({
       initialNotes={notes}
       shareIds={shareIds}
       studioName={studioName}
+      logoUrl={brand.logoUrl}
     />
   );
 }

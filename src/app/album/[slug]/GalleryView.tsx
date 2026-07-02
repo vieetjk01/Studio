@@ -46,7 +46,7 @@ const TR = {
 import {
   Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play, Heart, Share2,
 } from "lucide-react";
-import Brand from "@/components/Brand";
+import StudioBrand from "@/components/StudioBrand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Turnstile from "@/components/Turnstile";
 import ShareButton from "@/components/ShareButton";
@@ -63,13 +63,15 @@ interface S { id: string; name: string; position: number; }
 interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, feedback, shareIds,
+  gallery, initialPhotos, initialSources, feedback, shareIds, studioName = "Studio", logoUrl = null,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
   initialSources: S[] | null;
   feedback: Feedback[];
   shareIds?: string[] | null;
+  studioName?: string;
+  logoUrl?: string | null;
 }) {
   const wm = gallery.watermark || null;
   const [unlocked, setUnlocked] = useState(!gallery.hasPassword);
@@ -241,7 +243,7 @@ export default function GalleryView({
   if (!unlocked) {
     return (
       <main className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between px-6 py-5 md:px-10"><Brand /><LanguageSwitcher /></header>
+        <header className="flex items-center justify-between px-6 py-5 md:px-10"><StudioBrand name={studioName} logoUrl={logoUrl} /><LanguageSwitcher /></header>
         <div className="flex flex-1 items-center justify-center px-6">
           <form onSubmit={unlock} className="card w-full max-w-sm p-8 text-center">
             <Lock className="mx-auto mb-4" size={26} style={{ color: "var(--gold)" }} />
@@ -262,7 +264,7 @@ export default function GalleryView({
   return (
     <main className="min-h-screen pb-24">
       <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 md:px-10" style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}>
-        <Brand />
+        <StudioBrand name={studioName} logoUrl={logoUrl} />
         <div className="flex items-center gap-3">
           {!shareMode && selected.size > 0 && (
             <button onClick={shareSelected} disabled={shareBusy} className="btn-primary px-3 py-1.5 text-[13px]">

@@ -11,7 +11,7 @@ export default async function AccountPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, full_name, plan, plan_expires_at, plan_cycle, created_at, role")
+    .select("id, email, full_name, plan, plan_expires_at, plan_cycle, created_at, role, studio_brand_name, studio_logo_url")
     .eq("id", user.id)
     .single();
 
@@ -29,6 +29,9 @@ export default async function AccountPage() {
       createdAt={profile?.created_at ?? user.created_at}
       providers={providers}
       hasPassword={providers.includes("email")}
+      role={profile?.role ?? "user"}
+      studioBrandName={profile?.studio_brand_name ?? null}
+      studioLogo={profile?.studio_logo_url ?? null}
     />
   );
 }

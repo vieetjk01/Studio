@@ -14,10 +14,10 @@ export async function albumOwnerName(ownerId?: string | null): Promise<string> {
     if (ownerId) {
       const { data } = await db
         .from("profiles")
-        .select("full_name")
+        .select("full_name, studio_brand_name")
         .eq("id", ownerId)
         .maybeSingle();
-      const name = data?.full_name?.trim();
+      const name = (data?.studio_brand_name || data?.full_name)?.trim();
       if (name) return name;
     }
     const { data: site } = await db
@@ -56,6 +56,16 @@ export async function buildAlbumMetadata({
 }): Promise<Metadata> {
   const studio = await albumOwnerName(ownerId);
   const fullTitle = `${title} · ${studio}`;
+
+  // Studio's own logo as the browser-tab favicon (white-label).
+  let logoUrl: string | null = null;
+  if (ownerId) {
+    try {
+      const db = createAdminClient();
+      const { data } = await db.from("profiles").select("studio_logo_url, pl_logo_url").eq("id", ownerId).maybeSingle();
+      logoUrl = data?.studio_logo_url || data?.pl_logo_url || null;
+    } catch { /* keep default favicon */ }
+  }
   const desc =
     description?.trim() ||
     `Album ảnh từ ${studio}. Xem, chọn và tải những khung hình bạn yêu thích.`;
@@ -69,6 +79,7 @@ export async function buildAlbumMetadata({
   return {
     title: fullTitle,
     description: desc,
+    ...(logoUrl ? { icons: { icon: logoUrl, shortcut: logoUrl, apple: logoUrl } } : {}),
     openGraph: {
       type: "website",
       title: fullTitle,

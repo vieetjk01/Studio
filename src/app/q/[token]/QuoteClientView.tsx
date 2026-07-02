@@ -150,6 +150,7 @@ export default function QuoteClientView({
   initialItems,
   initialAdjustments,
   studioName,
+  studioLogo = null,
   studioCanContract,
   initialContractToken,
 }: {
@@ -157,6 +158,7 @@ export default function QuoteClientView({
   initialItems: QuoteItem[];
   initialAdjustments: QuoteAdjustment[];
   studioName: string;
+  studioLogo?: string | null;
   studioCanContract: boolean;
   initialContractToken: string | null;
 }) {
@@ -314,6 +316,10 @@ export default function QuoteClientView({
         )}
 
         <header className="text-center">
+          {studioLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={studioLogo} alt={studioName} className="mx-auto mb-3 h-12 w-auto object-contain" />
+          )}
           <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text3)" }}>{studioName}</p>
           <h1 className="mt-2 font-serif text-3xl font-medium md:text-4xl">{quote.title}</h1>
           {quote.code && <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{tr.codeLabel} {quote.code}</p>}

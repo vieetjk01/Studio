@@ -91,12 +91,6 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
   const footer = (
     <footer style={{ borderTop: "1px solid var(--s-border)", padding: "28px 24px", textAlign: "center", fontSize: 13, opacity: 0.55 }}>
       © {name}
-      {site.template !== "studio-pro" && (
-        <>
-          {" · "}
-          <a href={mainUrl("/")} style={{ color: "inherit" }}>Tạo bởi mstudo</a>
-        </>
-      )}
     </footer>
   );
 

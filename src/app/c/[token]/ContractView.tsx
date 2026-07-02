@@ -106,6 +106,7 @@ export default function ContractView({ token }: { token: string }) {
   const [phone, setPhone] = useState("");
   const [contract, setContract] = useState<Contract | null>(null);
   const [studioName, setStudioName] = useState("Studio");
+  const [studioLogo, setStudioLogo] = useState<string | null>(null);
   const [studioPhone, setStudioPhone] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -178,6 +179,7 @@ export default function ContractView({ token }: { token: string }) {
     const j = await res.json();
     setContract(j.contract);
     setStudioName(j.studio_name || "Studio");
+    setStudioLogo(j.studio_logo || null);
     setStudioPhone(j.studio_phone ?? null);
     setItems(j.items ?? []);
     setPayments(j.payments ?? []);
@@ -365,6 +367,10 @@ export default function ContractView({ token }: { token: string }) {
     <>
       {/* On-screen view (hidden when printing) */}
       <div className="no-print mx-auto max-w-2xl px-6 py-10">
+        {studioLogo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={studioLogo} alt={studioName} className="mb-4 h-11 w-auto object-contain" />
+        )}
         <div className="mb-4 flex items-center justify-between">
           <p className="eyebrow">{contract.code || (lang === "vi" ? "Hợp đồng dịch vụ" : "Service contract")}</p>
           <div className="flex items-center gap-3">

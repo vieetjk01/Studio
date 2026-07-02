@@ -952,6 +952,10 @@ alter table public.profiles add column if not exists pl_bg           text;
 alter table public.profiles add column if not exists pl_text         text;
 alter table public.profiles add column if not exists pl_accent       text;
 alter table public.profiles add column if not exists pl_logo_url     text;
+-- Studio brand: logo + display name shown to customers (white-label). Falls back
+-- to pl_logo_url / full_name when unset. See src/lib/studio-brand.ts.
+alter table public.profiles add column if not exists studio_logo_url  text;
+alter table public.profiles add column if not exists studio_brand_name text;
 -- Built-in price lists (e.g. 'cuoi', 'dinh-hon') the studio has hidden/removed.
 alter table public.profiles add column if not exists pl_hidden_lists text[] not null default '{}';
 -- Per-user custom labels for price list tabs (built-in + custom), key → label.
@@ -1624,3 +1628,22 @@ on conflict (id) do nothing;
 drop policy if exists wedding_photos_read on storage.objects;
 create policy wedding_photos_read on storage.objects
   for select using (bucket_id = 'wedding-photos');
+
+-- STORAGE: logos bucket (studio brand logo + price-list poster logo).
+-- Public read; only signed-in studio users upload their own logo.
+insert into storage.buckets (id, name, public)
+values ('logos', 'logos', true)
+on conflict (id) do nothing;
+
+drop policy if exists logos_read on storage.objects;
+create policy logos_read on storage.objects
+  for select using (bucket_id = 'logos');
+drop policy if exists logos_write on storage.objects;
+create policy logos_write on storage.objects
+  for insert to authenticated with check (bucket_id = 'logos');
+drop policy if exists logos_update on storage.objects;
+create policy logos_update on storage.objects
+  for update to authenticated using (bucket_id = 'logos');
+drop policy if exists logos_delete on storage.objects;
+create policy logos_delete on storage.objects
+  for delete to authenticated using (bucket_id = 'logos');
