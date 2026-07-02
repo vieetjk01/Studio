@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { getStudioSubdomain } from "@/lib/studio-site";
+import { getStudioHost } from "@/lib/studio-site";
 import QuoteEditor from "./QuoteEditor";
 import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
 
@@ -24,10 +24,10 @@ export default async function QuoteDetailPage({ params }: { params: { id: string
   const { data: quote } = await supabase.from("studio_quotes").select("*").eq("id", params.id).eq("owner_id", profile.id).maybeSingle();
   if (!quote) notFound();
 
-  const [{ data: items }, { data: adjustments }, studioSubdomain] = await Promise.all([
+  const [{ data: items }, { data: adjustments }, studioHost] = await Promise.all([
     supabase.from("quote_items").select("*").eq("quote_id", params.id).order("position"),
     supabase.from("quote_adjustments").select("*").eq("quote_id", params.id).order("created_at", { ascending: false }),
-    getStudioSubdomain(supabase, profile.id),
+    getStudioHost(supabase, profile.id),
   ]);
 
   return (
@@ -36,7 +36,7 @@ export default async function QuoteDetailPage({ params }: { params: { id: string
       initialItems={(items ?? []) as QuoteItem[]}
       initialAdjustments={(adjustments ?? []) as QuoteAdjustment[]}
       canConvert={profile.studioTier === "full"}
-      studioSubdomain={studioSubdomain}
+      studioHost={studioHost}
     />
   );
 }

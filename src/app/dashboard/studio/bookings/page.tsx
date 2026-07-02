@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStudio } from "@/lib/auth-guards";
-import { getStudioSubdomain } from "@/lib/studio-site";
+import { getStudioHost } from "@/lib/studio-site";
 import type { StudioBooking } from "@/lib/types";
 import BookingsView from "./BookingsView";
 
@@ -45,6 +45,6 @@ export default async function BookingsPage() {
     .neq("status", "archived")
     .order("created_at", { ascending: false });
 
-  const studioSubdomain = await getStudioSubdomain(supabase, profile.id);
-  return <BookingsView ownerId={profile.id} token={token} tokenSaved={tokenSaved} initial={(data ?? []) as StudioBooking[]} studioSubdomain={studioSubdomain} />;
+  const studioHost = await getStudioHost(supabase, profile.id);
+  return <BookingsView ownerId={profile.id} token={token} tokenSaved={tokenSaved} initial={(data ?? []) as StudioBooking[]} studioHost={studioHost} />;
 }

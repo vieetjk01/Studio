@@ -7,11 +7,23 @@ import type { Site } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-async function load(subdomain: string): Promise<SiteData | null> {
+async function load(key: string): Promise<SiteData | null> {
   const db = createAdminClient();
-  const { data: site } = await db.from("sites").select("*").eq("subdomain", subdomain.toLowerCase()).maybeSingle();
+  const k = key.toLowerCase();
+  // The middleware routes both <sub>.mstudo.com → /site/<sub> and a custom
+  // domain → /site/<domain>. Resolve by subdomain first, then by a verified
+  // custom domain (which contains a dot).
+  let site: Site | null = null;
+  if (k.includes(".")) {
+    const { data } = await db.from("sites").select("*").eq("custom_domain", k).eq("custom_domain_verified", true).maybeSingle();
+    site = (data as Site) ?? null;
+  }
+  if (!site) {
+    const { data } = await db.from("sites").select("*").eq("subdomain", k).maybeSingle();
+    site = (data as Site) ?? null;
+  }
   if (!site || !site.published) return null;
-  return loadSiteBundle(db, site as Site, true);
+  return loadSiteBundle(db, site, true);
 }
 
 export async function generateMetadata({ params }: { params: { subdomain: string } }): Promise<Metadata> {

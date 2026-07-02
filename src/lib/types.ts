@@ -592,6 +592,7 @@ export interface Site {
   owner_id: string;
   subdomain: string | null;
   custom_domain: string | null;
+  custom_domain_verified?: boolean;
   template: string;
   theme: SiteTheme;
   seo: SiteSeo;

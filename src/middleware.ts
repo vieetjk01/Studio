@@ -108,6 +108,26 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ── Custom domains: an external host (studio.com) mapped to a studio's site.
+  // Any host that isn't mstudo / a system host / localhost / a *.vercel.app
+  // preview is treated as a tenant custom domain and served like the subdomain.
+  if (
+    MAIN_HOST && host && host !== MAIN_HOST && !host.endsWith(`.${MAIN_HOST}`) &&
+    host !== "localhost" && !host.startsWith("127.") && !host.endsWith(".vercel.app")
+  ) {
+    if (pathname.startsWith("/dashboard") || pathname === "/start" || pathname.startsWith("/login") || pathname.startsWith("/auth")) {
+      return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
+    }
+    const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/showcase"];
+    if (CUSTOMER.some((p) => pathname.startsWith(p))) {
+      return NextResponse.next();
+    }
+    // Portfolio: the /site route resolves the tenant by custom_domain.
+    const url = request.nextUrl.clone();
+    url.pathname = `/site/${host}`;
+    return NextResponse.rewrite(url);
+  }
+
   // ── Main workspace is the studio dashboard ───────────────────────────────
   // On mstudo.com the studio management app is the user's home, so the bare
   // /dashboard goes to /dashboard/studio instead of bouncing to the album host.

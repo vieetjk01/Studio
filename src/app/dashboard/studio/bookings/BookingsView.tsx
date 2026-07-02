@@ -54,27 +54,27 @@ export default function BookingsView({
   token,
   tokenSaved = true,
   initial,
-  studioSubdomain = null,
+  studioHost = null,
 }: {
   ownerId: string;
   token: string;
   tokenSaved?: boolean;
   initial: StudioBooking[];
-  studioSubdomain?: string | null;
+  studioHost?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [list, setList] = useState<StudioBooking[]>(initial);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [bookingUrl, setBookingUrl] = useState(() => studioUrl(studioSubdomain, `/book/${token}`));
+  const [bookingUrl, setBookingUrl] = useState(() => studioUrl(studioHost, `/book/${token}`));
   const [editState, setEditState] = useState<EditState | null>(null);
   const [editBusy, setEditBusy] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
-    setBookingUrl(studioSubdomain ? studioUrl(studioSubdomain, `/book/${token}`) : `${window.location.origin}/book/${token}`);
-  }, [token, studioSubdomain]);
+    setBookingUrl(studioHost ? studioUrl(studioHost, `/book/${token}`) : `${window.location.origin}/book/${token}`);
+  }, [token, studioHost]);
 
   async function updateStatus(id: string, status: BookingStatus) {
     setBusy(id);

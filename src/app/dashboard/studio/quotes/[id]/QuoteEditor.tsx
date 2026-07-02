@@ -48,13 +48,13 @@ export default function QuoteEditor({
   initialItems,
   initialAdjustments,
   canConvert,
-  studioSubdomain = null,
+  studioHost = null,
 }: {
   quote: StudioQuote;
   initialItems: QuoteItem[];
   initialAdjustments: QuoteAdjustment[];
   canConvert: boolean;
-  studioSubdomain?: string | null;
+  studioHost?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -68,7 +68,7 @@ export default function QuoteEditor({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const shareUrl = studioUrl(studioSubdomain, `/q/${quote.client_token}`);
+  const shareUrl = studioUrl(studioHost, `/q/${quote.client_token}`);
   const total = quoteSelectedTotal(items);
   const grossTotal = items.reduce(
     (s, i) => (i.is_discount ? s : s + (i.qty || 0) * (i.unit_price || 0)),

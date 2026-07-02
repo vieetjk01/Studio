@@ -24,7 +24,7 @@ const STATUS_COLOR: Record<QuoteStatus, string> = {
   cancelled: "var(--text3)",
 };
 
-export default function QuotesListView({ list: initialList, studioSubdomain = null }: { list: QuoteRow[]; studioSubdomain?: string | null }) {
+export default function QuotesListView({ list: initialList, studioHost = null }: { list: QuoteRow[]; studioHost?: string | null }) {
   const [rows, setRows] = useState<QuoteRow[]>(initialList);
   const [updating, setUpdating] = useState<string | null>(null);
   const supabase = createClient();
@@ -110,7 +110,7 @@ export default function QuotesListView({ list: initialList, studioSubdomain = nu
                     <Pencil size={12} /> Chỉnh sửa
                   </Link>
                   <a
-                    href={studioUrl(studioSubdomain, `/q/${q.client_token}`)}
+                    href={studioUrl(studioHost, `/q/${q.client_token}`)}
                     target="_blank"
                     rel="noreferrer"
                     className="btn-ghost px-2.5 py-1.5"

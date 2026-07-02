@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { getStudioSubdomain } from "@/lib/studio-site";
+import { getStudioHost } from "@/lib/studio-site";
 import type {
   StudioContract,
   ContractItem,
@@ -114,12 +114,12 @@ export default async function ContractPage({ params }: { params: { id: string } 
   }
   const sameDayContracts = (sameDay ?? []) as { id: string; title: string; client_name: string | null }[];
 
-  const studioSubdomain = await getStudioSubdomain(supabase, profile.id);
+  const studioHost = await getStudioHost(supabase, profile.id);
 
   return (
     <ContractEditor
       contract={contract as StudioContract}
-      studioSubdomain={studioSubdomain}
+      studioHost={studioHost}
       bank={{
         bin: (profile.pl_bank_bin as string | null) ?? null,
         account: (profile.pl_bank_account as string | null) ?? null,

@@ -87,7 +87,7 @@ function today() {
 
 export default function ContractEditor({
   contract,
-  studioSubdomain = null,
+  studioHost = null,
   initialItems,
   initialCrew,
   initialRequests,
@@ -112,7 +112,7 @@ export default function ContractEditor({
   services = [],
 }: {
   contract: StudioContract;
-  studioSubdomain?: string | null;
+  studioHost?: string | null;
   initialItems: ContractItem[];
   initialCrew: ContractCrew[];
   initialRequests: ContractEditRequest[];
@@ -321,7 +321,7 @@ export default function ContractEditor({
   const qrInfo = (contract.code || contract.title || "").slice(0, 25);
   // Client portal runs on the studio's own subdomain once its site is published,
   // otherwise on the main host.
-  const shareUrl = studioUrl(studioSubdomain, `/c/${contract.client_token}`);
+  const shareUrl = studioUrl(studioHost, `/c/${contract.client_token}`);
 
   // Required fields — flagged red until valid. Phone must be 10 digits.
   const phoneOk = /^\d{10}$/.test(f.client_phone.replace(/\D/g, ""));

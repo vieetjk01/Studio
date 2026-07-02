@@ -1,4 +1,3 @@
-import { mainUrl, studioUrl } from "@/lib/hosts";
 import HtmlEmbed from "@/components/HtmlEmbed";
 import { vnd, SITE_BLOCK_LABEL, type SiteBlock } from "@/lib/types";
 import type { SiteData } from "@/lib/site-loader";
@@ -125,7 +124,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
           ))}
         </nav>
         {owner?.booking_token ? (
-          <a href={studioUrl(data.site.subdomain, `/book/${owner.booking_token}`)} className="s-cta">Đặt lịch</a>
+          <a href={`/book/${owner.booking_token}`} className="s-cta">Đặt lịch</a>
         ) : <span style={{ width: 1 }} />}
       </header>
     );
@@ -171,7 +170,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
               ))}
             </nav>
             {owner?.booking_token && (
-              <a href={studioUrl(data.site.subdomain, `/book/${owner.booking_token}`)} className="s-cta" style={{ marginTop: "auto", justifyContent: "center" }}>Đặt lịch</a>
+              <a href={`/book/${owner.booking_token}`} className="s-cta" style={{ marginTop: "auto", justifyContent: "center" }}>Đặt lịch</a>
             )}
           </aside>
         )}
@@ -224,7 +223,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
             <h1 style={{ fontFamily: fontVar, fontSize: "clamp(36px,7vw,72px)", lineHeight: 1.05 }}>{str(c.heading, name)}</h1>
             {str(c.subheading) && <p style={{ marginTop: 14, fontSize: 18, opacity: 0.85 }}>{str(c.subheading)}</p>}
             {owner?.booking_token && (
-              <a href={studioUrl(data.site.subdomain, `/book/${owner.booking_token}`)} style={ctaStyle()}>Đặt lịch</a>
+              <a href={`/book/${owner.booking_token}`} style={ctaStyle()}>Đặt lịch</a>
             )}
           </div>
         </section>
@@ -254,7 +253,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
           <div style={{ display: "grid", gap: 14, gridTemplateColumns: `repeat(auto-fill,minmax(${minW}px,1fr))` }}>
             {picked.length > 0
               ? picked.map((a) => (
-                  <a key={a.id} href={studioUrl(data.site.subdomain, `/album/${a.slug}`)} style={{ display: "block", color: "inherit" }}>
+                  <a key={a.id} href={`/album/${a.slug}`} style={{ display: "block", color: "inherit" }}>
                     <div style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
                       {a.cover_url && <img src={a.cover_url} alt={a.title} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     </div>
@@ -319,7 +318,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
             {str(c.address) && <p>Địa chỉ: {str(c.address)}</p>}
           </div>
           {owner?.booking_token && (
-            <a href={studioUrl(data.site.subdomain, `/book/${owner.booking_token}`)} style={ctaStyle()}>Đặt lịch ngay</a>
+            <a href={`/book/${owner.booking_token}`} style={ctaStyle()}>Đặt lịch ngay</a>
           )}
         </Section>
       );
@@ -417,7 +416,7 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
             <h2 style={{ fontFamily: fontVar, fontSize: "clamp(26px,4vw,40px)" }}>{str(c.heading, "Sẵn sàng lưu giữ khoảnh khắc của bạn?")}</h2>
             {str(c.text) && <p style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.6 }}>{str(c.text)}</p>}
             {owner?.booking_token && (
-              <a href={studioUrl(data.site.subdomain, `/book/${owner.booking_token}`)} style={ctaStyle()}>{str(c.button, "Đặt lịch")}</a>
+              <a href={`/book/${owner.booking_token}`} style={ctaStyle()}>{str(c.button, "Đặt lịch")}</a>
             )}
           </div>
         </section>

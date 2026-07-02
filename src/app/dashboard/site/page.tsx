@@ -19,6 +19,8 @@ export default async function SiteBuilderPage() {
   const plan = profile ? effectivePlan(profile.plan, profile.plan_expires_at) : "free";
   const isAdmin = profile?.role === "admin";
   const canPublish = isAdmin || plan === "photographer" || plan === "studio";
+  // Custom domain is a Studio-tier feature.
+  const canCustomDomain = isAdmin || plan === "studio";
 
   let { data: site } = await supabase.from("sites").select("*").eq("owner_id", user.id).maybeSingle();
   if (!site) {
@@ -47,6 +49,7 @@ export default async function SiteBuilderPage() {
       pricelist={plItems}
       priceLists={priceLists}
       canPublish={canPublish}
+      canCustomDomain={canCustomDomain}
       mainHost={process.env.NEXT_PUBLIC_MAIN_HOST || ""}
     />
   );

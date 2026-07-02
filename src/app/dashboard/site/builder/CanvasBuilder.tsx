@@ -19,6 +19,7 @@ import {
 } from "@/lib/types";
 import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
 import HtmlEmbed from "@/components/HtmlEmbed";
+import CustomDomain from "@/components/CustomDomain";
 import { compressImage, checkImageFile, MAX_IMAGE_UPLOAD_MB } from "@/lib/image";
 import { useTheme } from "@/lib/theme";
 
@@ -88,6 +89,7 @@ export default function CanvasBuilder({
   pricelist = [],
   priceLists = [],
   canPublish,
+  canCustomDomain = false,
   mainHost,
 }: {
   site: Site;
@@ -96,6 +98,7 @@ export default function CanvasBuilder({
   pricelist?: PriceItem[];
   priceLists?: { key: string; label: string }[];
   canPublish: boolean;
+  canCustomDomain?: boolean;
   mainHost: string;
 }) {
   const supabase = createClient();
@@ -548,6 +551,13 @@ export default function CanvasBuilder({
               <div style={{ padding: 16 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Giao diện trang</h3>
                 <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>Áp dụng cho toàn bộ trang. Bấm một khối để chỉnh riêng khối đó.</p>
+
+                {canCustomDomain && (
+                  <CustomDomain
+                    initialDomain={(site.custom_domain as string | null) ?? null}
+                    initialVerified={!!(site as { custom_domain_verified?: boolean }).custom_domain_verified}
+                  />
+                )}
 
                 <label style={insLabel}>Màu nhấn</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>

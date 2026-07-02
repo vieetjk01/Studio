@@ -1350,6 +1350,9 @@ create table if not exists public.sites (
 );
 create index if not exists sites_subdomain_idx on public.sites (subdomain);
 create index if not exists sites_custom_domain_idx on public.sites (custom_domain);
+-- Custom domain (studio.com) — only used as the customer host once DNS is
+-- verified & the domain is added to the hosting project.
+alter table public.sites add column if not exists custom_domain_verified boolean not null default false;
 alter table public.sites enable row level security;
 drop policy if exists sites_owner_all on public.sites;
 create policy sites_owner_all on public.sites

@@ -31,7 +31,7 @@ export default function AlbumEditor({
   canDelivery = true,
   canPinHome = true,
   studioName = "Studio",
-  studioSubdomain = null,
+  studioHost = null,
 }: {
   album: Album;
   initialSources: AlbumSource[];
@@ -39,7 +39,7 @@ export default function AlbumEditor({
   canDelivery?: boolean;
   canPinHome?: boolean;
   studioName?: string;
-  studioSubdomain?: string | null;
+  studioHost?: string | null;
 }) {
   const { t } = useLang();
   const supabase = createClient();
@@ -237,10 +237,10 @@ export default function AlbumEditor({
           >
             <Users size={15} /> {t("customerSelections")}
           </Link>
-          <a href={studioUrl(studioSubdomain, `/a/${form.slug}`)} target="_blank" rel="noreferrer" className="btn-ghost">
+          <a href={studioUrl(studioHost, `/a/${form.slug}`)} target="_blank" rel="noreferrer" className="btn-ghost">
             <ExternalLink size={15} /> {t("view")}
           </a>
-          <ShareButton path={studioUrl(studioSubdomain, `/a/${form.slug}`)} title={form.title} />
+          <ShareButton path={studioUrl(studioHost, `/a/${form.slug}`)} title={form.title} />
           <button onClick={deleteAlbum} disabled={deleting} className="btn-danger">
             <Trash2 size={15} /> {deleting ? "Đang xóa…" : t("delete")}
           </button>
