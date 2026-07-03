@@ -20,6 +20,7 @@ export default function DashboardChrome({
   tier,
   role,
   showFooter,
+  storyComingSoon = false,
   children,
 }: {
   profile: Profile;
@@ -27,6 +28,7 @@ export default function DashboardChrome({
   tier: StudioTier;
   role: string;
   showFooter: boolean;
+  storyComingSoon?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -50,7 +52,7 @@ export default function DashboardChrome({
 
   if (isStudio && tier !== "none") {
     return (
-      <StudioShell profile={profile} tier={tier} role={role}>
+      <StudioShell profile={profile} tier={tier} role={role} storyComingSoon={storyComingSoon}>
         {children}
       </StudioShell>
     );

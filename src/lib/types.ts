@@ -113,6 +113,7 @@ export interface SiteSettings {
   landing_hero_badge: string | null;
   landing_hero_note: string | null;
   upgrade_content: unknown | null;
+  feature_flags: Record<string, string> | null; // cờ tính năng: { story: "coming_soon" }
   updated_at: string;
 }
 

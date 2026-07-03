@@ -1,6 +1,8 @@
+import { Clapperboard } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { getStudioHost } from "@/lib/studio-site";
+import { getFeatureFlags, storyComingSoon } from "@/lib/feature-flags";
 import StoryListView, { type StoryRow } from "./StoryListView";
 
 export default async function StoryManagePage() {
@@ -12,6 +14,19 @@ export default async function StoryManagePage() {
           <h1 className="font-serif text-2xl font-medium">Cần gói Studio</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Trang Love Story chỉ dành cho tài khoản gói Studio.</p>
           <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem gói Studio</a>
+        </div>
+      </div>
+    );
+  }
+
+  // "Sắp ra mắt": khoá với studio, admin vẫn vào để hoàn thiện.
+  if (storyComingSoon(await getFeatureFlags()) && profile.actingRole !== "admin") {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <div className="card p-8">
+          <Clapperboard size={28} className="mx-auto mb-3" style={{ color: "#d0687a" }} />
+          <h1 className="font-serif text-2xl font-medium">Love Story · Sắp ra mắt</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Tính năng trang chia sẻ khoảnh khắc đang được hoàn thiện. Bọn mình sẽ thông báo khi sẵn sàng — cảm ơn bạn đã chờ nhé!</p>
         </div>
       </div>
     );

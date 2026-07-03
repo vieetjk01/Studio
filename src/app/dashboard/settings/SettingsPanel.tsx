@@ -213,6 +213,29 @@ export default function SettingsPanel({
         <SaveBtn label="Lưu SEO" />
       </Section>
 
+      {/* ── 2b. Tính năng ───────────────────────────────────────────────── */}
+      <Section title="Tính năng" icon={Settings2}>
+        <p className="text-sm" style={{ color: "var(--text2)" }}>
+          Bật/tắt hiển thị các tính năng cho studio. Khi để “Sắp ra mắt”, mục sẽ hiện nhãn và tạm khoá với studio (admin vẫn vào được để hoàn thiện).
+        </p>
+        <label className="flex items-center gap-3 rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-[var(--brand,var(--gold))]"
+            checked={((form.feature_flags as Record<string, string> | null | undefined)?.story) === "coming_soon"}
+            onChange={(e) => {
+              const cur = { ...((form.feature_flags as Record<string, string>) ?? {}) };
+              if (e.target.checked) cur.story = "coming_soon"; else delete cur.story;
+              set("feature_flags" as keyof SiteSettings, cur as never);
+            }}
+          />
+          <span className="text-sm">
+            <b>Love Story</b> — hiển thị “Sắp ra mắt” &amp; tạm khoá với studio
+          </span>
+        </label>
+        <SaveBtn label="Lưu tính năng" />
+      </Section>
+
       {/* ── 3. Gói & giá ────────────────────────────────────────────────── */}
       <Section title="Gói & giá (VND)" icon={BadgeDollarSign}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">

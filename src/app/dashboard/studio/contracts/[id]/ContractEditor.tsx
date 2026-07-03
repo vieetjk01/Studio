@@ -111,9 +111,11 @@ export default function ContractEditor({
   pricelist,
   initialClientProofs,
   services = [],
+  storyComingSoon = false,
 }: {
   contract: StudioContract;
   studioHost?: string | null;
+  storyComingSoon?: boolean;
   initialItems: ContractItem[];
   initialCrew: ContractCrew[];
   initialRequests: ContractEditRequest[];
@@ -951,6 +953,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         clientName={f.client_name}
         clientMessenger={f.client_messenger}
         studioHost={studioHost}
+        comingSoon={storyComingSoon}
       />
 
       {/* Ask for a review */}

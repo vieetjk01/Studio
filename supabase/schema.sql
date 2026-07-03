@@ -369,6 +369,10 @@ alter table public.site_settings add column if not exists favicon_url      text;
 -- empty. See src/lib/upgrade-content.ts.
 alter table public.site_settings add column if not exists upgrade_content  jsonb;
 
+-- Cờ bật/tắt tính năng toàn hệ thống (admin điều khiển). Ví dụ:
+--   { "story": "coming_soon" }  → Love Story hiện nhãn "Sắp ra mắt" & tạm khoá.
+alter table public.site_settings add column if not exists feature_flags jsonb not null default '{}'::jsonb;
+
 alter table public.site_settings enable row level security;
 drop policy if exists site_settings_public_read on public.site_settings;
 create policy site_settings_public_read on public.site_settings

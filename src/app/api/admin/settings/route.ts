@@ -58,6 +58,13 @@ export async function POST(req: Request) {
     }
     patch.upgrade_content = body.upgrade_content;
   }
+  // Feature flags (jsonb): { story: "coming_soon" | "live" }. Small payload only.
+  if (body.feature_flags !== undefined && body.feature_flags !== null && typeof body.feature_flags === "object" && !Array.isArray(body.feature_flags)) {
+    if (JSON.stringify(body.feature_flags).length > 5_000) {
+      return NextResponse.json({ error: "too_large" }, { status: 413 });
+    }
+    patch.feature_flags = body.feature_flags;
+  }
 
   const db = createAdminClient();
   const { error } = await db

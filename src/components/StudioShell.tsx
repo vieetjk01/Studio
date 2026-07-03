@@ -142,11 +142,13 @@ export default function StudioShell({
   profile,
   tier,
   role,
+  storyComingSoon = false,
   children,
 }: {
   profile: Profile;
   tier: StudioTier;
   role: string;
+  storyComingSoon?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -188,6 +190,20 @@ export default function StudioShell({
 
   const initials = (profile.full_name || profile.email || "?")
     .split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+  // "Sắp ra mắt" chip + lock for Love Story (admin still gets through to build it).
+  const STORY_HREF = "/dashboard/studio/story";
+  const soonChip = (
+    <span className="ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ color: "var(--brand)", background: "var(--brandSoft)" }}>Sắp ra mắt</span>
+  );
+  const renderNavItem = (it: Item, cls: string, style: React.CSSProperties, active: boolean) => {
+    const flagged = storyComingSoon && it.href === STORY_HREF;
+    const locked = flagged && role !== "admin";
+    const inner = <><it.icon size={18} style={{ flex: "none" }} />{it.label}{flagged && soonChip}</>;
+    if (locked) return <div key={it.href} className={cls} style={{ ...style, opacity: 0.55, cursor: "not-allowed" }} title="Tính năng sắp ra mắt">{inner}</div>;
+    if (it.external) return <a key={it.href} href={it.href} className={cls} style={style}>{inner}</a>;
+    return <Link key={it.href} href={it.href} className={cls} style={style} aria-current={active ? "page" : undefined}>{inner}</Link>;
+  };
 
   return (
     <div className="studio-shell" data-theme={theme} style={{ background: "var(--bg)", color: "var(--text)" }}>
@@ -256,17 +272,7 @@ export default function StudioShell({
                 const active = isActive(it.href);
                 const cls = `nav-item mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold${active ? " nav-active" : ""}`;
                 const style = { color: active ? "var(--brand)" : "var(--text)" };
-                return it.external ? (
-                  <a key={it.href} href={it.href} className={cls} style={style}>
-                    <it.icon size={18} style={{ flex: "none" }} />
-                    {it.label}
-                  </a>
-                ) : (
-                  <Link key={it.href} href={it.href} className={cls} style={style} aria-current={active ? "page" : undefined}>
-                    <it.icon size={18} style={{ flex: "none" }} />
-                    {it.label}
-                  </Link>
-                );
+                return renderNavItem(it, cls, style, active);
               })}
             </div>
           ))}
@@ -366,17 +372,7 @@ export default function StudioShell({
                 const active = isActive(it.href);
                 const cls = `nav-item mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold${active ? " nav-active" : ""}`;
                 const style = { color: active ? "var(--brand)" : "var(--text)" };
-                return it.external ? (
-                  <a key={it.href} href={it.href} className={cls} style={style}>
-                    <it.icon size={18} style={{ flex: "none" }} />
-                    {it.label}
-                  </a>
-                ) : (
-                  <Link key={it.href} href={it.href} className={cls} style={style} aria-current={active ? "page" : undefined}>
-                    <it.icon size={18} style={{ flex: "none" }} />
-                    {it.label}
-                  </Link>
-                );
+                return renderNavItem(it, cls, style, active);
               })}
             </div>
           ))}

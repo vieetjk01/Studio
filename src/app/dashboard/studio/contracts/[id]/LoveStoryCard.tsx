@@ -17,12 +17,13 @@ type Existing = { slug: string; edit_token: string; published: boolean } | null;
 
 /** Studio-side card on a contract: create the Love Story page & share its link. */
 export default function LoveStoryCard({
-  contract, clientName, clientMessenger, studioHost,
+  contract, clientName, clientMessenger, studioHost, comingSoon = false,
 }: {
   contract: { id: string; owner_id: string; title: string; event_date: string | null; location: string | null };
   clientName: string;
   clientMessenger: string;
   studioHost: string | null;
+  comingSoon?: boolean;
 }) {
   const supabase = createClient();
   const [row, setRow] = useState<Existing>(null);
@@ -58,6 +59,19 @@ export default function LoveStoryCard({
     if (error || !data) { setErr(error?.message || "Không tạo được trang."); return; }
     setRow(data as Existing);
   }
+
+  if (comingSoon) return (
+    <div className="card mb-6 p-4" style={{ opacity: 0.85 }}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Clapperboard size={16} style={{ color: "#d0687a" }} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>💞 Trang Love Story tặng khách</p>
+          <p className="text-sm" style={{ color: "var(--text2)" }}>Tính năng đang được hoàn thiện, sẽ sớm có mặt.</p>
+        </div>
+        <span className="rounded px-2 py-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--brand)", background: "var(--brandSoft)" }}>Sắp ra mắt</span>
+      </div>
+    </div>
+  );
 
   if (loading) return null;
   const editUrl = row ? studioUrl(studioHost, `/story/sua/${row.edit_token}`) : "";
