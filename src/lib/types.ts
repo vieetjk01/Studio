@@ -725,6 +725,42 @@ export interface WeddingRsvp {
   created_at: string;
 }
 
+// ============================================================================
+// TRANG LOVE STORY (Instagram-style story/share page)
+// ============================================================================
+
+export type StoryTimelineItem = { date?: string; title?: string; text?: string };
+
+/** Editable content of a Love Story page (story_pages.config). */
+export type StoryConfig = {
+  groom_name?: string;
+  bride_name?: string;
+  cover_url?: string;        // ảnh bìa (URL trực tiếp)
+  tagline?: string;          // câu mở đầu
+  story?: string;            // nội dung chia sẻ chính
+  timeline?: StoryTimelineItem[];
+  drive_folder?: string;     // link folder Drive KHÁCH cung cấp — ảnh/video lấy từ đây
+  video_url?: string;        // link video (Drive/YouTube) — không bắt buộc
+  event_label?: string;      // vd "Lễ Thành Hôn"
+  event_date?: string;
+  event_venue?: string;
+  wishes_enabled?: boolean;  // cho khách gửi lời chúc
+  accent?: string;
+  music_url?: string;
+};
+
+export interface StoryPage {
+  id: string;
+  owner_id: string;
+  contract_id: string | null;
+  slug: string;
+  edit_token: string;
+  config: StoryConfig;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Reserved subdomains that tenants may not claim. */
 export const RESERVED_SUBDOMAINS = new Set([
   "www", "app", "album", "img", "image", "images", "studio", "api", "admin",

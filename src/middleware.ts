@@ -96,7 +96,7 @@ export async function middleware(request: NextRequest) {
         }
         // Customer/app routes are SERVED on the studio's own subdomain so every
         // activity a studio shares runs under its personalised URL.
-        const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/quote", "/showcase"];
+        const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/quote", "/showcase", "/story"];
         if (CUSTOMER.some((p) => pathname.startsWith(p))) {
           return NextResponse.next();
         }
@@ -118,7 +118,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/dashboard") || pathname === "/start" || pathname.startsWith("/login") || pathname.startsWith("/auth")) {
       return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
     }
-    const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/showcase"];
+    const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/showcase", "/story"];
     if (CUSTOMER.some((p) => pathname.startsWith(p))) {
       return NextResponse.next();
     }

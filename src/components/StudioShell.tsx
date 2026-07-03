@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart,
+  UserCircle, ChevronDown, Heart, Clapperboard,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -70,6 +70,7 @@ const GROUPS: Group[] = [
       { href: "/dashboard/studio/clients", label: "Khách hàng", icon: Users, minTier: "booking" },
       { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/studio/thiep", label: "Thiệp cưới", icon: Heart, minTier: "full" },
+      { href: "/dashboard/studio/story", label: "Love Story", icon: Clapperboard, minTier: "full" },
       { href: "/dashboard/studio/board", label: "Bảng", icon: Kanban, minTier: "full" },
     ],
   },
