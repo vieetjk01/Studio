@@ -745,6 +745,7 @@ export type StoryConfig = {
   event_date?: string;
   event_venue?: string;
   wishes_enabled?: boolean;  // cho khách gửi lời chúc
+  guest_upload?: boolean;    // cho quan khách tự đăng ảnh/video (ghi vào Drive cặp đôi)
   accent?: string;
   music_url?: string;
 };

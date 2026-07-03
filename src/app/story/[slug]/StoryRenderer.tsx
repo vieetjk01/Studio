@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
-import { Heart, Calendar, MapPin, Quote, PlayCircle } from "lucide-react";
+import { Heart, Calendar, MapPin, Quote, PlayCircle, Play } from "lucide-react";
 import type { StoryConfig, StoryPage } from "@/lib/types";
 import WishForm from "./WishForm";
+import ContributeForm from "./ContributeForm";
 
-export type StoryPhoto = { id: string; url: string; thumb: string };
+export type StoryPhoto = { id: string; url: string; thumb: string; isVideo?: boolean; guestName?: string };
 export type StoryWish = { guest_name: string; wish: string; created_at: string };
 
 const DEFAULT_ACCENT = "#d0687a";
@@ -20,7 +21,19 @@ function ytEmbed(url?: string): string | null {
 }
 
 /** Instagram-style Love Story page. Media comes from the couple's Drive folder. */
-export default function StoryRenderer({ story, photos, wishes }: { story: StoryPage; photos: StoryPhoto[]; wishes: StoryWish[] }) {
+export default function StoryRenderer({
+  story,
+  photos,
+  guestPhotos = [],
+  wishes,
+  guestUploadEnabled = false,
+}: {
+  story: StoryPage;
+  photos: StoryPhoto[];
+  guestPhotos?: StoryPhoto[];
+  wishes: StoryWish[];
+  guestUploadEnabled?: boolean;
+}) {
   const c = story.config as StoryConfig;
   const accent = c.accent || DEFAULT_ACCENT;
   const groom = c.groom_name || "Chú rể";
@@ -28,6 +41,7 @@ export default function StoryRenderer({ story, photos, wishes }: { story: StoryP
   const handle = `${groom}.${bride}`.toLowerCase().replace(/\s+/g, "");
   const timeline = (c.timeline ?? []).filter((t) => t.title || t.text || t.date);
   const yt = ytEmbed(c.video_url);
+  const totalPhotos = photos.length + guestPhotos.length;
   const wrap: CSSProperties & Record<string, string> = { "--acc": accent };
 
   return (
@@ -45,7 +59,7 @@ export default function StoryRenderer({ story, photos, wishes }: { story: StoryP
             <p className="font-serif text-xl sm:text-2xl">{groom} &amp; {bride}</p>
             <p className="text-sm text-neutral-500">@{handle}</p>
             <div className="mt-2 flex gap-5 text-sm">
-              <span><b>{photos.length}</b> ảnh</span>
+              <span><b>{totalPhotos}</b> ảnh</span>
               <span><b>{wishes.length}</b> lời chúc</span>
               {c.event_date && <span><b>{fmt(c.event_date)}</b></span>}
             </div>
@@ -110,10 +124,35 @@ export default function StoryRenderer({ story, photos, wishes }: { story: StoryP
           </div>
         </section>
       )}
-      {photos.length === 0 && (
+      {photos.length === 0 && !guestUploadEnabled && guestPhotos.length === 0 && (
         <p className="mx-auto mt-8 max-w-2xl px-5 text-center text-sm text-neutral-400">
           Chưa có ảnh — hãy dán link folder Google Drive (chia sẻ công khai) trong trình sửa.
         </p>
+      )}
+
+      {/* Guest contributions */}
+      {(guestUploadEnabled || guestPhotos.length > 0) && (
+        <section className="mx-auto mt-10 max-w-2xl px-5">
+          <h2 className="mb-4 text-center font-serif text-2xl" style={{ color: accent }}>Khoảnh khắc từ mọi người</h2>
+          {guestUploadEnabled && <ContributeForm slug={story.slug} accent={accent} />}
+          {guestPhotos.length > 0 && (
+            <div className="mt-5 grid grid-cols-3 gap-1">
+              {guestPhotos.map((p) => (
+                <div key={p.id} className="group relative aspect-square overflow-hidden bg-neutral-100">
+                  {p.isVideo ? (
+                    <a href={`https://drive.google.com/file/d/${p.id}/view`} target="_blank" rel="noreferrer" className="grid h-full w-full place-items-center text-white" style={{ background: `color-mix(in srgb, ${accent} 55%, #000)` }}>
+                      <Play size={26} />
+                    </a>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  )}
+                  {p.guestName && <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1 text-[10px] text-white">{p.guestName}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Wishes */}

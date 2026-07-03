@@ -43,12 +43,27 @@ export default async function StoryPageView({ params }: { params: { slug: string
     } catch { photos = []; }
   }
 
-  const { data: wishRows } = await db
-    .from("story_wishes")
-    .select("guest_name, wish, created_at")
-    .eq("story_id", story.id)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const [{ data: wishRows }, { data: upRows }] = await Promise.all([
+    db.from("story_wishes").select("guest_name, wish, created_at").eq("story_id", story.id).order("created_at", { ascending: false }).limit(200),
+    db.from("story_uploads").select("drive_file_id, guest_name, is_video, created_at").eq("story_id", story.id).eq("approved", true).order("created_at", { ascending: false }).limit(300),
+  ]);
 
-  return <StoryRenderer story={story} photos={photos} wishes={(wishRows ?? []) as StoryWish[]} />;
+  // Guest-contributed media (written to the couple's own Drive) shown alongside the curated feed.
+  const guestPhotos: StoryPhoto[] = (upRows ?? []).map((u) => ({
+    id: u.drive_file_id,
+    url: `/api/img?id=${u.drive_file_id}&w=1600`,
+    thumb: `/api/img?id=${u.drive_file_id}&w=600`,
+    isVideo: !!u.is_video,
+    guestName: u.guest_name || undefined,
+  }));
+
+  return (
+    <StoryRenderer
+      story={story}
+      photos={photos}
+      guestPhotos={guestPhotos}
+      wishes={(wishRows ?? []) as StoryWish[]}
+      guestUploadEnabled={c.guest_upload === true}
+    />
+  );
 }

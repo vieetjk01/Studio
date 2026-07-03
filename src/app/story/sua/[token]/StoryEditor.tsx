@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Heart, Save, Eye, Loader2, Check, ExternalLink, Plus, Trash2, FolderOpen, RefreshCw } from "lucide-react";
+import { Heart, Save, Eye, Loader2, Check, ExternalLink, Plus, Trash2, FolderOpen, RefreshCw, Cloud, CloudOff, Video, Users } from "lucide-react";
 import type { StoryConfig, StoryTimelineItem } from "@/lib/types";
 
-type Loaded = { story: { id: string; slug: string; config: StoryConfig; published: boolean } };
+type Upload = { id: string; drive_file_id: string; guest_name: string; is_video: boolean; approved: boolean; created_at: string };
+type Loaded = { story: { id: string; slug: string; config: StoryConfig; published: boolean }; uploads: Upload[]; drive_connected: boolean };
 type Photo = { id: string; name: string; url: string; thumb: string };
 
 // Love Story is served on whatever host the couple opened the editor from
@@ -21,18 +22,31 @@ export default function StoryEditor({ token }: { token: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Photo[] | null>(null);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [uploads, setUploads] = useState<Upload[]>([]);
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [driveMsg, setDriveMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const res = await fetch(`/api/story/${token}`);
-      if (!res.ok) { setStatus("notfound"); return; }
-      const d = (await res.json()) as Loaded;
-      setCfg(d.story.config || {});
-      setSlug(d.story.slug);
-      setPublished(d.story.published);
-      setStatus("ready");
-    })().catch(() => setStatus("notfound"));
+  const reload = useCallback(async () => {
+    const res = await fetch(`/api/story/${token}`);
+    if (!res.ok) { setStatus("notfound"); return; }
+    const d = (await res.json()) as Loaded;
+    setCfg(d.story.config || {});
+    setSlug(d.story.slug);
+    setPublished(d.story.published);
+    setUploads(d.uploads || []);
+    setDriveConnected(!!d.drive_connected);
+    setStatus("ready");
   }, [token]);
+
+  useEffect(() => { reload().catch(() => setStatus("notfound")); }, [reload]);
+
+  // Feedback after returning from the Google OAuth connect flow.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("drive");
+    if (q === "connected") setDriveMsg("Đã kết nối Google Drive của bạn 🎉");
+    else if (q === "error") setDriveMsg("Kết nối Google Drive chưa thành công, hãy thử lại.");
+    if (q) window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   const patch = useCallback((p: Partial<StoryConfig>) => setCfg((c) => ({ ...(c ?? {}), ...p })), []);
 
@@ -53,6 +67,17 @@ export default function StoryEditor({ token }: { token: string }) {
     setLoadingPhotos(false);
     setPhotos(d.photos || []);
     if (d.error === "no_api_key") setErr("Máy chủ chưa cấu hình GOOGLE_API_KEY để đọc Drive.");
+  }
+
+  async function disconnectDrive() {
+    if (!confirm("Ngắt kết nối Google Drive? Khách sẽ không thể gửi ảnh/video nữa (ảnh đã gửi vẫn nằm trên Drive của bạn).")) return;
+    await fetch(`/api/story/${token}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "disconnect_drive" }) });
+    setDriveConnected(false);
+  }
+
+  async function deleteUpload(id: string) {
+    await fetch(`/api/story/${token}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete_upload", uploadId: id }) });
+    setUploads((u) => u.filter((x) => x.id !== id));
   }
 
   if (status === "loading") return <div className="grid min-h-screen place-items-center text-stone-400"><Loader2 className="animate-spin" /></div>;
@@ -119,6 +144,50 @@ export default function StoryEditor({ token }: { token: string }) {
           )}
           {photos && photos.length === 0 && <p className="text-xs text-stone-400"><FolderOpen size={12} className="inline" /> Chưa đọc được ảnh — kiểm tra link folder đã chia sẻ công khai chưa.</p>}
           <Field label="Link video (YouTube hoặc Drive) — không bắt buộc"><input className={inp} value={cfg.video_url ?? ""} onChange={(e) => patch({ video_url: e.target.value || undefined })} placeholder="https://youtube.com/…" /></Field>
+        </Section>
+
+        <Section title="Cho khách gửi ảnh / story (lưu vào Drive của bạn)">
+          <p className="text-xs text-stone-500">
+            Kết nối Google Drive của bạn để khách mời có thể chụp/tải ảnh &amp; video ngay trên trang. File sẽ được lưu vào một thư mục
+            <b> “mstudo · Story khách gửi”</b> trong Drive của bạn — bạn toàn quyền quản lý.
+          </p>
+          {driveMsg && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{driveMsg}</p>}
+
+          {driveConnected ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <Cloud size={16} /> Đã kết nối Google Drive
+              <button onClick={disconnectDrive} className="ml-auto inline-flex items-center gap-1 rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-100"><CloudOff size={12} /> Ngắt kết nối</button>
+            </div>
+          ) : (
+            <a href={`/api/story/drive/connect?token=${token}`} className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm ring-1 ring-stone-300 hover:bg-stone-50">
+              <Cloud size={16} /> Nối Google Drive của bạn
+            </a>
+          )}
+
+          <label className={`flex items-center gap-2 text-sm ${!driveConnected ? "opacity-50" : ""}`}>
+            <input type="checkbox" className="h-4 w-4 accent-rose-600" disabled={!driveConnected} checked={cfg.guest_upload === true} onChange={(e) => patch({ guest_upload: e.target.checked })} />
+            <Users size={15} /> Cho phép khách gửi ảnh &amp; video trên trang story
+          </label>
+          {!driveConnected && <p className="text-xs text-stone-400">Cần kết nối Google Drive trước khi bật tính năng này.</p>}
+
+          {uploads.length > 0 && (
+            <div className="pt-1">
+              <p className="mb-2 text-xs font-medium text-stone-500">Khách đã gửi ({uploads.length}) — nhấn để gỡ khỏi trang</p>
+              <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+                {uploads.map((u) => (
+                  <div key={u.id} className="group relative aspect-square overflow-hidden rounded bg-stone-100">
+                    {u.is_video ? (
+                      <div className="grid h-full w-full place-items-center text-stone-400"><Video size={20} /></div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={`/api/img?id=${u.drive_file_id}&w=300`} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    )}
+                    <button onClick={() => deleteUpload(u.id)} title={u.guest_name || "Gỡ"} className="absolute right-0.5 top-0.5 rounded bg-black/50 p-1 text-white opacity-0 transition group-hover:opacity-100"><Trash2 size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Section>
 
         <Section title="Dòng thời gian (timeline)">

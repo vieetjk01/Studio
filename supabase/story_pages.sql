@@ -50,3 +50,32 @@ create policy story_wishes_owner_read on public.story_wishes
     select 1 from public.story_pages s
     where s.id = story_id and (s.owner_id = auth.uid() or public.is_admin())
   ));
+
+-- ============================================================================
+-- CÁCH 1: khách gửi ảnh/video → lưu vào Google Drive CỦA CHÍNH CẶP ĐÔI.
+-- Cặp đôi nối Drive (OAuth drive.file) ngay trong trình sửa; file khách tải lên
+-- được ghi vào một thư mục app tự tạo trên Drive của họ. Chạy phần dưới nếu bạn
+-- đã có bảng story_pages từ trước.
+-- ============================================================================
+alter table public.story_pages add column if not exists drive_refresh_token text;   -- couple's Drive OAuth refresh token
+alter table public.story_pages add column if not exists drive_upload_folder text;    -- app-created folder id for guest uploads
+
+create table if not exists public.story_uploads (
+  id            uuid primary key default gen_random_uuid(),
+  story_id      uuid not null references public.story_pages (id) on delete cascade,
+  drive_file_id text not null,                 -- file id trên Drive của cặp đôi
+  name          text not null default '',
+  is_video      boolean not null default false,
+  guest_name    text not null default '',
+  approved      boolean not null default true, -- tự duyệt; cặp đôi có thể gỡ trong trình sửa
+  created_at    timestamptz not null default now()
+);
+create index if not exists story_uploads_story_idx on public.story_uploads (story_id, approved, created_at);
+
+alter table public.story_uploads enable row level security;
+drop policy if exists story_uploads_owner_read on public.story_uploads;
+create policy story_uploads_owner_read on public.story_uploads
+  for select using (exists (
+    select 1 from public.story_pages s
+    where s.id = story_id and (s.owner_id = auth.uid() or public.is_admin())
+  ));
