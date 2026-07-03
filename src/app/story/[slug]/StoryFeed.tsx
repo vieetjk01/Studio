@@ -39,7 +39,29 @@ export default function StoryFeed({
   const [wishText, setWishText] = useState("");
   const [wishBusy, setWishBusy] = useState(false);
 
-  const handle = `${groom}.${bride}`.toLowerCase().replace(/\s+/g, "");
+  // Guest identity — asked once on first visit, kept in localStorage.
+  const [guestName, setGuestName] = useState("");
+  const [askName, setAskName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`story_guest_${slug}`) || "";
+      if (saved) { setGuestName(saved); setWishName(saved); }
+      else setAskName(true);
+    } catch { /* ignore */ }
+  }, [slug]);
+  function saveName(name: string) {
+    const n = name.trim().slice(0, 60);
+    setGuestName(n); if (n) setWishName((w) => w || n);
+    try { if (n) localStorage.setItem(`story_guest_${slug}`, n); } catch { /* ignore */ }
+    setAskName(false);
+  }
+  // Ensure we have a name before contributing; returns the name or opens the gate.
+  function ensureName(): string | null {
+    if (guestName) return guestName;
+    setAskName(true);
+    return null;
+  }
 
   // Build stories (curated + guest) and feed posts.
   const allPhotos: FeedPhoto[] = [...guestPhotos, ...photos];
@@ -132,11 +154,13 @@ export default function StoryFeed({
   }
   async function share() {
     if (!capturedFile || sending) return;
+    const gn = ensureName();
+    if (!gn) return; // name gate opened; tap Share again after entering name
     setSending(true);
     const fd = new FormData();
     const ext = capturedFile.type.startsWith("video/") ? "mp4" : "jpg";
     fd.append("file", capturedFile, `story.${ext}`);
-    fd.append("guest_name", caption.trim().slice(0, 60) || "");
+    fd.append("guest_name", gn);
     const res = await fetch(`/api/story/contribute/${slug}`, { method: "POST", body: fd });
     setSending(false);
     closeCamera();
@@ -173,15 +197,21 @@ export default function StoryFeed({
           </div>
         </header>
 
-        {/* STORIES */}
-        {(stories.length > 0 || guestUploadEnabled) && (
-          <div style={{ display: "flex", gap: 11, overflowX: "auto", padding: "16px", borderBottom: `1px solid ${v.line}`, scrollbarWidth: "none" }}>
-            {guestUploadEnabled && (
-              <button onClick={openCamera} style={{ flex: "0 0 auto", width: 104, height: 166, cursor: "pointer", borderRadius: 18, background: v.chip, border: "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, textAlign: "center", padding: "0 8px" }}>
-                <div style={{ width: 42, height: 42, borderRadius: 999, background: accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 25, fontWeight: 300, lineHeight: 1 }}>+</div>
-                <div style={{ fontSize: 12, color: v.fg, fontWeight: 700, lineHeight: 1.3 }}>Thêm story<br /><span style={{ fontSize: 10.5, color: v.muted, fontWeight: 600 }}>Ảnh hoặc video</span></div>
-              </button>
-            )}
+        {/* THÊM STORY — ngay trên thanh story */}
+        {guestUploadEnabled && (
+          <div style={{ padding: "14px 16px 2px" }}>
+            <button onClick={openCamera} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderRadius: 16, background: v.chip, border: `1px dashed ${accent}`, padding: "12px 16px", textAlign: "left" }}>
+              <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 999, background: accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 300, lineHeight: 1 }}>+</div>
+              <div><div style={{ fontSize: 14, color: v.fg, fontWeight: 700 }}>Thêm story của bạn</div><div style={{ fontSize: 11.5, color: v.muted, fontWeight: 600 }}>Chụp/quay ngay hoặc chọn ảnh · video</div></div>
+              <span style={{ flex: 1 }} />
+              <span style={{ color: accent }}>{camSvg}</span>
+            </button>
+          </div>
+        )}
+
+        {/* STORIES strip */}
+        {stories.length > 0 && (
+          <div style={{ display: "flex", gap: 11, overflowX: "auto", padding: "14px 16px", scrollbarWidth: "none" }}>
             {stories.map((s, i) => (
               <button key={s.id + i} onClick={() => goStory(i)} style={{ flex: "0 0 auto", width: 104, height: 166, border: "none", padding: 2.5, cursor: "pointer", borderRadius: 18, background: ring, position: "relative" }}>
                 <div style={{ width: "100%", height: "100%", borderRadius: 15, backgroundColor: "#000", backgroundImage: `url('${s.src}')`, backgroundSize: "cover", backgroundPosition: "center", position: "relative", overflow: "hidden" }}>
@@ -195,6 +225,24 @@ export default function StoryFeed({
                 </div>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* CHIA SẺ ẢNH — ngay dưới thanh story */}
+        {guestUploadEnabled && (
+          <div style={{ padding: "6px 16px 16px", borderBottom: `1px solid ${v.line}` }}>
+            <div style={{ borderRadius: 16, border: `1px solid ${v.line}`, background: v.paper, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: v.fg }}>Bạn có ảnh đẹp? Chia sẻ cùng cô dâu chú rể 💐</div>
+              <div style={{ fontSize: 12, color: v.muted, margin: "4px 0 12px" }}>Ảnh/video sẽ lưu vào Google Drive của cô dâu chú rể</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={openCamera} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 44, border: "none", borderRadius: 12, background: accent, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>{camSvg} Chụp / Quay</button>
+                <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 44, borderRadius: 12, border: `1px solid ${accent}`, color: accent, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" /></svg>
+                  Chọn từ máy
+                  <input type="file" accept="image/*,video/*" onChange={onPickFile} style={{ display: "none" }} />
+                </label>
+              </div>
+            </div>
           </div>
         )}
 
@@ -380,8 +428,9 @@ export default function StoryFeed({
               <div style={{ position: "absolute", inset: 0, background: "#fff", pointerEvents: "none", animation: flashing ? "stflash .5s ease forwards" : undefined, opacity: flashing ? undefined : 0 }} />
             </div>
             {captured && (
-              <div style={{ background: "#000", padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Tên của bạn (không bắt buộc)..." style={{ flex: 1, height: 44, border: "1px solid #333", background: "#111", color: "#fff", borderRadius: 999, padding: "0 18px", fontSize: 14, outline: "none" }} />
+              <div style={{ background: "#000", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#fff", fontSize: 13 }}>
+                <span style={{ opacity: 0.7 }}>Đăng với tên</span>
+                <button onClick={() => { setNameInput(guestName); setAskName(true); }} style={{ border: "none", background: "none", color: accent, fontWeight: 700, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>{guestName || "Nhập tên của bạn"}</button>
               </div>
             )}
             <div style={{ padding: "10px 24px 30px", display: "flex", alignItems: "center", justifyContent: "center", gap: 38 }}>
@@ -406,6 +455,20 @@ export default function StoryFeed({
 
         {sentMsg && (
           <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 130, background: accent, color: "#fff", padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 30px rgba(0,0,0,.3)" }}>{sentMsg}</div>
+        )}
+
+        {/* GUEST NAME GATE — hỏi tên khi mới truy cập */}
+        {askName && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 140, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "stfade .2s ease both" }}>
+            <div style={{ width: "100%", maxWidth: 360, background: v.paper, color: v.fg, borderRadius: 22, padding: 24, textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}>
+              <div style={{ fontSize: 30 }}>💌</div>
+              <div style={{ fontFamily: cm, fontSize: 26, fontWeight: 600, marginTop: 6 }}>Chào mừng bạn!</div>
+              <p style={{ fontSize: 13.5, color: v.muted, margin: "6px 0 16px", lineHeight: 1.5 }}>{groom} &amp; {bride} rất vui được đón bạn. Cho biết tên của bạn nhé để lưu lại kỷ niệm.</p>
+              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && nameInput.trim()) saveName(nameInput); }} placeholder="Tên của bạn" autoFocus style={{ width: "100%", height: 46, border: `1px solid ${v.line}`, background: v.bg, color: v.fg, borderRadius: 12, padding: "0 16px", fontSize: 14, outline: "none", textAlign: "center" }} />
+              <button onClick={() => saveName(nameInput)} disabled={!nameInput.trim()} style={{ width: "100%", height: 46, marginTop: 12, border: "none", borderRadius: 12, background: accent, color: "#fff", fontWeight: 700, fontSize: 13.5, letterSpacing: ".08em", textTransform: "uppercase", cursor: "pointer", opacity: nameInput.trim() ? 1 : 0.5 }}>Vào xem Love Story</button>
+              <button onClick={() => setAskName(false)} style={{ marginTop: 10, border: "none", background: "none", color: v.muted, fontSize: 12.5, cursor: "pointer" }}>Bỏ qua</button>
+            </div>
+          </div>
         )}
       </div>
 

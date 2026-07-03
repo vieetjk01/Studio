@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Heart, Save, Eye, Loader2, Check, ExternalLink, Plus, Trash2, FolderOpen, RefreshCw, Cloud, CloudOff, Video, Users } from "lucide-react";
+import { Heart, Save, Eye, Loader2, Check, ExternalLink, Plus, Trash2, FolderOpen, RefreshCw, Cloud, CloudOff, Video, Users, QrCode, Printer, Download } from "lucide-react";
 import type { StoryConfig, StoryTimelineItem } from "@/lib/types";
 
 type Upload = { id: string; drive_file_id: string; guest_name: string; is_video: boolean; approved: boolean; created_at: string };
@@ -25,6 +25,8 @@ export default function StoryEditor({ token }: { token: string }) {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveMsg, setDriveMsg] = useState<string | null>(null);
+  const [qrImg, setQrImg] = useState<string | null>(null);
+  const [qrBusy, setQrBusy] = useState(false);
 
   const reload = useCallback(async () => {
     const res = await fetch(`/api/story/${token}`);
@@ -80,6 +82,21 @@ export default function StoryEditor({ token }: { token: string }) {
     setUploads((u) => u.filter((x) => x.id !== id));
   }
 
+  async function genQr() {
+    setQrBusy(true);
+    try {
+      const QRCode = (await import("qrcode")).default;
+      const img = await QRCode.toDataURL(storyUrl(`/story/${slug}`), { margin: 1, width: 640, color: { dark: "#a9527f", light: "#ffffff" } });
+      setQrImg(img);
+    } finally { setQrBusy(false); }
+  }
+  function printQr() {
+    if (!qrImg) return;
+    const couple = [cfg?.groom_name, cfg?.bride_name].filter(Boolean).join(" & ") || "Love Story";
+    const w = window.open("", "_blank", "width=520,height=680"); if (!w) return;
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${couple}</title><style>body{font-family:Georgia,serif;text-align:center;padding:48px 24px;color:#a9527f}h1{font-size:26px;margin:0 0 4px}p{color:#8c847d;margin:2px 0}img{width:340px;height:340px;margin:22px auto;display:block}.u{font-size:12px;word-break:break-all}</style></head><body><h1>${couple}</h1><p>Quét mã để xem &amp; gửi ảnh Love Story</p><img src="${qrImg}"/><p class="u">${storyUrl(`/story/${slug}`)}</p><script>window.onload=()=>window.print()</script></body></html>`);
+  }
+
   if (status === "loading") return <div className="grid min-h-screen place-items-center text-stone-400"><Loader2 className="animate-spin" /></div>;
   if (status === "notfound" || !cfg) return <div className="grid min-h-screen place-items-center px-6 text-center text-stone-600"><p>Không tìm thấy trang Love Story này.</p></div>;
 
@@ -113,6 +130,32 @@ export default function StoryEditor({ token }: { token: string }) {
           <button onClick={() => save(!published)} disabled={saving} className={`rounded-full px-4 py-2 text-sm font-medium disabled:opacity-50 ${published ? "border border-stone-300" : "bg-rose-600 text-white"}`}>
             {published ? "Ẩn trang" : "Xuất bản"}
           </button>
+        </div>
+
+        {/* Mã QR để chia sẻ & in */}
+        <div className="rounded-xl border border-stone-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-1.5 font-medium text-stone-700"><QrCode size={16} /> Mã QR chia sẻ</p>
+              <p className="text-xs text-stone-500">In ra để khách quét xem trang &amp; gửi ảnh.</p>
+            </div>
+            {!qrImg && (
+              <button onClick={genQr} disabled={qrBusy} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700 disabled:opacity-50">
+                {qrBusy ? <Loader2 size={14} className="animate-spin" /> : <QrCode size={14} />} Tạo mã QR
+              </button>
+            )}
+          </div>
+          {qrImg && (
+            <div className="mt-4 flex flex-col items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrImg} alt="Mã QR" className="h-52 w-52 rounded-lg border border-stone-200" />
+              <p className="mt-2 break-all text-center text-[11px] text-stone-400">{publicUrl}</p>
+              <div className="mt-3 flex gap-2">
+                <a href={qrImg} download={`qr-lovestory-${slug}.png`} className="inline-flex items-center gap-1 rounded-lg border border-stone-300 px-3 py-2 text-xs hover:bg-stone-100"><Download size={13} /> Tải ảnh</a>
+                <button onClick={printQr} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-2 text-xs font-medium text-white"><Printer size={13} /> In mã QR</button>
+              </div>
+            </div>
+          )}
         </div>
 
         <Section title="Thông tin cặp đôi">
