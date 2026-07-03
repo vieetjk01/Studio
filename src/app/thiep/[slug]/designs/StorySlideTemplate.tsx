@@ -1,125 +1,224 @@
-import type { CSSProperties } from "react";
-import { MapPin, Calendar, Clock, Quote, Heart } from "lucide-react";
-import Reveal from "../Reveal";
-import Countdown from "../Countdown";
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import StoryGallery from "../StoryGallery";
-import { fmtDate, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
 
-// Story: nền rất tối, vàng gold, ảnh cưới trình chiếu kiểu "story" (IG).
-const PAL = { bg: "#0d0a0b", surface: "rgba(255,255,255,0.05)", text: "#f0e6e2", muted: "rgba(240,230,226,0.6)", border: "rgba(232,201,168,0.26)", accent: "#e8c9a8" };
+// Story — trải nghiệm "story trượt" toàn màn hình (430×760): thanh tiến trình,
+// chạm hai bên để chuyển, nút "Tham gia ♥" mở trang chi tiết (RSVP). Port 1b.
+const ACCENT = "#e8c9a8";
+
+function useCountdown(date?: string) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => { setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  if (!date || now == null) return null;
+  const target = new Date(date).getTime();
+  if (Number.isNaN(target)) return null;
+  let diff = Math.max(0, Math.floor((target - now) / 1000));
+  const d = Math.floor(diff / 86400); diff -= d * 86400;
+  const h = Math.floor(diff / 3600); diff -= h * 3600;
+  const m = Math.floor(diff / 60); const s = diff - m * 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { d: String(d), h: pad(h), m: pad(m), s: pad(s) };
+}
 
 export default function StorySlideTemplate({ inv, wishes }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
-  const accent = c.accent || PAL.accent;
-  const wrap: CSSProperties & Record<string, string> = {
-    "--wed-accent": accent, background: PAL.bg, color: PAL.text, fontFamily: "var(--font-cormorant)",
-  };
-  const title = (t: string) => <h2 className="font-serif text-3xl sm:text-4xl" style={{ color: accent }}>{t}</h2>;
+  const accent = c.accent || ACCENT;
+  const cm = "var(--font-cormorant), serif";
+  const sc = "var(--font-script), cursive";
+  const cd = useCountdown(c.wedding_date);
+  const bg = (i: number) => gallery[i % gallery.length] || c.cover_url || "";
+
+  // Build slides based on available content.
+  const slides: { key: string; bg: string; node: React.ReactNode }[] = [];
+  slides.push({
+    key: "cover", bg: c.cover_url || bg(0),
+    node: (
+      <div style={{ position: "absolute", left: 34, right: 34, bottom: 120, textAlign: "center", color: "#fff" }}>
+        <div style={{ fontFamily: sc, fontSize: 36, color: accent }}>{c.cover_quote || "Save our love story"}</div>
+        <div style={{ fontFamily: cm, fontSize: 76, fontWeight: 500, lineHeight: 0.9, marginTop: 6 }}>{groom} <span style={{ fontStyle: "italic", color: accent }}>&amp;</span> {bride}</div>
+        {c.wedding_date && <div style={{ fontSize: 14, letterSpacing: ".28em", textTransform: "uppercase", marginTop: 14 }}>{fmtShort(c.wedding_date)}</div>}
+      </div>
+    ),
+  });
+  if (cd) slides.push({
+    key: "cd", bg: bg(1),
+    node: (
+      <div style={{ position: "absolute", left: 34, right: 34, bottom: 70, textAlign: "center", color: "#fff" }}>
+        <div style={{ fontSize: 12, letterSpacing: ".3em", textTransform: "uppercase", color: accent, fontWeight: 700 }}>Còn lại</div>
+        <div style={{ display: "flex", gap: 9, justifyContent: "center", marginTop: 16 }}>
+          {([["d", "Ngày"], ["h", "Giờ"], ["m", "Phút"], ["s", "Giây"]] as const).map(([k, lb]) => (
+            <div key={k} style={{ flex: 1, background: "rgba(255,255,255,.12)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 12, padding: "12px 4px" }}>
+              <div style={{ fontFamily: cm, fontSize: 38, fontWeight: 600, lineHeight: 1 }}>{cd[k]}</div>
+              <div style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", opacity: 0.85, marginTop: 4 }}>{lb}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  });
+  if (events.length > 0) slides.push({
+    key: "events", bg: bg(2),
+    node: (<>
+      <div style={{ position: "absolute", top: 64, left: 0, right: 0, textAlign: "center" }}><div style={{ fontFamily: cm, fontSize: 40, fontWeight: 600, color: "#fff" }}>Sự kiện cưới</div></div>
+      <div style={{ position: "absolute", left: 26, right: 26, bottom: 60, display: "flex", flexDirection: "column", gap: 12, color: "#fff" }}>
+        {events.slice(0, 3).map((e, i) => (
+          <div key={i} style={{ background: "rgba(255,255,255,.12)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,.22)", borderRadius: 14, padding: "14px 18px" }}>
+            <div style={{ fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: accent, fontWeight: 700 }}>{e.label}</div>
+            <div style={{ fontFamily: cm, fontSize: 24, fontWeight: 600 }}>{[e.time, fmtShort(e.date)].filter(Boolean).join(" — ")}</div>
+            {(e.venue || e.address) && <div style={{ fontSize: 12.5, opacity: 0.85 }}>{[e.venue, e.address].filter(Boolean).join(", ")}</div>}
+          </div>
+        ))}
+      </div>
+    </>),
+  });
+  if (gallery.length > 0) slides.push({
+    key: "album", bg: bg(3),
+    node: (<div style={{ position: "absolute", top: "50%", left: 0, right: 0, transform: "translateY(-50%)", textAlign: "center", color: "#fff" }}><div style={{ fontFamily: sc, fontSize: 44, color: accent, textShadow: "0 2px 12px rgba(0,0,0,.5)" }}>Album của chúng mình</div></div>),
+  });
+  if (c.story) slides.push({
+    key: "story", bg: bg(4),
+    node: (
+      <div style={{ position: "absolute", left: 30, right: 30, bottom: 64, color: "#fff" }}>
+        <div style={{ fontFamily: sc, fontSize: 38, color: accent }}>Chuyện của chúng mình</div>
+        <p style={{ fontSize: 14, lineHeight: 1.7, marginTop: 14, whiteSpace: "pre-line" }}>{c.story}</p>
+      </div>
+    ),
+  });
+  slides.push({
+    key: "thanks", bg: bg(5),
+    node: (
+      <div style={{ position: "absolute", left: 32, right: 32, bottom: 74, textAlign: "center", color: "#fff" }}>
+        <div style={{ fontFamily: cm, fontSize: 30, fontWeight: 600 }}>Cảm ơn bạn rất nhiều</div>
+        <p style={{ fontSize: 13.5, opacity: 0.9, lineHeight: 1.7, margin: "10px 0 18px" }}>Sự hiện diện của bạn là món quà quý giá nhất trong ngày trọng đại của chúng mình.</p>
+        <div style={{ fontFamily: sc, fontSize: 30, color: accent }}>{groom} &amp; {bride}</div>
+      </div>
+    ),
+  });
+
+  const N = slides.length;
+  const [i, setI] = useState(0);
+  const [prog, setProg] = useState(0);
+  const [landing, setLanding] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const stop = useCallback(() => { if (rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current = null; }, []);
+
+  const go = useCallback((next: number) => {
+    setI(((next % N) + N) % N); setProg(0);
+  }, [N]);
+
+  useEffect(() => {
+    if (landing) { stop(); return; }
+    const dur = 5200, t0 = performance.now();
+    const step = (n: number) => {
+      const p = Math.min(1, (n - t0) / dur);
+      setProg(p);
+      if (p >= 1) { setI((cur) => ((cur + 1) % N)); return; }
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => stop();
+  }, [i, landing, N, stop]);
 
   return (
-    <main style={wrap} className="min-h-screen overflow-x-hidden">
-      {/* Cover */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
-        {c.cover_url && (<>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
-          <div className="absolute inset-0" style={{ background: "radial-gradient(60% 60% at 50% 45%, rgba(13,10,11,.25), rgba(13,10,11,.9))" }} />
-        </>)}
-        <Reveal anim="zoom" className="relative z-10">
-          <p className="mb-5 text-[11px] uppercase tracking-[0.5em]" style={{ color: accent }}>The Wedding</p>
-          <h1 className="font-serif leading-none" style={{ fontSize: "clamp(46px,11vw,92px)" }}>{groom}</h1>
-          <p className="my-2 font-serif text-3xl italic" style={{ color: accent }}>&amp;</p>
-          <h1 className="font-serif leading-none" style={{ fontSize: "clamp(46px,11vw,92px)" }}>{bride}</h1>
-          {c.wedding_date && <p className="mt-6 text-sm uppercase tracking-[0.35em]" style={{ color: PAL.muted }}>{fmtDate(c.wedding_date)}</p>}
-          {c.cover_quote && <p className="mx-auto mt-4 max-w-md text-sm italic" style={{ color: PAL.muted }}>“{c.cover_quote}”</p>}
-        </Reveal>
-      </section>
+    <div style={{ width: "100%", maxWidth: 430, height: "100dvh", maxHeight: 820, margin: "0 auto", position: "relative", overflow: "hidden", background: "#000", fontFamily: "var(--font-manrope), sans-serif", color: "#fff" }}>
+      <style>{`@keyframes sskb{0%{transform:scale(1.02)}100%{transform:scale(1.16)}}@keyframes sshint{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
 
-      {c.wedding_date && (
-        <Reveal anim="up"><section className="px-6 py-16 text-center">
-          <p className="text-xs uppercase tracking-[0.4em]" style={{ color: accent }}>Đếm ngược</p>
-          <div className="mt-7"><Countdown date={c.wedding_date} /></div>
-        </section></Reveal>
-      )}
-
-      {/* Story gallery — the hero of this template */}
-      {gallery.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          <Reveal anim="up">{title("Câu chuyện của chúng tôi")}
-          <p className="mt-2 text-sm" style={{ color: PAL.muted }}>Chạm hai bên để xem tiếp ⟵ ⟶</p></Reveal>
-          <Reveal anim="zoom" className="mt-8"><StoryGallery images={gallery} /></Reveal>
-        </section>
-      )}
-
-      {c.story && (
-        <section className="mx-auto max-w-2xl px-6 py-12 text-center">
-          <Reveal anim="up"><Heart className="mx-auto mb-3" style={{ color: accent }} />
-          <p className="whitespace-pre-line text-lg leading-loose" style={{ color: PAL.muted }}>{c.story}</p></Reveal>
-        </section>
-      )}
-
-      {events.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          <Reveal anim="up">{title("Sự kiện cưới")}</Reveal>
-          <div className="mt-9 grid gap-6 sm:grid-cols-2">
-            {events.map((e, i) => (
-              <Reveal key={i} anim="up" delay={i * 80}>
-                <div className="rounded-2xl p-6 text-center" style={{ background: PAL.surface, border: `1px solid ${PAL.border}` }}>
-                  <p className="font-serif text-2xl" style={{ color: accent }}>{e.label || "Sự kiện"}</p>
-                  {(e.date || e.time) && <p className="mt-2 flex items-center justify-center gap-2 text-sm"><Calendar size={14} /> {fmtDate(e.date)} {e.time && (<><Clock size={14} /> {e.time}</>)}</p>}
-                  {e.venue && <p className="mt-2 font-medium">{e.venue}</p>}
-                  {e.address && <p className="text-sm" style={{ color: PAL.muted }}>{e.address}</p>}
-                  {e.map_url && <a href={e.map_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs" style={{ color: accent }}><MapPin size={12} /> Bản đồ</a>}
-                </div>
-              </Reveal>
-            ))}
+      {/* progress bars */}
+      <div style={{ position: "absolute", top: 14, left: 16, right: 16, display: "flex", gap: 5, zIndex: 30 }}>
+        {slides.map((_, k) => (
+          <div key={k} style={{ flex: 1, height: 3, borderRadius: 3, background: "rgba(255,255,255,.35)", overflow: "hidden" }}>
+            <div style={{ height: "100%", background: "#fff", borderRadius: 3, width: k < i ? "100%" : k === i ? `${Math.round(prog * 100)}%` : "0%" }} />
           </div>
-        </section>
-      )}
+        ))}
+      </div>
 
-      {hasGift && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          {title("Hộp mừng cưới")}
-          {c.gift_note && <p className="mx-auto mt-3 max-w-md text-sm italic" style={{ color: PAL.muted }}>{c.gift_note}</p>}
-          <div className="mt-7 flex flex-wrap justify-center gap-5">
-            <GiftCard title="chú rể" bank={c.groom_bank} defaultName={groom} pal={{ ...PAL, accent }} round={16} />
-            <GiftCard title="cô dâu" bank={c.bride_bank} defaultName={bride} pal={{ ...PAL, accent }} round={16} />
+      {/* slides */}
+      {slides.map((s, k) => (
+        <div key={s.key} style={{ position: "absolute", inset: 0, opacity: k === i ? 1 : 0, transition: "opacity .7s ease", pointerEvents: k === i ? "auto" : "none" }}>
+          {s.bg && <div style={{ position: "absolute", inset: 0, backgroundImage: `url('${s.bg}')`, backgroundSize: "cover", backgroundPosition: "50% 38%", animation: "sskb 10s ease-in-out infinite alternate" }} />}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(8,5,6,.82),rgba(8,5,6,.12) 45%,rgba(8,5,6,.45))" }} />
+          {k === 0 && <div style={{ position: "absolute", top: 70, left: 0, right: 0, textAlign: "center", color: "#f2e3d3", fontSize: 12, letterSpacing: ".5em", textTransform: "uppercase", fontWeight: 600 }}>Save the date</div>}
+          {s.node}
+          {k === 0 && <div style={{ position: "absolute", bottom: 92, left: 0, right: 0, textAlign: "center", color: "#fff", fontSize: 12, letterSpacing: ".14em", animation: "sshint 1.8s ease-in-out infinite" }}>Chạm để xem tiếp →</div>}
+        </div>
+      ))}
+
+      {/* tap zones */}
+      <button aria-label="prev" onClick={() => go(i - 1)} style={{ position: "absolute", top: 56, bottom: 96, left: 0, width: "34%", border: "none", background: "transparent", cursor: "pointer", zIndex: 25 }} />
+      <button aria-label="next" onClick={() => go(i + 1)} style={{ position: "absolute", top: 56, bottom: 96, right: 0, width: "66%", border: "none", background: "transparent", cursor: "pointer", zIndex: 25 }} />
+
+      {/* JOIN */}
+      <button onClick={() => setLanding(true)} style={{ position: "absolute", left: "50%", bottom: 26, transform: "translateX(-50%)", zIndex: 40, border: "none", cursor: "pointer", background: accent, color: "#1a1014", fontWeight: 800, fontSize: 14, letterSpacing: ".14em", textTransform: "uppercase", padding: "15px 34px", borderRadius: 999, boxShadow: "0 12px 30px rgba(0,0,0,.4)" }}>Tham gia ♥</button>
+
+      {/* LANDING */}
+      {landing && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#14100f", overflowY: "auto" }}>
+          <div style={{ position: "relative", height: 260, overflow: "hidden" }}>
+            {(c.cover_url || bg(0)) && <div style={{ position: "absolute", inset: 0, backgroundImage: `url('${c.cover_url || bg(0)}')`, backgroundSize: "cover", backgroundPosition: "50% 40%", animation: "sskb 12s ease-in-out infinite alternate" }} />}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,#14100f,rgba(20,16,15,.2) 55%,rgba(20,16,15,.5))" }} />
+            <button onClick={() => setLanding(false)} style={{ position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: 999, border: "none", background: "rgba(0,0,0,.45)", color: "#fff", fontSize: 16, cursor: "pointer", zIndex: 2 }}>✕</button>
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 22, textAlign: "center", color: "#fff" }}>
+              <div style={{ fontSize: 11, letterSpacing: ".4em", textTransform: "uppercase", color: accent, fontWeight: 700 }}>Bạn được mời</div>
+              <div style={{ fontFamily: cm, fontSize: 52, fontWeight: 600, lineHeight: 0.95, marginTop: 4 }}>{groom} &amp; {bride}</div>
+              {c.wedding_date && <div style={{ fontSize: 12.5, letterSpacing: ".2em", textTransform: "uppercase", marginTop: 8 }}>{fmtShort(c.wedding_date)}</div>}
+            </div>
           </div>
-        </section></Reveal>
-      )}
 
-      {c.rsvp_enabled !== false && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-16 text-center">
-          {title("Xác nhận tham dự")}
-          <p className="mx-auto mb-7 mt-3 max-w-md text-sm" style={{ color: PAL.muted }}>Sự hiện diện của bạn là niềm vinh hạnh của chúng tôi.</p>
-          <RsvpForm slug={inv.slug} note={c.rsvp_note} />
-        </section></Reveal>
-      )}
+          <div style={{ padding: "24px 24px 40px", color: "#f0e6e2" }}>
+            {c.rsvp_enabled !== false && (
+              <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 18, padding: 20 }}>
+                <div style={{ fontFamily: cm, fontSize: 26, fontWeight: 600, textAlign: "center", color: "#fff" }}>Xác nhận tham dự</div>
+                <p style={{ fontSize: 12.5, color: "#b09aa0", textAlign: "center", margin: "6px 0 16px" }}>Cho chúng mình biết bạn có thể đến nhé!</p>
+                <RsvpForm slug={inv.slug} note={c.rsvp_note} />
+              </div>
+            )}
 
-      {c.guestbook_enabled !== false && wishes.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          <Reveal anim="up">{title("Sổ lưu bút")}</Reveal>
-          <div className="mt-8 columns-1 gap-4 sm:columns-2 [&>*]:mb-4">
-            {wishes.map((w, i) => (
-              <Reveal key={i} anim="up" delay={(i % 4) * 60}>
-                <div className="break-inside-avoid rounded-2xl p-4 text-left" style={{ background: PAL.surface, border: `1px solid ${PAL.border}` }}>
-                  <Quote size={15} style={{ color: accent }} /><p className="mt-1 text-sm leading-relaxed">{w.wish}</p>
-                  <p className="mt-2 text-xs font-medium" style={{ color: accent }}>— {w.guest_name}</p>
-                </div>
-              </Reveal>
-            ))}
+            {events.length > 0 && (
+              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                {events.map((e, k) => (
+                  <div key={k} style={{ display: "flex", gap: 14, alignItems: "center", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14, padding: "14px 16px" }}>
+                    <div style={{ flex: "0 0 auto", fontFamily: cm, fontSize: 22, fontWeight: 600, color: accent, width: 64 }}>{e.time || ""}</div>
+                    <div><div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{e.label}</div><div style={{ fontSize: 12, color: "#b09aa0" }}>{[e.venue, e.address].filter(Boolean).join(", ")}</div></div>
+                  </div>
+                ))}
+                {events.find((e) => e.map_url) && <a href={events.find((e) => e.map_url)!.map_url} target="_blank" rel="noreferrer" style={{ textAlign: "center", textDecoration: "none", fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#1a1014", background: accent, borderRadius: 12, padding: 13 }}>Chỉ đường tới địa điểm</a>}
+              </div>
+            )}
+
+            {hasGift && (
+              <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+                {[{ b: c.groom_bank, who: "Chú rể" }, { b: c.bride_bank, who: "Cô dâu" }].filter((x) => x.b?.account).map((x, k) => (
+                  <div key={k} style={{ flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14, padding: 14, fontSize: 12, color: "#f0e6e2", textAlign: "center" }}>
+                    {vietqrUrl(x.b) && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={vietqrUrl(x.b)!} alt="" width={110} height={110} style={{ width: "100%", maxWidth: 110, height: "auto", borderRadius: 8, background: "#fff", margin: "0 auto 6px" }} />
+                    )}
+                    {x.who} · {x.b?.name}<br /><b style={{ fontSize: 14 }}>{x.b?.account?.replace(/\s/g, "")}</b>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {c.guestbook_enabled !== false && wishes.length > 0 && (
+              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                {wishes.slice(0, 20).map((w, k) => (
+                  <div key={k} style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12, padding: "12px 14px" }}>
+                    <p style={{ fontSize: 13, lineHeight: 1.5, margin: "0 0 4px" }}>{w.wish}</p>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: accent }}>— {w.guest_name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ fontFamily: sc, textAlign: "center", fontSize: 30, color: accent, marginTop: 22 }}>Cảm ơn bạn ❤</div>
           </div>
-        </section>
+        </div>
       )}
-
-      <footer className="px-6 py-16 text-center">
-        <p className="font-serif text-4xl" style={{ color: accent }}>{groom} &amp; {bride}</p>
-        <p className="mt-3 text-xs" style={{ color: PAL.muted }}>Thiệp cưới online</p>
-      </footer>
 
       {c.music_url && <MusicPlayer url={c.music_url} autoplay={c.music_autoplay} />}
-    </main>
+    </div>
   );
 }

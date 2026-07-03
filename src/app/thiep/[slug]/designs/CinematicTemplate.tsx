@@ -1,132 +1,167 @@
 import type { CSSProperties } from "react";
-import { MapPin, Calendar, Clock, Quote, Heart } from "lucide-react";
-import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
 
-// Cinematic: nền tối điện ảnh, tên cô dâu chú rể viết tay (script) + vàng gold,
-// ảnh bìa phủ gradient sâu, Ken Burns.
-const PAL = { bg: "#171013", surface: "rgba(255,255,255,0.045)", text: "#f4e9df", muted: "rgba(244,233,223,0.62)", border: "rgba(230,195,156,0.28)", accent: "#d0687a", gold: "#e6c39c" };
+// Cinematic — cột 430px, tông kem sang trọng, cánh hoa rơi, ảnh bìa Ken Burns +
+// light-leak, tên Cormorant lớn, chữ viết tay Dancing Script. Port từ mẫu studio.
+const PAL = { bg: "#f7efe9", panel: "#fffdfb", ink: "#4a3a3e", muted: "#9c8488", line: "#ecdcd6", accent: "#c98a92", accentDeep: "#b06e78", soft: "#f6e7e3", gold: "#e8c9a8" };
 
 export default function CinematicTemplate({ inv, wishes }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
-  const accent = c.accent || PAL.gold;
-  const wrap: CSSProperties & Record<string, string> = {
-    "--wed-accent": accent, background: PAL.bg, color: PAL.text, fontFamily: "var(--font-cormorant)",
-  };
-  const rule = <div className="mx-auto my-6 flex items-center justify-center gap-3"><span className="h-px w-14" style={{ background: PAL.gold }} /><Heart size={13} style={{ color: PAL.accent }} /><span className="h-px w-14" style={{ background: PAL.gold }} /></div>;
-  const title = (t: string) => <h2 className="font-serif text-4xl" style={{ color: PAL.gold }}>{t}</h2>;
+  const accent = c.accent || PAL.accent;
+  const cm = "var(--font-cormorant), serif";
+  const sc = "var(--font-script), cursive";
+  const wrap: CSSProperties = { background: PAL.bg, color: PAL.ink, width: "100%", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden", fontFamily: "var(--font-manrope), sans-serif" };
+  const petal = (left: string, size: number, dur: number, delay: number, deep = false) =>
+    <div style={{ position: "absolute", left, top: 0, width: size, height: size, background: deep ? PAL.accentDeep : accent, opacity: 0.45, borderRadius: "0 12px 0 12px", animation: `cnfall ${dur}s linear ${delay}s infinite` }} />;
 
   return (
-    <main style={wrap} className="min-h-screen overflow-x-hidden">
-      <style>{`@keyframes cnKen{from{transform:scale(1.02)}to{transform:scale(1.16)}}`}</style>
+    <main style={wrap}>
+      <style>{`
+        @keyframes cnfall{0%{transform:translateY(-40px) rotate(0);opacity:0}10%{opacity:.9}100%{transform:translateY(2500px) rotate(520deg);opacity:.15}}
+        @keyframes cnkb{0%{transform:scale(1)}100%{transform:scale(1.14)}}
+        @keyframes cnfloaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+        @keyframes cnshine{0%{transform:translateX(-160%) skewX(-16deg)}55%{transform:translateX(220%) skewX(-16deg)}100%{transform:translateX(220%) skewX(-16deg)}}
+        @keyframes cnleak{0%,100%{transform:translate(-6%,-4%) scale(1);opacity:.4}50%{transform:translate(10%,6%) scale(1.25);opacity:.8}}
+      `}</style>
 
-      {/* Cover */}
-      <section className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden px-6 pb-24 pt-20 text-center">
-        {c.cover_url && (<>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ animation: "cnKen 16s ease-out forwards" }} />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(23,16,19,.35) 0%,rgba(23,16,19,.2) 40%,rgba(23,16,19,.95) 100%)" }} />
-        </>)}
-        <Reveal anim="up" className="relative z-10">
-          <p className="mb-4 text-[11px] uppercase tracking-[0.5em]" style={{ color: PAL.gold }}>Save the date</p>
-          <h1 style={{ fontFamily: "var(--font-script)", color: "#fff", fontSize: "clamp(52px,13vw,110px)", lineHeight: 1 }}>{groom}</h1>
-          <p className="my-1 text-2xl" style={{ fontFamily: "var(--font-script)", color: PAL.accent }}>&amp;</p>
-          <h1 style={{ fontFamily: "var(--font-script)", color: "#fff", fontSize: "clamp(52px,13vw,110px)", lineHeight: 1 }}>{bride}</h1>
-          {c.wedding_date && <p className="mt-6 text-sm uppercase tracking-[0.35em]" style={{ color: PAL.text }}>{fmtDate(c.wedding_date)}</p>}
-          {c.cover_quote && <p className="mx-auto mt-4 max-w-md text-sm italic" style={{ color: PAL.muted }}>“{c.cover_quote}”</p>}
-        </Reveal>
+      {/* petals */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 6 }}>
+        {petal("6%", 14, 13, -1)}{petal("22%", 10, 16, -4, true)}{petal("38%", 16, 11, -7)}
+        {petal("54%", 9, 18, -2, true)}{petal("70%", 13, 14, -9)}{petal("84%", 11, 15, -5, true)}{petal("92%", 15, 12, -11)}
+      </div>
+
+      {/* COVER */}
+      <section style={{ position: "relative", height: 648, overflow: "hidden" }}>
+        {c.cover_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.cover_url} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 32%", animation: "cnkb 16s ease-in-out infinite alternate" }} />
+        )}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(10,6,8,.82) 3%,rgba(10,6,8,.12) 42%,rgba(10,6,8,.4))" }} />
+        <div style={{ position: "absolute", top: "-20%", left: "-10%", width: "60%", height: "60%", background: "radial-gradient(circle,rgba(255,225,180,.55),transparent 65%)", mixBlendMode: "screen", filter: "blur(20px)", pointerEvents: "none", animation: "cnleak 9s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}><div style={{ position: "absolute", top: 0, left: 0, width: "38%", height: "100%", background: "linear-gradient(105deg,transparent,rgba(255,255,255,.4),transparent)", animation: "cnshine 8s ease-in-out 2s infinite" }} /></div>
+        <div style={{ position: "absolute", top: 40, left: 0, right: 0, textAlign: "center", color: "#f2e3d3" }}>
+          <div style={{ fontSize: 12, letterSpacing: ".5em", textTransform: "uppercase", fontWeight: 600 }}>Save the date</div>
+        </div>
+        <div style={{ position: "absolute", left: 34, right: 34, bottom: 52, textAlign: "center", color: "#fff" }}>
+          <div style={{ fontFamily: sc, fontSize: 34, color: PAL.gold, lineHeight: 1 }}>{c.cover_quote || "Trân trọng kính mời"}</div>
+          <div style={{ fontFamily: cm, fontSize: 72, fontWeight: 500, lineHeight: 0.92, margin: "8px 0 4px" }}>{groom} <span style={{ fontStyle: "italic", color: PAL.gold }}>&amp;</span> {bride}</div>
+          <div style={{ width: 54, height: 1, background: PAL.gold, margin: "18px auto" }} />
+          {c.wedding_date && <div style={{ fontSize: 14, letterSpacing: ".24em", textTransform: "uppercase" }}>{fmtShort(c.wedding_date)}</div>}
+        </div>
       </section>
 
+      {/* LỜI NGỎ */}
+      <section style={{ textAlign: "center", padding: "52px 40px 8px", position: "relative", zIndex: 2 }}>
+        <div style={{ fontSize: 26, color: accent, animation: "cnfloaty 5s ease-in-out infinite" }}>❀</div>
+        <p style={{ fontFamily: cm, fontSize: 26, fontStyle: "italic", lineHeight: 1.6, color: PAL.ink, margin: "18px 0 0" }}>“Yêu nhau không phải là nhìn nhau, mà là cùng nhìn về một hướng.”</p>
+        <p style={{ fontSize: 13.5, color: PAL.muted, lineHeight: 1.8, marginTop: 18 }}>Chúng mình sắp về chung một nhà. Trân trọng kính mời bạn đến chung vui và chứng kiến khoảnh khắc thiêng liêng của đời chúng mình.</p>
+      </section>
+
+      {/* COUNTDOWN */}
       {c.wedding_date && (
-        <Reveal anim="up"><section className="px-6 py-16 text-center">
-          <p className="text-xs uppercase tracking-[0.4em]" style={{ color: PAL.gold }}>Đếm ngược</p>
-          <div className="mt-7"><Countdown date={c.wedding_date} /></div>
-        </section></Reveal>
-      )}
-
-      {c.story && (
-        <section className="mx-auto max-w-2xl px-6 py-14 text-center">
-          <Reveal anim="up">{rule}{title("Chuyện tình yêu")}
-          <p className="mt-6 whitespace-pre-line text-lg leading-loose" style={{ color: PAL.muted }}>{c.story}</p></Reveal>
+        <section style={{ padding: "40px 34px", textAlign: "center", position: "relative", zIndex: 2 }}>
+          <div style={{ fontSize: 12, letterSpacing: ".32em", textTransform: "uppercase", color: PAL.accentDeep, fontWeight: 700, marginBottom: 20 }}>Đếm ngược đến ngày chung đôi</div>
+          <Countdown date={c.wedding_date} />
         </section>
       )}
 
+      {/* SỰ KIỆN */}
       {events.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          <Reveal anim="up">{title("Sự kiện cưới")}</Reveal>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+        <section style={{ padding: "20px 34px 40px", position: "relative", zIndex: 2 }}>
+          <div style={{ textAlign: "center", marginBottom: 22 }}>
+            <div style={{ fontFamily: cm, fontSize: 38, fontWeight: 600 }}>Sự kiện cưới</div>
+            <div style={{ fontSize: 12.5, color: PAL.muted, letterSpacing: ".14em", textTransform: "uppercase", marginTop: 4 }}>Kính mời quý khách</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {events.map((e, i) => (
-              <Reveal key={i} anim="up" delay={i * 90}>
-                <div className="rounded-2xl p-7 text-center" style={{ background: PAL.surface, border: `1px solid ${PAL.border}` }}>
-                  <p className="text-2xl" style={{ fontFamily: "var(--font-script)", color: PAL.gold }}>{e.label || "Sự kiện"}</p>
-                  <div className="mx-auto my-3 h-px w-10" style={{ background: PAL.gold }} />
-                  {(e.date || e.time) && <p className="flex items-center justify-center gap-2 text-sm"><Calendar size={14} /> {fmtDate(e.date)} {e.time && (<><Clock size={14} /> {e.time}</>)}</p>}
-                  {e.venue && <p className="mt-2 font-medium">{e.venue}</p>}
-                  {e.address && <p className="text-sm" style={{ color: PAL.muted }}>{e.address}</p>}
-                  {e.map_url && <a href={e.map_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs" style={{ color: PAL.gold }}><MapPin size={12} /> Bản đồ</a>}
-                </div>
-              </Reveal>
+              <div key={i} style={{ background: PAL.panel, border: `1px solid ${PAL.line}`, borderRadius: 18, padding: "20px 22px", textAlign: "center" }}>
+                <div style={{ fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", color: PAL.accentDeep, fontWeight: 700 }}>{e.label || "Sự kiện"}</div>
+                <div style={{ fontFamily: cm, fontSize: 26, fontWeight: 600, margin: "8px 0 4px" }}>{[e.time, fmtShort(e.date)].filter(Boolean).join(" · ")}</div>
+                {(e.venue || e.address) && <div style={{ fontSize: 13.5, color: PAL.muted, lineHeight: 1.5 }}>{[e.venue, e.address].filter(Boolean).join(" — ")}</div>}
+                {e.map_url && <a href={e.map_url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 14, fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#fff", background: accent, borderRadius: 999, padding: "10px 20px", textDecoration: "none" }}>Xem bản đồ</a>}
+              </div>
             ))}
           </div>
         </section>
       )}
 
+      {/* ALBUM */}
       {gallery.length > 0 && (
-        <section className="mx-auto max-w-5xl px-6 py-14 text-center">
-          <Reveal anim="up">{title("Khoảnh khắc")}</Reveal>
-          <div className="mt-9 columns-2 gap-3 sm:columns-3 [&>*]:mb-3">
+        <section style={{ padding: "20px 0 40px", position: "relative", zIndex: 2 }}>
+          <div style={{ textAlign: "center", marginBottom: 20, padding: "0 34px" }}><div style={{ fontFamily: cm, fontSize: 38, fontWeight: 600 }}>Album của chúng mình</div></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: "0 12px" }}>
             {gallery.map((src, i) => (
-              <Reveal key={i} anim="zoom" delay={(i % 3) * 80}>
+              <div key={i} style={{ position: "relative", aspectRatio: i % 5 === 2 ? "16/10" : "3/4", gridColumn: i % 5 === 2 ? "span 2" : undefined, borderRadius: 10, overflow: "hidden" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" className="w-full rounded-lg object-cover" style={{ border: `1px solid ${PAL.border}` }} loading="lazy" />
-              </Reveal>
+                <img src={src} alt="" loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
             ))}
           </div>
         </section>
       )}
 
+      {/* CÂU CHUYỆN */}
+      {c.story && (
+        <section style={{ padding: "16px 34px 40px", position: "relative", zIndex: 2 }}>
+          <div style={{ textAlign: "center", marginBottom: 20 }}><div style={{ fontFamily: sc, fontSize: 34, color: PAL.accentDeep }}>Chuyện của chúng mình</div></div>
+          <p style={{ fontSize: 14, color: PAL.ink, lineHeight: 1.8, whiteSpace: "pre-line", textAlign: "center" }}>{c.story}</p>
+        </section>
+      )}
+
+      {/* MỪNG CƯỚI */}
       {hasGift && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          {title("Hộp mừng cưới")}
-          {c.gift_note && <p className="mx-auto mt-3 max-w-md text-sm italic" style={{ color: PAL.muted }}>{c.gift_note}</p>}
-          <div className="mt-7 flex flex-wrap justify-center gap-5">
-            <GiftCard title="chú rể" bank={c.groom_bank} defaultName={groom} pal={{ ...PAL, accent: PAL.gold }} round={16} />
-            <GiftCard title="cô dâu" bank={c.bride_bank} defaultName={bride} pal={{ ...PAL, accent: PAL.gold }} round={16} />
+        <section style={{ padding: "16px 34px 40px", position: "relative", zIndex: 2 }}>
+          <div style={{ textAlign: "center", marginBottom: 18 }}>
+            <div style={{ fontFamily: cm, fontSize: 34, fontWeight: 600 }}>Hộp mừng cưới</div>
+            <div style={{ fontSize: 12.5, color: PAL.muted, marginTop: 2 }}>{c.gift_note || "Gửi yêu thương đến cô dâu & chú rể"}</div>
           </div>
-        </section></Reveal>
-      )}
-
-      {c.rsvp_enabled !== false && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-16 text-center">
-          {rule}{title("Xác nhận tham dự")}
-          <p className="mx-auto mb-7 mt-3 max-w-md text-sm" style={{ color: PAL.muted }}>Hân hạnh được đón tiếp bạn trong ngày trọng đại.</p>
-          <RsvpForm slug={inv.slug} note={c.rsvp_note} />
-        </section></Reveal>
-      )}
-
-      {c.guestbook_enabled !== false && wishes.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-14 text-center">
-          <Reveal anim="up">{title("Sổ lưu bút")}</Reveal>
-          <div className="mt-8 columns-1 gap-4 sm:columns-2 [&>*]:mb-4">
-            {wishes.map((w, i) => (
-              <Reveal key={i} anim="up" delay={(i % 4) * 60}>
-                <div className="break-inside-avoid rounded-2xl p-4 text-left" style={{ background: PAL.surface, border: `1px solid ${PAL.border}` }}>
-                  <Quote size={15} style={{ color: PAL.gold }} /><p className="mt-1 text-sm leading-relaxed">{w.wish}</p>
-                  <p className="mt-2 text-xs font-medium" style={{ color: PAL.gold }}>— {w.guest_name}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[{ b: c.groom_bank, who: `Chú rể · ${groom}` }, { b: c.bride_bank, who: `Cô dâu · ${bride}` }].filter((x) => vietqrUrl(x.b) || x.b?.account).map((x, i) => (
+              <div key={i} style={{ background: PAL.panel, border: `1px solid ${PAL.line}`, borderRadius: 16, padding: "18px 20px", display: "flex", gap: 14, alignItems: "center" }}>
+                {vietqrUrl(x.b) && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={vietqrUrl(x.b)!} alt="" width={72} height={72} style={{ width: 72, height: 72, borderRadius: 10, background: "#fff", flex: "0 0 auto" }} />
+                )}
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontSize: 12, letterSpacing: ".16em", textTransform: "uppercase", color: PAL.accentDeep, fontWeight: 700 }}>{x.who}</div>
+                  <div style={{ fontSize: 14, color: PAL.ink, marginTop: 6 }}>{x.b?.name ? `${x.b.name} — ` : ""}<b>{x.b?.account?.replace(/\s/g, "")}</b></div>
                 </div>
-              </Reveal>
+              </div>
             ))}
           </div>
         </section>
       )}
 
-      <footer className="px-6 py-16 text-center">
-        {rule}<p style={{ fontFamily: "var(--font-script)", color: PAL.gold, fontSize: 44 }}>{groom} &amp; {bride}</p>
-        <p className="mt-3 text-xs" style={{ color: PAL.muted }}>Thiệp cưới online</p>
-      </footer>
+      {/* SỔ LƯU BÚT */}
+      {c.guestbook_enabled !== false && wishes.length > 0 && (
+        <section style={{ padding: "16px 34px 40px", position: "relative", zIndex: 2 }}>
+          <div style={{ textAlign: "center", marginBottom: 16 }}><div style={{ fontFamily: cm, fontSize: 32, fontWeight: 600 }}>Sổ lưu bút</div></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {wishes.map((w, i) => (
+              <div key={i} style={{ background: PAL.soft, border: `1px solid ${PAL.line}`, borderRadius: 14, padding: "13px 16px" }}>
+                <p style={{ fontSize: 13.5, lineHeight: 1.55, margin: "0 0 6px" }}>{w.wish}</p>
+                <div style={{ fontSize: 12, fontWeight: 700, color: PAL.accentDeep }}>— {w.guest_name}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* RSVP + FOOTER */}
+      <section style={{ padding: "26px 34px 40px", textAlign: "center", background: PAL.soft, position: "relative", zIndex: 2, borderTop: `1px solid ${PAL.line}` }}>
+        {c.rsvp_enabled !== false && (<>
+          <div style={{ fontFamily: cm, fontSize: 30, fontWeight: 600, marginBottom: 8 }}>Bạn sẽ đến chứ?</div>
+          <RsvpForm slug={inv.slug} note={c.rsvp_note} />
+        </>)}
+        <div style={{ marginTop: 34 }}>
+          <div style={{ fontFamily: cm, fontSize: 26, fontWeight: 600 }}>{groom} <span style={{ color: accent, fontStyle: "italic" }}>&amp;</span> {bride}</div>
+          <div style={{ fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: PAL.muted, marginTop: 6 }}>Cảm ơn vì đã là một phần trong ngày của chúng mình</div>
+          <div style={{ fontSize: 10.5, color: PAL.muted, marginTop: 16, opacity: 0.7 }}>Thiệp cưới online · tạo bởi Mstudo</div>
+        </div>
+      </section>
 
       {c.music_url && <MusicPlayer url={c.music_url} autoplay={c.music_autoplay} />}
     </main>

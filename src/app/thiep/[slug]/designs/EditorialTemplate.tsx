@@ -1,142 +1,165 @@
 import type { CSSProperties } from "react";
-import { MapPin, Quote } from "lucide-react";
-import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, fmtShort, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
 
-// Editorial: tạp chí, nền sáng, cam đất, số mục lớn, băng ảnh tự trôi (marquee).
-const PAL = { bg: "#f4f1ec", surface: "#ffffff", text: "#241f21", muted: "#8f867f", border: "#e4ddd3", accent: "#b5624f" };
-
-function Idx({ n, accent }: { n: string; accent: string }) {
-  return <span className="block font-serif text-5xl leading-none sm:text-6xl" style={{ color: accent, opacity: 0.25 }}>{n}</span>;
-}
+// Editorial — tạp chí sáng, tông đất terracotta, tít Cormorant khổ lớn, băng ảnh
+// tự trôi. Port từ mẫu studio (thiep-1c).
+const PAL = { bg: "#f4f1ec", panel: "#fff", ink: "#241f21", muted: "#8f867f", line: "#e4ddd3", accent: "#b5624f", accentSoft: "#efe3dc" };
 
 export default function EditorialTemplate({ inv, wishes }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
-  const wrap: CSSProperties & Record<string, string> = {
-    "--wed-accent": accent, background: PAL.bg, color: PAL.text, fontFamily: c.font === "sans" ? "var(--font-hanken)" : "var(--font-cormorant)",
-  };
-  // Duplicate the gallery so the marquee scrolls seamlessly.
-  const strip = gallery.length ? [...gallery, ...gallery] : [];
+  const cm = "var(--font-cormorant), serif";
+  const wrap: CSSProperties = { background: PAL.bg, color: PAL.ink, width: "100%", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden", fontFamily: "var(--font-manrope), sans-serif" };
+  const kicker: CSSProperties = { fontSize: 11, letterSpacing: ".34em", textTransform: "uppercase", fontWeight: 800, color: accent };
+  const dm = c.wedding_date ? new Date(c.wedding_date) : null;
+  const strip = gallery.length ? [...gallery, ...gallery].slice(0, Math.max(8, gallery.length * 2)) : [];
 
   return (
-    <main style={wrap} className="min-h-screen overflow-x-hidden">
-      <style>{`@keyframes edMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-        .ed-track{display:flex;gap:14px;width:max-content;animation:edMarquee 40s linear infinite}
-        .ed-track:hover{animation-play-state:paused}`}</style>
+    <main style={wrap}>
+      <style>{`
+        @keyframes edzoom{0%{transform:scale(1)}100%{transform:scale(1.12)}}
+        @keyframes edmarq{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+      `}</style>
 
-      {/* Cover — editorial masthead */}
-      <section className="mx-auto max-w-4xl px-6 pb-6 pt-14 text-center">
-        <Reveal anim="up">
-          <p className="text-[11px] uppercase tracking-[0.5em]" style={{ color: accent }}>The Wedding Journal</p>
-          <div className="my-6 h-px w-full" style={{ background: PAL.border }} />
-          <h1 className="font-serif leading-[0.95]" style={{ fontSize: "clamp(44px,9vw,88px)" }}>{groom}</h1>
-          <p className="my-1 font-serif text-3xl italic" style={{ color: accent }}>and</p>
-          <h1 className="font-serif leading-[0.95]" style={{ fontSize: "clamp(44px,9vw,88px)" }}>{bride}</h1>
-          <div className="mx-auto my-6 h-px w-full" style={{ background: PAL.border }} />
-          {c.wedding_date && <p className="text-sm uppercase tracking-[0.3em]" style={{ color: PAL.muted }}>{fmtDate(c.wedding_date)}</p>}
-        </Reveal>
+      {/* MASTHEAD */}
+      <section style={{ padding: "46px 34px 26px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={kicker}>The wedding of</span>
+          <span style={{ ...kicker, color: PAL.muted }}>Est. {dm ? dm.getFullYear() : "2026"}</span>
+        </div>
+        <div style={{ fontFamily: cm, fontSize: 84, fontWeight: 600, lineHeight: 0.86, margin: "18px 0 0", letterSpacing: "-.01em" }}>{groom}<br /><span style={{ fontStyle: "italic", color: accent }}>&amp;</span> {bride}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 22 }}>
+          <span style={{ flex: "0 0 auto", width: 44, height: 2, background: accent }} />
+          <span style={{ fontSize: 13, letterSpacing: ".2em", textTransform: "uppercase", color: PAL.ink, fontWeight: 600 }}>{c.wedding_date ? fmtShort(c.wedding_date) : ""}</span>
+        </div>
       </section>
+
+      {/* FULL-BLEED 01 */}
       {c.cover_url && (
-        <Reveal anim="zoom"><div className="mx-auto max-w-5xl px-6">
+        <section style={{ position: "relative", height: 440, overflow: "hidden" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.cover_url} alt="" className="h-[52vh] w-full rounded-sm object-cover sm:h-[70vh]" />
-          {c.cover_quote && <p className="mt-3 text-center text-sm italic" style={{ color: PAL.muted }}>“{c.cover_quote}”</p>}
-        </div></Reveal>
-      )}
-
-      {c.wedding_date && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-16">
-          <Idx n="01" accent={accent} /><h2 className="-mt-4 font-serif text-3xl">Đếm ngược</h2>
-          <div className="mt-6"><Countdown date={c.wedding_date} /></div>
-        </section></Reveal>
-      )}
-
-      {c.story && (
-        <section className="mx-auto max-w-3xl px-6 py-16">
-          <Reveal anim="up"><Idx n="02" accent={accent} /><h2 className="-mt-4 font-serif text-3xl">Chuyện tình yêu</h2>
-          <p className="mt-6 max-w-2xl whitespace-pre-line text-lg leading-relaxed" style={{ color: PAL.muted }}>{c.story}</p></Reveal>
+          <img src={c.cover_url} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 42%", animation: "edzoom 18s ease-in-out infinite alternate" }} />
+          <div style={{ position: "absolute", top: 16, left: 16, fontFamily: cm, fontSize: 66, fontWeight: 600, color: "#fff", lineHeight: 1, textShadow: "0 2px 16px rgba(0,0,0,.4)", opacity: 0.9 }}>01</div>
+          <div style={{ position: "absolute", bottom: 16, right: 18, color: "#fff", textAlign: "right", textShadow: "0 1px 8px rgba(0,0,0,.5)" }}><div style={{ fontFamily: cm, fontSize: 30, fontStyle: "italic" }}>Ngày chung đôi</div></div>
         </section>
       )}
 
-      {events.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-16">
-          <Reveal anim="up"><Idx n="03" accent={accent} /><h2 className="-mt-4 font-serif text-3xl">Sự kiện</h2></Reveal>
-          <div className="mt-6 divide-y" style={{ borderColor: PAL.border }}>
-            {events.map((e, i) => (
-              <Reveal key={i} anim="up" delay={i * 70}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2 py-5">
-                  <div>
-                    <p className="font-serif text-xl" style={{ color: accent }}>{e.label || "Sự kiện"}</p>
-                    {e.venue && <p className="text-sm" style={{ color: PAL.muted }}>{e.venue}{e.address ? ` · ${e.address}` : ""}</p>}
-                  </div>
-                  <div className="text-right text-sm">
-                    <p className="font-mono">{fmtShort(e.date)}{e.time ? ` · ${e.time}` : ""}</p>
-                    {e.map_url && <a href={e.map_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs" style={{ color: accent }}><MapPin size={12} /> Bản đồ</a>}
-                  </div>
-                </div>
-              </Reveal>
-            ))}
+      {/* QUOTE + CIRCLE */}
+      <section style={{ padding: "44px 34px", display: "flex", gap: 22, alignItems: "center" }}>
+        {(gallery[0] || c.cover_url) && (
+          <div style={{ flex: "0 0 auto", width: 120, height: 120, borderRadius: "50%", overflow: "hidden", border: `3px solid ${PAL.panel}`, boxShadow: "0 10px 26px rgba(120,70,60,.2)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={gallery[0] || c.cover_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", animation: "edzoom 14s ease-in-out infinite alternate" }} />
+          </div>
+        )}
+        <p style={{ flex: 1, fontFamily: cm, fontSize: 25, fontStyle: "italic", lineHeight: 1.45, margin: 0 }}>“{c.cover_quote || "Chúng mình sắp về chung một nhà — và muốn có bạn ở đó."}”</p>
+      </section>
+
+      {/* BIG DATE */}
+      {dm && (
+        <section style={{ padding: "8px 34px 40px" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 20, borderTop: `1px solid ${PAL.line}`, borderBottom: `1px solid ${PAL.line}`, padding: "26px 0" }}>
+            <div style={{ fontFamily: cm, fontSize: 100, fontWeight: 600, lineHeight: 0.8, color: accent }}>{String(dm.getDate()).padStart(2, "0")}<span style={{ fontSize: 40, color: PAL.ink }}>.{String(dm.getMonth() + 1).padStart(2, "0")}</span></div>
+            <div style={{ paddingBottom: 10 }}>
+              <div style={{ fontSize: 12, letterSpacing: ".16em", textTransform: "uppercase", color: PAL.muted, fontWeight: 700 }}>Năm {dm.getFullYear()}</div>
+              {events[0] && <div style={{ fontSize: 15, fontWeight: 700, marginTop: 6 }}>{[events[0].time, events[0].label].filter(Boolean).join(" — ")}</div>}
+              {events[0]?.venue && <div style={{ fontSize: 13, color: PAL.muted, marginTop: 2, lineHeight: 1.4 }}>{[events[0].venue, events[0].address].filter(Boolean).join(" · ")}</div>}
+            </div>
           </div>
         </section>
       )}
 
-      {/* Gallery — auto-scrolling photo strip */}
-      {gallery.length > 0 && (
-        <section className="py-16">
-          <Reveal anim="up"><div className="mx-auto max-w-3xl px-6"><Idx n="04" accent={accent} /><h2 className="-mt-4 font-serif text-3xl">Khoảnh khắc</h2></div></Reveal>
-          <div className="mt-8 overflow-hidden">
-            <div className="ed-track">
+      {/* FILM STRIP */}
+      {strip.length > 0 && (
+        <section style={{ padding: "0 0 44px", overflow: "hidden" }}>
+          <div style={{ ...kicker, padding: "0 34px 16px" }}>Những khoảnh khắc</div>
+          <div style={{ overflow: "hidden" }}>
+            <div style={{ display: "flex", gap: 10, width: "200%", animation: "edmarq 26s linear infinite", padding: "0 10px" }}>
               {strip.map((src, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={src} alt="" className="h-64 w-auto rounded-sm object-cover sm:h-80" loading="lazy" />
+                <div key={i} style={{ flex: "0 0 auto", width: 200, height: 260, borderRadius: 6, backgroundImage: `url('${src}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {hasGift && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-16">
-          <Idx n="05" accent={accent} /><h2 className="-mt-4 font-serif text-3xl">Mừng cưới</h2>
-          {c.gift_note && <p className="mt-2 text-sm italic" style={{ color: PAL.muted }}>{c.gift_note}</p>}
-          <div className="mt-6 flex flex-wrap gap-5">
-            <GiftCard title="chú rể" bank={c.groom_bank} defaultName={groom} pal={{ ...PAL, accent }} round={4} />
-            <GiftCard title="cô dâu" bank={c.bride_bank} defaultName={bride} pal={{ ...PAL, accent }} round={4} />
-          </div>
-        </section></Reveal>
-      )}
-
-      {c.rsvp_enabled !== false && (
-        <Reveal anim="up"><section className="mx-auto max-w-3xl px-6 py-16">
-          <Idx n="06" accent={accent} /><h2 className="-mt-4 font-serif text-3xl">Xác nhận tham dự</h2>
-          <p className="mb-7 mt-2 text-sm" style={{ color: PAL.muted }}>Phản hồi giúp chúng tôi chuẩn bị chu đáo hơn.</p>
-          <RsvpForm slug={inv.slug} note={c.rsvp_note} />
-        </section></Reveal>
-      )}
-
-      {c.guestbook_enabled !== false && wishes.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 py-16">
-          <Reveal anim="up"><h2 className="font-serif text-3xl">Sổ lưu bút</h2></Reveal>
-          <div className="mt-8 columns-1 gap-4 sm:columns-2 [&>*]:mb-4">
-            {wishes.map((w, i) => (
-              <Reveal key={i} anim="up" delay={(i % 4) * 60}>
-                <div className="break-inside-avoid rounded-sm p-4 text-left" style={{ background: PAL.surface, border: `1px solid ${PAL.border}` }}>
-                  <Quote size={15} style={{ color: accent }} /><p className="mt-1 text-sm leading-relaxed">{w.wish}</p>
-                  <p className="mt-2 text-xs font-semibold" style={{ color: accent }}>— {w.guest_name}</p>
-                </div>
-              </Reveal>
+      {/* EVENTS list */}
+      {events.length > 0 && (
+        <section style={{ padding: "0 34px 44px" }}>
+          <div style={{ fontFamily: cm, fontSize: 36, fontWeight: 600, marginBottom: 18 }}>Chương trình</div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {events.map((e, i) => (
+              <div key={i} style={{ display: "flex", gap: 18, padding: "16px 0", borderTop: `1px solid ${PAL.line}`, borderBottom: i === events.length - 1 ? `1px solid ${PAL.line}` : undefined }}>
+                <div style={{ flex: "0 0 78px", fontFamily: cm, fontSize: 22, fontWeight: 600, color: accent }}>{e.time || fmtShort(e.date)}</div>
+                <div><div style={{ fontSize: 15, fontWeight: 700 }}>{e.label}</div><div style={{ fontSize: 13, color: PAL.muted }}>{[e.venue, e.address].filter(Boolean).join(" · ")}</div></div>
+              </div>
             ))}
           </div>
         </section>
       )}
 
-      <footer className="px-6 py-16 text-center" style={{ borderTop: `1px solid ${PAL.border}` }}>
-        <p className="font-serif text-4xl">{groom} &amp; {bride}</p>
-        <p className="mt-3 text-xs uppercase tracking-[0.3em]" style={{ color: PAL.muted }}>Thiệp cưới online</p>
+      {/* STORY */}
+      {c.story && (
+        <section style={{ padding: "0 34px 44px" }}>
+          <div style={{ ...kicker, marginBottom: 16 }}>Câu chuyện</div>
+          <p style={{ fontSize: 14.5, lineHeight: 1.75, color: PAL.ink, whiteSpace: "pre-line", margin: 0 }}>{c.story}</p>
+        </section>
+      )}
+
+      {/* COUNTDOWN (dark) */}
+      {c.wedding_date && (
+        <section style={{ padding: 34, background: PAL.ink, color: "#fff", textAlign: "center" }}>
+          <div style={{ ...kicker, color: "#d9b3a6" }}>Đếm ngược</div>
+          <div style={{ marginTop: 14 }}><Countdown date={c.wedding_date} /></div>
+        </section>
+      )}
+
+      {/* GIFT + RSVP */}
+      <section style={{ padding: "40px 34px" }}>
+        {hasGift && (<>
+          <div style={{ fontFamily: cm, fontSize: 34, fontWeight: 600, textAlign: "center", marginBottom: 20 }}>Hộp mừng cưới</div>
+          <div style={{ display: "flex", gap: 12 }}>
+            {[{ b: c.groom_bank, who: "Chú rể" }, { b: c.bride_bank, who: "Cô dâu" }].filter((x) => x.b?.account).map((x, i) => (
+              <div key={i} style={{ flex: 1, background: PAL.panel, border: `1px solid ${PAL.line}`, borderRadius: 14, padding: 16, textAlign: "center" }}>
+                {vietqrUrl(x.b) && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={vietqrUrl(x.b)!} alt="" width={120} height={120} style={{ width: "100%", maxWidth: 120, height: "auto", borderRadius: 8, background: "#fff", margin: "0 auto 8px" }} />
+                )}
+                <div style={{ ...kicker, fontSize: 10 }}>{x.who}</div>
+                <div style={{ fontSize: 13, marginTop: 6 }}>{x.b?.name}<br /><b style={{ fontSize: 15 }}>{x.b?.account?.replace(/\s/g, "")}</b></div>
+              </div>
+            ))}
+          </div>
+        </>)}
+        {c.rsvp_enabled !== false && (
+          <div style={{ marginTop: hasGift ? 24 : 0, textAlign: "center" }}>
+            <div style={{ fontFamily: cm, fontSize: 26, fontStyle: "italic", marginBottom: 14 }}>Bạn sẽ đến chứ?</div>
+            <RsvpForm slug={inv.slug} note={c.rsvp_note} />
+          </div>
+        )}
+      </section>
+
+      {/* WISHES */}
+      {c.guestbook_enabled !== false && wishes.length > 0 && (
+        <section style={{ padding: "0 34px 40px" }}>
+          <div style={{ ...kicker, marginBottom: 14 }}>Sổ lưu bút</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {wishes.map((w, i) => (
+              <div key={i} style={{ borderTop: `1px solid ${PAL.line}`, paddingTop: 12 }}>
+                <p style={{ fontSize: 14, lineHeight: 1.6, margin: "0 0 4px" }}>{w.wish}</p>
+                <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>— {w.guest_name}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <footer style={{ padding: "14px 34px 44px", textAlign: "center" }}>
+        <div style={{ fontFamily: cm, fontSize: 40, fontWeight: 600 }}>{groom} <span style={{ fontStyle: "italic", color: accent }}>&amp;</span> {bride}</div>
+        <div style={{ ...kicker, color: PAL.muted, marginTop: 8 }}>Cảm ơn vì đã ở đây · tạo bởi Mstudo</div>
       </footer>
 
       {c.music_url && <MusicPlayer url={c.music_url} autoplay={c.music_autoplay} />}
