@@ -326,7 +326,7 @@ export default function GalleryView({
                   return (
                   <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 500)} alt={p.name} loading="lazy" decoding="async" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 400)} alt={p.name} loading="lazy" decoding="async" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
                     {wm && (
                       <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
                         {Array.from({ length: 8 }).map((_, wi) => (
@@ -433,7 +433,7 @@ export default function GalleryView({
                 style={{ transform: `translateX(${swipeDx}px)`, transition: swipe.current ? "none" : "transform .18s ease" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img key={lb.id} src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} draggable={false} decoding="async" onContextMenu={(e) => wm && e.preventDefault()} className="max-h-[82vh] max-w-full select-none rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)", backgroundImage: `url(${thumbnailUrl(lb.drive_file_id, 600)})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" }} />
+                <img key={lb.id} src={fullImageUrl(lb.drive_file_id, 1600)} alt={lb.name} draggable={false} decoding="async" onContextMenu={(e) => wm && e.preventDefault()} className="max-h-[82vh] max-w-full select-none rounded object-contain" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)", backgroundImage: `url(${thumbnailUrl(lb.drive_file_id, 400)})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" }} />
                 {wm && (
                   <div className="pointer-events-none absolute inset-0 flex flex-wrap content-center items-center justify-center gap-x-12 gap-y-10 opacity-20">
                     {Array.from({ length: 12 }).map((_, wi) => (

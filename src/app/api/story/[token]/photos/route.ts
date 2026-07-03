@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   try {
     const { files } = await resolveSource(folder, isFolderLink(folder) ? "folder" : "file");
     return NextResponse.json({
-      photos: files.map((f) => ({ id: f.id, name: f.name, url: `/api/img?id=${f.id}&w=1600`, thumb: `/api/img?id=${f.id}&w=500` })),
+      photos: files.map((f) => ({ id: f.id, name: f.name, url: `/api/img?id=${f.id}&w=1080`, thumb: `/api/img?id=${f.id}&w=400` })),
     });
   } catch (e) {
     return NextResponse.json({ photos: [], error: e instanceof Error ? e.message : "drive_error" });

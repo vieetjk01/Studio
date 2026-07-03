@@ -39,7 +39,7 @@ export default async function StoryPageView({ params }: { params: { slug: string
   if (folder && process.env.GOOGLE_API_KEY) {
     try {
       const { files } = await resolveSource(folder, isFolderLink(folder) ? "folder" : "file");
-      photos = files.map((f) => ({ id: f.id, url: `/api/img?id=${f.id}&w=1600`, thumb: `/api/img?id=${f.id}&w=600` }));
+      photos = files.map((f) => ({ id: f.id, url: `/api/img?id=${f.id}&w=1080`, thumb: `/api/img?id=${f.id}&w=400` }));
     } catch { photos = []; }
   }
 
@@ -51,8 +51,8 @@ export default async function StoryPageView({ params }: { params: { slug: string
   // Guest-contributed media (written to the couple's own Drive) shown alongside the curated feed.
   const guestPhotos: StoryPhoto[] = (upRows ?? []).map((u) => ({
     id: u.drive_file_id,
-    url: `/api/img?id=${u.drive_file_id}&w=1600`,
-    thumb: `/api/img?id=${u.drive_file_id}&w=600`,
+    url: `/api/img?id=${u.drive_file_id}&w=1080`,
+    thumb: `/api/img?id=${u.drive_file_id}&w=400`,
     isVideo: !!u.is_video,
     guestName: u.guest_name || undefined,
   }));

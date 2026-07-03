@@ -633,7 +633,7 @@ export default function CustomerAlbum({
                     />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={thumbnailUrl(p.drive_file_id, 600)}
+                      src={thumbnailUrl(p.drive_file_id, 400)}
                       alt={p.name}
                       loading="lazy"
                       decoding="async"
@@ -793,7 +793,7 @@ export default function CustomerAlbum({
                     boxShadow: "0 30px 80px rgba(0,0,0,.6)",
                     // Show the cached grid thumbnail behind while the full image
                     // decodes, so the picture changes immediately on prev/next.
-                    backgroundImage: `url(${thumbnailUrl(lbPhoto.drive_file_id, 600)})`,
+                    backgroundImage: `url(${thumbnailUrl(lbPhoto.drive_file_id, 400)})`,
                     backgroundSize: "contain",
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "center",

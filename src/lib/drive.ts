@@ -46,7 +46,7 @@ export function isFolderLink(url: string): boolean {
  * bytes from Google server-side (trying lh3 / thumbnail / download in turn), so
  * images embed reliably regardless of Google's hotlink/referrer behaviour.
  */
-export function thumbnailUrl(fileId: string, width = 600): string {
+export function thumbnailUrl(fileId: string, width = 400): string {
   return `/api/img?id=${fileId}&w=${width}`;
 }
 
