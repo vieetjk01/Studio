@@ -26,6 +26,7 @@ import { mainUrl, studioUrl } from "@/lib/hosts";
 import MessengerButton from "@/components/MessengerButton";
 import EmailButton from "@/components/EmailButton";
 import WeddingInvitationCard from "./WeddingInvitationCard";
+import LoveStoryCard from "./LoveStoryCard";
 import CalendarButtons from "@/components/CalendarButtons";
 import SignaturePad from "@/components/SignaturePad";
 import MoneyInput from "@/components/MoneyInput";
@@ -942,6 +943,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
         clientName={f.client_name}
         clientMessenger={f.client_messenger}
+      />
+
+      {/* Love Story page (free gift) */}
+      <LoveStoryCard
+        contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
+        clientName={f.client_name}
+        clientMessenger={f.client_messenger}
+        studioHost={studioHost}
       />
 
       {/* Ask for a review */}

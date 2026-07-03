@@ -114,6 +114,7 @@ export default function ContractView({ token }: { token: string }) {
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [wedding, setWedding] = useState<{ slug: string; edit_token: string; published: boolean } | null>(null);
+  const [story, setStory] = useState<{ slug: string; edit_token: string; published: boolean } | null>(null);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
   const [chosenQuote, setChosenQuote] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanRow[]>([]);
@@ -187,6 +188,7 @@ export default function ContractView({ token }: { token: string }) {
     setGallery(j.gallery ?? null);
     setSelection(j.selection ?? null);
     setWedding(j.wedding ?? null);
+    setStory(j.story ?? null);
     setQuoteOptions(j.quote_options ?? []);
     setChosenQuote(j.contract?.chosen_quote_option_id ?? null);
     setPlan(j.plan ?? []);
@@ -533,6 +535,30 @@ export default function ContractView({ token }: { token: string }) {
                   className="btn-ghost inline-flex items-center gap-1.5 px-4 py-2 text-sm"
                 >
                   <Images size={15} /> Xem thiệp
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {story && (
+          <div className="card mt-6 p-5">
+            <div className="flex items-center gap-3">
+              <Heart size={20} style={{ color: "#d0687a" }} />
+              <div className="min-w-0 flex-1">
+                <p className="font-serif text-lg font-medium">💞 Trang Love Story tặng bạn</p>
+                <p className="text-xs" style={{ color: "var(--text3)" }}>
+                  Trang chia sẻ khoảnh khắc — bạn điền nội dung & dán link folder ảnh/video Google Drive của mình.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a href={`/story/sua/${story.edit_token}`} target="_blank" rel="noreferrer" className="btn-primary inline-flex items-center gap-1.5 px-4 py-2 text-sm">
+                <PenLine size={15} /> Chỉnh sửa trang của tôi
+              </a>
+              {story.published && (
+                <a href={`/story/${story.slug}`} target="_blank" rel="noreferrer" className="btn-ghost inline-flex items-center gap-1.5 px-4 py-2 text-sm">
+                  <Images size={15} /> Xem trang
                 </a>
               )}
             </div>
