@@ -24,7 +24,9 @@ export async function loadSiteBundle(db: SupabaseClient, site: Site, onlyVisible
   const [{ data: owner }, { data: blocks }, { data: albums }, { data: pricelist }] = await Promise.all([
     db.from("profiles").select("full_name, pl_phone, pl_facebook, booking_token").eq("id", ownerId).maybeSingle(),
     blocksQ.order("position"),
-    db.from("albums").select("id, slug, title, cover_url").eq("owner_id", ownerId).eq("status", "published").order("created_at", { ascending: false }).limit(24),
+    // Chỉ hiện album đã ở giai đoạn GIAO KHÁCH (phase='delivery') và được tích
+    // "Hiện ở trang chủ" (gallery_pinned) ra trang công khai của studio.
+    db.from("albums").select("id, slug, title, cover_url").eq("owner_id", ownerId).eq("status", "published").eq("phase", "delivery").eq("gallery_pinned", true).order("created_at", { ascending: false }).limit(24),
     db.from("studio_pricelist").select("id, name, price, unit, category, description, list_key").eq("owner_id", ownerId).eq("active", true).gt("price", 0).order("position"),
   ]);
 
