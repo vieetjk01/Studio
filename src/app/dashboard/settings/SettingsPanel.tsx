@@ -233,6 +233,21 @@ export default function SettingsPanel({
             <b>Love Story</b> — hiển thị “Sắp ra mắt” &amp; tạm khoá với studio
           </span>
         </label>
+        <label className="flex items-center gap-3 rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-[var(--brand,var(--gold))]"
+            checked={((form.feature_flags as Record<string, string> | null | undefined)?.album ?? "coming_soon") !== "live"}
+            onChange={(e) => {
+              const cur = { ...((form.feature_flags as Record<string, string>) ?? {}) };
+              cur.album = e.target.checked ? "coming_soon" : "live";
+              set("feature_flags" as keyof SiteSettings, cur as never);
+            }}
+          />
+          <span className="text-sm">
+            <b>Thiết kế Album</b> — hiển thị “Sắp ra mắt” &amp; tạm khoá với studio
+          </span>
+        </label>
         <SaveBtn label="Lưu tính năng" />
       </Section>
 

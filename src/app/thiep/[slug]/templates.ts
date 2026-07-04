@@ -89,6 +89,11 @@ export const WEDDING_SKINS: Record<string, WeddingSkin> = {
     accent: "#b5624f", bg: "#f4f1ec", surface: "#ffffff", text: "#241f21",
     muted: "#8f867f", border: "#e4ddd3", font: "serif", hero: "framed", motif: "none", dark: false,
   },
+  royal: {
+    name: "royal", label: "Hoàng gia (kem · vàng · chữ viết tay)",
+    accent: "#a67c52", bg: "#f7f1e7", surface: "#fffdf8", text: "#413a30",
+    muted: "#9c9483", border: "#e7ddcc", font: "serif", hero: "overlay", motif: "floral", dark: false,
+  },
 };
 
 export const WEDDING_TEMPLATE_LIST = Object.values(WEDDING_SKINS).map((s) => ({ name: s.name, label: s.label }));

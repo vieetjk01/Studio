@@ -7,7 +7,7 @@ import DashboardChrome from "@/components/DashboardChrome";
 import NavProgress from "@/components/NavProgress";
 import TrialExpiredBanner from "@/components/TrialExpiredBanner";
 import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
-import { getFeatureFlags, storyComingSoon } from "@/lib/feature-flags";
+import { getFeatureFlags, comingSoonNav } from "@/lib/feature-flags";
 import type { Profile } from "@/lib/types";
 
 export default async function DashboardLayout({
@@ -97,8 +97,8 @@ on conflict (id) do update set role='admin', is_active=true;`}
     ? (profile.studio_role ?? "staff")
     : profile.role === "admin" ? "admin" : "owner";
 
-  // Feature flags (admin-controlled): Love Story "Sắp ra mắt" locks it for non-admins.
-  const storyLocked = storyComingSoon(await getFeatureFlags());
+  // Feature flags (admin-controlled): "Sắp ra mắt" chips + locks nav for non-admins.
+  const comingSoon = comingSoonNav(await getFeatureFlags());
 
   return (
     <div className="min-h-screen">
@@ -112,7 +112,7 @@ on conflict (id) do update set role='admin', is_active=true;`}
         tier={tier}
         role={actingRole}
         showFooter={showFooter}
-        storyComingSoon={storyLocked}
+        comingSoon={comingSoon}
       >
         {children}
       </DashboardChrome>

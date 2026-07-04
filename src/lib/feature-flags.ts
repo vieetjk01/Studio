@@ -22,3 +22,16 @@ export const getFeatureFlags = cache(async (): Promise<FeatureFlags> => {
 export function storyComingSoon(flags: FeatureFlags): boolean {
   return flags?.story === "coming_soon";
 }
+
+/** Album designer defaults to "Sắp ra mắt" until the admin explicitly sets it live. */
+export function albumComingSoon(flags: FeatureFlags): boolean {
+  return flags?.album !== "live";
+}
+
+/** Nav hrefs currently flagged "Sắp ra mắt" (used to chip + lock the sidebar). */
+export function comingSoonNav(flags: FeatureFlags): string[] {
+  const out: string[] = [];
+  if (storyComingSoon(flags)) out.push("/dashboard/studio/story");
+  if (albumComingSoon(flags)) out.push("/dashboard/studio/album-designer");
+  return out;
+}

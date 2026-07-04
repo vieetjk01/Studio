@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -71,6 +71,7 @@ const GROUPS: Group[] = [
       { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/studio/thiep", label: "Thiệp cưới", icon: Heart, minTier: "full" },
       { href: "/dashboard/studio/story", label: "Love Story", icon: Clapperboard, minTier: "full" },
+      { href: "/dashboard/studio/album-designer", label: "Thiết kế Album", icon: BookImage, minTier: "full" },
       { href: "/dashboard/studio/board", label: "Bảng", icon: Kanban, minTier: "full" },
     ],
   },
@@ -114,6 +115,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/templates", "Mẫu hợp đồng", "Mẫu hợp đồng & điều khoản"],
   ["/dashboard/studio/production", "Xử lý hình ảnh", "Tiến độ sản xuất"],
   ["/dashboard/studio/clients", "Khách hàng", "Danh bạ khách hàng"],
+  ["/dashboard/studio/album-designer", "Thiết kế Album", "Chọn khổ → chọn mẫu → chỉnh sửa → xuất file"],
   ["/dashboard/studio/board", "Bảng công việc", "Theo dõi công việc"],
   ["/dashboard/studio/reports", "Thu chi", "Báo cáo tài chính"],
   ["/dashboard/studio/payroll", "Bảng lương", "Bảng lương nhân viên"],
@@ -142,13 +144,13 @@ export default function StudioShell({
   profile,
   tier,
   role,
-  storyComingSoon = false,
+  comingSoon = [],
   children,
 }: {
   profile: Profile;
   tier: StudioTier;
   role: string;
-  storyComingSoon?: boolean;
+  comingSoon?: string[];
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -191,13 +193,12 @@ export default function StudioShell({
   const initials = (profile.full_name || profile.email || "?")
     .split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
-  // "Sắp ra mắt" chip + lock for Love Story (admin still gets through to build it).
-  const STORY_HREF = "/dashboard/studio/story";
+  // "Sắp ra mắt" chip + lock for flagged features (admin still gets through to build them).
   const soonChip = (
     <span className="ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ color: "var(--brand)", background: "var(--brandSoft)" }}>Sắp ra mắt</span>
   );
   const renderNavItem = (it: Item, cls: string, style: React.CSSProperties, active: boolean) => {
-    const flagged = storyComingSoon && it.href === STORY_HREF;
+    const flagged = comingSoon.includes(it.href);
     const locked = flagged && role !== "admin";
     const inner = <><it.icon size={18} style={{ flex: "none" }} />{it.label}{flagged && soonChip}</>;
     if (locked) return <div key={it.href} className={cls} style={{ ...style, opacity: 0.55, cursor: "not-allowed" }} title="Tính năng sắp ra mắt">{inner}</div>;
