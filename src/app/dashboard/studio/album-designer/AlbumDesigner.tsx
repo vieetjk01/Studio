@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ArrowRight, Wand2 } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
+import AlbumEditor from "./AlbumEditor";
 
 /**
  * Thiết kế Album — trình thiết kế album cưới (Chọn khổ → Chọn mẫu → Chỉnh sửa →
@@ -171,21 +172,13 @@ export default function AlbumDesigner() {
         </div>
       )}
 
-      {/* STEP 3 — Editor (đang xây tiếp) */}
-      {step === "editor" && (
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="card p-8" style={cardStyle}>
-            <Wand2 size={26} className="mx-auto mb-3" style={{ color: "var(--brand)" }} />
-            <h1 className={h2}>Trình chỉnh sửa album</h1>
-            <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: "var(--text2)" }}>
-              Khổ <b>{size?.name}</b> · Mẫu <b>{tpl?.name}</b>. Phần editor kéo-thả (thư viện ảnh, canvas spread, thuộc tính, AI tự rải ảnh) và xuất file in đang được xây dựng theo đúng thiết kế.
-            </p>
-            <div className="mt-5 flex justify-center gap-2">
-              <button onClick={() => setStep("template")} className="btn-ghost">← Đổi mẫu</button>
-              <button onClick={() => setStep("size")} className="btn-ghost">Đổi khổ</button>
-            </div>
-          </div>
-        </div>
+      {/* STEP 3 — Editor */}
+      {step === "editor" && size && tpl && (
+        <AlbumEditor
+          size={{ name: size.name, w: size.w, h: size.h }}
+          tpl={{ id: tpl.id, name: tpl.name, page: tpl.page, ink: tpl.ink, font: tpl.font }}
+          onBack={() => setStep("template")}
+        />
       )}
     </div>
   );
