@@ -53,6 +53,20 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
     if (!res.ok) flash(t("error"));
   }
 
+  // Cấp dùng thử miễn phí (Studio 7 ngày / Basic·Photographer 30 ngày). Admin ghi đè.
+  async function setTrialPlan(p: Profile, plan: Plan) {
+    const days = plan === "studio" ? 7 : 30;
+    const expires = new Date(Date.now() + days * 86400000).toISOString();
+    const patch: Partial<Profile> = { ...planProfilePatch(plan), plan_cycle: "trial", plan_expires_at: expires };
+    setRows((r) => r.map((x) => (x.id === p.id ? { ...x, ...patch } : x)));
+    const res = await fetch("/api/admin/photographers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: p.id, trial_plan: plan }),
+    });
+    if (!res.ok) flash(t("error"));
+  }
+
   async function removeUser(p: Profile) {
     if (!window.confirm(t("confirmDeleteUser").replace("{email}", p.email))) return;
     setRows((r) => r.filter((x) => x.id !== p.id));
@@ -89,6 +103,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
         plan: "free",
         plan_cycle: null,
         plan_expires_at: null,
+        trial_used_at: null,
         studio_owner_id: null,
         studio_role: null,
         is_active: true,
@@ -171,10 +186,11 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                 <td className="px-4 py-3">
                   <select
                     className="input px-2 py-1 text-xs"
-                    value={p.plan === "free" ? "free" : `${p.plan}-${p.plan_cycle ?? "month"}`}
+                    value={p.plan === "free" ? "free" : p.plan_cycle === "trial" ? `trial-${p.plan}` : `${p.plan}-${p.plan_cycle ?? "month"}`}
                     onChange={(e) => {
                       const v = e.target.value;
                       if (v === "free") setPlan(p, "free", "month");
+                      else if (v.startsWith("trial-")) setTrialPlan(p, v.slice(6) as Plan);
                       else {
                         const [pl, cy] = v.split("-");
                         setPlan(p, pl as Plan, cy as "month" | "year");
@@ -188,10 +204,15 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     <option value="photographer-year">Photographer · {t("cycleYear")}</option>
                     <option value="studio-month">Studio · {t("cycleMonth")}</option>
                     <option value="studio-year">Studio · {t("cycleYear")}</option>
+                    <optgroup label="Dùng thử (miễn phí)">
+                      <option value="trial-basic">Basic · thử 30 ngày</option>
+                      <option value="trial-photographer">Photographer · thử 30 ngày</option>
+                      <option value="trial-studio">Studio · thử 7 ngày</option>
+                    </optgroup>
                   </select>
                   {p.plan !== "free" && p.plan_expires_at && (
                     <div className="mt-1 text-[10px]" style={{ color: "var(--text3)" }}>
-                      {t("expiresShort")}: {fmtDate(p.plan_expires_at)}
+                      {p.plan_cycle === "trial" ? "Dùng thử" : t("expiresShort")}: {fmtDate(p.plan_expires_at)}
                     </div>
                   )}
                 </td>

@@ -16,16 +16,16 @@ export default function StudioTrialButton({ used: initialUsed }: Props) {
   async function activate() {
     setBusy(true);
     setMsg(null);
-    const res = await fetch("/api/trial/studio", { method: "POST" });
+    const res = await fetch("/api/trial/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: "studio" }) });
     const d = await res.json().catch(() => null);
     setBusy(false);
     if (res.ok && d?.ok) {
       setUsed(true);
-      setMsg("Đã kích hoạt Studio 1 ngày! Tải lại trang để dùng ngay.");
+      setMsg("Đã kích hoạt Studio 7 ngày! Tải lại trang để dùng ngay.");
     } else {
       setMsg(
-        d?.error === "already_used" ? "Bạn đã dùng thử Studio rồi."
-        : d?.error === "already_studio" ? "Bạn đang dùng gói Studio."
+        d?.error === "already_used" ? "Mỗi tài khoản chỉ được dùng thử một lần."
+        : d?.error === "already_paid" ? "Bạn đang dùng gói trả phí còn hạn."
         : "Không thể kích hoạt. Vui lòng thử lại."
       );
     }
@@ -47,7 +47,7 @@ export default function StudioTrialButton({ used: initialUsed }: Props) {
         className="btn-ghost text-sm"
         style={{ opacity: busy ? 0.6 : 1 }}
       >
-        <Sparkles size={14} /> {busy ? "Đang kích hoạt…" : "Dùng thử Studio 1 ngày"}
+        <Sparkles size={14} /> {busy ? "Đang kích hoạt…" : "Dùng thử Studio 7 ngày"}
       </button>
       {msg && <p className="text-xs" style={{ color: msg.includes("Đã kích") ? "#3fb98a" : "#e0746f" }}>{msg}</p>}
     </div>

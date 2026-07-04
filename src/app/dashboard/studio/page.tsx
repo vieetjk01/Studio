@@ -130,14 +130,13 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
   const supabase = createClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  // Check if user already used the Studio trial
-  const { data: trialRed } = await supabase
-    .from("discount_redemptions")
-    .select("id")
-    .eq("user_id", ownerId)
-    .eq("code", "TRIAL_STUDIO_1D")
+  // Đã dùng thử chưa (một lần / tài khoản).
+  const { data: trialProf } = await supabase
+    .from("profiles")
+    .select("trial_used_at")
+    .eq("id", ownerId)
     .maybeSingle();
-  const trialUsed = !!trialRed;
+  const trialUsed = !!(trialProf as { trial_used_at?: string | null } | null)?.trial_used_at;
 
   const { data } = await supabase
     .from("studio_bookings")

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, X, Crown, Sparkles, Send, Zap, Tag, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
-import { PLAN_PRICING, PLAN_LABEL, formatVnd, type Plan } from "@/lib/plans";
+import { PLAN_PRICING, PLAN_LABEL, formatVnd, trialDaysFor, type Plan } from "@/lib/plans";
 import { mergeUpgradeContent, UPGRADE_DEFAULTS, type UpgradeContent } from "@/lib/upgrade-content";
 
 type Cycle = "month" | "year";
@@ -62,6 +62,24 @@ export default function UpgradePage() {
   const [trialOk, setTrialOk] = useState(false);
   const [trialMsg, setTrialMsg] = useState<string | null>(null);
 
+  // Free self-serve trial per plan (1 lần / tài khoản)
+  const [trialUsed, setTrialUsed] = useState(false);
+  const [startingTrial, setStartingTrial] = useState<Plan | null>(null);
+
+  async function startTrial(plan: Plan) {
+    setStartingTrial(plan); setTrialMsg(null);
+    const res = await fetch("/api/trial/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan }) });
+    const d = await res.json().catch(() => null);
+    setStartingTrial(null);
+    if (res.ok && d?.ok) {
+      setTrialUsed(true); setTrialOk(true); setCurrentPlan(plan);
+      setTrialMsg(`Đã kích hoạt dùng thử gói ${PLAN_LABEL[plan]} ${d.trial_days} ngày miễn phí! Tải lại trang để bắt đầu.`);
+    } else {
+      setTrialOk(false);
+      setTrialMsg(d?.error === "already_used" ? "Mỗi tài khoản chỉ được dùng thử một lần." : d?.error === "already_paid" ? "Bạn đang dùng gói trả phí còn hạn." : "Không kích hoạt được, thử lại nhé.");
+    }
+  }
+
   async function redeemTrial() {
     const c = trialCode.trim().toUpperCase();
     if (!c) return;
@@ -97,8 +115,9 @@ export default function UpgradePage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase.from("profiles").select("plan, trial_used_at").eq("id", user.id).maybeSingle();
         if (profile?.plan) setCurrentPlan(profile.plan as Plan);
+        if (profile?.trial_used_at) setTrialUsed(true);
       }
       const { data: s } = await supabase
         .from("site_settings")
@@ -253,6 +272,20 @@ export default function UpgradePage() {
         </p>
       </div>
 
+      {/* Sau khi nâng cấp / kích hoạt dùng thử: cảm ơn + link nhóm Zalo hỗ trợ */}
+      {(sentPlan || trialOk) && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between" style={{ background: "color-mix(in srgb, var(--brand) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--brand) 40%, transparent)" }}>
+          <div className="flex items-start gap-2.5">
+            <Sparkles size={18} style={{ color: "var(--brand)", marginTop: 2 }} />
+            <div>
+              <p className="text-[14px] font-semibold">{trialOk ? "Đã kích hoạt dùng thử! 🎉" : "Đã ghi nhận yêu cầu nâng cấp! 🎉"}</p>
+              <p className="text-[13px]" style={{ color: "var(--text2)" }}>Tham gia nhóm Zalo hỗ trợ để được hướng dẫn cài đặt &amp; kích hoạt nhanh nhất.</p>
+            </div>
+          </div>
+          <a href="https://zalo.me/g/rycw0pqcgss14ib6u2xj" target="_blank" rel="noreferrer" className="btn-primary whitespace-nowrap">Vào nhóm Zalo hỗ trợ →</a>
+        </div>
+      )}
+
       <PlanUsage showUpgrade={false} />
 
       {/* Billing cycle */}
@@ -318,9 +351,16 @@ export default function UpgradePage() {
                   <span className="text-[13px]">{activated ? "Đã kích hoạt gói! 🎉" : "Đã gửi yêu cầu! Quản trị viên sẽ liên hệ sớm."}</span>
                 </div>
               ) : (
-                <button onClick={() => { setError(null); setModalPlan(plan); }} className="btn-primary w-full rounded-xl py-3 text-[14px]">
-                  <Send size={15} /> {`Đăng ký ${planLabel(plan)}`}
-                </button>
+                <div className="space-y-2">
+                  <button onClick={() => { setError(null); setModalPlan(plan); }} className="btn-primary w-full rounded-xl py-3 text-[14px]">
+                    <Send size={15} /> {`Đăng ký ${planLabel(plan)}`}
+                  </button>
+                  {!trialUsed && currentPlan === "free" && (
+                    <button onClick={() => startTrial(plan)} disabled={startingTrial !== null} className="btn-ghost w-full rounded-xl py-2.5 text-[13px] disabled:opacity-60">
+                      <Sparkles size={14} /> {startingTrial === plan ? "Đang kích hoạt…" : `Dùng thử ${trialDaysFor(plan)} ngày miễn phí`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

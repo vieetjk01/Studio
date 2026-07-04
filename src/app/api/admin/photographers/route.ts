@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planProfilePatch, type Plan } from "@/lib/plans";
+import { planProfilePatch, trialDaysFor, type Plan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     monthly_album_limit?: number | null;
     plan?: Plan;
     cycle?: "month" | "year";
+    trial_plan?: Plan; // admin cấp dùng thử (Studio 7 ngày / Basic·Photographer 30 ngày)
     full_name?: string;
   };
 
@@ -40,8 +41,17 @@ export async function POST(req: Request) {
     if (body[k] !== undefined) patch[k] = body[k];
   }
 
-  // Assigning a plan syncs the legacy limit columns + sets the billing cycle/expiry.
-  if (body.plan) {
+  // Admin cấp dùng thử cho một tài khoản (ghi đè — vẫn cấp được kể cả đã dùng thử trước đó).
+  if (body.trial_plan && body.trial_plan !== "free") {
+    const days = trialDaysFor(body.trial_plan);
+    const now = new Date();
+    Object.assign(patch, planProfilePatch(body.trial_plan), {
+      plan_cycle: "trial",
+      plan_expires_at: new Date(now.getTime() + days * 86400000).toISOString(),
+      trial_used_at: now.toISOString(),
+    });
+  } else if (body.plan) {
+    // Assigning a plan syncs the legacy limit columns + sets the billing cycle/expiry.
     const cycle = body.cycle === "year" ? "year" : "month";
     Object.assign(patch, planProfilePatch(body.plan), {
       plan_cycle: body.plan === "free" ? null : cycle,

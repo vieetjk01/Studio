@@ -523,8 +523,10 @@ alter table public.profiles drop constraint if exists profiles_plan_check;
 alter table public.profiles add constraint profiles_plan_check
   check (plan in ('free', 'basic', 'photographer', 'studio'));
 -- Billing cycle + auto-expiry. When the plan expires it is treated as 'free'.
-alter table public.profiles add column if not exists plan_cycle text;            -- 'month' | 'year' | null
+alter table public.profiles add column if not exists plan_cycle text;            -- 'month' | 'year' | 'trial' | null
 alter table public.profiles add column if not exists plan_expires_at timestamptz; -- null = no expiry (free / lifetime)
+-- Dùng thử: mỗi tài khoản chỉ được kích hoạt dùng thử MỘT lần (mọi gói / mọi mã).
+alter table public.profiles add column if not exists trial_used_at timestamptz;   -- null = chưa dùng thử lần nào
 
 -- Per-month "filter tool" usage log (free = 10/month).
 create table if not exists public.filter_usages (

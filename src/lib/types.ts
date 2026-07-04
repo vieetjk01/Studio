@@ -16,6 +16,7 @@ export interface Profile {
   plan: "free" | "basic" | "photographer" | "studio";
   plan_cycle: string | null;
   plan_expires_at: string | null;
+  trial_used_at: string | null;
   studio_owner_id: string | null;
   studio_role: string | null;
   is_active: boolean;

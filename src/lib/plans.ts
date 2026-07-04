@@ -108,6 +108,16 @@ export function effectivePlan(plan: Plan | null | undefined, expiresAt: string |
   return p;
 }
 
+/**
+ * Số ngày dùng thử miễn phí theo gói: Basic & Photographer 30 ngày (1 tháng),
+ * Studio 7 ngày. Free không có dùng thử.
+ */
+export function trialDaysFor(plan: Plan): number {
+  if (plan === "studio") return 7;
+  if (plan === "basic" || plan === "photographer") return 30;
+  return 0;
+}
+
 /** Columns synced onto profiles when a plan is assigned (legacy enforcement). */
 export function planProfilePatch(plan: Plan) {
   const l = PLAN_LIMITS[plan];

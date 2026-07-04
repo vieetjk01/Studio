@@ -35,12 +35,16 @@ export async function POST(req: Request) {
   const { data: red } = await db.from("discount_redemptions").select("id").eq("code", c).eq("user_id", user.id).maybeSingle();
   if (red) return NextResponse.json({ error: "already_used" }, { status: 400 });
 
+  // Mỗi tài khoản chỉ dùng thử MỘT lần — kể cả khi có nhiều mã dùng thử cùng loại.
+  const { data: prof } = await db.from("profiles").select("trial_used_at").eq("id", user.id).maybeSingle();
+  if (prof?.trial_used_at) return NextResponse.json({ error: "already_used" }, { status: 400 });
+
   const plan = data.plan === "basic" || data.plan === "photographer" || data.plan === "studio" ? data.plan : "studio";
   const expires = new Date(Date.now() + data.trial_days * 86400000).toISOString();
 
   const { error: upErr } = await db
     .from("profiles")
-    .update({ ...planProfilePatch(plan), plan_cycle: "trial", plan_expires_at: expires })
+    .update({ ...planProfilePatch(plan), plan_cycle: "trial", plan_expires_at: expires, trial_used_at: new Date().toISOString() })
     .eq("id", user.id);
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
