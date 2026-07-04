@@ -46,29 +46,68 @@ const LAYOUTS: Record<string, { label: string; photos: Rect[]; texts?: TextDef[]
 };
 const SEED_PLAN = ["cover", "duo", "focus", "trio", "mag", "bigTop", "sixGrid", "full"];
 
-/**
- * Auto-generate a balanced layout for N photos (2% gaps, partial last row
- * centered). This powers "chọn số lượng ảnh → tự ra bố cục".
- */
-function genLayout(n: number, aspect: number): Rect[] {
+/** Tile `count` cells into a region [rx,ry,rw,rh] with `cols` columns. */
+function tileRegion(count: number, rx: number, ry: number, rw: number, rh: number, cols: number): Rect[] {
   const G = 2;
-  n = Math.max(1, Math.min(12, Math.round(n)));
-  const special: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 2, 6: 3, 8: 4, 9: 3, 12: 4 };
-  let cols = special[n] ?? Math.max(2, Math.round(Math.sqrt((n * aspect) / 1.3)));
-  cols = Math.min(cols, n);
-  const rows = Math.ceil(n / cols);
-  const cellH = (100 - (rows + 1) * G) / rows;
-  const cellW = (100 - (cols + 1) * G) / cols;
-  const rects: Rect[] = [];
+  cols = Math.max(1, Math.min(cols, count));
+  const rows = Math.ceil(count / cols);
+  const cw = (rw - (cols + 1) * G) / cols, ch = (rh - (rows + 1) * G) / rows;
+  const out: Rect[] = [];
   let idx = 0;
-  for (let r = 0; r < rows && idx < n; r++) {
-    const inRow = Math.min(cols, n - idx);
-    const rowW = inRow * cellW + (inRow - 1) * G;
-    const startX = (100 - rowW) / 2;
-    const y = G + r * (cellH + G);
-    for (let cc = 0; cc < inRow; cc++, idx++) rects.push([+(startX + cc * (cellW + G)).toFixed(1), +y.toFixed(1), +cellW.toFixed(1), +cellH.toFixed(1)]);
+  for (let r = 0; r < rows && idx < count; r++) {
+    const inRow = Math.min(cols, count - idx);
+    const rowW = inRow * cw + (inRow - 1) * G;
+    const sx = rx + (rw - rowW) / 2;
+    const y = ry + G + r * (ch + G);
+    for (let c = 0; c < inRow; c++, idx++) out.push([+(sx + c * (cw + G)).toFixed(1), +y.toFixed(1), +cw.toFixed(1), +ch.toFixed(1)]);
   }
-  return rects;
+  return out;
+}
+
+const sig = (r: Rect[]) => r.map((a) => a.map(Math.round).join(",")).sort().join("|");
+
+/**
+ * Generate many distinct layout suggestions for exactly N photos: grids of
+ * every sensible rows×cols, plus a feature photo (big) on each side with the
+ * rest tiled beside it. Deduped, sane cells only, capped at 12.
+ */
+function layoutVariants(n: number, aspect: number): Rect[][] {
+  n = Math.max(1, Math.min(12, Math.round(n)));
+  const out: Rect[][] = [];
+  const seen = new Set<string>();
+  const add = (r: Rect[]) => {
+    if (r.length !== n) return;
+    if (!r.every(([x, y, w, h]) => w >= 7 && h >= 7 && x >= -0.5 && y >= -0.5 && x + w <= 100.5 && y + h <= 100.5)) return;
+    const s = sig(r); if (seen.has(s)) return; seen.add(s); out.push(r);
+  };
+  if (n === 1) { add([[0, 0, 100, 100]]); add([[6, 6, 88, 88]]); return out; }
+  // 1) Grids — every rows×cols that fits n tightly.
+  for (let cols = 1; cols <= 6; cols++) {
+    const rows = Math.ceil(n / cols);
+    if (rows > 4 || rows * cols - n >= cols) continue;
+    if (n > 3 && (cols === 1 || rows === 1)) continue; // avoid a single thin strip for many photos
+    add(tileRegion(n, 0, 0, 100, 100, cols));
+  }
+  // 2) One feature photo + the rest tiled beside it, on each side, two sizes.
+  if (n >= 2) {
+    const rest = n - 1;
+    for (const big of [58, 66]) {
+      for (const rc of [1, 2]) {
+        add([[2, 2, big - 2, 96], ...tileRegion(rest, big + 1, 2, 99 - big, 96, rc)]);           // big left
+        add([[100 - big, 2, big - 2, 96], ...tileRegion(rest, 2, 2, 99 - big, 96, rc)]);          // big right
+      }
+      add([[2, 2, 96, big - 2], ...tileRegion(rest, 2, big + 1, 96, 99 - big, rest)]);            // big top
+      add([[2, 100 - big, 96, big - 2], ...tileRegion(rest, 2, 2, 96, 99 - big, rest)]);          // big bottom
+    }
+  }
+  // 3) Uneven two-band splits (top k / bottom n-k).
+  if (n >= 4) {
+    for (const k of [Math.floor(n / 2), Math.ceil(n / 2), 2]) {
+      if (k < 1 || k >= n) continue;
+      add([...tileRegion(k, 0, 0, 100, 50, k), ...tileRegion(n - k, 0, 50, 100, 50, n - k)]);
+    }
+  }
+  return out.slice(0, 12);
 }
 const DECOS: { label: string; text: string; size: number }[] = [
   { label: "Đường kẻ", text: "———", size: 22 }, { label: "Dấu &", text: "&", size: 40 },
@@ -104,6 +143,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [cur, setCur] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
   const [tab, setTab] = useState<"layout" | "photo" | "text" | "deco">("layout");
+  const [pickCount, setPickCount] = useState(3);
   const [zoom, setZoom] = useState(1);
   const [lib, setLib] = useState<Lib[]>([]);
   const [folder, setFolder] = useState("");
@@ -233,8 +273,12 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, layout: `auto:${rects.length}`, cells: [...photoCells, ...texts] }));
     setSel(null);
   }
-  const applyPhotoCount = (n: number) => applyRects(genLayout(n, aspect));
-  const photoCount = spread?.cells.filter((c) => c.type === "photo").length ?? 0;
+  const curPhotoSig = sig(spread?.cells.filter((c) => c.type === "photo").map((c) => [c.x, c.y, c.w, c.h] as Rect) ?? []);
+  const variants = useMemo(() => layoutVariants(pickCount, aspect), [pickCount, aspect]);
+  // Picking a count shows suggestions and applies the first as a preview.
+  const chooseCount = (n: number) => { const nn = clamp(Math.round(n), 1, 12); setPickCount(nn); applyRects(layoutVariants(nn, aspect)[0]); };
+  // Browsing to another spread syncs the count picker to that page.
+  useEffect(() => { setPickCount(spreads[cur]?.cells.filter((c) => c.type === "photo").length || 1); }, [cur]); // eslint-disable-line react-hooks/exhaustive-deps
   const addText = () => { snapshot(); const c = buildSpread("full", spread.id).cells[0]; setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: [...s.cells, { ...c, uid: UID++, type: "text", x: 20, y: 40, w: 60, h: 12, text: "Dòng chữ mới", role: "body", align: "center" }] })); };
   const addDeco = (d: typeof DECOS[number]) => { snapshot(); setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: [...s.cells, { uid: UID++, type: "text", x: 30, y: 45, w: 40, h: 12, photo: null, full: null, scale: 1, posX: 50, posY: 50, filter: "none", text: d.text, role: "deco", align: "center", size: d.size, color: null, overlay: false, upper: false }] })); };
   const delCell = (uid: number) => { snapshot(); setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: s.cells.filter((c) => c.uid !== uid) })); setSel(null); };
@@ -456,31 +500,45 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
           </div>
 
           {tab === "layout" && (<div className="space-y-3">
-            {/* Chọn số ảnh → tự ra bố cục */}
+            {/* Chọn số ảnh → hiện gợi ý bố cục theo số lượng */}
             <div className="rounded-xl p-3" style={{ background: "var(--surface2)" }}>
               <div className="flex items-center justify-between">
                 <span className="text-[12.5px] font-semibold">Số ảnh trong trang</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => applyPhotoCount(Math.max(1, photoCount - 1))} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>−</button>
-                  <span className="w-5 text-center text-sm font-bold">{photoCount}</span>
-                  <button onClick={() => applyPhotoCount(Math.min(12, photoCount + 1))} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>+</button>
+                  <button onClick={() => chooseCount(pickCount - 1)} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>−</button>
+                  <span className="w-5 text-center text-sm font-bold">{pickCount}</span>
+                  <button onClick={() => chooseCount(pickCount + 1)} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>+</button>
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-1">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                  <button key={n} onClick={() => applyPhotoCount(n)} className="h-7 w-7 rounded-md text-xs font-semibold" style={{ background: photoCount === n ? "var(--brand)" : "var(--panel)", color: photoCount === n ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>{n}</button>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                  <button key={n} onClick={() => chooseCount(n)} className="h-7 w-7 rounded-md text-xs font-semibold" style={{ background: pickCount === n ? "var(--brand)" : "var(--panel)", color: pickCount === n ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>{n}</button>
                 ))}
               </div>
-              <p className="mt-1.5 text-[11px]" style={{ color: "var(--text3)" }}>Chọn số ảnh, bố cục tự dàn cân đối.</p>
             </div>
-            <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Hoặc chọn bố cục dựng sẵn</p>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(LAYOUTS).map(([k, L]) => (
-                <button key={k} onClick={() => applyLayout(k)} className="rounded-lg p-2 text-left" style={{ border: `1px solid ${spread?.layout === k ? "var(--brand)" : "var(--border)"}` }}>
-                  <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 4, overflow: "hidden" }}>
-                    {L.photos.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: 0.5, borderRadius: 1 }} />)}
+            <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Gợi ý bố cục cho {pickCount} ảnh ({variants.length} mẫu)</p>
+            <div className="grid grid-cols-3 gap-2">
+              {variants.map((v, vi) => {
+                const active = sig(v) === curPhotoSig;
+                return (
+                  <button key={vi} onClick={() => applyRects(v)} className="rounded-lg p-1.5" style={{ border: `2px solid ${active ? "var(--brand)" : "var(--border)"}` }}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
+                      {v.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: active ? 0.7 : 0.45, borderRadius: 1 }} />)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Bố cục kèm chữ (tựa đề / tạp chí) */}
+            <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Bố cục kèm chữ</p>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(LAYOUTS).filter(([, L]) => L.texts?.length).map(([k, L]) => (
+                <button key={k} onClick={() => applyLayout(k)} className="rounded-lg p-1.5" style={{ border: `1px solid ${spread?.layout === k ? "var(--brand)" : "var(--border)"}` }}>
+                  <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
+                    {L.photos.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: 0.45, borderRadius: 1 }} />)}
+                    {L.texts?.map((t, i) => <span key={`t${i}`} style={{ position: "absolute", left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, height: `${t.h}%`, background: "var(--text3)", opacity: 0.4, borderRadius: 1 }} />)}
                   </div>
-                  <span className="mt-1 block text-[11.5px] font-semibold">{L.label}</span>
+                  <span className="mt-0.5 block text-[10px]" style={{ color: "var(--text3)" }}>{L.label}</span>
                 </button>
               ))}
             </div>
