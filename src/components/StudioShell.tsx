@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard, BookImage,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -72,6 +72,7 @@ const GROUPS: Group[] = [
       { href: "/dashboard/studio/thiep", label: "Thiệp cưới", icon: Heart, minTier: "full" },
       { href: "/dashboard/studio/story", label: "Love Story", icon: Clapperboard, minTier: "full" },
       { href: "/dashboard/studio/album-designer", label: "Thiết kế Album", icon: BookImage, minTier: "full" },
+      { href: "/dashboard/studio/slide", label: "Slide cưới", icon: Video, minTier: "full" },
       { href: "/dashboard/studio/board", label: "Bảng", icon: Kanban, minTier: "full" },
     ],
   },
@@ -116,6 +117,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/production", "Xử lý hình ảnh", "Tiến độ sản xuất"],
   ["/dashboard/studio/clients", "Khách hàng", "Danh bạ khách hàng"],
   ["/dashboard/studio/album-designer", "Thiết kế Album", "Chọn khổ → chọn mẫu → chỉnh sửa → xuất file"],
+  ["/dashboard/studio/slide", "Slide cưới", "Tự tạo video slide ảnh cưới"],
   ["/dashboard/studio/board", "Bảng công việc", "Theo dõi công việc"],
   ["/dashboard/studio/reports", "Thu chi", "Báo cáo tài chính"],
   ["/dashboard/studio/payroll", "Bảng lương", "Bảng lương nhân viên"],

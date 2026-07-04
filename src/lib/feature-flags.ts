@@ -28,10 +28,16 @@ export function albumComingSoon(flags: FeatureFlags): boolean {
   return flags?.album !== "live";
 }
 
+/** Slide cưới (video slideshow) defaults to "Sắp ra mắt" until set live. */
+export function slideComingSoon(flags: FeatureFlags): boolean {
+  return flags?.slide !== "live";
+}
+
 /** Nav hrefs currently flagged "Sắp ra mắt" (used to chip + lock the sidebar). */
 export function comingSoonNav(flags: FeatureFlags): string[] {
   const out: string[] = [];
   if (storyComingSoon(flags)) out.push("/dashboard/studio/story");
   if (albumComingSoon(flags)) out.push("/dashboard/studio/album-designer");
+  if (slideComingSoon(flags)) out.push("/dashboard/studio/slide");
   return out;
 }
