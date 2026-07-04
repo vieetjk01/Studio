@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Hanken_Grotesk, Cormorant_Garamond, Manrope, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 import { ThemeProvider, THEME_BOOT_SCRIPT } from "@/lib/theme";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getBrandForHost } from "@/lib/host-brand";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 const hanken = Hanken_Grotesk({
@@ -40,6 +42,19 @@ const DEFAULT_DESCRIPTION =
 // Browser-tab title / description / favicon are admin-editable (Cài đặt → Trình
 // duyệt). Falls back to the defaults if Supabase isn't reachable or unset.
 export async function generateMetadata(): Promise<Metadata> {
+  // On a studio's own domain/subdomain, white-label the tab: the studio's logo
+  // becomes the favicon and its brand name the title — never the mstudo mark.
+  const brand = await getBrandForHost(headers().get("host"));
+  if (brand) {
+    const icon = brand.logoUrl || "/favicon.svg";
+    return {
+      title: brand.name,
+      description: brand.name,
+      appleWebApp: { capable: true, title: brand.name, statusBarStyle: "black-translucent" },
+      icons: { icon, shortcut: icon, apple: icon },
+    };
+  }
+
   let title = DEFAULT_TITLE;
   let description = DEFAULT_DESCRIPTION;
   let favicon: string | null = null;
