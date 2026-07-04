@@ -5,6 +5,7 @@ export interface DriveFile {
   id: string;
   name: string;
   mimeType: string;
+  imageMediaMetadata?: { width?: number; height?: number };
 }
 
 const API = "https://www.googleapis.com/drive/v3";
@@ -54,7 +55,7 @@ export async function listFolderImages(folderId: string): Promise<DriveFile[]> {
   do {
     const params = new URLSearchParams({
       q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
-      fields: "nextPageToken, files(id, name, mimeType)",
+      fields: "nextPageToken, files(id, name, mimeType, imageMediaMetadata(width,height))",
       pageSize: "1000",
       orderBy: "name_natural",
       key: key(),

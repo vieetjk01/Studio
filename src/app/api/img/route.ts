@@ -50,6 +50,28 @@ async function fetchFromGoogle(id: string, width: number): Promise<Response | nu
 }
 
 /**
+ * Fetch the ORIGINAL full-resolution file (no downscale) — used by the album
+ * designer's print export so quality is preserved. Longer timeout for big files.
+ */
+async function fetchOriginal(id: string): Promise<Response | null> {
+  const sources = [
+    `https://lh3.googleusercontent.com/d/${id}=s0`, // s0 = original size
+    `https://drive.usercontent.google.com/download?id=${id}&export=download`,
+    `https://drive.google.com/uc?export=download&id=${id}`,
+  ];
+  for (const url of sources) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25000);
+      const res = await fetch(url, { cache: "no-store", redirect: "follow", headers: { "User-Agent": UA }, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+      const ct = res.headers.get("content-type") ?? "";
+      if (res.ok && ct.startsWith("image/")) return res;
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+/**
  * Proxy a Google Drive image so it embeds reliably (no hotlink/referrer issues)
  * and can be fetched cross-origin for ZIP download. Streams the bytes and lets
  * the CDN cache them; optionally offloads serving to Supabase Storage.
@@ -60,6 +82,15 @@ export async function GET(req: Request) {
   if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) {
     return NextResponse.json({ error: "bad_id" }, { status: 400 });
   }
+
+  // Original-quality mode (album export): stream the full-resolution file as-is,
+  // no width clamp, no re-encode — preserves the original quality for print.
+  if (searchParams.get("orig") === "1") {
+    const res = await fetchOriginal(id);
+    if (!res || !res.body) return NextResponse.json({ error: "fetch_failed" }, { status: 502, headers: { "Cache-Control": CACHE_ERR } });
+    return new NextResponse(res.body, { headers: { "Content-Type": res.headers.get("content-type") || "image/jpeg", "Cache-Control": CACHE_OK } });
+  }
+
   // Clamp width: never proxy anything huge (caps origin transfer per request).
   // 2560 keeps the "download original" path (w=2400) working.
   const width = Math.min(Math.max(Number(searchParams.get("w")) || 500, 16), 2560);

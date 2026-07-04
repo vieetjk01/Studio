@@ -24,7 +24,11 @@ export async function GET(req: Request) {
       id: f.id,
       name: f.name,
       thumb: `/api/img?id=${f.id}&w=400`,
-      full: `/api/img?id=${f.id}&w=2000`,
+      // Original-resolution source for print export (quality preserved).
+      full: `/api/img?id=${f.id}&orig=1`,
+      // True original pixel size (from Drive metadata) — powers the print DPI check.
+      w: f.imageMediaMetadata?.width ?? null,
+      h: f.imageMediaMetadata?.height ?? null,
     }));
     return NextResponse.json({ photos });
   } catch {

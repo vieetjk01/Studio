@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wand2, Undo2, Redo2, Plus, Trash2, Shuffle, Loader2, Download, ImagePlus, ArrowLeft, RotateCcw } from "lucide-react";
+import { Wand2, Undo2, Redo2, Plus, Trash2, Shuffle, Loader2, Download, ImagePlus, ArrowLeft, Copy } from "lucide-react";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 export type ADSize = { name: string; w: number; h: number };
 export type ADTpl = { id: string; name: string; page: string; ink: string; font: string };
-type Lib = { id: string; thumb: string; full: string; name: string };
+type Lib = { id: string; thumb: string; full: string; name: string; w?: number | null; h?: number | null };
 type Orient = "l" | "p" | "s";
 type Cell = {
   uid: number; type: "photo" | "text"; x: number; y: number; w: number; h: number;
@@ -78,9 +78,10 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [loadingLib, setLoadingLib] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [fmt, setFmt] = useState<"jpg" | "png">("jpg");
   const [canvasW, setCanvasW] = useState(700);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const dims = useRef<Record<string, { w: number; h: number }>>({});
+  const dims = useRef<Record<string, { w: number; h: number; approx?: boolean }>>({});
   const hist = useRef<string[]>([]);
   const fut = useRef<string[]>([]);
   const [, force] = useState(0);
@@ -103,12 +104,14 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     return () => ro.disconnect();
   }, []);
 
-  // Preload orientation dims for library photos.
+  // Real pixel dimensions come from Drive metadata (accurate for the print DPI
+  // check). Fall back to loading the thumbnail only for orientation if missing.
   useEffect(() => {
     lib.forEach((p) => {
       if (dims.current[p.id]) return;
+      if (p.w && p.h) { dims.current[p.id] = { w: p.w, h: p.h }; return; }
       const img = new Image();
-      img.onload = () => { dims.current[p.id] = { w: img.naturalWidth, h: img.naturalHeight }; };
+      img.onload = () => { dims.current[p.id] = { w: img.naturalWidth, h: img.naturalHeight, approx: true }; };
       img.src = p.thumb;
     });
   }, [lib]);
@@ -194,14 +197,20 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   };
   const delSpread = () => { if (spreads.length <= 1) return; snapshot(); setSpreads((sp) => sp.filter((_, i) => i !== cur)); setCur((c) => Math.max(0, c - 1)); setSel(null); };
   const addSpread = () => { snapshot(); setSpreads((sp) => [...sp, buildSpread("duo", (sp.at(-1)?.id ?? 0) + 1)]); setCur(spreads.length); };
+  const dupSpread = () => { snapshot(); const clone: Spread = { ...spread, id: (spreads.at(-1)?.id ?? 0) + 1, cells: spread.cells.map((c) => ({ ...c, uid: UID++ })) }; setSpreads((sp) => { const n = sp.slice(); n.splice(cur + 1, 0, clone); return n; }); setCur(cur + 1); setSel(null); };
+  const moveSpread = (dir: -1 | 1) => { const j = cur + dir; if (j < 0 || j >= spreads.length) return; snapshot(); setSpreads((sp) => { const n = sp.slice(); [n[cur], n[j]] = [n[j], n[cur]]; return n; }); setCur(j); };
+  // Drag a photo from the library onto a cell (fill / replace).
+  const dragLib = useRef<Lib | null>(null);
 
   /* ── AI auto-fill ───────────────────────────────────────────────────── */
-  function autoFill() {
-    snapshot();
+  // Fill every empty photo cell in `base`, matching cell↔photo orientation and
+  // preferring least-used photos. Pure — returns new spreads.
+  function fillEmpty(base: Spread[]): Spread[] {
     const use: Record<string, number> = {};
-    usedIds.forEach((id) => { use[id as string] = (use[id as string] || 0) + 1; });
-    const next = spreads.map((s) => {
-      const cells = s.cells.map((c) => {
+    base.forEach((s) => s.cells.forEach((c) => { const id = c.photo?.match(/id=([^&]+)/)?.[1]; if (id) use[id] = (use[id] || 0) + 1; }));
+    return base.map((s) => ({
+      ...s,
+      cells: s.cells.map((c) => {
         if (c.type !== "photo" || c.photo) return c;
         const cellOrient: Orient = (c.w / c.h) * aspect > 1.15 ? "l" : (c.w / c.h) * aspect < 0.87 ? "p" : "s";
         const cand = [...lib].sort((a, b) => {
@@ -212,12 +221,28 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
         if (!cand) return c;
         use[cand.id] = (use[cand.id] || 0) + 1;
         return { ...c, photo: cand.thumb, full: cand.full, scale: 1, posX: 50, posY: 50 };
-      });
-      return { ...s, cells };
-    });
-    const n = next.flatMap((s) => s.cells).filter((c) => c.photo).length - spreads.flatMap((s) => s.cells).filter((c) => c.photo).length;
+      }),
+    }));
+  }
+  function autoFill() {
+    if (!lib.length) { showToast("Hãy nạp thư viện ảnh trước."); return; }
+    snapshot();
+    const before = spreads.flatMap((s) => s.cells).filter((c) => c.photo).length;
+    const next = fillEmpty(spreads);
     setSpreads(next);
-    showToast(lib.length ? `AI đã rải ${Math.max(0, n)} ảnh — khớp hướng ảnh` : "Hãy nạp thư viện ảnh trước.");
+    showToast(`AI đã rải ${Math.max(0, next.flatMap((s) => s.cells).filter((c) => c.photo).length - before)} ảnh — khớp hướng ảnh`);
+  }
+  // SmartAlbum-style "tự thiết kế cả album": tạo đủ số trang cho toàn bộ ảnh rồi
+  // rải tự động — một chạm ra album hoàn chỉnh.
+  function autoDesignAll() {
+    if (!lib.length) { showToast("Hãy nạp thư viện ảnh trước."); return; }
+    snapshot();
+    const perSpread = 3;
+    const needed = Math.max(spreads.length, Math.ceil(lib.length / perSpread));
+    const next = spreads.slice();
+    while (next.length < needed) next.push(buildSpread(SEED_PLAN[next.length % SEED_PLAN.length], (next.at(-1)?.id ?? 0) + 1));
+    setSpreads(fillEmpty(next));
+    showToast(`Đã tự thiết kế ${needed} trang từ ${lib.length} ảnh.`);
   }
 
   /* ── DPI ────────────────────────────────────────────────────────────── */
@@ -225,7 +250,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     if (!c.photo) return null;
     // dims keyed by drive id; the thumb URL carries an id= param.
     const id = c.photo.match(/id=([^&]+)/)?.[1] || "";
-    const dd = dims.current[id]; if (!dd) return null;
+    const dd = dims.current[id]; if (!dd || dd.approx) return null; // need true pixel size
     const cellWcm = (c.w / 100) * (2 * size.w), cellHcm = (c.h / 100) * size.h;
     const cellCm = Math.min(cellWcm, cellHcm);
     return Math.round((Math.min(dd.w, dd.h) / c.scale) / (cellCm / 2.54));
@@ -257,11 +282,19 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
         ctx.restore();
       }
     }
-    const a = document.createElement("a"); a.href = cv.toDataURL("image/jpeg", 0.92); a.download = `album-${size.name}-trang-${idx + 1}.jpg`; a.click();
+    // toBlob is far more memory-friendly than toDataURL for large print canvases.
+    const mime = fmt === "png" ? "image/png" : "image/jpeg";
+    const ext = fmt === "png" ? "png" : "jpg";
+    const blob: Blob = await new Promise((res) => cv.toBlob((b) => res(b!), mime, fmt === "png" ? undefined : 0.95));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `album-${size.name}-trang-${idx + 1}.${ext}`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
   async function exportAll() {
+    if (!spreads.some((s) => s.cells.some((c) => c.type === "photo" && c.full))) { showToast("Chưa có ảnh để xuất — hãy nạp thư viện & đặt ảnh."); return; }
     setExporting(true);
-    try { for (let i = 0; i < spreads.length; i++) { await exportSpread(spreads[i], i); await new Promise((r) => setTimeout(r, 350)); } showToast("Đã xuất tất cả trang (JPG)."); }
+    try { for (let i = 0; i < spreads.length; i++) { await exportSpread(spreads[i], i); await new Promise((r) => setTimeout(r, 450)); } showToast(`Đã xuất ${spreads.length} trang (${fmt.toUpperCase()} · 300 DPI · ảnh gốc).`); }
+    catch { showToast("Xuất file gặp lỗi — thử lại hoặc giảm số trang."); }
     finally { setExporting(false); }
   }
 
@@ -283,6 +316,11 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
           <span className="w-12 text-center text-xs">{Math.round(zoom * 100)}%</span>
           <button onClick={() => setZoom((z) => clamp(+(z + 0.1).toFixed(1), 0.5, 1.6))} className="px-2 text-lg">+</button>
         </div>
+        <div className="flex overflow-hidden rounded-lg text-xs font-semibold" style={panel}>
+          {(["jpg", "png"] as const).map((f) => (
+            <button key={f} onClick={() => setFmt(f)} className="px-2.5 py-2" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>
+          ))}
+        </div>
         <button onClick={exportAll} disabled={exporting} className="btn-primary gap-1.5">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Xuất file</button>
       </div>
 
@@ -297,15 +335,16 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
           </div>
           <div className="grid max-h-[52vh] grid-cols-2 gap-1.5 overflow-y-auto">
             {lib.map((p) => (
-              <button key={p.id} onClick={() => onThumbClick(p)} className="relative aspect-square overflow-hidden rounded-lg" style={{ cursor: "pointer" }}>
+              <button key={p.id} onClick={() => onThumbClick(p)} draggable onDragStart={() => { dragLib.current = p; }} className="relative aspect-square overflow-hidden rounded-lg" style={{ cursor: "grab" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.thumb} alt="" className="h-full w-full object-cover" loading="lazy" draggable={false} />
                 {usedIds.has(p.thumb) && <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white" style={{ background: "var(--brand)" }}>✓</span>}
               </button>
             ))}
           </div>
-          <button onClick={autoFill} className="btn-primary mt-2 w-full gap-1.5"><Wand2 size={15} /> AI tự rải ảnh</button>
-          <p className="mt-1 text-center text-[11px]" style={{ color: "var(--text3)" }}>Tự chọn & khớp hướng ảnh</p>
+          <button onClick={autoDesignAll} className="btn-primary mt-2 w-full gap-1.5"><Wand2 size={15} /> Tự thiết kế cả album</button>
+          <button onClick={autoFill} className="btn-ghost mt-1.5 w-full gap-1.5 text-sm"><Wand2 size={14} /> Rải vào ô trống</button>
+          <p className="mt-1 text-center text-[11px]" style={{ color: "var(--text3)" }}>Kéo ảnh vào ô · tự khớp hướng ảnh</p>
         </div>
 
         {/* Canvas */}
@@ -318,6 +357,9 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
                 const dpi = c.type === "photo" ? cellDpi(c) : null;
                 return (
                   <div key={c.uid} onPointerDown={(e) => onCellDown(e, c, "move")}
+                    onDragOver={c.type === "photo" ? (e) => e.preventDefault() : undefined}
+                    onDrop={c.type === "photo" ? () => { if (dragLib.current) { fillCell(c.uid, dragLib.current); dragLib.current = null; } } : undefined}
+                    onDoubleClick={() => { if (c.type === "photo" && c.photo) patchCell(c.uid, { scale: 1, posX: 50, posY: 50 }); }}
                     style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, outline: selected ? "2.5px solid var(--brand)" : "none", cursor: "grab", overflow: "visible" }}>
                     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
                       {c.type === "photo" ? (c.photo ? (
@@ -373,6 +415,11 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
             </div>
             <button onClick={addText} className="btn-ghost w-full justify-start gap-2 text-sm"><Plus size={14} /> Thêm dòng chữ</button>
             <button onClick={shuffle} className="btn-ghost w-full justify-start gap-2 text-sm"><Shuffle size={14} /> Đổi vị trí ảnh</button>
+            <div className="flex gap-1.5">
+              <button onClick={() => moveSpread(-1)} disabled={cur === 0} className="btn-ghost flex-1 gap-1 text-sm disabled:opacity-40"><ArrowLeft size={14} /> Trước</button>
+              <button onClick={() => moveSpread(1)} disabled={cur === spreads.length - 1} className="btn-ghost flex-1 gap-1 text-sm disabled:opacity-40">Sau <ArrowLeft size={14} className="rotate-180" /></button>
+            </div>
+            <button onClick={dupSpread} className="btn-ghost w-full justify-start gap-2 text-sm"><Copy size={14} /> Nhân đôi trang</button>
             <button onClick={delSpread} className="btn-ghost w-full justify-start gap-2 text-sm" style={{ color: "#cc4b4b" }}><Trash2 size={14} /> Xoá trang này</button>
           </div>)}
 
