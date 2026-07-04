@@ -36,8 +36,40 @@ const LAYOUTS: Record<string, { label: string; photos: Rect[]; texts?: TextDef[]
   mag: { label: "Tạp chí", photos: [[2, 3, 48, 94]], texts: [{ x: 56, y: 20, w: 40, h: 14, role: "title" }, { x: 56, y: 40, w: 40, h: 36, role: "body" }] },
   pano: { label: "Toàn ảnh", photos: [[2, 24, 96, 52]], texts: [{ x: 2, y: 82, w: 96, h: 7, role: "sub", align: "center" }] },
   cover: { label: "Bìa", photos: [[0, 0, 100, 100]], texts: [{ x: 10, y: 58, w: 80, h: 12, role: "title", align: "center", overlay: true }, { x: 10, y: 75, w: 80, h: 6, role: "sub", align: "center", overlay: true }] },
+  // Bố cục đa dạng hơn (bất đối xứng, kiểu tạp chí/mosaic)
+  strip3: { label: "3 dải ngang", photos: [[2, 2, 96, 30.7], [2, 34.6, 96, 30.7], [2, 67.3, 96, 30.7]] },
+  bigTop: { label: "Lớn trên · 3 dưới", photos: [[2, 2, 96, 58], [2, 62, 31.3, 36], [34.3, 62, 31.3, 36], [66.6, 62, 31.3, 36]] },
+  mosaic5: { label: "Mosaic 5", photos: [[2, 2, 58, 96], [62, 2, 17, 46.5], [81, 2, 17, 46.5], [62, 51.5, 17, 46.5], [81, 51.5, 17, 46.5]] },
+  sideStrip: { label: "Lớn + dải 4", photos: [[2, 2, 70, 96], [74, 2, 24, 22.5], [74, 26.5, 24, 22.5], [74, 51, 24, 22.5], [74, 75.5, 24, 22.5]] },
+  heroWide: { label: "Toàn cảnh + 4", photos: [[2, 2, 96, 60], [2, 64, 23, 34], [26, 64, 23, 34], [50, 64, 23, 34], [74, 64, 24, 34]] },
+  sixGrid: { label: "Lưới 6", photos: [[2, 2, 31.3, 47], [34.3, 2, 31.3, 47], [66.6, 2, 31.4, 47], [2, 51, 31.3, 47], [34.3, 51, 31.3, 47], [66.6, 51, 31.4, 47]] },
 };
-const SEED_PLAN = ["cover", "duo", "focus", "trio", "mag", "quad", "pano", "full"];
+const SEED_PLAN = ["cover", "duo", "focus", "trio", "mag", "bigTop", "sixGrid", "full"];
+
+/**
+ * Auto-generate a balanced layout for N photos (2% gaps, partial last row
+ * centered). This powers "chọn số lượng ảnh → tự ra bố cục".
+ */
+function genLayout(n: number, aspect: number): Rect[] {
+  const G = 2;
+  n = Math.max(1, Math.min(12, Math.round(n)));
+  const special: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 2, 6: 3, 8: 4, 9: 3, 12: 4 };
+  let cols = special[n] ?? Math.max(2, Math.round(Math.sqrt((n * aspect) / 1.3)));
+  cols = Math.min(cols, n);
+  const rows = Math.ceil(n / cols);
+  const cellH = (100 - (rows + 1) * G) / rows;
+  const cellW = (100 - (cols + 1) * G) / cols;
+  const rects: Rect[] = [];
+  let idx = 0;
+  for (let r = 0; r < rows && idx < n; r++) {
+    const inRow = Math.min(cols, n - idx);
+    const rowW = inRow * cellW + (inRow - 1) * G;
+    const startX = (100 - rowW) / 2;
+    const y = G + r * (cellH + G);
+    for (let cc = 0; cc < inRow; cc++, idx++) rects.push([+(startX + cc * (cellW + G)).toFixed(1), +y.toFixed(1), +cellW.toFixed(1), +cellH.toFixed(1)]);
+  }
+  return rects;
+}
 const DECOS: { label: string; text: string; size: number }[] = [
   { label: "Đường kẻ", text: "———", size: 22 }, { label: "Dấu &", text: "&", size: 40 },
   { label: "Ngày cưới", text: "12 · 10 · 2025", size: 16 }, { label: "Save the date", text: "Save the date", size: 20 },
@@ -79,6 +111,8 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [fmt, setFmt] = useState<"jpg" | "png">("jpg");
+  const [showExport, setShowExport] = useState(false);
+  const [exportSel, setExportSel] = useState<Set<number>>(new Set());
   const [canvasW, setCanvasW] = useState(700);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dims = useRef<Record<string, { w: number; h: number; approx?: boolean }>>({});
@@ -184,6 +218,23 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     fresh.cells.forEach((c) => { if (c.type === "photo" && placed[pi]) { const s = placed[pi++]; c.photo = s.photo; c.full = s.full; c.scale = s.scale; c.posX = s.posX; c.posY = s.posY; c.filter = s.filter; } });
     setSpreads((sp) => sp.map((s, i) => i === cur ? fresh : s)); setSel(null);
   }
+  // Rebuild the current spread's photo cells from arbitrary rects (auto layout),
+  // keeping already-placed photos and any text cells.
+  function applyRects(rects: Rect[]) {
+    snapshot();
+    const placed = spread.cells.filter((c) => c.type === "photo" && c.photo);
+    const texts = spread.cells.filter((c) => c.type === "text");
+    let pi = 0;
+    const photoCells: Cell[] = rects.map(([x, y, w, h]) => {
+      const base: Cell = { uid: UID++, type: "photo", x, y, w, h, photo: null, full: null, scale: 1, posX: 50, posY: 50, filter: "none", text: "", role: "body", align: "center", size: null, color: null, overlay: false, upper: false };
+      const s = placed[pi++];
+      return s ? { ...base, photo: s.photo, full: s.full, scale: s.scale, posX: s.posX, posY: s.posY, filter: s.filter } : base;
+    });
+    setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, layout: `auto:${rects.length}`, cells: [...photoCells, ...texts] }));
+    setSel(null);
+  }
+  const applyPhotoCount = (n: number) => applyRects(genLayout(n, aspect));
+  const photoCount = spread?.cells.filter((c) => c.type === "photo").length ?? 0;
   const addText = () => { snapshot(); const c = buildSpread("full", spread.id).cells[0]; setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: [...s.cells, { ...c, uid: UID++, type: "text", x: 20, y: 40, w: 60, h: 12, text: "Dòng chữ mới", role: "body", align: "center" }] })); };
   const addDeco = (d: typeof DECOS[number]) => { snapshot(); setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: [...s.cells, { uid: UID++, type: "text", x: 30, y: 45, w: 40, h: 12, photo: null, full: null, scale: 1, posX: 50, posY: 50, filter: "none", text: d.text, role: "deco", align: "center", size: d.size, color: null, overlay: false, upper: false }] })); };
   const delCell = (uid: number) => { snapshot(); setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: s.cells.filter((c) => c.uid !== uid) })); setSel(null); };
@@ -290,10 +341,12 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     const a = document.createElement("a"); a.href = url; a.download = `album-${size.name}-trang-${idx + 1}.${ext}`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
-  async function exportAll() {
-    if (!spreads.some((s) => s.cells.some((c) => c.type === "photo" && c.full))) { showToast("Chưa có ảnh để xuất — hãy nạp thư viện & đặt ảnh."); return; }
+  async function exportPages(indices: number[]) {
+    const list = indices.filter((i) => i >= 0 && i < spreads.length).sort((a, b) => a - b);
+    if (!list.length) { showToast("Chưa chọn trang nào để xuất."); return; }
+    setShowExport(false);
     setExporting(true);
-    try { for (let i = 0; i < spreads.length; i++) { await exportSpread(spreads[i], i); await new Promise((r) => setTimeout(r, 450)); } showToast(`Đã xuất ${spreads.length} trang (${fmt.toUpperCase()} · 300 DPI · ảnh gốc).`); }
+    try { for (const i of list) { await exportSpread(spreads[i], i); await new Promise((r) => setTimeout(r, 450)); } showToast(`Đã xuất ${list.length} trang (${fmt.toUpperCase()} · 300 DPI · ảnh gốc).`); }
     catch { showToast("Xuất file gặp lỗi — thử lại hoặc giảm số trang."); }
     finally { setExporting(false); }
   }
@@ -321,7 +374,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
             <button key={f} onClick={() => setFmt(f)} className="px-2.5 py-2" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>
           ))}
         </div>
-        <button onClick={exportAll} disabled={exporting} className="btn-primary gap-1.5">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Xuất file</button>
+        <button onClick={() => { setExportSel(new Set(spreads.map((_, i) => i))); setShowExport(true); }} disabled={exporting} className="btn-primary gap-1.5">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Xuất file</button>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[220px_1fr_300px]">
@@ -403,6 +456,24 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
           </div>
 
           {tab === "layout" && (<div className="space-y-3">
+            {/* Chọn số ảnh → tự ra bố cục */}
+            <div className="rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[12.5px] font-semibold">Số ảnh trong trang</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => applyPhotoCount(Math.max(1, photoCount - 1))} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>−</button>
+                  <span className="w-5 text-center text-sm font-bold">{photoCount}</span>
+                  <button onClick={() => applyPhotoCount(Math.min(12, photoCount + 1))} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>+</button>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                  <button key={n} onClick={() => applyPhotoCount(n)} className="h-7 w-7 rounded-md text-xs font-semibold" style={{ background: photoCount === n ? "var(--brand)" : "var(--panel)", color: photoCount === n ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>{n}</button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px]" style={{ color: "var(--text3)" }}>Chọn số ảnh, bố cục tự dàn cân đối.</p>
+            </div>
+            <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Hoặc chọn bố cục dựng sẵn</p>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(LAYOUTS).map(([k, L]) => (
                 <button key={k} onClick={() => applyLayout(k)} className="rounded-lg p-2 text-left" style={{ border: `1px solid ${spread?.layout === k ? "var(--brand)" : "var(--border)"}` }}>
@@ -465,7 +536,44 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
         </div>
       </div>
 
-      {toast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 60, background: "var(--brand)", color: "#fff", padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+      {/* Export modal — chọn trang để xuất */}
+      {showExport && (
+        <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl p-5" style={{ background: "var(--panel)", boxShadow: "0 24px 70px rgba(0,0,0,.4)" }}>
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-base font-extrabold">Xuất album</h3>
+              <button onClick={() => setShowExport(false)} className="text-xl" style={{ color: "var(--text3)" }}>×</button>
+            </div>
+            <p className="mb-3 text-xs" style={{ color: "var(--text2)" }}>{size.name} · {exportSel.size}/{spreads.length} trang · 300 DPI · ảnh gốc</p>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs font-semibold" style={{ color: "var(--text2)" }}>Định dạng</span>
+              <div className="flex overflow-hidden rounded-lg text-xs font-semibold" style={{ border: "1px solid var(--border)" }}>
+                {(["jpg", "png"] as const).map((f) => <button key={f} onClick={() => setFmt(f)} className="px-3 py-1.5" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>)}
+              </div>
+              <span className="flex-1" />
+              <button onClick={() => setExportSel(new Set(spreads.map((_, i) => i)))} className="text-xs font-semibold" style={{ color: "var(--brand)" }}>Chọn tất cả</button>
+              <button onClick={() => setExportSel(new Set())} className="text-xs font-semibold" style={{ color: "var(--text3)" }}>Bỏ chọn</button>
+            </div>
+            <div className="grid max-h-[46vh] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+              {spreads.map((s, i) => {
+                const on = exportSel.has(i);
+                return (
+                  <button key={s.id} onClick={() => setExportSel((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })} className="rounded-lg p-1 text-left" style={{ border: `2px solid ${on ? "var(--brand)" : "var(--border)"}` }}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: tpl.page, borderRadius: 4, overflow: "hidden" }}>
+                      {s.cells.filter((c) => c.type === "photo").map((c, k) => <span key={k} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, background: c.photo ? "var(--brand)" : "var(--surface2)", opacity: c.photo ? 0.5 : 1, borderRadius: 1 }} />)}
+                      {on && <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white" style={{ background: "var(--brand)" }}>✓</span>}
+                    </div>
+                    <span className="mt-1 block text-[11px]" style={{ color: "var(--text3)" }}>{i === 0 ? "Bìa" : `Trang ${i + 1}`}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => exportPages([...exportSel])} disabled={!exportSel.size} className="btn-primary mt-4 w-full gap-1.5 disabled:opacity-50"><Download size={15} /> Xuất {exportSel.size} trang ({fmt.toUpperCase()})</button>
+          </div>
+        </div>
+      )}
+
+      {toast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 90, background: "var(--brand)", color: "#fff", padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
     </div>
   );
 }
