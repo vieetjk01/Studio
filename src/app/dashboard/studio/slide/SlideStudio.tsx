@@ -35,6 +35,7 @@ class SlideEngine {
   seed = 1;
   time = 0;
   total = 0;
+  W = 1920; H = 1080; // kích thước canvas hiện tại (đổi tạm khi xuất video dọc 9:16)
   canvas: HTMLCanvasElement | null = null;
   ctx: CanvasRenderingContext2D | null = null;
   scrubber: HTMLInputElement | null = null;
@@ -221,14 +222,14 @@ class SlideEngine {
     c.restore();
   }
   drawEmpty() {
-    const c = this.ctx!, th = this.getTheme(), W = 1920, H = 1080;
+    const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
     c.fillStyle = th.ink; c.globalAlpha = 0.9;
     this.text("Tải ảnh lên để bắt đầu", W / 2, H / 2 - 40, 56, th.ink, th.title, 600, "center", th.titleItalic, 0, 1);
     this.text("Kéo thả ảnh cưới của bạn ở bảng bên trái", W / 2, H / 2 + 40, 26, th.sub, th.body, 500, "center", false, 0, 0.9);
     c.globalAlpha = 1;
   }
   renderSlide(slide: Slide, p: number, opts: { alpha?: number; clipX?: number; clipW?: number; clipCircle?: number; dx?: number; dy?: number; scale?: number }) {
-    const c = this.ctx!, W = 1920, H = 1080, th = this.getTheme();
+    const c = this.ctx!, W = this.W, H = this.H, th = this.getTheme();
     c.save();
     c.globalAlpha = opts.alpha == null ? 1 : opts.alpha;
     if (opts.clipCircle != null) { const r = opts.clipCircle * Math.hypot(W, H) / 2; c.beginPath(); c.arc(W / 2, H / 2, Math.max(0, r), 0, Math.PI * 2); c.clip(); }
@@ -257,7 +258,7 @@ class SlideEngine {
     c.restore();
   }
   drawTitle(slide: Slide, p: number) {
-    const c = this.ctx!, th = this.getTheme(), W = 1920, H = 1080;
+    const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
     const hero = slide.photos[0];
     if (hero) this.drawPhotoCell(0, 0, W, H, 0, p, 7, hero);
     else { c.fillStyle = th.accent; c.globalAlpha = 0.18; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
@@ -275,7 +276,7 @@ class SlideEngine {
     c.restore();
   }
   drawOutro(_slide: Slide, p: number) {
-    const c = this.ctx!, th = this.getTheme(), W = 1920, H = 1080;
+    const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
     const a = this.smooth(p, 0, 0.22); const rise = (1 - a) * 20;
     c.save(); c.globalAlpha *= a;
     const cx = W / 2; let y = H * 0.32 - rise;
@@ -288,7 +289,7 @@ class SlideEngine {
     c.restore();
   }
   drawQuote(slide: Slide, p: number) {
-    const c = this.ctx!, th = this.getTheme(), W = 1920, H = 1080;
+    const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
     const a = this.smooth(p, 0, 0.2); const rise = (1 - a) * 18;
     c.save(); c.globalAlpha *= a;
     const size = 58; const lines = this.wrap(slide.text || "", size, th.title, th.titleItalic, W * 0.66);
@@ -299,14 +300,14 @@ class SlideEngine {
     c.restore();
   }
   drawFrame(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080;
+    const th = this.getTheme(), W = this.W, H = this.H;
     const mx = 180, my = 140, x = mx, y = my, w = W - 2 * mx, h = H - 2 * my;
     this.drawPhotoCell(x, y, w, h, th.radius, p, 5, slide.photos[0]);
     this.text(this.coupleName(), x, y - 52, 26, th.sub, th.body, 600, "left", false, 2, 1);
     if (this.state.date) this.text(this.state.date, x + w, y + h + 18, 22, th.sub, th.body, 500, "right", false, 3, 1);
   }
   drawSplit(slide: Slide, p: number) {
-    const c = this.ctx!, th = this.getTheme(), W = 1920, H = 1080;
+    const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
     const side = slide.side || 0; const pw = Math.round(W * 0.55);
     const px = side === 0 ? 0 : W - pw;
     this.drawPhotoCell(px, 0, pw, H, 0, p, 4, slide.photos[0]);
@@ -320,19 +321,19 @@ class SlideEngine {
     c.restore();
   }
   drawDuo(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 70, g = 26;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 70, g = 26;
     const w = (W - 2 * M - g) / 2, h = H - 2 * M;
     this.drawPhotoCell(M, M, w, h, th.radius, p, 2, slide.photos[0]);
     this.drawPhotoCell(M + w + g, M, w, h, th.radius, p, 5, slide.photos[1]);
   }
   drawDuoV(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 90, g = 24;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 90, g = 24;
     const w = W - 2 * M, h = (H - 2 * M - g) / 2;
     this.drawPhotoCell(M, M, w, h, th.radius, p, 2, slide.photos[0]);
     this.drawPhotoCell(M, M + h + g, w, h, th.radius, p, 5, slide.photos[1]);
   }
   drawTriple(slide: Slide, p: number, mirror = false) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 70, g = 26;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 70, g = 26;
     const bigW = Math.round((W - 2 * M - g) * 0.6), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M, sh = (h - g) / 2;
     const bigX = mirror ? M + rightW + g : M, colX = mirror ? M : M + bigW + g;
     this.drawPhotoCell(bigX, M, bigW, h, th.radius, p, 2, slide.photos[0]);
@@ -340,18 +341,18 @@ class SlideEngine {
     this.drawPhotoCell(colX, M + sh + g, rightW, sh, th.radius, p, 6, slide.photos[2]);
   }
   drawBands(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 60, g = 20;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 60, g = 20;
     const w = W - 2 * M, h = (H - 2 * M - 2 * g) / 3;
     for (let i = 0; i < 3; i++) this.drawPhotoCell(M, M + i * (h + g), w, h, th.radius, p, i + 2, slide.photos[i]);
   }
   drawQuadL(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 64, g = 22;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 64, g = 22;
     const bigW = Math.round((W - 2 * M - g) * 0.62), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M, sh = (h - 2 * g) / 3;
     this.drawPhotoCell(M, M, bigW, h, th.radius, p, 2, slide.photos[0]);
     for (let i = 0; i < 3; i++) this.drawPhotoCell(M + bigW + g, M + i * (sh + g), rightW, sh, th.radius, p, i + 3, slide.photos[i + 1]);
   }
   drawQuint(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 64, g = 20;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 64, g = 20;
     const bigW = Math.round((W - 2 * M - g) * 0.58), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M;
     const cw = (rightW - g) / 2, chh = (h - g) / 2;
     this.drawPhotoCell(M, M, bigW, h, th.radius, p, 2, slide.photos[0]);
@@ -359,13 +360,13 @@ class SlideEngine {
     [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((cc, ix) => this.drawPhotoCell(bx + cc[0] * (cw + g), M + cc[1] * (chh + g), cw, chh, th.radius, p, ix + 3, slide.photos[ix + 1]));
   }
   drawHex(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 56, g = 18;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 56, g = 18;
     const w = (W - 2 * M - 2 * g) / 3, h = (H - 2 * M - g) / 2;
     [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]].forEach((cc, ix) => this.drawPhotoCell(M + cc[0] * (w + g), M + cc[1] * (h + g), w, h, th.radius, p, ix + 2, slide.photos[ix]));
   }
   drawPolaroid(slide: Slide, p: number) {
-    const c = this.ctx!, W = 1920, H = 1080;
-    const pw = 1180, ph = 820, x = (W - pw) / 2, y = (H - ph) / 2 - 20;
+    const c = this.ctx!, W = this.W, H = this.H;
+    const pw = Math.min(W * 0.62, 1180), ph = pw * 0.7, x = (W - pw) / 2, y = (H - (ph + 120)) / 2;
     c.save(); c.translate(W / 2, H / 2); c.rotate(-0.03); c.translate(-W / 2, -H / 2);
     c.fillStyle = "#fff"; c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 60; c.shadowOffsetY = 24;
     this.roundRect(x, y, pw, ph + 120, 8); c.fill(); c.shadowColor = "transparent";
@@ -373,14 +374,14 @@ class SlideEngine {
     c.restore();
   }
   drawQuad(slide: Slide, p: number) {
-    const th = this.getTheme(), W = 1920, H = 1080, M = 70, g = 26;
+    const th = this.getTheme(), W = this.W, H = this.H, M = 70, g = 26;
     const w = (W - 2 * M - g) / 2, h = (H - 2 * M - g) / 2;
     const cells = [[0, 0], [1, 0], [0, 1], [1, 1]];
     cells.forEach((cc, ix) => this.drawPhotoCell(M + cc[0] * (w + g), M + cc[1] * (h + g), w, h, th.radius, p, ix + 2, slide.photos[ix]));
   }
   drawAt(t: number) {
     const c = this.ctx; if (!c) return;
-    const th = this.getTheme(), W = 1920, H = 1080;
+    const th = this.getTheme(), W = this.W, H = this.H;
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
     c.clearRect(0, 0, W, H); c.fillStyle = th.bg; c.fillRect(0, 0, W, H);
     if (!this.plan.length || !this.state.photos.length) { this.drawEmpty(); return; }
@@ -485,13 +486,21 @@ class SlideEngine {
     this._proc = setInterval(step, kind === "strings" ? 1500 : 960);
   }
 
-  async exportVideo() {
+  // Đặt kích thước canvas rendering (16:9 ngang mặc định, 9:16 dọc khi xuất dọc).
+  setSize(w: number, h: number) {
+    this.W = w; this.H = h;
+    if (this.canvas) { this.canvas.width = w; this.canvas.height = h; }
+  }
+  async exportVideo(aspect: "landscape" | "portrait" = "landscape") {
     if (this.state.exporting) return;
     if (!this.state.photos.length) { this.setState({ exportError: "Hãy tải ảnh lên trước khi xuất video." }); setTimeout(() => this.setState({ exportError: "" }), 4000); return; }
     this.pausePreview();
     this._cancelExport = false;
     this.setState({ exporting: true, exportPct: 0, exportError: "" });
-    await new Promise((r) => setTimeout(r, 60));
+    // Chuyển canvas sang đúng khổ cần xuất rồi vẽ lại.
+    if (aspect === "portrait") this.setSize(1080, 1920); else this.setSize(1920, 1080);
+    this.drawAt(this.time);
+    await new Promise((r) => setTimeout(r, 80));
     try {
       const canvas = this.canvas!, fps = 30;
       const vs = (canvas as HTMLCanvasElement & { captureStream: (f: number) => MediaStream }).captureStream(fps);
@@ -528,7 +537,8 @@ class SlideEngine {
         const blob = new Blob(chunks, { type: mime || "video/webm" });
         const url = URL.createObjectURL(blob);
         const nm = ((this.state.groom || "") + "-" + (this.state.bride || "")).replace(/\s+/g, "").replace(/[^\w-]/g, "") || "wedding";
-        const a = document.createElement("a"); a.href = url; a.download = "mstudo-" + nm + "." + ext; document.body.appendChild(a); a.click(); a.remove();
+        const suffix = aspect === "portrait" ? "-doc" : "-ngang";
+        const a = document.createElement("a"); a.href = url; a.download = "mstudo-" + nm + suffix + "." + ext; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 6000);
       }
     } catch (e) {
@@ -537,6 +547,8 @@ class SlideEngine {
     }
     this._cancelExport = false;
     this.setState({ exporting: false, exportPct: 0 });
+    // Trả canvas về khổ ngang 16:9 để xem trước.
+    this.setSize(1920, 1080);
     this.time = 0; this.drawAt(0); this.updateScrub();
   }
   destroy() {
@@ -590,6 +602,7 @@ export default function SlideStudio() {
   const [sugg, setSugg] = useState<string[]>([]);
   const [lib, setLib] = useState<string[]>([]);
   const [own, setOwn] = useState("");
+  const [exportMenu, setExportMenu] = useState(false);
 
   useEffect(() => {
     try { const raw = localStorage.getItem("slide_phrases"); if (raw) setLib(JSON.parse(raw)); } catch { /* */ }
@@ -642,7 +655,25 @@ export default function SlideStudio() {
           <div style={{ fontWeight: 800, fontSize: 15 }}>Video slide ảnh cưới</div>
           <div style={{ fontSize: 12, color: "#8a8378" }}>Tự động tạo từ ảnh của bạn · mstudo</div>
         </div>
-        <button onClick={() => eng.exportVideo()} style={{ height: 40, padding: "0 20px", border: "none", borderRadius: 10, background: green, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 18px rgba(31,157,99,.3)" }}>↓ Xuất video</button>
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setExportMenu((v) => !v)} style={{ height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: green, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 18px rgba(31,157,99,.3)" }}>↓ Xuất video ▾</button>
+          {exportMenu && (
+            <>
+              <div onClick={() => setExportMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+              <div style={{ position: "absolute", right: 0, top: 46, zIndex: 41, width: 230, background: "#fffdf9", border: "1px solid #e7e2d9", borderRadius: 12, boxShadow: "0 16px 40px rgba(0,0,0,.18)", overflow: "hidden" }}>
+                <button onClick={() => { setExportMenu(false); eng.exportVideo("landscape"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
+                  <span style={{ width: 40, height: 24, borderRadius: 4, background: green, flex: "none" }} />
+                  <span><span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#26241f" }}>Video ngang</span><span style={{ fontSize: 12, color: "#8a8378" }}>16:9 · YouTube, TV, màn chiếu</span></span>
+                </button>
+                <div style={{ height: 1, background: "#efe9df" }} />
+                <button onClick={() => { setExportMenu(false); eng.exportVideo("portrait"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
+                  <span style={{ width: 24, height: 40, borderRadius: 4, background: green, flex: "none" }} />
+                  <span><span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#26241f" }}>Video dọc</span><span style={{ fontSize: 12, color: "#8a8378" }}>9:16 · Reels, TikTok, Story</span></span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <div className="flex flex-col lg:flex-row" style={{ flex: 1, minHeight: 0 }}>
