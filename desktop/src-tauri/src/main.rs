@@ -224,6 +224,36 @@ async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Tự cập nhật: tải trình cài đặt (.exe) về thư mục tạm rồi chạy, và thoát app
+/// để trình cài đặt ghi đè. Không cần khóa ký — dùng chính bản phát hành hiện có.
+#[tauri::command]
+async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(600))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(&url)
+        .header("User-Agent", "MStudoDesktop/updater")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("tải lỗi HTTP {}", resp.status().as_u16()));
+    }
+    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    let mut path = std::env::temp_dir();
+    path.push("MStudo-Desktop-setup.exe");
+    std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+    std::process::Command::new(&path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    // Cho trình cài đặt khởi động rồi thoát app (giải phóng file để ghi đè).
+    std::thread::sleep(Duration::from_millis(600));
+    app.exit(0);
+    Ok(())
+}
+
 /// Mở liên kết trong trình duyệt mặc định (nút "Tải bản cập nhật").
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
@@ -298,7 +328,8 @@ fn main() {
             open_folder,
             open_file,
             open_url,
-            open_app
+            open_app,
+            download_and_run
         ])
         .run(tauri::generate_context!())
         .expect("Không khởi động được MStudo Desktop");

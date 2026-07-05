@@ -355,23 +355,40 @@ window.printContract = async function (id) {
   } catch (e) { alert("Không in được: " + (e.message || e)); }
 };
 
-// ─── Kiểm tra bản cập nhật (khi mở app + mỗi ngày) ──────────────────────────
-const verNewer = (a, b) => { // a > b ?
-  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
-  for (let i = 0; i < 3; i++) { if ((pa[i] || 0) > (pb[i] || 0)) return true; if ((pa[i] || 0) < (pb[i] || 0)) return false; }
-  return false;
-};
+// ─── Tự cập nhật: phát hiện bản mới trên GitHub Releases (nhãn desktop-dev) ──
+// So sánh thời điểm cập nhật của file cài mới nhất với bản đã lưu; nếu khác →
+// hiện banner, bấm "Cập nhật ngay" tải + chạy trình cài đặt (app tự thoát).
+const RELEASE_API = "https://api.github.com/repos/vieetjk01/Studio/releases/tags/desktop-dev";
+let _updateUrl = "";
 async function checkUpdate() {
   try {
-    const r = await invoke("http_get", { url: cfg.server + "/api/desktop/version", token: null });
+    const r = await invoke("http_get", { url: RELEASE_API, token: null });
     if (r.status !== 200) return;
-    const v = JSON.parse(b64ToText(r.body_b64));
-    if (v.version && v.url && verNewer(v.version, APP_VERSION)) {
-      $("updateText").textContent = `Đã có phiên bản ${v.version}${v.note ? " — " + v.note : ""} (bạn đang dùng ${APP_VERSION}).`;
+    const rel = JSON.parse(b64ToText(r.body_b64));
+    const asset = (rel.assets || []).find((a) => /-setup\.exe$/i.test(a.name));
+    if (!asset) return;
+    _updateUrl = asset.browser_download_url;
+    const build = asset.updated_at || "";
+    if (!cfg.installedBuild) { cfg.installedBuild = build; saveCfg(); return; } // baseline lần đầu
+    if (build && build !== cfg.installedBuild) {
+      $("updateText").textContent = "Đã có bản cập nhật mới của MStudo Desktop.";
       $("updateBanner").classList.remove("hidden");
-      $("btnUpdate").onclick = () => invoke("open_url", { url: v.url }).catch(() => {});
+      $("btnUpdate").textContent = "Cập nhật ngay";
+      $("btnUpdate").onclick = () => runSelfUpdate(build);
     }
   } catch { /* mạng lỗi — thử lại lần sau */ }
+}
+async function runSelfUpdate(build) {
+  if (!_updateUrl) return;
+  if (!confirm("Tải và cài bản cập nhật mới? Ứng dụng sẽ đóng lại để cài đặt, rồi mở lại.")) return;
+  $("btnUpdate").textContent = "Đang tải…"; $("btnUpdate").disabled = true;
+  cfg.installedBuild = build; saveCfg();
+  try {
+    await invoke("download_and_run", { url: _updateUrl }); // app sẽ tự thoát
+  } catch (e) {
+    $("btnUpdate").disabled = false; $("btnUpdate").textContent = "Cập nhật ngay";
+    alert("Không tải được bản cập nhật: " + (e.message || e) + "\nBạn có thể tải thủ công từ trang phát hành.");
+  }
 }
 
 // ─── Lịch chạy ───────────────────────────────────────────────────────────────
