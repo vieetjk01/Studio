@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Plus, Search, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useCachedJson } from "@/lib/client-cache";
 import {
   contractTotal,
   sumAmounts,
@@ -38,13 +38,22 @@ const STATUS_TONE: Record<ContractStatus, string> = {
   cancelled: "#c77b7b",
 };
 
-export default function ContractsListView({ list: initialList }: { list: ContractRow[] }) {
+export default function ContractsListView() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | ContractStatus>("all");
-  const [rows, setRows] = useState<ContractRow[]>(initialList);
   const [updating, setUpdating] = useState<string | null>(null);
   const supabase = createClient();
-  const router = useRouter();
+
+  // Tải danh sách + cache trên máy: hiện tức thì bản đã lưu, làm mới ngầm.
+  const { data, loading, fromCache, setData } = useCachedJson<{ list: ContractRow[] }>(
+    "contracts-list",
+    "/api/studio/contracts-list",
+    { list: [] }
+  );
+  const rows = data.list;
+  const setRows = (fn: (prev: ContractRow[]) => ContractRow[]) => setData((d) => ({ list: fn(d.list) }));
+  // Lần đầu chưa có cache và đang tải → hiện trạng thái tải thay vì "chưa có HĐ".
+  const initialLoading = loading && !fromCache && rows.length === 0;
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -60,10 +69,10 @@ export default function ContractsListView({ list: initialList }: { list: Contrac
   async function changeStatus(id: string, next: ContractStatus, e: React.ChangeEvent<HTMLSelectElement>) {
     e.stopPropagation();
     setUpdating(id);
+    // Cập nhật lạc quan ngay (ghi cả cache) → phản hồi tức thì, rồi lưu lên server.
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, status: next } : r));
     await supabase.from("studio_contracts").update({ status: next }).eq("id", id);
     setUpdating(null);
-    router.refresh();
   }
 
   function exportCsv() {
@@ -115,7 +124,9 @@ export default function ContractsListView({ list: initialList }: { list: Contrac
         </Link>
       </div>
 
-      {rows.length === 0 ? (
+      {initialLoading ? (
+        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Đang tải hợp đồng…</div>
+      ) : rows.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
           <p style={{ color: "var(--text2)" }}>Chưa có hợp đồng nào.</p>
           <Link href="/dashboard/studio/contracts/new" className="btn-ghost mt-4">

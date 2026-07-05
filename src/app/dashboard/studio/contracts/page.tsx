@@ -1,8 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import ContractsListView, { type ContractRow } from "./ContractsListView";
+import ContractsListView from "./ContractsListView";
 
-
+// Trang chỉ gác quyền; danh sách hợp đồng được tải client-side + cache trên máy
+// (hiển thị tức thì, làm mới ngầm) qua /api/studio/contracts-list — bỏ độ trễ
+// chờ server render lại mỗi lần mở trang.
 export default async function ContractsList() {
   const profile = await requireStudio();
   if (!profile) {
@@ -18,14 +19,5 @@ export default async function ContractsList() {
       </div>
     );
   }
-
-  const supabase = createClient();
-  let q = supabase
-    .from("studio_contracts")
-    .select("id, code, title, client_name, client_phone, event_date, status, shoot_type, contract_items(qty, unit_price), contract_payments(amount)")
-    .eq("owner_id", profile.id);
-  if (profile.actingRole === "staff") q = q.eq("assigned_to", profile.actingUserId);
-  const { data } = await q.order("created_at", { ascending: false });
-
-  return <ContractsListView list={(data ?? []) as unknown as ContractRow[]} />;
+  return <ContractsListView />;
 }
