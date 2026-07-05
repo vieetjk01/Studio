@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor, Server,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -137,6 +137,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/upgrade", "Nâng cấp gói", "Gói dịch vụ & bảng giá"],
   ["/dashboard/connections", "Kết nối", "Tích hợp dịch vụ bên ngoài"],
   ["/dashboard/affiliate", "Affiliate", "Giới thiệu & hoa hồng"],
+  ["/dashboard/admin/system", "Bảng điều khiển hệ thống", "Thông báo & sao lưu toàn hệ thống"],
   ["/dashboard/admin/affiliate", "Quản lý Affiliate", "Danh sách hoa hồng"],
   ["/dashboard/settings", "Cài đặt", "Cài đặt hệ thống"],
   ["/dashboard/account", "Tài khoản", "Thông tin & bảo mật tài khoản"],
@@ -292,6 +293,7 @@ export default function StudioShell({
               </p>
               {[
                 { href: "/dashboard/admin", label: "Quản trị", icon: ShieldCheck },
+                { href: "/dashboard/admin/system", label: "Hệ thống", icon: Server },
                 { href: "/dashboard/admin/affiliate", label: "Affiliate", icon: Gift },
                 { href: "/dashboard/settings", label: "Cài đặt", icon: Settings },
               ].map((it) => {
@@ -392,6 +394,7 @@ export default function StudioShell({
               </p>
               {[
                 { href: "/dashboard/admin", label: "Quản trị", icon: ShieldCheck },
+                { href: "/dashboard/admin/system", label: "Hệ thống", icon: Server },
                 { href: "/dashboard/admin/affiliate", label: "Affiliate", icon: Gift },
                 { href: "/dashboard/settings", label: "Cài đặt", icon: Settings },
               ].map((it) => {

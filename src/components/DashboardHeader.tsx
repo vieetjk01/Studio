@@ -288,7 +288,7 @@ export default function DashboardHeader({
                   {[
                     { href: "/dashboard/affiliate", label: "Affiliate", icon: Gift, external: false },
                     { href: "/dashboard/settings", label: t("settings"), icon: Settings, external: false },
-                    ...(profile.role === "admin" ? [{ href: "/dashboard/admin/affiliate", label: "Quản lý Affiliate", icon: ShieldCheck, external: false }] : []),
+                    ...(profile.role === "admin" ? [{ href: "/dashboard/admin/system", label: "Hệ thống", icon: ShieldCheck, external: false }, { href: "/dashboard/admin/affiliate", label: "Quản lý Affiliate", icon: ShieldCheck, external: false }] : []),
                   ].map(({ href, label, icon: Icon }) => (
                     <Link
                       key={href}

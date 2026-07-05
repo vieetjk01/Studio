@@ -272,6 +272,7 @@ export type NotificationKind =
   | "review"
   | "payment"
   | "quote_accepted"
+  | "announcement"
   | "info";
 
 export interface StudioNotification {

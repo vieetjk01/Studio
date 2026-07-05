@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell, FileCheck, CheckCheck } from "lucide-react";
+import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell, FileCheck, CheckCheck, Megaphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PushToggle from "@/components/PushToggle";
 import type { StudioNotification, NotificationKind } from "@/lib/types";
@@ -15,6 +15,7 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   review: Star,
   payment: Wallet,
   quote_accepted: FileCheck,
+  announcement: Megaphone,
   info: Bell,
 };
 const TONE: Record<NotificationKind, string> = {
@@ -25,6 +26,7 @@ const TONE: Record<NotificationKind, string> = {
   review: "#e0b85c",
   payment: "#6ba3c7",
   quote_accepted: "#3fb98a",
+  announcement: "#c78bd1",
   info: "var(--text3)",
 };
 
