@@ -108,6 +108,7 @@ function bindRowClicks() {
   const prev = document.getElementById("calPrev"), next = document.getElementById("calNext");
   if (prev) prev.onclick = () => { _calMonth = shiftMonth(_calMonth || new Date().toISOString().slice(0, 7), -1); renderData(); };
   if (next) next.onclick = () => { _calMonth = shiftMonth(_calMonth || new Date().toISOString().slice(0, 7), 1); renderData(); };
+  const tod = document.getElementById("calToday"); if (tod) tod.onclick = () => { _calMonth = null; renderData(); };
 }
 function shiftMonth(ym, delta) {
   let [y, m] = ym.split("-").map(Number);
@@ -326,7 +327,7 @@ function openContract(id) {
     <div class="dmodal-head">
       <div><div class="dmodal-title">${esc(c.title || "Hợp đồng")} · ${esc(c.code || "")}</div>
       <div class="muted">${esc(c.client_name || "")} · ${esc(c.client_phone || "")} · ${D(c.event_date)}</div></div>
-      <div class="row-gap"><button id="dmEdit" class="btn small primary">Sửa</button><button id="dmClose" class="btn small">Đóng</button></div>
+      <div class="row-gap"><button id="dmPrint" class="btn small">🖨 In PDF</button><button id="dmEdit" class="btn small primary">Sửa</button><button id="dmClose" class="btn small">Đóng</button></div>
     </div>
     <div class="dmodal-body">
       <div class="drow"><span class="badge">${CONTRACT_STATUS[c.status] || c.status || ""}</span>
@@ -344,6 +345,7 @@ function openContract(id) {
   ov.classList.remove("hidden");
   document.getElementById("dmClose").onclick = () => ov.classList.add("hidden");
   document.getElementById("dmEdit").onclick = () => { ov.classList.add("hidden"); openContractEdit(id); };
+  document.getElementById("dmPrint").onclick = () => window.printContract(id);
   ov.onclick = (e) => { if (e.target === ov) ov.classList.add("hidden"); };
 }
 
@@ -561,7 +563,10 @@ function openCrew(id) {
 }
 
 let _calMonth = null; // "YYYY-MM" đang xem; null = tháng hiện tại
-function monthGridHtml(counts, ym) {
+const CAL_KIND_CLS = { shoot: "chip-shoot", booking: "chip-book", event: "chip-ev" };
+// Lưới lịch tháng: mỗi ngày hiện các "chip" nội dung (ngày chụp/đặt lịch/lịch),
+// tô màu theo loại — nhìn rõ ngày nào có lịch chụp, giống web app.
+function monthGridHtml(byDate, ym) {
   const [y, m] = ym.split("-").map(Number);
   const first = new Date(y, m - 1, 1);
   const startDow = (first.getDay() + 6) % 7; // T2=0
@@ -572,10 +577,16 @@ function monthGridHtml(counts, ym) {
   for (let i = 0; i < startDow; i++) cells += `<div class="mcell empty"></div>`;
   for (let d = 1; d <= days; d++) {
     const ds = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const c = counts[ds] || 0;
-    cells += `<div class="mcell${ds === todayS ? " today" : ""}"><span class="mday">${d}</span>${c ? `<span class="mdot">${c}</span>` : ""}</div>`;
+    const items = byDate[ds] || [];
+    const chips = items.slice(0, 3).map((it) => {
+      const attr = it.kind === "shoot" ? `data-open-contract="${it.id}"` : it.kind === "event" ? `data-event="${it.id}"` : "";
+      return `<span class="mchip ${CAL_KIND_CLS[it.kind]}" ${attr} title="${esc(it.title)}">${esc((it.t ? it.t + " " : "") + it.title)}</span>`;
+    }).join("");
+    const more = items.length > 3 ? `<span class="mmore">+${items.length - 3}</span>` : "";
+    cells += `<div class="mcell${ds === todayS ? " today" : ""}${items.length ? " has" : ""}"><span class="mday">${d}</span>${chips}${more}</div>`;
   }
-  return `<div class="mgrid-head">${wk.map((w) => `<div>${w}</div>`).join("")}</div><div class="mgrid">${cells}</div>`;
+  return `<div class="mgrid-head">${wk.map((w) => `<div>${w}</div>`).join("")}</div><div class="mgrid">${cells}</div>`
+    + `<div class="mlegend"><span class="mchip chip-shoot">Ngày chụp (HĐ)</span><span class="mchip chip-book">Đặt lịch</span><span class="mchip chip-ev">Lịch/ghi chú</span></div>`;
 }
 function renderCalendar() {
   const ev = T("studio_events").map((e) => ({ id: e.id, d: e.event_date, t: e.event_time, title: e.title, note: e.note, kind: "event" }));
@@ -583,11 +594,12 @@ function renderCalendar() {
   const sh = T("studio_contracts").filter((c) => c.event_date && c.status !== "cancelled").map((c) => ({ id: c.id, d: c.event_date, t: c.event_time, title: c.title, kind: "shoot" }));
   const all = [...ev, ...bk, ...sh].filter((r) => r.d);
   const ym = _calMonth || new Date().toISOString().slice(0, 7);
-  const counts = {};
-  all.forEach((r) => { const k = String(r.d).slice(0, 10); counts[k] = (counts[k] || 0) + 1; });
+  const byDate = {};
+  all.forEach((r) => { const k = String(r.d).slice(0, 10); (byDate[k] = byDate[k] || []).push(r); });
+  Object.values(byDate).forEach((list) => list.sort((a, b) => (a.kind === "shoot" ? -1 : 1) - (b.kind === "shoot" ? -1 : 1)));
   const [yy, mm] = ym.split("-").map(Number);
-  const nav = `<div class="mnav"><button class="btn small" id="calPrev">←</button><span class="mtitle">Tháng ${mm}/${yy}</span><button class="btn small" id="calNext">→</button><button class="btn small primary" id="addEvent" style="margin-left:auto">＋ Thêm lịch</button></div>`;
-  const grid = monthGridHtml(counts, ym);
+  const nav = `<div class="mnav"><button class="btn small" id="calPrev">←</button><span class="mtitle">Tháng ${mm}/${yy}</span><button class="btn small" id="calNext">→</button><button class="btn small" id="calToday">Hôm nay</button><button class="btn small primary" id="addEvent" style="margin-left:auto">＋ Thêm lịch</button></div>`;
+  const grid = monthGridHtml(byDate, ym);
   // Danh sách các mục trong tháng đang xem (kèm lọc tìm kiếm).
   let rows = all.filter((r) => String(r.d).slice(0, 7) === ym).filter((r) => match(r, [r.title]));
   rows.sort((a, b) => String(a.d).localeCompare(String(b.d)));

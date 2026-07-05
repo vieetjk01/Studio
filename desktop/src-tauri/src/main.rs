@@ -245,6 +245,24 @@ fn open_url(url: String) -> Result<(), String> {
     }
 }
 
+/// Mở một file bằng ứng dụng mặc định (PDF/HTML để in hợp đồng).
+#[tauri::command]
+fn open_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = path;
+        Err("unsupported".to_string())
+    }
+}
+
 /// Mở thư mục trong Windows Explorer.
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
@@ -278,6 +296,7 @@ fn main() {
             move_dir,
             hostname,
             open_folder,
+            open_file,
             open_url,
             open_app
         ])

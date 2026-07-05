@@ -333,6 +333,28 @@ async function flushQueue() {
   flushing = false;
 }
 
+// ─── In hợp đồng PDF (dùng bản in A4 chuẩn từ server: logo, chữ ký, định dạng) ──
+window.printContract = async function (id) {
+  if (!cfg.server || !cfg.token || !cfg.dir) { alert("Cần kết nối máy chủ và chọn thư mục lưu trước."); return; }
+  try {
+    await flushQueue(); // đảm bảo hợp đồng (kể cả vừa tạo cục bộ) đã lên server
+    const r = await invoke("http_get", { url: cfg.server + "/api/desktop/contracts/" + id + "?format=html", token: cfg.token });
+    if (r.status !== 200) { alert("Chưa in được — hợp đồng đang chờ đồng bộ lên máy chủ. Thử lại sau vài giây."); return; }
+    const dir = join(cfg.dir, "HopDong", ".in");
+    const htmlPath = join(dir, "hopdong-" + id + ".html");
+    const pdfPath = join(dir, "hopdong-" + id + ".pdf");
+    await invoke("write_file_b64", { path: htmlPath, contentsB64: r.body_b64 });
+    try {
+      await invoke("edge_pdf", { htmlPath, pdfPath });
+      await invoke("open_file", { path: pdfPath });
+      log("Đã tạo PDF hợp đồng — mở ra để in.");
+    } catch {
+      await invoke("open_file", { path: htmlPath });
+      log("Mở bản in (HTML) — bấm Ctrl+P để in ra giấy.", "warn");
+    }
+  } catch (e) { alert("Không in được: " + (e.message || e)); }
+};
+
 // ─── Kiểm tra bản cập nhật (khi mở app + mỗi ngày) ──────────────────────────
 const verNewer = (a, b) => { // a > b ?
   const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
