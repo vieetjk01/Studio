@@ -70,50 +70,70 @@
       <span id="updateText">Đã có phiên bản mới.</span>
       <button id="btnUpdate" class="btn small primary" style="margin-left:12px">Tải bản cập nhật</button>
     </div>
-    <div class="grid">
-      <div class="card stat">
-        <div class="stat-label">Lần đồng bộ cuối</div>
-        <div class="stat-value" id="stSync">—</div>
-      </div>
-      <div class="card stat">
-        <div class="stat-label">Hợp đồng đã lưu về máy</div>
-        <div class="stat-value" id="stContracts">0</div>
-      </div>
-      <div class="card stat">
-        <div class="stat-label">Xuất Excel gần nhất</div>
-        <div class="stat-value" id="stExport">—</div>
-      </div>
+
+    <!-- Tab con: Dữ liệu (offline) · Sao lưu & thiết bị -->
+    <div class="subnav">
+      <button id="subData" class="subtab on" data-sub="data">Dữ liệu</button>
+      <button id="subBackup" class="subtab" data-sub="backup">Sao lưu &amp; thiết bị</button>
+      <button id="btnRefreshData" class="btn small" style="margin-left:auto">↻ Tải dữ liệu mới</button>
     </div>
 
-    <div class="card">
-      <div class="row-between">
-        <h2>Thư mục lưu</h2>
-        <div class="row-gap">
-          <button id="btnOpenFolder" class="btn small">Mở thư mục</button>
-          <button id="btnChangeFolder" class="btn small">Đổi vị trí…</button>
+    <!-- ── Trình duyệt dữ liệu offline ── -->
+    <section id="sub-data">
+      <div id="dataView"></div>
+    </section>
+
+    <!-- ── Sao lưu & thiết bị ── -->
+    <section id="sub-backup" class="hidden">
+      <div class="grid">
+        <div class="card stat">
+          <div class="stat-label">Lần đồng bộ cuối</div>
+          <div class="stat-value" id="stSync">—</div>
+        </div>
+        <div class="card stat">
+          <div class="stat-label">Hợp đồng đã lưu về máy</div>
+          <div class="stat-value" id="stContracts">0</div>
+        </div>
+        <div class="card stat">
+          <div class="stat-label">Xuất Excel gần nhất</div>
+          <div class="stat-value" id="stExport">—</div>
         </div>
       </div>
-      <code id="mainFolderPath" class="folder-path"></code>
-    </div>
 
-    <div class="card">
-      <div class="row-between">
-        <h2>Hoạt động</h2>
-        <div class="row-gap">
-          <button id="btnSyncNow" class="btn small primary">Đồng bộ ngay</button>
-          <button id="btnExportNow" class="btn small">Xuất Excel ngay</button>
+      <div class="card">
+        <div class="row-between">
+          <h2>Thư mục lưu</h2>
+          <div class="row-gap">
+            <button id="btnOpenFolder" class="btn small">Mở thư mục</button>
+            <button id="btnChangeFolder" class="btn small">Đổi vị trí…</button>
+          </div>
         </div>
+        <code id="mainFolderPath" class="folder-path"></code>
       </div>
-      <ul id="log" class="log"></ul>
-    </div>
 
-    <div class="card">
-      <h2>Thiết bị</h2>
-      <p class="muted" id="deviceInfo"></p>
-      <button id="btnDisconnect" class="btn danger small">Ngắt kết nối thiết bị này</button>
-    </div>
+      <div class="card">
+        <div class="row-between">
+          <h2>Hoạt động</h2>
+          <div class="row-gap">
+            <button id="btnSyncNow" class="btn small primary">Đồng bộ ngay</button>
+            <button id="btnExportNow" class="btn small">Xuất Excel ngay</button>
+          </div>
+        </div>
+        <ul id="log" class="log"></ul>
+      </div>
+
+      <div class="card">
+        <h2>Thiết bị</h2>
+        <p class="muted" id="deviceInfo"></p>
+        <button id="btnDisconnect" class="btn danger small">Ngắt kết nối thiết bị này</button>
+      </div>
+    </section>
   </main>
 
+  <!-- Cửa sổ chi tiết hợp đồng (offline) -->
+  <div id="dataModal" class="dmodal-overlay hidden"><div class="dmodal"></div></div>
+
+  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

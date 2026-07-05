@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.1.1"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.2.0"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -31,6 +31,9 @@ const textToB64 = (t) => {
   return btoa(bin);
 };
 const join = (...parts) => parts.filter(Boolean).join("\\").replace(/[\\/]+/g, "\\");
+const cachePath = () => join(cfg.dir, "_offline-cache.json");
+// Mốc cập nhật cache (cho trình duyệt dữ liệu offline hiển thị).
+window.cacheStamp = () => (cfg.lastCache ? fmtTime(cfg.lastCache) : "chưa tải");
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtTime = (iso) => {
   if (!iso) return "—";
@@ -125,7 +128,7 @@ $("btnFolderNext").onclick = async () => {
   if (!p || p === "Chưa chọn thư mục") return;
   cfg.dir = p; cfg.saved = cfg.saved || {}; saveCfg();
   log("Đã chọn thư mục lưu: " + p);
-  show("main"); refreshStats(); renderLog();
+  show("main"); refreshStats(); renderLog(); showSub("data");
   bootSync(true); // lần đầu: tải TOÀN BỘ hợp đồng đã ký + xuất đủ bộ Excel
 };
 
@@ -136,6 +139,19 @@ function openStudioApp() {
 }
 $("btnOpenApp").onclick = openStudioApp;
 $("btnOpenAppTop").onclick = openStudioApp;
+
+// Chuyển tab con: Dữ liệu (offline) ↔ Sao lưu & thiết bị.
+function showSub(sub) {
+  $("sub-data").classList.toggle("hidden", sub !== "data");
+  $("sub-backup").classList.toggle("hidden", sub !== "backup");
+  $("subData").classList.toggle("on", sub === "data");
+  $("subBackup").classList.toggle("on", sub === "backup");
+  if (sub === "data" && typeof renderData === "function") renderData();
+}
+$("subData").onclick = () => showSub("data");
+$("subBackup").onclick = () => showSub("backup");
+// "Tải dữ liệu mới": làm mới cache offline (dùng lại luồng xuất/sao lưu).
+$("btnRefreshData").onclick = () => runExports(true);
 
 // ─── Màn 3: hành động ────────────────────────────────────────────────────────
 $("btnSyncNow").onclick = () => runSync(true);
@@ -242,12 +258,16 @@ async function runExports(manual = false) {
     }
     const backup = await apiB64(`/api/desktop/export?type=backup`);
     await invoke("write_file_b64", { path: join(cfg.dir, "SaoLuu", `mstudo-backup-${today()}.json`), contentsB64: backup });
+    // Cache ổn định để trình duyệt dữ liệu offline đọc + nạp vào bộ nhớ ngay.
+    await invoke("write_file_b64", { path: cachePath(), contentsB64: backup });
+    setData(JSON.parse(b64ToText(backup)));
+    cfg.lastCache = new Date().toISOString(); saveCfg();
     // Dọn file cũ hơn 30 ngày (KHÔNG đụng thư mục HopDong).
     for (const [, folder] of [...EXPORTS, ["", "SaoLuu"]]) {
       await invoke("cleanup_old", { dir: join(cfg.dir, folder), days: KEEP_DAYS }).catch(() => {});
     }
     cfg.lastExportDate = today(); saveCfg(); refreshStats();
-    log("Đã xuất Excel toàn bộ dữ liệu + bản sao lưu JSON.");
+    log("Đã xuất Excel + cập nhật dữ liệu offline.");
   } catch (e) {
     if (manual) log("Không xuất được dữ liệu: " + (e.message || e), "err");
   }
@@ -283,11 +303,21 @@ function bootSync(first = false) {
   setInterval(checkUpdate, 24 * 3600 * 1000);
 }
 
+// Nạp cache dữ liệu offline từ đĩa (để xem ngay khi mở app, kể cả chưa có mạng).
+async function loadCacheFromDisk() {
+  try {
+    const t = await invoke("read_text", { path: cachePath() });
+    setData(JSON.parse(t));
+  } catch { /* chưa có cache */ }
+}
+
 // ─── Khởi động ───────────────────────────────────────────────────────────────
-(function init() {
+(async function init() {
   renderLog();
   if (!cfg.token) { show("setup"); return; }
   if (!cfg.dir) { show("folder"); return; }
   show("main"); refreshStats();
+  await loadCacheFromDisk();  // hiển thị dữ liệu offline ngay lập tức
+  showSub("data");            // mặc định mở tab Dữ liệu
   bootSync(false);
 })();
