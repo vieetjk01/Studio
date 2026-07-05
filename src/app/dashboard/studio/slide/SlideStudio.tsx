@@ -11,13 +11,13 @@ import { useEffect, useRef, useState } from "react";
 
 type Photo = { id: string; name: string; url: string };
 type Slide = { type: string; photos: Photo[]; trans: string; text?: string; side?: number; t0?: number; dur?: number };
-type Theme = { name: string; bg: string; ink: string; sub: string; accent: string; title: string; body: string; radius: number; dark: boolean; letterbox: boolean; titleItalic: boolean; c1: string; c2: string; trans: string[]; tr: number; kb: number; pace: number; bag: string[]; bagText: string[] };
+type Theme = { name: string; bg: string; ink: string; sub: string; accent: string; title: string; body: string; radius: number; dark: boolean; letterbox: boolean; titleItalic: boolean; c1: string; c2: string; trans: string[]; rhythm: number[]; tr: number; kb: number; pace: number; bag: string[]; bagText: string[] };
 
 const THEMES: Record<string, Theme> = {
-  luxe: { name: "Tối giản sang trọng", bg: "#f7f4ef", ink: "#2b2723", sub: "#8a8378", accent: "#a98b5d", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 6, dark: false, letterbox: false, titleItalic: false, c1: "#f7f4ef", c2: "#a98b5d", trans: ["fade", "zoomsoft", "slideleft", "wipe"], tr: 0.95, kb: 0.05, pace: 1.12, bag: ["FULL", "FRAME", "POLAROID", "DUO", "FRAME", "FULL", "TRIPLE", "BANDS", "FULL", "QUADL"], bagText: ["FULL", "SPLIT", "FRAME", "FULL", "SPLIT", "DUO", "BANDS", "FULL", "TRIPLE", "SPLIT"] },
-  romantic: { name: "Lãng mạn ấm áp", bg: "#f6ece7", ink: "#5a4038", sub: "#9c8078", accent: "#c98a7d", title: "Playfair Display", body: "Be Vietnam Pro", radius: 16, dark: false, letterbox: false, titleItalic: true, c1: "#f6ece7", c2: "#c98a7d", trans: ["fade", "slideup", "slideleft", "slide"], tr: 0.8, kb: 0.07, pace: 1.0, bag: ["FULL", "DUO", "POLAROID", "QUAD", "DUOV", "FULL", "TRIPLE_R", "DUO", "QUINT", "FULL"], bagText: ["FULL", "SPLIT", "DUO", "FULL", "SPLIT", "QUAD", "DUOV", "SPLIT", "FULL", "TRIPLE"] },
-  cinematic: { name: "Điện ảnh hiện đại", bg: "#131317", ink: "#f4f1ec", sub: "#b7b2a9", accent: "#c9a24a", title: "Playfair Display", body: "Manrope", radius: 0, dark: true, letterbox: true, titleItalic: false, c1: "#131317", c2: "#c9a24a", trans: ["push", "slideleft", "pushup", "slide"], tr: 0.55, kb: 0.09, pace: 0.9, bag: ["FULL", "FULL", "TRIPLE_R", "FULL", "DUO", "FULL", "BANDS", "TRIPLE"], bagText: ["FULL", "SPLIT", "FULL", "FULL", "TRIPLE", "SPLIT", "FULL", "DUO", "FULL", "SPLIT"] },
-  bright: { name: "Trong trẻo tươi sáng", bg: "#ffffff", ink: "#2a2f36", sub: "#8a9099", accent: "#5b9aa8", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 20, dark: false, letterbox: false, titleItalic: false, c1: "#eef4f5", c2: "#5b9aa8", trans: ["slide", "block", "wipe", "pushleft"], tr: 0.62, kb: 0.05, pace: 0.98, bag: ["DUO", "QUAD", "FULL", "TRIPLE", "DUOV", "HEX", "FULL", "QUADL"], bagText: ["DUO", "SPLIT", "QUAD", "FULL", "SPLIT", "TRIPLE_R", "DUOV", "SPLIT", "QUAD", "FULL"] },
+  luxe: { name: "Tối giản sang trọng", bg: "#f7f4ef", ink: "#2b2723", sub: "#8a8378", accent: "#a98b5d", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 6, dark: false, letterbox: false, titleItalic: false, c1: "#f7f4ef", c2: "#a98b5d", trans: ["fade", "zoomsoft", "wipe", "slideleft", "circle", "blur"], rhythm: [1, 2, 1, 3, 2, 1, 4, 3], tr: 0.95, kb: 0.05, pace: 1.12, bag: ["FULL", "FRAME", "POLAROID", "DUO", "FRAME", "FULL", "TRIPLE", "BANDS", "FULL", "QUADL"], bagText: ["FULL", "SPLIT", "FRAME", "FULL", "SPLIT", "DUO", "BANDS", "FULL", "TRIPLE", "SPLIT"] },
+  romantic: { name: "Lãng mạn ấm áp", bg: "#f6ece7", ink: "#5a4038", sub: "#9c8078", accent: "#c98a7d", title: "Playfair Display", body: "Be Vietnam Pro", radius: 16, dark: false, letterbox: false, titleItalic: true, c1: "#f6ece7", c2: "#c98a7d", trans: ["fade", "slideup", "zoomsoft", "circle", "slideleft", "blur"], rhythm: [2, 1, 4, 2, 3, 1, 2, 5], tr: 0.8, kb: 0.07, pace: 1.0, bag: ["FULL", "DUO", "POLAROID", "QUAD", "DUOV", "FULL", "TRIPLE_R", "DUO", "QUINT", "FULL"], bagText: ["FULL", "SPLIT", "DUO", "FULL", "SPLIT", "QUAD", "DUOV", "SPLIT", "FULL", "TRIPLE"] },
+  cinematic: { name: "Điện ảnh hiện đại", bg: "#131317", ink: "#f4f1ec", sub: "#b7b2a9", accent: "#c9a24a", title: "Playfair Display", body: "Manrope", radius: 0, dark: true, letterbox: true, titleItalic: false, c1: "#131317", c2: "#c9a24a", trans: ["push", "fade", "blur", "pushup", "wipe", "slideleft"], rhythm: [1, 3, 1, 1, 2, 1, 3], tr: 0.55, kb: 0.09, pace: 0.9, bag: ["FULL", "FULL", "TRIPLE_R", "FULL", "DUO", "FULL", "BANDS", "TRIPLE"], bagText: ["FULL", "SPLIT", "FULL", "FULL", "TRIPLE", "SPLIT", "FULL", "DUO", "FULL", "SPLIT"] },
+  bright: { name: "Trong trẻo tươi sáng", bg: "#ffffff", ink: "#2a2f36", sub: "#8a9099", accent: "#5b9aa8", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 20, dark: false, letterbox: false, titleItalic: false, c1: "#eef4f5", c2: "#5b9aa8", trans: ["slide", "block", "wipe", "circle", "zoomsoft", "pushleft"], rhythm: [2, 4, 1, 3, 2, 6, 1, 5], tr: 0.62, kb: 0.05, pace: 0.98, bag: ["DUO", "QUAD", "FULL", "TRIPLE", "DUOV", "HEX", "FULL", "QUADL"], bagText: ["DUO", "SPLIT", "QUAD", "FULL", "SPLIT", "TRIPLE_R", "DUOV", "SPLIT", "QUAD", "FULL"] },
 };
 
 type EngineState = {
@@ -43,7 +43,7 @@ class SlideEngine {
   scrubber: HTMLInputElement | null = null;
   timeLabel: HTMLElement | null = null;
   _pid = 0; _raf: number | null = null; _expRaf: number | null = null; _last: number | null = null;
-  _cellIdx = 0; _cellN = 0; // đếm ô ảnh trong cảnh hiện tại (để trượt từng ảnh riêng)
+  _cellIdx = 0; _cellN = 0; _cellMode = 0; // ô ảnh trong cảnh hiện tại + kiểu vào cảnh (xen kẽ theo cảnh)
   _drag: string | null = null; _cancelExport = false;
   actx: AudioContext | null = null; master: GainNode | null = null; recDest: MediaStreamAudioDestinationNode | null = null;
   audioEl: HTMLAudioElement | null = null; mediaSrc: MediaElementAudioSourceNode | null = null;
@@ -139,17 +139,19 @@ class SlideEngine {
     const showText = this.state.showText && Q.length > 0;
     let s = (this.seed || 1) >>> 0;
     const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-    const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)];
     const th = this.getTheme();
     const trans = this.state.diverse ? (th.trans || ["fade", "slide", "push"]) : ["fade"];
-    const need: Record<string, number> = { FULL: 1, PANO: 1, FRAME: 1, POLAROID: 1, SPLIT: 1, DUO: 2, DUOV: 2, TRIPLE: 3, TRIPLE_R: 3, BANDS: 3, TRIO: 3, QUAD: 4, QUADL: 4, QUINT: 5, HEX: 6 };
-    // Nhịp số ảnh mỗi cảnh giữ theo "chất" của phong cách (suy từ bag gốc).
-    const bag = showText ? (th.bagText || th.bag) : th.bag;
-    const rhythm = bag.map((t) => need[t] || 1);
+    // Hiệu ứng XEN KẼ: xoay vòng danh sách hiệu ứng — không lặp lại liên tiếp.
+    let ti = Math.floor(rnd() * trans.length);
+    const nextTrans = () => trans[ti++ % trans.length];
+    // Nhịp số ảnh mỗi cảnh theo phong cách: xen kẽ cảnh 1 ảnh ↔ cảnh ghép nhiều ảnh.
+    const rhythm = th.rhythm || [1, 2, 3, 1, 2, 4];
     const slides: Slide[] = [{ type: "TITLE", photos: [P[0]], trans: "fade" }];
     let i = 0, ri = 0, cnt = 0, qi = 0, side = 0, useSplit = true;
     while (i < P.length) {
-      // Gom ảnh CÙNG HƯỚNG liên tiếp (ảnh vuông đi được với cả hai) để bố cục khớp khổ ảnh.
+      const rem = P.length - i;
+      // Ưu tiên gom ảnh CÙNG HƯỚNG liên tiếp (ảnh vuông đi được với cả hai); nếu
+      // hướng xen kẽ vẫn ghép nhóm — ô lệch hướng sẽ tự "vừa khung" trên nền mờ.
       let o = this.orientOf(P[i]); let run = 1;
       while (i + run < P.length && run < 6) {
         const oo = this.orientOf(P[i + run]);
@@ -157,14 +159,15 @@ class SlideEngine {
         else if (o === "S") { o = oo; run++; }
         else break;
       }
-      const k = Math.max(1, Math.min(rhythm[ri % rhythm.length] || 1, run)); ri++;
+      const kWant = Math.max(1, rhythm[ri % rhythm.length] || 1); ri++;
+      const k = Math.min(rem, run >= kWant ? kWant : run >= 2 ? run : kWant);
       const grp = P.slice(i, i + k); i += k;
-      slides.push({ type: this.layoutFor(grp, portrait, rnd), photos: grp, trans: pick(trans) });
+      slides.push({ type: this.layoutFor(grp, portrait, rnd), photos: grp, trans: nextTrans() });
       cnt++;
       // Xen slide chữ sau mỗi ~3 cảnh ảnh: luân phiên SPLIT (chữ + ảnh) và QUOTE.
       if (showText && cnt % 3 === 0 && qi < Q.length) {
-        if (useSplit && i < P.length) { slides.push({ type: "SPLIT", photos: [P[i]], trans: pick(trans), text: Q[qi++], side }); i++; side = side ? 0 : 1; }
-        else slides.push({ type: "QUOTE", photos: [], text: Q[qi++], trans: pick(trans) });
+        if (useSplit && i < P.length) { slides.push({ type: "SPLIT", photos: [P[i]], trans: nextTrans(), text: Q[qi++], side }); i++; side = side ? 0 : 1; }
+        else slides.push({ type: "QUOTE", photos: [], text: Q[qi++], trans: nextTrans() });
         useSplit = !useSplit;
       }
     }
@@ -263,17 +266,22 @@ class SlideEngine {
   drawPhotoCell(x: number, y: number, w: number, h: number, r: number, p: number, seed: number, photo?: Photo, fit: "auto" | "cover" | "contain" = "auto") {
     const c = this.ctx!; const img = photo ? this.imgs.get(photo.id) : null;
     c.save();
-    // Trượt TỪNG ảnh riêng vào cảnh (bố cục nhiều ảnh): mỗi ô vào lệch nhịp, từ mép gần nhất.
+    // Từng ảnh vào cảnh riêng, lệch nhịp nhau (bố cục nhiều ảnh). Kiểu vào cảnh
+    // XEN KẼ theo từng cảnh: trượt từ mép / hiện dần nhô lên / phóng nhẹ.
     if (this._cellN >= 2) {
       const ei = this._cellIdx++;
       const step = Math.min(0.07, 0.25 / this._cellN);
       const a0 = 0.02 + ei * step;
       const e = this.smooth(p, a0, a0 + 0.2);
       if (e < 1) {
-        const ccx = x + w / 2;
-        const centered = Math.abs(ccx - this.W / 2) < this.W * 0.08;
-        const fromLeft = centered ? ei % 2 === 0 : ccx < this.W / 2;
-        c.translate((1 - e) * (fromLeft ? -(x + w + 60) : this.W - x + 60), 0);
+        if (this._cellMode === 1) { c.globalAlpha *= e; c.translate(0, (1 - e) * 46); }
+        else if (this._cellMode === 2) { c.globalAlpha *= e; const zs = 0.92 + 0.08 * e; c.translate(x + w / 2, y + h / 2); c.scale(zs, zs); c.translate(-(x + w / 2), -(y + h / 2)); }
+        else {
+          const ccx = x + w / 2;
+          const centered = Math.abs(ccx - this.W / 2) < this.W * 0.08;
+          const fromLeft = centered ? ei % 2 === 0 : ccx < this.W / 2;
+          c.translate((1 - e) * (fromLeft ? -(x + w + 60) : this.W - x + 60), 0);
+        }
       }
     }
     this.roundRect(x, y, w, h, r); c.clip();
@@ -334,6 +342,7 @@ class SlideEngine {
     if (opts.scale && opts.scale !== 1) { c.translate(W / 2, H / 2); c.scale(opts.scale, opts.scale); c.translate(-W / 2, -H / 2); }
     c.fillStyle = th.bg; c.fillRect(0, 0, W, H);
     this._cellIdx = 0; this._cellN = slide.photos.length;
+    this._cellMode = (slide.photos.length + Math.round((slide.t0 || 0) * 10)) % 3;
     switch (slide.type) {
       case "TITLE": this.drawTitle(slide, p); break;
       case "OUTRO": this.drawOutro(slide, p); break;
