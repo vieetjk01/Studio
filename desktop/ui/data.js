@@ -90,6 +90,9 @@ function bindRowClicks() {
   if (addEv) addEv.onclick = () => openEvent();
   const addCt = document.getElementById("addContract");
   if (addCt) addCt.onclick = () => openContractEdit();
+  body.querySelectorAll("[data-client]").forEach((r) => r.onclick = () => { const [n, p] = r.dataset.client.split("|"); openClient(n, p); });
+  const addCl = document.getElementById("addClient");
+  if (addCl) addCl.onclick = () => openContractEdit();
 }
 
 function match(row, fields) {
@@ -188,9 +191,9 @@ function drawItems() {
   box.querySelectorAll(".in-del").forEach((b) => b.onclick = () => { syncItems(); _editItems.splice(+b.dataset.del, 1); drawItems(); });
   box.querySelectorAll(".in-qty,.in-price").forEach((inp) => inp.oninput = () => { syncItems(); const t = document.querySelector("#itemsBox .itotal"); if (t) t.textContent = "Tổng: " + vnd(_editItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unit_price) || 0), 0)); });
 }
-function openContractEdit(id) {
+function openContractEdit(id, prefill) {
   const c = id ? T("studio_contracts").find((x) => x.id === id) : null;
-  const v = c || { status: "draft", shoot_type: "photo", event_date: "" };
+  const v = c || { status: "draft", shoot_type: "photo", event_date: "", client_name: prefill?.client_name || "", client_phone: prefill?.client_phone || "" };
   _editItems = id ? T("contract_items").filter((i) => i.contract_id === id).sort((a, b) => (a.position || 0) - (b.position || 0)).map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price })) : [];
   const ov = document.getElementById("dataModal");
   ov.querySelector(".dmodal").innerHTML = `
@@ -307,9 +310,35 @@ function renderClients() {
   }
   let rows = [...map.values()].filter((c) => match(c, [c.name, c.phone]));
   rows.sort((a, b) => String(b.last).localeCompare(String(a.last)));
-  if (!rows.length) return empty("Không có khách hàng khớp.");
-  const body = rows.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td class="r">${c.n}</td><td class="r">${vnd(c.spent)}</td><td>${D(c.last)}</td></tr>`).join("");
-  return table(["Tên khách", "SĐT", "Số HĐ", "Tổng chi", "Gần nhất"], body, `${rows.length} khách hàng`);
+  const bar = `<div class="dbar"><button class="btn small primary" id="addClient">＋ Khách + hợp đồng</button><span class="dcap" style="margin:0">${rows.length} khách hàng</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có khách hàng khớp." : "Khách hàng hình thành từ hợp đồng. Bấm ＋ để tạo hợp đồng cho khách mới.");
+  const body = rows.map((c) => `<tr data-client="${esc(c.name)}|${esc(c.phone)}" class="clickable"><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td class="r">${c.n}</td><td class="r">${vnd(c.spent)}</td><td>${D(c.last)}</td></tr>`).join("");
+  return bar + table(["Tên khách", "SĐT", "Số HĐ", "Tổng chi", "Gần nhất"], body, "");
+}
+
+// Chi tiết khách: các hợp đồng + tổng chi + tạo HĐ mới cho khách này.
+function openClient(name, phone) {
+  const dg = digits(phone);
+  const cs = T("studio_contracts").filter((c) => (dg && digits(c.client_phone) === dg) || (!dg && (c.client_name || "") === name))
+    .sort((a, b) => String(b.event_date || b.created_at || "").localeCompare(String(a.event_date || a.created_at || "")));
+  const total = cs.reduce((s, c) => s + contractTotal(c.id), 0);
+  const paid = cs.reduce((s, c) => s + contractPaid(c.id), 0);
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head">
+      <div><div class="dmodal-title">${esc(name || "Khách hàng")}</div><div class="muted">${esc(phone || "")} · ${cs.length} hợp đồng</div></div>
+      <div class="row-gap"><button id="clNew" class="btn small primary">Tạo HĐ</button><button id="dmClose" class="btn small">Đóng</button></div>
+    </div>
+    <div class="dmodal-body">
+      <p class="dtotals"><b>Tổng giá trị:</b> ${vnd(total)} · <b>Đã thu:</b> ${vnd(paid)} · <b>Còn:</b> ${vnd(Math.max(0, total - paid))}</p>
+      ${cs.length ? `<table class="dtable"><thead><tr><th>Mã</th><th>Hợp đồng</th><th>Ngày</th><th>Trạng thái</th><th class="r">Giá trị</th></tr></thead><tbody>${cs.map((c) => `<tr data-open-contract="${c.id}" class="clickable"><td>${esc(c.code || "")}</td><td>${esc(c.title || "")}</td><td>${D(c.event_date)}</td><td>${CONTRACT_STATUS[c.status] || c.status || ""}</td><td class="r">${vnd(contractTotal(c.id))}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">Chưa có hợp đồng.</p>`}
+    </div>`;
+  ov.classList.remove("hidden");
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.getElementById("clNew").onclick = () => { close(); openContractEdit(null, { client_name: name, client_phone: phone }); };
+  ov.querySelectorAll("[data-open-contract]").forEach((r) => r.onclick = () => { close(); openContract(r.dataset.openContract); });
 }
 
 function renderQuotes() {
