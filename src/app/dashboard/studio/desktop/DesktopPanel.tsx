@@ -35,7 +35,8 @@ export default function DesktopPanel() {
   const [pairToken, setPairToken] = useState("");
   const [pairErr, setPairErr] = useState("");
   const [copied, setCopied] = useState("");
-  const downloadUrl = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || "";
+  // Ưu tiên link cấu hình sẵn; nếu chưa đặt thì trỏ vào Release mới nhất trên GitHub.
+  const downloadUrl = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || "https://github.com/vieetjk01/Studio/releases/latest";
   const serverUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   async function load() {
@@ -98,12 +99,8 @@ export default function DesktopPanel() {
               và tự xuất Excel toàn bộ dữ liệu hằng ngày để chống mất dữ liệu.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              {downloadUrl ? (
-                <a href={downloadUrl} className="btn-primary inline-flex items-center gap-2"><Download size={16} /> Tải bản cài đặt</a>
-              ) : (
-                <button disabled className="btn-primary inline-flex cursor-not-allowed items-center gap-2 opacity-60"><Download size={16} /> Bản cài đặt đang hoàn thiện</button>
-              )}
-              <span className="text-xs" style={{ color: "var(--text2)" }}>Windows 10/11 · 64-bit</span>
+              <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-2"><Download size={16} /> Tải bản cài đặt</a>
+              <span className="text-xs" style={{ color: "var(--text2)" }}>Windows 10/11 · 64-bit · tải file <code>-setup.exe</code> trong bản phát hành</span>
             </div>
           </div>
         </div>
