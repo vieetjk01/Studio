@@ -62,6 +62,19 @@ export function safeFileName(s: string): string {
   return s.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim().slice(0, 150);
 }
 
+/**
+ * Bản ASCII của tên file — dùng cho phần `filename=` trong HTTP header
+ * Content-Disposition (header chỉ nhận Latin-1; ký tự tiếng Việt >255 sẽ ném
+ * lỗi ByteString). Tên có dấu vẫn được giữ ở `filename*=UTF-8''`.
+ */
+export function asciiName(s: string): string {
+  return s
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/"/g, "");
+}
+
 // Đúng định dạng đã chốt: "Hợp đồng {mã HĐ} - {Tên khách} - {SĐT}".
 export function contractBaseName(c: ContractDocData["contract"]): string {
   const head = "Hop dong" + (c.code ? ` ${c.code}` : "");

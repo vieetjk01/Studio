@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireDesktopOwner } from "@/lib/desktop/auth";
 import { getStudioBrand } from "@/lib/studio-brand";
-import { buildContractHtml, buildContractDocx, contractBaseName, type ContractDocData } from "@/lib/desktop/contract-doc";
+import { buildContractHtml, buildContractDocx, contractBaseName, asciiName, type ContractDocData } from "@/lib/desktop/contract-doc";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +72,7 @@ async function handle(req: Request, params: { id: string }, ownerId: string) {
     return new NextResponse(Buffer.from(bytes), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${base}.docx"; filename*=UTF-8''${encodeURIComponent(base)}.docx`,
+        "Content-Disposition": `attachment; filename="${asciiName(base)}.docx"; filename*=UTF-8''${encodeURIComponent(base)}.docx`,
         "Cache-Control": "no-store",
       },
     });
