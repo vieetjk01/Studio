@@ -144,3 +144,21 @@ input[type="url"], input[type="text"] {
 .dform input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; background: #faf8f3; color: var(--ink); }
 .dform-actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
 .dform-actions .btn { margin-top: 0; }
+
+/* Danh sách hợp đồng dạng thẻ — bố cục giống web app */
+.ccards { display: flex; flex-direction: column; gap: 10px; }
+.ccard {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+}
+.ccard-main { min-width: 0; flex: 1; cursor: pointer; }
+.ccard-code { font-size: 11px; color: var(--muted); }
+.ccard-title { font-size: 16px; font-weight: 700; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ccard-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.ccard-right { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ccard-amt { font-size: 15px; font-weight: 800; }
+.ccard-paid { font-size: 11.5px; color: var(--muted); }
+.dsel {
+  height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--card); color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 2px;
+}

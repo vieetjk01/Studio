@@ -33,6 +33,12 @@ const thisMonth = () => new Date().toISOString().slice(0, 7);
 const CONTRACT_STATUS = { draft: "Nháp", sent: "Đã gửi", approved: "Đã duyệt", in_progress: "Đang thực hiện", completed: "Hoàn thành", cancelled: "Đã hủy" };
 const QUOTE_STATUS = { draft: "Nháp", sent: "Đã gửi", viewed: "Đã xem", adjust_requested: "Xin chỉnh", accepted: "Đã chốt", converted: "Đã chuyển HĐ", expired: "Hết hạn", cancelled: "Đã hủy" };
 const BOOKING_STATUS = { new: "Mới", handled: "Đã xử lý", archived: "Lưu trữ" };
+const SHOOT_TYPE = { photo: "Chụp ảnh", video: "Quay phim", both: "Chụp & quay", psc: "Phóng sự cưới", makeup: "Trang điểm", rental: "Thuê đồ", prewedding: "Pre-wedding", wedding: "Ngày cưới", other: "Khác" };
+
+// <option> trạng thái, đánh dấu mục đang chọn.
+function statusOptions(map, cur) {
+  return Object.entries(map).map(([k, v]) => `<option value="${k}"${k === cur ? " selected" : ""}>${v}</option>`).join("");
+}
 
 // ─── Tổng hợp ────────────────────────────────────────────────────────────────
 function contractTotal(id) {
@@ -64,10 +70,25 @@ function renderData() {
 }
 
 function bindRowClicks() {
-  document.querySelectorAll("#dataBody [data-contract]").forEach((r) => r.onclick = () => openContract(r.dataset.contract));
-  document.querySelectorAll("#dataBody [data-expense]").forEach((r) => r.onclick = () => openExpense(r.dataset.expense));
+  const body = document.getElementById("dataBody");
+  if (!body) return;
+  body.querySelectorAll("[data-contract]").forEach((r) => r.onclick = () => openContract(r.dataset.contract));
+  body.querySelectorAll("[data-expense]").forEach((r) => r.onclick = () => openExpense(r.dataset.expense));
+  body.querySelectorAll("[data-crew]").forEach((r) => r.onclick = () => openCrew(r.dataset.crew));
+  body.querySelectorAll("[data-event]").forEach((r) => r.onclick = (e) => { e.stopPropagation(); openEvent(r.dataset.event); });
+  // Đổi trạng thái hợp đồng / đặt lịch ngay tại chỗ (cục bộ + đồng bộ ngầm).
+  body.querySelectorAll("[data-status-contract]").forEach((sel) => {
+    sel.onclick = (e) => e.stopPropagation();
+    sel.onchange = () => window.localMutate("studio_contracts", "update", { id: sel.dataset.statusContract, status: sel.value });
+  });
+  body.querySelectorAll("[data-status-booking]").forEach((sel) => {
+    sel.onclick = (e) => e.stopPropagation();
+    sel.onchange = () => window.localMutate("studio_bookings", "update", { id: sel.dataset.statusBooking, status: sel.value });
+  });
   const add = document.getElementById("addExpense");
   if (add) add.onclick = () => openExpense();
+  const addEv = document.getElementById("addEvent");
+  if (addEv) addEv.onclick = () => openEvent();
 }
 
 function match(row, fields) {
@@ -113,23 +134,30 @@ function renderOverview() {
     ${stat("Chi tháng này", vnd(expMonth), "")}
     ${stat("Đặt lịch mới", newBookings, "chờ xử lý")}
   </div>
-  <p class="dnote">Dữ liệu offline cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}. Mở “Ứng dụng quản lý” để tạo/sửa.</p>`;
+  <p class="dnote">Dữ liệu cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}. Thu chi, Lịch, Lương, trạng thái Hợp đồng/Đặt lịch sửa được ngay tại đây (cục bộ + đồng bộ ngầm). Tạo hợp đồng mới đầy đủ: mở “Ứng dụng quản lý”.</p>`;
 }
 
 function renderContracts() {
   const rows = T("studio_contracts")
     .filter((c) => match(c, [c.code, c.client_name, c.client_phone, c.title]))
     .sort((a, b) => String(b.event_date || b.created_at || "").localeCompare(String(a.event_date || a.created_at || "")));
-  if (!rows.length) return empty("Không có hợp đồng khớp.");
-  const body = rows.map((c) => {
+  if (!rows.length) return empty(dataQuery ? "Không có hợp đồng khớp." : "Chưa có hợp đồng.");
+  const cards = rows.map((c) => {
     const tot = contractTotal(c.id), paid = contractPaid(c.id);
-    return `<tr data-contract="${c.id}" class="clickable">
-      <td>${esc(c.code || "")}</td><td>${esc(c.client_name || "")}</td>
-      <td>${esc(c.client_phone || "")}</td><td>${D(c.event_date)}</td>
-      <td><span class="badge">${CONTRACT_STATUS[c.status] || c.status || ""}</span></td>
-      <td class="r">${vnd(tot)}</td><td class="r">${paid >= tot && tot > 0 ? "Đã thu đủ" : vnd(paid)}</td></tr>`;
+    return `<div class="ccard">
+      <div class="ccard-main" data-contract="${c.id}">
+        ${c.code ? `<div class="ccard-code">${esc(c.code)}</div>` : ""}
+        <div class="ccard-title">${esc(c.title || "Hợp đồng")}</div>
+        <div class="ccard-sub">${esc(c.client_name || "Chưa có khách")}${c.shoot_type ? " · " + (SHOOT_TYPE[c.shoot_type] || "") : ""}${c.event_date ? " · " + D(c.event_date) : ""}</div>
+      </div>
+      <div class="ccard-right">
+        <div class="ccard-amt">${vnd(tot)}</div>
+        <div class="ccard-paid">Đã thu ${vnd(paid)} · Còn ${vnd(Math.max(0, tot - paid))}</div>
+        <select class="dsel" data-status-contract="${c.id}">${statusOptions(CONTRACT_STATUS, c.status)}</select>
+      </div>
+    </div>`;
   }).join("");
-  return table(["Mã", "Khách", "SĐT", "Ngày", "Trạng thái", "Giá trị", "Đã thu"], body, `${rows.length} hợp đồng`);
+  return `<div class="dcap">${rows.length} hợp đồng</div><div class="ccards">${cards}</div>`;
 }
 
 function openContract(id) {
@@ -260,18 +288,90 @@ function renderPayroll() {
   if (!rows.length) return empty("Không có dòng lương khớp.");
   const total = rows.reduce((s, w) => s + (Number(w.salary) || 0), 0);
   const unpaid = rows.filter((w) => !w.paid).reduce((s, w) => s + (Number(w.salary) || 0), 0);
-  const body = rows.map((w) => `<tr><td>${esc(w.name)}</td><td>${esc(w.role || "")}</td><td>${esc(w.c?.code || "")}</td><td>${D(w.c?.event_date)}</td><td class="r">${vnd(w.salary)}</td><td>${w.paid ? "<span class='badge ok'>Đã trả</span>" : "<span class='badge warn'>Chưa</span>"}</td></tr>`).join("");
-  return table(["Tên", "Vai trò", "Mã HĐ", "Ngày chụp", "Lương", "Trạng thái"], body, `${rows.length} dòng · tổng ${vnd(total)} · chưa trả ${vnd(unpaid)}`);
+  const body = rows.map((w) => `<tr data-crew="${w.id}" class="clickable"><td>${esc(w.name)}</td><td>${esc(w.role || "")}</td><td>${esc(w.c?.code || "")}</td><td>${D(w.c?.event_date)}</td><td class="r">${vnd(w.salary)}</td><td>${w.paid ? "<span class='badge ok'>Đã trả</span>" : "<span class='badge warn'>Chưa</span>"}</td></tr>`).join("");
+  return `<div class="dcap">${rows.length} dòng · tổng ${vnd(total)} · chưa trả ${vnd(unpaid)}</div>` + table(["Tên", "Vai trò", "Mã HĐ", "Ngày chụp", "Lương", "Trạng thái"], body, "");
+}
+
+// Sửa lương / đánh dấu đã trả — chạy cục bộ (bảng con contract_crew).
+function openCrew(id) {
+  const w = T("contract_crew").find((x) => x.id === id);
+  if (!w) return;
+  const c = T("studio_contracts").find((x) => x.id === w.contract_id);
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head">
+      <div><div class="dmodal-title">${esc(w.name || "Thợ")}</div><div class="muted">${esc(w.role || "")} · ${esc(c?.code || "")}</div></div>
+      <button id="dmClose" class="btn small">Đóng</button>
+    </div>
+    <div class="dmodal-body dform">
+      <label>Lương (VND)</label><input id="crSalary" type="number" value="${esc(w.salary ?? 0)}" />
+      <label style="display:flex;align-items:center;gap:8px;margin-top:14px"><input id="crPaid" type="checkbox" ${w.paid ? "checked" : ""} style="width:auto;height:auto" /> Đã trả lương</label>
+      <div class="dform-actions"><button id="crSave" class="btn small primary" style="margin-left:auto">Lưu</button></div>
+    </div>`;
+  ov.classList.remove("hidden");
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.getElementById("crSave").onclick = async () => {
+    const paid = document.getElementById("crPaid").checked;
+    const row = { id, contract_id: w.contract_id, salary: Math.round(Number(document.getElementById("crSalary").value) || 0), paid, paid_at: paid ? (w.paid_at || new Date().toISOString().slice(0, 10)) : null };
+    await window.localMutate("contract_crew", "update", row);
+    close();
+  };
 }
 
 function renderCalendar() {
-  const ev = T("studio_events").map((e) => ({ d: e.event_date, t: e.event_time, title: e.title, note: e.note, kind: "Lịch" }));
-  const bk = T("studio_bookings").map((b) => ({ d: b.preferred_date, t: "", title: `${b.name || ""} · ${b.service || ""}`, note: BOOKING_STATUS[b.status] || "", kind: "Đặt lịch" }));
+  const ev = T("studio_events").map((e) => ({ id: e.id, d: e.event_date, t: e.event_time, title: e.title, note: e.note, kind: "event" }));
+  const bk = T("studio_bookings").map((b) => ({ id: b.id, d: b.preferred_date, t: "", title: `${b.name || ""} · ${b.service || ""}`, status: b.status, kind: "booking" }));
   let rows = [...ev, ...bk].filter((r) => r.d).filter((r) => match(r, [r.title, r.note]));
   rows.sort((a, b) => String(b.d).localeCompare(String(a.d)));
-  if (!rows.length) return empty("Không có lịch khớp.");
-  const body = rows.map((r) => `<tr><td>${D(r.d)}${r.t ? " · " + esc(r.t) : ""}</td><td><span class="badge">${r.kind}</span></td><td>${esc(r.title)}</td><td>${esc(r.note || "")}</td></tr>`).join("");
-  return table(["Ngày", "Loại", "Nội dung", "Ghi chú"], body, `${rows.length} mục`);
+  const bar = `<div class="dbar"><button class="btn small primary" id="addEvent">＋ Thêm lịch</button><span class="dcap" style="margin:0">${rows.length} mục</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có lịch khớp." : "Chưa có lịch. Bấm ＋ để thêm.");
+  const body = rows.map((r) => {
+    const right = r.kind === "booking"
+      ? `<select class="dsel" data-status-booking="${r.id}">${statusOptions(BOOKING_STATUS, r.status)}</select>`
+      : `<button class="btn small" data-event="${r.id}">Sửa</button>`;
+    return `<tr><td>${D(r.d)}${r.t ? " · " + esc(r.t) : ""}</td><td><span class="badge">${r.kind === "booking" ? "Đặt lịch" : "Lịch"}</span></td><td>${esc(r.title)}</td><td style="text-align:right">${right}</td></tr>`;
+  }).join("");
+  return bar + table(["Ngày", "Loại", "Nội dung", ""], body, "");
+}
+
+// Thêm/sửa mục lịch (studio_events) — chạy cục bộ.
+function openEvent(id) {
+  const e = id ? T("studio_events").find((x) => x.id === id) : null;
+  const v = e || { event_date: new Date().toISOString().slice(0, 10), title: "", event_time: "", note: "" };
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head">
+      <div class="dmodal-title">${id ? "Sửa lịch" : "Thêm lịch"}</div>
+      <button id="dmClose" class="btn small">Đóng</button>
+    </div>
+    <div class="dmodal-body dform">
+      <label>Ngày</label><input id="evDate" type="date" value="${esc((v.event_date || "").slice(0, 10))}" />
+      <label>Giờ (không bắt buộc)</label><input id="evTime" type="text" value="${esc(v.event_time || "")}" placeholder="VD: 08:00" />
+      <label>Nội dung</label><input id="evTitle" type="text" value="${esc(v.title || "")}" placeholder="VD: Chụp ngoại cảnh" />
+      <label>Ghi chú</label><input id="evNote" type="text" value="${esc(v.note || "")}" />
+      <div class="dform-actions">
+        ${id ? `<button id="evDelete" class="btn small danger">Xóa</button>` : ""}
+        <button id="evSave" class="btn small primary" style="margin-left:auto">Lưu</button>
+      </div>
+    </div>`;
+  ov.classList.remove("hidden");
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (ev2) => { if (ev2.target === ov) close(); };
+  document.getElementById("evSave").onclick = async () => {
+    const title = document.getElementById("evTitle").value.trim();
+    if (!title) { document.getElementById("evTitle").focus(); return; }
+    const row = { id: id || uuid(), title, event_date: document.getElementById("evDate").value || new Date().toISOString().slice(0, 10), event_time: document.getElementById("evTime").value.trim(), note: document.getElementById("evNote").value.trim(), remind: true };
+    await window.localMutate("studio_events", id ? "update" : "insert", row);
+    close();
+  };
+  if (id) document.getElementById("evDelete").onclick = async () => {
+    if (!confirm("Xóa mục lịch này?")) return;
+    await window.localMutate("studio_events", "delete", { id });
+    close();
+  };
 }
 
 function table(cols, body, caption) {
