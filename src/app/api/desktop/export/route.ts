@@ -186,6 +186,7 @@ export async function GET(req: Request) {
       studio_packages: await all(db, "studio_packages", "*", owner),
       studio_pricelist: await all(db, "studio_pricelist", "*", owner),
       studio_equipment: await all(db, "studio_equipment", "*", owner),
+      studio_services: await all(db, "studio_services", "*", owner),
     };
     const backup = { format: "mstudo-backup", version: 1, exported_at: new Date().toISOString(), owner_id: owner, tables };
     return new NextResponse(JSON.stringify(backup), {

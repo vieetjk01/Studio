@@ -94,6 +94,25 @@ function bindRowClicks() {
   body.querySelectorAll("[data-client]").forEach((r) => r.onclick = () => { const [n, p] = r.dataset.client.split("|"); openClient(n, p); });
   const addCl = document.getElementById("addClient");
   if (addCl) addCl.onclick = () => openContractEdit();
+  // Báo giá
+  body.querySelectorAll("[data-quote]").forEach((r) => r.onclick = () => openQuoteEdit(r.dataset.quote));
+  const addQ = document.getElementById("addQuote"); if (addQ) addQ.onclick = () => openQuoteEdit();
+  // Bảng giá / Thiết bị / Dịch vụ
+  body.querySelectorAll("[data-price]").forEach((r) => r.onclick = () => openPrice(r.dataset.price));
+  const addP = document.getElementById("addPrice"); if (addP) addP.onclick = () => openPrice();
+  body.querySelectorAll("[data-equip]").forEach((r) => r.onclick = () => openEquip(r.dataset.equip));
+  const addE = document.getElementById("addEquip"); if (addE) addE.onclick = () => openEquip();
+  body.querySelectorAll("[data-service]").forEach((r) => r.onclick = () => openService(r.dataset.service));
+  const addS = document.getElementById("addService"); if (addS) addS.onclick = () => openService();
+  // Lịch tháng: chuyển tháng
+  const prev = document.getElementById("calPrev"), next = document.getElementById("calNext");
+  if (prev) prev.onclick = () => { _calMonth = shiftMonth(_calMonth || new Date().toISOString().slice(0, 7), -1); renderData(); };
+  if (next) next.onclick = () => { _calMonth = shiftMonth(_calMonth || new Date().toISOString().slice(0, 7), 1); renderData(); };
+}
+function shiftMonth(ym, delta) {
+  let [y, m] = ym.split("-").map(Number);
+  m += delta; if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+  return `${y}-${String(m).padStart(2, "0")}`;
 }
 
 function match(row, fields) {
@@ -114,6 +133,9 @@ function renderTab() {
     case "expenses": return renderExpenses();
     case "payroll": return renderPayroll();
     case "calendar": return renderCalendar();
+    case "pricelist": return renderPricelist();
+    case "equipment": return renderEquipment();
+    case "services": return renderServices();
     default: return "";
   }
 }
@@ -369,17 +391,76 @@ function openClient(name, phone) {
   ov.querySelectorAll("[data-open-contract]").forEach((r) => r.onclick = () => { close(); openContract(r.dataset.openContract); });
 }
 
+function quoteTotal(id) {
+  return T("quote_items").filter((i) => i.quote_id === id && !(i.is_optional && i.selected === false))
+    .reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.unit_price) || 0), 0);
+}
 function renderQuotes() {
-  const totals = new Map();
-  for (const i of T("quote_items")) {
-    if (i.is_optional && i.selected === false) continue;
-    totals.set(i.quote_id, (totals.get(i.quote_id) || 0) + (Number(i.qty) || 0) * (Number(i.unit_price) || 0));
-  }
   const rows = T("studio_quotes").filter((q) => match(q, [q.code, q.client_name, q.client_phone, q.title]))
     .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
-  if (!rows.length) return empty("Không có báo giá khớp.");
-  const body = rows.map((q) => `<tr><td>${esc(q.code || "")}</td><td>${esc(q.client_name || "")}</td><td>${esc(q.client_phone || "")}</td><td>${D(q.event_date)}</td><td><span class="badge">${QUOTE_STATUS[q.status] || q.status || ""}</span></td><td class="r">${vnd(totals.get(q.id) || 0)}</td></tr>`).join("");
-  return table(["Mã", "Khách", "SĐT", "Ngày", "Trạng thái", "Tổng"], body, `${rows.length} báo giá`);
+  const bar = `<div class="dbar"><button class="btn small primary" id="addQuote">＋ Báo giá mới</button><span class="dcap" style="margin:0">${rows.length} báo giá</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có báo giá khớp." : "Chưa có báo giá. Bấm ＋ để tạo.");
+  const body = rows.map((q) => `<tr data-quote="${q.id}" class="clickable"><td>${esc(q.code || "")}</td><td>${esc(q.client_name || "")}</td><td>${esc(q.client_phone || "")}</td><td>${D(q.event_date)}</td><td><span class="badge">${QUOTE_STATUS[q.status] || q.status || ""}</span></td><td class="r">${vnd(quoteTotal(q.id))}</td></tr>`).join("");
+  return bar + table(["Mã", "Khách", "SĐT", "Ngày", "Trạng thái", "Tổng"], body, "");
+}
+// Tạo/sửa báo giá (dùng lại trình hạng mục _editItems như hợp đồng).
+function openQuoteEdit(id) {
+  const q = id ? T("studio_quotes").find((x) => x.id === id) : null;
+  const v = q || { status: "draft", event_date: "" };
+  _editItems = id ? T("quote_items").filter((i) => i.quote_id === id).sort((a, b) => (a.position || 0) - (b.position || 0)).map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price })) : [];
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head">
+      <div class="dmodal-title">${id ? "Sửa báo giá" : "Báo giá mới"}</div>
+      <button id="dmClose" class="btn small">Đóng</button>
+    </div>
+    <div class="dmodal-body dform">
+      <div class="fgrid">
+        <div><label>Mã BG</label><input id="qCode" value="${esc(v.code || "")}" placeholder="VD: BG-2026-001" /></div>
+        <div><label>Trạng thái</label><select id="qStatus" class="dsel" style="width:100%;height:40px">${statusOptions(QUOTE_STATUS, v.status)}</select></div>
+      </div>
+      <label>Tiêu đề</label><input id="qTitle" value="${esc(v.title || "")}" placeholder="Báo giá" />
+      <div class="fgrid">
+        <div><label>Tên khách</label><input id="qName" value="${esc(v.client_name || "")}" /></div>
+        <div><label>SĐT khách</label><input id="qPhone" value="${esc(v.client_phone || "")}" /></div>
+      </div>
+      <label>Ngày sự kiện</label><input id="qDate" type="date" value="${esc((v.event_date || "").slice(0, 10))}" />
+      <label>Ghi chú</label><input id="qNote" value="${esc(v.note || "")}" />
+      <label style="margin-top:14px">Hạng mục</label>
+      <div id="itemsBox" class="items-box"></div>
+      <button id="qAddItem" class="btn small" style="margin-top:8px">＋ Thêm hạng mục</button>
+      <div class="dform-actions">
+        ${id ? `<button id="qDelete" class="btn small danger">Xóa</button>` : ""}
+        <button id="qSave" class="btn small primary" style="margin-left:auto">Lưu</button>
+      </div>
+    </div>`;
+  ov.classList.remove("hidden");
+  drawItems();
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.getElementById("qAddItem").onclick = () => { syncItems(); _editItems.push({ id: uuid(), name: "", qty: 1, unit_price: 0 }); drawItems(); };
+  if (id) document.getElementById("qDelete").onclick = async () => {
+    if (!confirm("Xóa báo giá này?")) return;
+    for (const it of T("quote_items").filter((i) => i.quote_id === id)) await window.localMutate("quote_items", "delete", { id: it.id, quote_id: id });
+    await window.localMutate("studio_quotes", "delete", { id });
+    close();
+  };
+  document.getElementById("qSave").onclick = async () => {
+    syncItems();
+    const qid = id || uuid();
+    const qrow = { id: qid, code: document.getElementById("qCode").value.trim(), title: document.getElementById("qTitle").value.trim() || "Báo giá", client_name: document.getElementById("qName").value.trim(), client_phone: document.getElementById("qPhone").value.trim(), event_date: document.getElementById("qDate").value || null, note: document.getElementById("qNote").value.trim(), status: document.getElementById("qStatus").value };
+    if (!id) qrow.client_token = "q" + uuid().replace(/-/g, "").slice(0, 22);
+    await window.localMutate("studio_quotes", id ? "update" : "insert", qrow);
+    const existing = T("quote_items").filter((i) => i.quote_id === qid);
+    for (let idx = 0; idx < _editItems.length; idx++) {
+      const it = _editItems[idx];
+      const row = { id: it.id, quote_id: qid, name: (it.name || "").trim(), qty: Math.round(Number(it.qty) || 0), unit_price: Math.round(Number(it.unit_price) || 0), position: idx, is_optional: false, selected: true };
+      await window.localMutate("quote_items", existing.find((e) => e.id === it.id) ? "update" : "insert", row);
+    }
+    for (const e of existing) if (!_editItems.find((it) => it.id === e.id)) await window.localMutate("quote_items", "delete", { id: e.id, quote_id: qid });
+    close();
+  };
 }
 
 function renderExpenses() {
@@ -479,20 +560,46 @@ function openCrew(id) {
   };
 }
 
+let _calMonth = null; // "YYYY-MM" đang xem; null = tháng hiện tại
+function monthGridHtml(counts, ym) {
+  const [y, m] = ym.split("-").map(Number);
+  const first = new Date(y, m - 1, 1);
+  const startDow = (first.getDay() + 6) % 7; // T2=0
+  const days = new Date(y, m, 0).getDate();
+  const todayS = new Date().toISOString().slice(0, 10);
+  const wk = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  let cells = "";
+  for (let i = 0; i < startDow; i++) cells += `<div class="mcell empty"></div>`;
+  for (let d = 1; d <= days; d++) {
+    const ds = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const c = counts[ds] || 0;
+    cells += `<div class="mcell${ds === todayS ? " today" : ""}"><span class="mday">${d}</span>${c ? `<span class="mdot">${c}</span>` : ""}</div>`;
+  }
+  return `<div class="mgrid-head">${wk.map((w) => `<div>${w}</div>`).join("")}</div><div class="mgrid">${cells}</div>`;
+}
 function renderCalendar() {
   const ev = T("studio_events").map((e) => ({ id: e.id, d: e.event_date, t: e.event_time, title: e.title, note: e.note, kind: "event" }));
   const bk = T("studio_bookings").map((b) => ({ id: b.id, d: b.preferred_date, t: "", title: `${b.name || ""} · ${b.service || ""}`, status: b.status, kind: "booking" }));
-  let rows = [...ev, ...bk].filter((r) => r.d).filter((r) => match(r, [r.title, r.note]));
-  rows.sort((a, b) => String(b.d).localeCompare(String(a.d)));
-  const bar = `<div class="dbar"><button class="btn small primary" id="addEvent">＋ Thêm lịch</button><span class="dcap" style="margin:0">${rows.length} mục</span></div>`;
-  if (!rows.length) return bar + empty(dataQuery ? "Không có lịch khớp." : "Chưa có lịch. Bấm ＋ để thêm.");
+  const sh = T("studio_contracts").filter((c) => c.event_date && c.status !== "cancelled").map((c) => ({ id: c.id, d: c.event_date, t: c.event_time, title: c.title, kind: "shoot" }));
+  const all = [...ev, ...bk, ...sh].filter((r) => r.d);
+  const ym = _calMonth || new Date().toISOString().slice(0, 7);
+  const counts = {};
+  all.forEach((r) => { const k = String(r.d).slice(0, 10); counts[k] = (counts[k] || 0) + 1; });
+  const [yy, mm] = ym.split("-").map(Number);
+  const nav = `<div class="mnav"><button class="btn small" id="calPrev">←</button><span class="mtitle">Tháng ${mm}/${yy}</span><button class="btn small" id="calNext">→</button><button class="btn small primary" id="addEvent" style="margin-left:auto">＋ Thêm lịch</button></div>`;
+  const grid = monthGridHtml(counts, ym);
+  // Danh sách các mục trong tháng đang xem (kèm lọc tìm kiếm).
+  let rows = all.filter((r) => String(r.d).slice(0, 7) === ym).filter((r) => match(r, [r.title]));
+  rows.sort((a, b) => String(a.d).localeCompare(String(b.d)));
+  const KIND = { booking: "Đặt lịch", shoot: "Chụp (HĐ)", event: "Lịch" };
   const body = rows.map((r) => {
-    const right = r.kind === "booking"
-      ? `<select class="dsel" data-status-booking="${r.id}">${statusOptions(BOOKING_STATUS, r.status)}</select>`
-      : `<button class="btn small" data-event="${r.id}">Sửa</button>`;
-    return `<tr><td>${D(r.d)}${r.t ? " · " + esc(r.t) : ""}</td><td><span class="badge">${r.kind === "booking" ? "Đặt lịch" : "Lịch"}</span></td><td>${esc(r.title)}</td><td style="text-align:right">${right}</td></tr>`;
+    const right = r.kind === "booking" ? `<select class="dsel" data-status-booking="${r.id}">${statusOptions(BOOKING_STATUS, r.status)}</select>`
+      : r.kind === "event" ? `<button class="btn small" data-event="${r.id}">Sửa</button>`
+      : `<button class="btn small" data-open-contract="${r.id}">Mở</button>`;
+    return `<tr><td style="width:120px">${D(r.d)}${r.t ? " · " + esc(r.t) : ""}</td><td><span class="badge">${KIND[r.kind]}</span></td><td>${esc(r.title)}</td><td style="text-align:right">${right}</td></tr>`;
   }).join("");
-  return bar + table(["Ngày", "Loại", "Nội dung", ""], body, "");
+  const list = rows.length ? table(["Ngày", "Loại", "Nội dung", ""], body, "") : empty("Không có mục nào trong tháng này.");
+  return nav + `<div class="card" style="padding:14px">${grid}</div>` + `<div class="dcap">${rows.length} mục trong tháng</div>` + list;
 }
 
 // Thêm/sửa mục lịch (studio_events) — chạy cục bộ.
@@ -534,5 +641,105 @@ function openEvent(id) {
 }
 
 function table(cols, body, caption) {
-  return `<div class="dcap">${caption}</div><div class="dtable-wrap"><table class="dtable"><thead><tr>${cols.map((c, i) => `<th class="${i >= cols.length - 1 || /Giá|tiền|Lương|Tổng|thu|SL/.test(c) ? "" : ""}">${c}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+  return (caption ? `<div class="dcap">${caption}</div>` : "") + `<div class="dtable-wrap"><table class="dtable"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+// ─── Bảng giá ────────────────────────────────────────────────────────────────
+function renderPricelist() {
+  const rows = T("studio_pricelist").filter((p) => match(p, [p.name, p.category]))
+    .sort((a, b) => (a.position || 0) - (b.position || 0));
+  const bar = `<div class="dbar"><button class="btn small primary" id="addPrice">＋ Thêm mục giá</button><span class="dcap" style="margin:0">${rows.length} mục</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có mục khớp." : "Chưa có bảng giá. Bấm ＋ để thêm.");
+  const body = rows.map((p) => `<tr data-price="${p.id}" class="clickable"><td>${esc(p.name)}</td><td>${esc(p.category || "")}</td><td class="r">${vnd(p.price)}${p.unit ? " " + esc(p.unit) : ""}</td><td>${p.active === false ? "<span class='badge warn'>Ẩn</span>" : "<span class='badge ok'>Hiện</span>"}</td></tr>`).join("");
+  return bar + table(["Tên dịch vụ", "Nhóm", "Giá", "Hiển thị"], body, "");
+}
+function openPrice(id) {
+  const p = id ? T("studio_pricelist").find((x) => x.id === id) : null;
+  const v = p || { name: "", price: 0, unit: "", category: "", active: true };
+  simpleForm(id ? "Sửa mục giá" : "Thêm mục giá", [
+    { k: "name", label: "Tên dịch vụ", val: v.name },
+    { k: "category", label: "Nhóm", val: v.category },
+    { k: "price", label: "Giá (VND)", val: v.price, type: "number" },
+    { k: "unit", label: "Đơn vị (VD: / buổi)", val: v.unit },
+  ], v.active !== false, async (vals, active, del) => {
+    if (del) return window.localMutate("studio_pricelist", "delete", { id });
+    const row = { id: id || uuid(), name: vals.name.trim() || "Dịch vụ", category: vals.category.trim(), price: Math.round(Number(vals.price) || 0), unit: vals.unit.trim(), active };
+    return window.localMutate("studio_pricelist", id ? "update" : "insert", row);
+  }, !!id);
+}
+
+// ─── Thiết bị ────────────────────────────────────────────────────────────────
+function renderEquipment() {
+  const rows = T("studio_equipment").filter((e) => match(e, [e.name, e.category]))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  const bar = `<div class="dbar"><button class="btn small primary" id="addEquip">＋ Thêm thiết bị</button><span class="dcap" style="margin:0">${rows.length} thiết bị</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có thiết bị khớp." : "Chưa có thiết bị. Bấm ＋ để thêm.");
+  const body = rows.map((e) => `<tr data-equip="${e.id}" class="clickable"><td>${esc(e.name)}</td><td>${esc(e.category || "")}</td><td>${esc(e.note || "")}</td><td>${e.active === false ? "<span class='badge warn'>Ngưng</span>" : "<span class='badge ok'>Dùng</span>"}</td></tr>`).join("");
+  return bar + table(["Tên", "Nhóm", "Ghi chú", "Trạng thái"], body, "");
+}
+function openEquip(id) {
+  const e = id ? T("studio_equipment").find((x) => x.id === id) : null;
+  const v = e || { name: "", category: "", note: "", active: true };
+  simpleForm(id ? "Sửa thiết bị" : "Thêm thiết bị", [
+    { k: "name", label: "Tên thiết bị", val: v.name },
+    { k: "category", label: "Nhóm", val: v.category },
+    { k: "note", label: "Ghi chú", val: v.note },
+  ], v.active !== false, async (vals, active, del) => {
+    if (del) return window.localMutate("studio_equipment", "delete", { id });
+    const row = { id: id || uuid(), name: vals.name.trim() || "Thiết bị", category: vals.category.trim(), note: vals.note.trim(), active };
+    return window.localMutate("studio_equipment", id ? "update" : "insert", row);
+  }, !!id);
+}
+
+// ─── Dịch vụ & điều khoản ────────────────────────────────────────────────────
+function renderServices() {
+  const rows = T("studio_services").filter((s) => match(s, [s.name, s.clauses]))
+    .sort((a, b) => (a.position || 0) - (b.position || 0));
+  const bar = `<div class="dbar"><button class="btn small primary" id="addService">＋ Thêm dịch vụ</button><span class="dcap" style="margin:0">${rows.length} dịch vụ</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có dịch vụ khớp." : "Chưa có dịch vụ. Bấm ＋ để thêm.");
+  const body = rows.map((s) => `<tr data-service="${s.id}" class="clickable"><td>${esc(s.name)}</td><td style="color:var(--muted)">${esc((s.clauses || "").slice(0, 80))}${(s.clauses || "").length > 80 ? "…" : ""}</td></tr>`).join("");
+  return bar + table(["Dịch vụ", "Điều khoản"], body, "");
+}
+function openService(id) {
+  const s = id ? T("studio_services").find((x) => x.id === id) : null;
+  const v = s || { name: "", clauses: "" };
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head"><div class="dmodal-title">${id ? "Sửa dịch vụ" : "Thêm dịch vụ"}</div><button id="dmClose" class="btn small">Đóng</button></div>
+    <div class="dmodal-body dform">
+      <label>Tên dịch vụ</label><input id="svName" value="${esc(v.name || "")}" />
+      <label>Điều khoản</label><textarea id="svClauses" style="width:100%;min-height:140px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#faf8f3;font-size:14px">${esc(v.clauses || "")}</textarea>
+      <div class="dform-actions">${id ? `<button id="svDelete" class="btn small danger">Xóa</button>` : ""}<button id="svSave" class="btn small primary" style="margin-left:auto">Lưu</button></div>
+    </div>`;
+  ov.classList.remove("hidden");
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.getElementById("svSave").onclick = async () => {
+    await window.localMutate("studio_services", id ? "update" : "insert", { id: id || uuid(), name: document.getElementById("svName").value.trim() || "Dịch vụ", clauses: document.getElementById("svClauses").value });
+    close();
+  };
+  if (id) document.getElementById("svDelete").onclick = async () => { if (confirm("Xóa dịch vụ này?")) { await window.localMutate("studio_services", "delete", { id }); close(); } };
+}
+
+// Form đơn giản dùng chung cho Bảng giá / Thiết bị (các trường text/number + bật/tắt).
+function simpleForm(title, fields, active, onSave, canDelete) {
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head"><div class="dmodal-title">${esc(title)}</div><button id="dmClose" class="btn small">Đóng</button></div>
+    <div class="dmodal-body dform">
+      ${fields.map((f) => `<label>${esc(f.label)}</label><input id="sf_${f.k}" type="${f.type || "text"}" value="${esc(f.val ?? "")}" />`).join("")}
+      <label style="display:flex;align-items:center;gap:8px;margin-top:14px"><input id="sfActive" type="checkbox" ${active ? "checked" : ""} style="width:auto;height:auto" /> Đang hiển thị / sử dụng</label>
+      <div class="dform-actions">${canDelete ? `<button id="sfDelete" class="btn small danger">Xóa</button>` : ""}<button id="sfSave" class="btn small primary" style="margin-left:auto">Lưu</button></div>
+    </div>`;
+  ov.classList.remove("hidden");
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.getElementById("sfSave").onclick = async () => {
+    const vals = {}; fields.forEach((f) => vals[f.k] = document.getElementById("sf_" + f.k).value);
+    await onSave(vals, document.getElementById("sfActive").checked, false);
+    close();
+  };
+  if (canDelete) document.getElementById("sfDelete").onclick = async () => { if (confirm("Xóa mục này?")) { await onSave({}, false, true); close(); } };
 }

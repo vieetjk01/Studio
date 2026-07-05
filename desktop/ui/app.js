@@ -150,6 +150,7 @@ const _obb = $("btnOpenAppBrowser"); if (_obb) _obb.onclick = (e) => { e.prevent
 // ─── Menu trái: điều hướng giữa các mục dữ liệu + Sao lưu & thiết bị ─────────
 const NAV_TITLE = {
   overview: "Tổng quan", contracts: "Hợp đồng", quotes: "Báo giá", clients: "Khách hàng",
+  pricelist: "Bảng giá", services: "Dịch vụ & điều khoản", equipment: "Thiết bị",
   expenses: "Thu chi", payroll: "Lương", calendar: "Lịch & đặt lịch", backup: "Sao lưu & thiết bị",
 };
 function gotoNav(nav) {

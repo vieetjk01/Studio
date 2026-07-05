@@ -22,6 +22,11 @@ const TABLES: Record<string, TableCfg> = {
   studio_crew: { owner: true, cols: ["name", "phone", "role", "note"] },
   studio_events: { owner: true, cols: ["contract_id", "title", "event_date", "event_time", "note", "remind"] },
   studio_contracts: { owner: true, cols: ["code", "title", "client_name", "client_phone", "client_email", "shoot_type", "event_date", "event_time", "location", "status", "deposit", "note", "client_token"] },
+  studio_quotes: { owner: true, cols: ["code", "title", "client_name", "client_phone", "client_email", "event_date", "location", "intro", "note", "deposit_percent", "status", "client_token"] },
+  quote_items: { parent: { col: "quote_id", table: "studio_quotes" }, cols: ["quote_id", "name", "description", "qty", "unit_price", "is_optional", "selected", "position"] },
+  studio_pricelist: { owner: true, cols: ["list_key", "name", "price", "unit", "category", "description", "active", "position"] },
+  studio_equipment: { owner: true, cols: ["name", "category", "note", "active"] },
+  studio_services: { owner: true, cols: ["name", "clauses", "position", "active"] },
   // Bảng con: sửa hạng mục / thanh toán / lương của hợp đồng thuộc tài khoản.
   contract_items: { parent: { col: "contract_id", table: "studio_contracts" }, cols: ["contract_id", "name", "qty", "unit_price", "position"] },
   contract_payments: { parent: { col: "contract_id", table: "studio_contracts" }, cols: ["contract_id", "amount", "method", "kind", "note", "paid_at"] },
