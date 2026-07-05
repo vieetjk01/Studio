@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.3.0"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.4.0"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -282,6 +282,50 @@ async function runExports(manual = false) {
   exporting = false;
 }
 
+// ─── Ghi cục bộ + đồng bộ ngầm (các module chạy local trong client) ──────────
+// Thao tác tạo/sửa/xóa áp dụng NGAY vào dữ liệu trên máy (tức thì) rồi xếp hàng
+// gửi lên server. Mất mạng vẫn lưu được, có mạng tự đồng bộ lại.
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+  : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16); }));
+const loadQueue = () => { try { return JSON.parse(localStorage.getItem("mstudo_pending") || "[]"); } catch { return []; } };
+const saveQueue = (q) => { try { localStorage.setItem("mstudo_pending", JSON.stringify(q)); } catch { /* */ } };
+
+// Áp thao tác vào bộ nhớ DB (data.js) + ghi cache đĩa + vẽ lại + xếp hàng đồng bộ.
+window.localMutate = async function (table, op, row) {
+  if (typeof DB === "undefined" || !DB.tables) return;
+  const arr = DB.tables[table] || (DB.tables[table] = []);
+  if (op === "insert") arr.unshift(row);
+  else if (op === "update") { const i = arr.findIndex((x) => x.id === row.id); if (i >= 0) arr[i] = { ...arr[i], ...row }; else arr.unshift(row); }
+  else if (op === "delete") { const i = arr.findIndex((x) => x.id === row.id); if (i >= 0) arr.splice(i, 1); }
+  if (typeof renderData === "function") renderData();
+  try { await invoke("write_file_b64", { path: cachePath(), contentsB64: textToB64(JSON.stringify(DB)) }); } catch { /* */ }
+  const q = loadQueue(); q.push({ table, op, row, at: Date.now() }); saveQueue(q);
+  flushQueue();
+};
+
+let flushing = false;
+async function flushQueue() {
+  if (flushing || !cfg.server || !cfg.token) return;
+  flushing = true;
+  let q = loadQueue();
+  while (q.length) {
+    const item = q[0];
+    try {
+      const r = await invoke("http_post", { url: cfg.server + "/api/desktop/mutate", token: cfg.token, bodyJson: JSON.stringify(item) });
+      if (r.status >= 200 && r.status < 300) { q.shift(); saveQueue(q); }
+      else if (r.status === 400 || r.status === 403 || r.status === 404) {
+        // Lỗi dữ liệu (không phải mạng) → bỏ để không kẹt hàng đợi, ghi log.
+        let d = ""; try { d = JSON.parse(b64ToText(r.body_b64)).error || ""; } catch { /* */ }
+        log(`Bỏ đồng bộ 1 thay đổi (${item.table}): ${d || r.status}`, "warn");
+        q.shift(); saveQueue(q);
+      } else break; // lỗi mạng/khác → dừng, thử lại lần sau
+    } catch { break; }
+  }
+  const left = loadQueue().length;
+  if (left) log(`Còn ${left} thay đổi chờ đồng bộ.`, "warn");
+  flushing = false;
+}
+
 // ─── Kiểm tra bản cập nhật (khi mở app + mỗi ngày) ──────────────────────────
 const verNewer = (a, b) => { // a > b ?
   const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
@@ -305,8 +349,10 @@ async function checkUpdate() {
 function bootSync(first = false) {
   runSync(first);
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
+  flushQueue(); // đẩy các thay đổi cục bộ còn tồn khi mở app
   checkUpdate();
   setInterval(() => runSync(false), SYNC_EVERY_MS);
+  setInterval(flushQueue, 60 * 1000); // thử đồng bộ thay đổi cục bộ mỗi phút
   setInterval(() => { if (cfg.lastExportDate !== today()) runExports(); }, 10 * 60 * 1000);
   setInterval(checkUpdate, 24 * 3600 * 1000);
 }

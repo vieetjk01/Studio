@@ -65,6 +65,9 @@ function renderData() {
 
 function bindRowClicks() {
   document.querySelectorAll("#dataBody [data-contract]").forEach((r) => r.onclick = () => openContract(r.dataset.contract));
+  document.querySelectorAll("#dataBody [data-expense]").forEach((r) => r.onclick = () => openExpense(r.dataset.expense));
+  const add = document.getElementById("addExpense");
+  if (add) add.onclick = () => openExpense();
 }
 
 function match(row, fields) {
@@ -195,10 +198,58 @@ function renderQuotes() {
 function renderExpenses() {
   const rows = T("studio_expenses").filter((e) => match(e, [e.title, e.category]))
     .sort((a, b) => String(b.spent_at || "").localeCompare(String(a.spent_at || "")));
-  if (!rows.length) return empty("Không có khoản chi khớp.");
   const total = rows.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const body = rows.map((e) => `<tr><td>${D(e.spent_at)}</td><td>${esc(e.title)}</td><td>${esc(e.category || "")}</td><td class="r">${vnd(e.amount)}</td></tr>`).join("");
-  return table(["Ngày", "Nội dung", "Danh mục", "Số tiền"], body, `${rows.length} khoản · tổng ${vnd(total)}`);
+  const bar = `<div class="dbar"><button class="btn small primary" id="addExpense">＋ Thêm khoản chi</button><span class="dcap" style="margin:0">${rows.length} khoản · tổng ${vnd(total)}</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có khoản chi khớp." : "Chưa có khoản chi. Bấm ＋ để thêm — chạy cục bộ, lưu ngay, đồng bộ ngầm.");
+  const body = rows.map((e) => `<tr data-expense="${e.id}" class="clickable"><td>${D(e.spent_at)}</td><td>${esc(e.title)}</td><td>${esc(e.category || "")}</td><td class="r">${vnd(e.amount)}</td></tr>`).join("");
+  return bar + table(["Ngày", "Nội dung", "Danh mục", "Số tiền"], body, "");
+}
+
+// Form tạo/sửa khoản chi — chạy cục bộ, lưu tức thì + đồng bộ ngầm.
+function openExpense(id) {
+  const e = id ? T("studio_expenses").find((x) => x.id === id) : null;
+  const v = e || { spent_at: new Date().toISOString().slice(0, 10), title: "", amount: "", category: "", note: "" };
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head">
+      <div class="dmodal-title">${id ? "Sửa khoản chi" : "Thêm khoản chi"}</div>
+      <button id="dmClose" class="btn small">Đóng</button>
+    </div>
+    <div class="dmodal-body dform">
+      <label>Ngày chi</label><input id="exDate" type="date" value="${esc((v.spent_at || "").slice(0, 10))}" />
+      <label>Nội dung</label><input id="exTitle" type="text" value="${esc(v.title || "")}" placeholder="VD: Mua đạo cụ" />
+      <label>Danh mục</label><input id="exCat" type="text" value="${esc(v.category || "")}" placeholder="VD: Đạo cụ, Đi lại…" />
+      <label>Số tiền (VND)</label><input id="exAmount" type="number" value="${esc(v.amount ?? "")}" placeholder="0" />
+      <label>Ghi chú</label><input id="exNote" type="text" value="${esc(v.note || "")}" />
+      <div class="dform-actions">
+        ${id ? `<button id="exDelete" class="btn small danger">Xóa</button>` : ""}
+        <button id="exSave" class="btn small primary" style="margin-left:auto">Lưu</button>
+      </div>
+    </div>`;
+  ov.classList.remove("hidden");
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (ev2) => { if (ev2.target === ov) close(); };
+  document.getElementById("exSave").onclick = async () => {
+    const title = document.getElementById("exTitle").value.trim();
+    const amount = Math.round(Number(document.getElementById("exAmount").value) || 0);
+    if (!title) { document.getElementById("exTitle").focus(); return; }
+    const row = {
+      id: id || uuid(),
+      title,
+      amount,
+      category: document.getElementById("exCat").value.trim(),
+      spent_at: document.getElementById("exDate").value || new Date().toISOString().slice(0, 10),
+      note: document.getElementById("exNote").value.trim(),
+    };
+    await window.localMutate("studio_expenses", id ? "update" : "insert", row);
+    close();
+  };
+  if (id) document.getElementById("exDelete").onclick = async () => {
+    if (!confirm("Xóa khoản chi này?")) return;
+    await window.localMutate("studio_expenses", "delete", { id });
+    close();
+  };
 }
 
 function renderPayroll() {

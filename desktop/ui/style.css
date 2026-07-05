@@ -137,3 +137,10 @@ input[type="url"], input[type="text"] {
 .dmodal-body .dtable { border: 1px solid var(--border); border-radius: 8px; }
 .drow { display: flex; gap: 8px; margin-bottom: 8px; }
 .dtotals { margin-top: 10px; font-size: 13.5px; }
+
+.dbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.dbar .btn { margin-top: 0; }
+.dform label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 12px 0 5px; }
+.dform input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; background: #faf8f3; color: var(--ink); }
+.dform-actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+.dform-actions .btn { margin-top: 0; }
