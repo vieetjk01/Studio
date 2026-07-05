@@ -37,8 +37,12 @@ trên trang MStudo Desktop sẽ tự trỏ vào đó.
 
 - **SmartScreen**: chưa mua chứng chỉ ký số nên lần cài đầu Windows sẽ cảnh báo —
   hướng dẫn người dùng bấm *More info → Run anyway* (đã ghi sẵn trên trang tải).
-- **Tự cập nhật**: sẽ thêm `tauri-plugin-updater` ở bước sau (cần tạo cặp khóa
-  ký cập nhật bằng `npm run tauri signer generate` và nơi chứa manifest).
+- **Báo cập nhật**: app tự kiểm tra `/api/desktop/version` (khi mở + mỗi ngày)
+  và hiện nút tải bản mới. Phát hành bản mới = build, upload file cài, rồi đặt
+  `DESKTOP_LATEST_VERSION` (vd `0.2.0`) trên Vercel. Nhớ tăng `version` ở
+  `tauri.conf.json`, `Cargo.toml`, `package.json` và `APP_VERSION` trong
+  `ui/app.js` cho khớp. (Cập nhật ngầm bằng tauri-plugin-updater để sau — cần
+  quản lý khóa ký riêng.)
 - Cấu trúc dữ liệu client tạo trong thư mục studio chọn:
 
 ```

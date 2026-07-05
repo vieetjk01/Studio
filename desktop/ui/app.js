@@ -8,6 +8,8 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
+const APP_VERSION = "0.1.0"; // giữ khớp với src-tauri/tauri.conf.json
+
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
 const saveCfg = () => localStorage.setItem("cfg", JSON.stringify(cfg));
@@ -238,12 +240,33 @@ async function runExports(manual = false) {
   exporting = false;
 }
 
+// ─── Kiểm tra bản cập nhật (khi mở app + mỗi ngày) ──────────────────────────
+const verNewer = (a, b) => { // a > b ?
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < 3; i++) { if ((pa[i] || 0) > (pb[i] || 0)) return true; if ((pa[i] || 0) < (pb[i] || 0)) return false; }
+  return false;
+};
+async function checkUpdate() {
+  try {
+    const r = await invoke("http_get", { url: cfg.server + "/api/desktop/version", token: null });
+    if (r.status !== 200) return;
+    const v = JSON.parse(b64ToText(r.body_b64));
+    if (v.version && v.url && verNewer(v.version, APP_VERSION)) {
+      $("updateText").textContent = `Đã có phiên bản ${v.version}${v.note ? " — " + v.note : ""} (bạn đang dùng ${APP_VERSION}).`;
+      $("updateBanner").classList.remove("hidden");
+      $("btnUpdate").onclick = () => invoke("open_url", { url: v.url }).catch(() => {});
+    }
+  } catch { /* mạng lỗi — thử lại lần sau */ }
+}
+
 // ─── Lịch chạy ───────────────────────────────────────────────────────────────
 function bootSync(first = false) {
   runSync(first);
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
+  checkUpdate();
   setInterval(() => runSync(false), SYNC_EVERY_MS);
   setInterval(() => { if (cfg.lastExportDate !== today()) runExports(); }, 10 * 60 * 1000);
+  setInterval(checkUpdate, 24 * 3600 * 1000);
 }
 
 // ─── Khởi động ───────────────────────────────────────────────────────────────

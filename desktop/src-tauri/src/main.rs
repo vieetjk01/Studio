@@ -203,6 +203,27 @@ fn hostname() -> String {
         .unwrap_or_else(|_| "May tinh Windows".to_string())
 }
 
+/// Mở liên kết trong trình duyệt mặc định (nút "Tải bản cập nhật").
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("bad_url".to_string());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = url;
+        Err("unsupported".to_string())
+    }
+}
+
 /// Mở thư mục trong Windows Explorer.
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
@@ -235,7 +256,8 @@ fn main() {
             edge_pdf,
             move_dir,
             hostname,
-            open_folder
+            open_folder,
+            open_url
         ])
         .run(tauri::generate_context!())
         .expect("Không khởi động được MStudo Desktop");

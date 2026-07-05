@@ -119,12 +119,20 @@ MStudo/                                  ← studio chọn vị trí gốc
 4. ✅ Engine: tải bù theo mốc đồng bộ cuối (chỉ dời mốc khi lưu trọn vẹn),
    mỗi HĐ 1 thư mục + bản mới khi sửa (manifest mstudo.json), Excel hằng ngày
    + khi mở app, dọn 30 ngày (không đụng HopDong), đổi thư mục có hỏi di chuyển.
-5. Còn lại: auto-update (tauri-plugin-updater + khóa ký), build file cài NSIS
-   trên Windows, upload + đặt NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL.
+5. ✅ Báo cập nhật: app kiểm tra /api/desktop/version khi mở + mỗi ngày, hiện
+   banner + nút tải bản mới (đặt DESKTOP_LATEST_VERSION + link trên Vercel là
+   xong — không cần khóa ký; nâng cấp lên tauri-plugin-updater sau nếu cần
+   cập nhật ngầm). Mã Rust đã `cargo check` sạch.
+6. Còn lại: build file cài NSIS trên máy Windows (`cd desktop && npm install
+   && npm run build`), upload + đặt NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL.
 
 **Giai đoạn C — hoàn thiện**
-1. Khôi phục ngược (xem trước + xung đột).
-2. Quản lý thiết bị trong cài đặt studio.
+1. ✅ Khôi phục ngược: trang MStudo Desktop nhận file mstudo-backup JSON →
+   xem trước từng mảng (trong file / sẽ thêm mới / trùng) → mặc định chỉ THÊM
+   bản ghi bị mất; tùy chọn ghi đè bản trùng. Gửi theo lô ≤ ~900KB (giới hạn
+   Vercel); owner_id luôn bị ép về tài khoản hiện tại, bảng con phải có cha
+   thuộc tài khoản; chạy lại cùng file an toàn (bản ghi đã vào tự bỏ qua).
+2. ✅ Quản lý thiết bị (danh sách + thu hồi) ngay trên trang MStudo Desktop.
 3. (Làm sau) Sao lưu Google Drive từ server; cache offline.
 
 ## 8. Việc còn mở (chốt khi làm)

@@ -68,6 +68,10 @@ input[type="url"], input[type="text"] {
   background: #fbeaea; border: 1px solid #eccfcf; color: #8f3d3d; font-weight: 600;
   padding: 12px 16px; border-radius: 12px; margin-bottom: 14px; font-size: 13px;
 }
+.banner.update {
+  background: var(--green-soft); border-color: #cbe6d8; color: #17734a;
+  display: flex; align-items: center; justify-content: space-between;
+}
 
 .log { list-style: none; display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
 .log li {

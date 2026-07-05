@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Monitor, Download, ShieldAlert, FileSpreadsheet, FileJson, Laptop, Trash2, RefreshCw, Plus, Copy, Check } from "lucide-react";
+import RestorePanel from "./RestorePanel";
 
 /**
  * Trang MStudo Desktop: tải bản cài Windows, quản lý thiết bị (tối đa 2 máy),
@@ -200,6 +201,9 @@ export default function DesktopPanel() {
           </a>
         </div>
       </div>
+
+      {/* Khôi phục ngược từ bản sao lưu */}
+      <RestorePanel />
     </div>
   );
 }
