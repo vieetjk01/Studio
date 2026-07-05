@@ -140,6 +140,11 @@ input[type="url"], input[type="text"] {
 .dcap { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
 
 .dstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ogrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.osec { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.osec-h { font-size: 13px; font-weight: 800; margin-bottom: 8px; }
+.osec .dtable td { padding: 7px 6px; }
+@media (max-width: 900px) { .ogrid { grid-template-columns: 1fr; } .dstats { grid-template-columns: 1fr 1fr; } }
 .dstat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
 .dstat-l { font-size: 12px; font-weight: 700; color: var(--muted); }
 .dstat-v { font-size: 19px; font-weight: 800; margin-top: 4px; }

@@ -72,6 +72,7 @@ function bindRowClicks() {
   const body = document.getElementById("dataBody");
   if (!body) return;
   body.querySelectorAll("[data-contract]").forEach((r) => r.onclick = () => openContract(r.dataset.contract));
+  body.querySelectorAll("[data-open-contract]").forEach((r) => r.onclick = () => openContract(r.dataset.openContract));
   body.querySelectorAll("[data-expense]").forEach((r) => r.onclick = () => openExpense(r.dataset.expense));
   body.querySelectorAll("[data-crew]").forEach((r) => r.onclick = () => openCrew(r.dataset.crew));
   body.querySelectorAll("[data-event]").forEach((r) => r.onclick = (e) => { e.stopPropagation(); openEvent(r.dataset.event); });
@@ -124,21 +125,48 @@ function stat(label, value, sub) {
 function renderOverview() {
   const contracts = T("studio_contracts");
   const mk = thisMonth();
+  const today0 = new Date().toISOString().slice(0, 10);
   const revenue = contracts.reduce((s, c) => s + contractTotal(c.id), 0);
   const paid = contracts.reduce((s, c) => s + contractPaid(c.id), 0);
   const expMonth = T("studio_expenses").filter((e) => monthKey(e.spent_at) === mk).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  // Thu tháng này = các khoản thanh toán hợp đồng có ngày trong tháng.
+  const incomeMonth = T("contract_payments").filter((p) => monthKey(p.paid_at) === mk).reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const contractsMonth = contracts.filter((c) => monthKey(c.event_date || c.created_at) === mk).length;
   const active = contracts.filter((c) => !["completed", "cancelled"].includes(c.status)).length;
-  const newBookings = T("studio_bookings").filter((b) => b.status === "new").length;
-  return `<div class="dstats">
-    ${stat("Tổng hợp đồng", contracts.length, `${active} đang thực hiện`)}
-    ${stat("Doanh thu (tổng HĐ)", vnd(revenue), `Đã thu ${vnd(paid)}`)}
-    ${stat("Còn phải thu", vnd(Math.max(0, revenue - paid)), "")}
-    ${stat("HĐ tháng này", contractsMonth, "")}
-    ${stat("Chi tháng này", vnd(expMonth), "")}
-    ${stat("Đặt lịch mới", newBookings, "chờ xử lý")}
-  </div>
-  <p class="dnote">Dữ liệu cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}. Thu chi, Lịch, Lương, trạng thái Hợp đồng/Đặt lịch sửa được ngay tại đây (cục bộ + đồng bộ ngầm). Tạo hợp đồng mới đầy đủ: mở “Ứng dụng quản lý”.</p>`;
+  const newBookings = T("studio_bookings").filter((b) => b.status === "new");
+  const unpaidSalary = T("contract_crew").filter((w) => !w.paid).reduce((s, w) => s + (Number(w.salary) || 0), 0);
+
+  // Lịch sắp tới: hợp đồng có ngày chụp >= hôm nay + mục lịch tương lai.
+  const upShoots = contracts.filter((c) => (c.event_date || "") >= today0 && c.status !== "cancelled")
+    .map((c) => ({ d: c.event_date, title: c.title, who: c.client_name, id: c.id }));
+  const upEvents = T("studio_events").filter((e) => (e.event_date || "") >= today0)
+    .map((e) => ({ d: e.event_date, title: e.title, who: e.event_time || "", id: null }));
+  const upcoming = [...upShoots, ...upEvents].sort((a, b) => String(a.d).localeCompare(String(b.d))).slice(0, 6);
+  const recent = contracts.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 6);
+
+  const statsHtml = `<div class="dstats">
+    ${stat("Doanh thu (tổng HĐ)", vnd(revenue), `${contracts.length} hợp đồng · ${active} đang làm`)}
+    ${stat("Đã thu", vnd(paid), `Còn phải thu ${vnd(Math.max(0, revenue - paid))}`)}
+    ${stat("Thu tháng này", vnd(incomeMonth), `Chi ${vnd(expMonth)}`)}
+    ${stat("Lãi tháng này (tạm)", vnd(incomeMonth - expMonth), "thu − chi")}
+    ${stat("Lương chưa trả", vnd(unpaidSalary), "")}
+    ${stat("HĐ / Đặt lịch mới", `${contractsMonth} / ${newBookings.length}`, "tháng này / chờ xử lý")}
+  </div>`;
+
+  const upcomingHtml = `<div class="osec"><div class="osec-h">Lịch sắp tới</div>${
+    upcoming.length ? `<table class="dtable"><tbody>${upcoming.map((u) => `<tr${u.id ? ` data-open-contract="${u.id}" class="clickable"` : ""}><td style="width:110px">${D(u.d)}</td><td>${esc(u.title || "")}</td><td class="r" style="color:var(--muted)">${esc(u.who || "")}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="dempty">Không có lịch sắp tới.</div>`}</div>`;
+
+  const recentHtml = `<div class="osec"><div class="osec-h">Hợp đồng gần đây</div>${
+    recent.length ? `<table class="dtable"><tbody>${recent.map((c) => `<tr data-open-contract="${c.id}" class="clickable"><td>${esc(c.code || "")}</td><td>${esc(c.title || "")}</td><td class="r">${vnd(contractTotal(c.id))}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="dempty">Chưa có hợp đồng.</div>`}</div>`;
+
+  const bookingsHtml = newBookings.length ? `<div class="osec"><div class="osec-h">Đặt lịch mới cần xử lý</div><table class="dtable"><tbody>${
+    newBookings.slice(0, 6).map((b) => `<tr><td style="width:110px">${D(b.preferred_date)}</td><td>${esc(b.name || "")} · ${esc(b.service || "")}</td><td class="r" style="color:var(--muted)">${esc(b.phone || "")}</td></tr>`).join("")}</tbody></table></div>` : "";
+
+  return statsHtml +
+    `<div class="ogrid">${upcomingHtml}${recentHtml}</div>${bookingsHtml}` +
+    `<p class="dnote">Dữ liệu cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}. Tất cả tính từ dữ liệu đã lưu trên máy.</p>`;
 }
 
 function renderContracts() {
