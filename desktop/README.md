@@ -16,7 +16,20 @@ ngày** để chống mất dữ liệu. Xây bằng Tauri v2 (Rust + WebView2),
   *mstudo → MStudo Desktop → Kết nối thiết bị mới* (mã chỉ hiện 1 lần, server
   chỉ giữ bản băm; tối đa 2 máy/tài khoản).
 
-## Build trên máy Windows
+## Cách 1 (khuyến nghị): build tự động bằng GitHub Actions — KHÔNG cần máy Windows
+
+Đã có workflow `.github/workflows/desktop-build.yml` build trên máy ảo Windows
+của GitHub và cho ra file cài `.exe`:
+
+1. Vào repo trên GitHub → tab **Actions** → chọn **"Build MStudo Desktop
+   (Windows)"** → bấm **Run workflow**. (Nút này chỉ hiện khi workflow đã nằm
+   trên nhánh mặc định — sau khi merge nhánh vào `main`.)
+2. Chờ ~5–10 phút, mở lần chạy → tải file trong mục **Artifacts →
+   MStudo-Desktop-Windows**.
+3. Hoặc đẩy tag `desktop-v0.1.0` → workflow tự build và **tạo Release** kèm file
+   `.exe` để tải trực tiếp.
+
+## Cách 2: build tay trên máy Windows
 
 Yêu cầu: [Rust](https://rustup.rs) + [Node.js 18+](https://nodejs.org) +
 WebView2 (sẵn trên Windows 10/11).
