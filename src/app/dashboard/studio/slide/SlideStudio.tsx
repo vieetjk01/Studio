@@ -14,23 +14,25 @@ type Slide = { type: string; photos: Photo[]; trans: string; text?: string; side
 type Theme = { name: string; bg: string; ink: string; sub: string; accent: string; title: string; body: string; radius: number; dark: boolean; letterbox: boolean; titleItalic: boolean; c1: string; c2: string; trans: string[]; tr: number; kb: number; pace: number; bag: string[]; bagText: string[] };
 
 const THEMES: Record<string, Theme> = {
-  luxe: { name: "Tối giản sang trọng", bg: "#f7f4ef", ink: "#2b2723", sub: "#8a8378", accent: "#a98b5d", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 6, dark: false, letterbox: false, titleItalic: false, c1: "#f7f4ef", c2: "#a98b5d", trans: ["fade", "zoomsoft", "fade", "wipe"], tr: 0.95, kb: 0.07, pace: 1.12, bag: ["FULL", "FRAME", "POLAROID", "DUO", "FRAME", "FULL", "TRIPLE", "BANDS", "FULL", "QUADL"], bagText: ["FULL", "SPLIT", "FRAME", "FULL", "SPLIT", "DUO", "BANDS", "FULL", "TRIPLE", "SPLIT"] },
-  romantic: { name: "Lãng mạn ấm áp", bg: "#f6ece7", ink: "#5a4038", sub: "#9c8078", accent: "#c98a7d", title: "Playfair Display", body: "Be Vietnam Pro", radius: 16, dark: false, letterbox: false, titleItalic: true, c1: "#f6ece7", c2: "#c98a7d", trans: ["fade", "slideup", "zoomsoft", "slide"], tr: 0.8, kb: 0.11, pace: 1.0, bag: ["FULL", "DUO", "POLAROID", "QUAD", "DUOV", "FULL", "TRIPLE_R", "DUO", "QUINT", "FULL"], bagText: ["FULL", "SPLIT", "DUO", "FULL", "SPLIT", "QUAD", "DUOV", "SPLIT", "FULL", "TRIPLE"] },
-  cinematic: { name: "Điện ảnh hiện đại", bg: "#131317", ink: "#f4f1ec", sub: "#b7b2a9", accent: "#c9a24a", title: "Playfair Display", body: "Manrope", radius: 0, dark: true, letterbox: true, titleItalic: false, c1: "#131317", c2: "#c9a24a", trans: ["push", "zoom", "pushup", "slide"], tr: 0.55, kb: 0.17, pace: 0.9, bag: ["FULL", "FULL", "TRIPLE_R", "FULL", "DUO", "FULL", "BANDS", "TRIPLE"], bagText: ["FULL", "SPLIT", "FULL", "FULL", "TRIPLE", "SPLIT", "FULL", "DUO", "FULL", "SPLIT"] },
-  bright: { name: "Trong trẻo tươi sáng", bg: "#ffffff", ink: "#2a2f36", sub: "#8a9099", accent: "#5b9aa8", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 20, dark: false, letterbox: false, titleItalic: false, c1: "#eef4f5", c2: "#5b9aa8", trans: ["slide", "block", "wipe", "pushup"], tr: 0.62, kb: 0.08, pace: 0.98, bag: ["DUO", "QUAD", "FULL", "TRIPLE", "DUOV", "HEX", "FULL", "QUADL"], bagText: ["DUO", "SPLIT", "QUAD", "FULL", "SPLIT", "TRIPLE_R", "DUOV", "SPLIT", "QUAD", "FULL"] },
+  luxe: { name: "Tối giản sang trọng", bg: "#f7f4ef", ink: "#2b2723", sub: "#8a8378", accent: "#a98b5d", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 6, dark: false, letterbox: false, titleItalic: false, c1: "#f7f4ef", c2: "#a98b5d", trans: ["fade", "zoomsoft", "slideleft", "wipe"], tr: 0.95, kb: 0.05, pace: 1.12, bag: ["FULL", "FRAME", "POLAROID", "DUO", "FRAME", "FULL", "TRIPLE", "BANDS", "FULL", "QUADL"], bagText: ["FULL", "SPLIT", "FRAME", "FULL", "SPLIT", "DUO", "BANDS", "FULL", "TRIPLE", "SPLIT"] },
+  romantic: { name: "Lãng mạn ấm áp", bg: "#f6ece7", ink: "#5a4038", sub: "#9c8078", accent: "#c98a7d", title: "Playfair Display", body: "Be Vietnam Pro", radius: 16, dark: false, letterbox: false, titleItalic: true, c1: "#f6ece7", c2: "#c98a7d", trans: ["fade", "slideup", "slideleft", "slide"], tr: 0.8, kb: 0.07, pace: 1.0, bag: ["FULL", "DUO", "POLAROID", "QUAD", "DUOV", "FULL", "TRIPLE_R", "DUO", "QUINT", "FULL"], bagText: ["FULL", "SPLIT", "DUO", "FULL", "SPLIT", "QUAD", "DUOV", "SPLIT", "FULL", "TRIPLE"] },
+  cinematic: { name: "Điện ảnh hiện đại", bg: "#131317", ink: "#f4f1ec", sub: "#b7b2a9", accent: "#c9a24a", title: "Playfair Display", body: "Manrope", radius: 0, dark: true, letterbox: true, titleItalic: false, c1: "#131317", c2: "#c9a24a", trans: ["push", "slideleft", "pushup", "slide"], tr: 0.55, kb: 0.09, pace: 0.9, bag: ["FULL", "FULL", "TRIPLE_R", "FULL", "DUO", "FULL", "BANDS", "TRIPLE"], bagText: ["FULL", "SPLIT", "FULL", "FULL", "TRIPLE", "SPLIT", "FULL", "DUO", "FULL", "SPLIT"] },
+  bright: { name: "Trong trẻo tươi sáng", bg: "#ffffff", ink: "#2a2f36", sub: "#8a9099", accent: "#5b9aa8", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 20, dark: false, letterbox: false, titleItalic: false, c1: "#eef4f5", c2: "#5b9aa8", trans: ["slide", "block", "wipe", "pushleft"], tr: 0.62, kb: 0.05, pace: 0.98, bag: ["DUO", "QUAD", "FULL", "TRIPLE", "DUOV", "HEX", "FULL", "QUADL"], bagText: ["DUO", "SPLIT", "QUAD", "FULL", "SPLIT", "TRIPLE_R", "DUOV", "SPLIT", "QUAD", "FULL"] },
 };
 
 type EngineState = {
   tab: string; photos: Photo[]; groom: string; bride: string; date: string; eyebrow: string;
-  story: string; music: string; audioName: string; theme: string; perPhoto: number; diverse: boolean; showText: boolean;
+  story: string; music: string; audioName: string; theme: string; perPhoto: number; diverse: boolean; showText: boolean; portrait: boolean;
   playing: boolean; total: number; slideCount: number; exporting: boolean; exportPct: number; exportError: string;
 };
 
 class SlideEngine {
-  state: EngineState = { tab: "photos", photos: [], groom: "", bride: "", date: "", eyebrow: "", story: "", music: "none", audioName: "", theme: "luxe", perPhoto: 3.4, diverse: true, showText: true, playing: false, total: 0, slideCount: 0, exporting: false, exportPct: 0, exportError: "" };
+  state: EngineState = { tab: "photos", photos: [], groom: "", bride: "", date: "", eyebrow: "", story: "", music: "none", audioName: "", theme: "luxe", perPhoto: 3.4, diverse: true, showText: true, portrait: false, playing: false, total: 0, slideCount: 0, exporting: false, exportPct: 0, exportError: "" };
   onChange: () => void = () => {};
   imgs = new Map<string, HTMLImageElement>();
-  plan: Slide[] = [];
+  planL: Slide[] = []; // kế hoạch cảnh khổ ngang 16:9
+  planP: Slide[] = []; // kế hoạch cảnh khổ dọc 9:16 — dựng & chỉnh riêng, không ảnh hưởng khổ ngang
+  get plan(): Slide[] { return this.H > this.W ? this.planP : this.planL; }
   quotes: string[] = [];
   seed = 1;
   time = 0;
@@ -104,10 +106,28 @@ class SlideEngine {
 
   slideDur(t: string) {
     const b = this.state.perPhoto;
-    const m: Record<string, number> = { TITLE: 3.8, OUTRO: 4.2, QUOTE: 3.8, FULL: b, FRAME: b + 0.3, POLAROID: b + 0.2, SPLIT: b + 1.1, DUO: b + 0.7, DUOV: b + 0.7, TRIPLE: b + 1.2, TRIPLE_R: b + 1.2, BANDS: b + 1.0, QUAD: b + 1.6, QUADL: b + 1.6, QUINT: b + 1.8, HEX: b + 2.0 };
+    const m: Record<string, number> = { TITLE: 3.8, OUTRO: 4.2, QUOTE: 3.8, FULL: b, PANO: b + 0.2, FRAME: b + 0.3, POLAROID: b + 0.2, SPLIT: b + 1.1, DUO: b + 0.7, DUOV: b + 0.7, TRIPLE: b + 1.2, TRIPLE_R: b + 1.2, BANDS: b + 1.0, QUAD: b + 1.6, QUADL: b + 1.6, QUINT: b + 1.8, HEX: b + 2.0 };
     return (m[t] || b) * (this.getTheme().pace || 1);
   }
-  buildPlan(): Slide[] {
+  // Chọn bố cục hợp với HƯỚNG ảnh của nhóm + khổ video, để ảnh không bị cắt.
+  layoutFor(grp: Photo[], portrait: boolean, rnd: () => number): string {
+    const pick = (a: string[]) => a[Math.floor(rnd() * a.length)];
+    const k = grp.length;
+    const nP = grp.filter((x) => this.orientOf(x) === "P").length;
+    const nL = grp.filter((x) => this.orientOf(x) === "L").length;
+    const o = nP > nL ? "P" : nL > nP ? "L" : "S";
+    if (k >= 6) return "HEX";
+    if (k === 5) return "QUINT";
+    if (k === 4) return o === "L" && !portrait ? pick(["QUAD", "QUADL"]) : "QUAD";
+    if (k === 3) {
+      if (portrait) return o === "L" ? "BANDS" : pick(["TRIPLE", "TRIPLE_R"]);
+      return pick(["TRIPLE", "TRIPLE_R"]);
+    }
+    if (k === 2) return portrait ? pick(["DUOV", "DUO"]) : "DUO";
+    if (portrait) return o === "L" ? pick(["PANO", "FULL"]) : pick(["FULL", "FULL", "FRAME", "POLAROID"]);
+    return o === "P" ? pick(["FULL", "PANO"]) : pick(["FULL", "FULL", "FRAME", "POLAROID"]);
+  }
+  buildPlan(portrait: boolean): Slide[] {
     const P = this.state.photos, Q = this.quotes;
     if (!P.length) return [];
     const showText = this.state.showText && Q.length > 0;
@@ -116,37 +136,63 @@ class SlideEngine {
     const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)];
     const th = this.getTheme();
     const trans = this.state.diverse ? (th.trans || ["fade", "slide", "push"]) : ["fade"];
-    const need: Record<string, number> = { FULL: 1, FRAME: 1, POLAROID: 1, SPLIT: 1, DUO: 2, DUOV: 2, TRIPLE: 3, TRIPLE_R: 3, BANDS: 3, QUAD: 4, QUADL: 4, QUINT: 5, HEX: 6 };
+    const need: Record<string, number> = { FULL: 1, PANO: 1, FRAME: 1, POLAROID: 1, SPLIT: 1, DUO: 2, DUOV: 2, TRIPLE: 3, TRIPLE_R: 3, BANDS: 3, QUAD: 4, QUADL: 4, QUINT: 5, HEX: 6 };
+    // Nhịp số ảnh mỗi cảnh giữ theo "chất" của phong cách (suy từ bag gốc).
     const bag = showText ? (th.bagText || th.bag) : th.bag;
+    const rhythm = bag.map((t) => need[t] || 1);
     const slides: Slide[] = [{ type: "TITLE", photos: [P[0]], trans: "fade" }];
-    let i = 0, bi = 0, cnt = 0, qi = 0, side = 0;
+    let i = 0, ri = 0, cnt = 0, qi = 0, side = 0, useSplit = true;
     while (i < P.length) {
-      let type = bag[bi % bag.length]; bi++;
-      const rem = P.length - i;
-      if (need[type] > rem) { type = rem >= 3 ? "TRIPLE" : rem >= 2 ? "DUO" : "FULL"; }
-      const k = need[type];
-      const grp = P.slice(i, i + k); i += k;
-      const sl: Slide = { type, photos: grp, trans: pick(trans) };
-      if (type === "SPLIT") {
-        if (qi < Q.length) { sl.text = Q[qi++]; sl.side = side; side = side ? 0 : 1; }
-        else { sl.type = "FULL"; sl.photos = [grp[0]]; }
+      // Gom ảnh CÙNG HƯỚNG liên tiếp (ảnh vuông đi được với cả hai) để bố cục khớp khổ ảnh.
+      let o = this.orientOf(P[i]); let run = 1;
+      while (i + run < P.length && run < 6) {
+        const oo = this.orientOf(P[i + run]);
+        if (oo === o || oo === "S") run++;
+        else if (o === "S") { o = oo; run++; }
+        else break;
       }
-      slides.push(sl); cnt++;
-      if (showText && cnt % 3 === 0 && i < P.length && qi < Q.length) slides.push({ type: "QUOTE", photos: [], text: Q[qi++], trans: pick(trans) });
+      const k = Math.max(1, Math.min(rhythm[ri % rhythm.length] || 1, run)); ri++;
+      const grp = P.slice(i, i + k); i += k;
+      slides.push({ type: this.layoutFor(grp, portrait, rnd), photos: grp, trans: pick(trans) });
+      cnt++;
+      // Xen slide chữ sau mỗi ~3 cảnh ảnh: luân phiên SPLIT (chữ + ảnh) và QUOTE.
+      if (showText && cnt % 3 === 0 && qi < Q.length) {
+        if (useSplit && i < P.length) { slides.push({ type: "SPLIT", photos: [P[i]], trans: pick(trans), text: Q[qi++], side }); i++; side = side ? 0 : 1; }
+        else slides.push({ type: "QUOTE", photos: [], text: Q[qi++], trans: pick(trans) });
+        useSplit = !useSplit;
+      }
     }
     slides.push({ type: "OUTRO", photos: [], trans: "fade" });
     return slides;
   }
-  rebuild() {
-    this.quotes = this.state.showText ? this.quotesNow() : [];
-    this.plan = this.buildPlan();
-    let total = 0;
-    this.plan.forEach((sl) => { sl.t0 = total; sl.dur = this.slideDur(sl.type); total += sl.dur; });
-    this.total = total;
+  retime(plan: Slide[]) { let t = 0; plan.forEach((sl) => { sl.t0 = t; sl.dur = this.slideDur(sl.type); t += sl.dur; }); }
+  syncTotal() { const pl = this.plan, last = pl[pl.length - 1]; this.total = pl.length ? (last.t0 || 0) + (last.dur || 0) : 0; }
+  // Đồng bộ tổng thời lượng + thanh tua + state theo kế hoạch của khổ đang xem.
+  syncDuration() {
+    this.syncTotal();
+    const total = this.total;
     if (this.scrubber) this.scrubber.max = String(total || 100);
     if (this.time > total) this.time = Math.max(0, total - 0.01);
     if (this.state.total !== total || this.state.slideCount !== this.plan.length) this.setState({ total, slideCount: this.plan.length });
+  }
+  rebuild() {
+    this.quotes = this.state.showText ? this.quotesNow() : [];
+    // Dựng RIÊNG hai kế hoạch cảnh: khổ ngang & khổ dọc — mỗi khổ tối ưu bố cục riêng.
+    this.planL = this.buildPlan(false); this.retime(this.planL);
+    this.planP = this.buildPlan(true); this.retime(this.planP);
+    this.syncDuration();
     this.drawAt(this.time);
+  }
+  // Đổi khổ xem trước (ngang 16:9 / dọc 9:16) — chỉnh bố cục ở khổ nào chỉ áp dụng cho khổ đó.
+  setAspect(portrait: boolean) {
+    if (this.state.portrait === portrait || this.state.exporting) return;
+    this.pausePreview();
+    this.setState({ portrait }, () => {
+      this.setSize(portrait ? 1080 : 1920, portrait ? 1920 : 1080);
+      this.syncDuration();
+      this.drawAt(this.time);
+      this.updateScrub();
+    });
   }
 
   // Chỉ số slide hiện đang xem (theo thời gian con trỏ).
@@ -163,14 +209,14 @@ class SlideEngine {
     if (k === 4) return ["QUAD", "QUADL"];
     if (k === 3) return ["TRIPLE", "TRIPLE_R", "BANDS"];
     if (k === 2) return ["DUO", "DUOV"];
-    return ["FULL", "FRAME", "POLAROID"];
+    return ["FULL", "PANO", "FRAME", "POLAROID"];
   }
   // "Bố cục mới": đổi bố cục + hiệu ứng của RIÊNG slide đang xem (giữ nguyên slide khác).
   regenSlide() {
     if (!this.plan.length) return;
     const i = this.curIndex();
     const sl = this.plan[i];
-    const TRANS = ["fade", "zoomsoft", "zoom", "slide", "slideup", "slidedown", "push", "pushup", "pushdown", "wipe", "wiperev", "block", "circle", "blur"];
+    const TRANS = ["fade", "zoomsoft", "zoom", "slide", "slideleft", "slideup", "slidedown", "push", "pushleft", "pushup", "pushdown", "wipe", "wiperev", "block", "circle", "blur"];
     const pickDiff = (arr: string[], cur?: string) => { const opts = arr.filter((x) => x !== cur); return (opts.length ? opts : arr)[Math.floor(Math.random() * (opts.length ? opts.length : arr.length))]; };
     // Đổi hiệu ứng cho mọi loại slide.
     if (i > 0) sl.trans = pickDiff(TRANS, sl.trans);
@@ -180,9 +226,7 @@ class SlideEngine {
       const opts = this.layoutsFor(sl.photos.length);
       sl.type = pickDiff(opts, sl.type);
       // Cập nhật lại thời lượng theo loại mới, dời mốc thời gian các slide sau.
-      let total = 0; this.plan.forEach((s) => { s.t0 = total; s.dur = this.slideDur(s.type); total += s.dur; });
-      this.total = total; if (this.scrubber) this.scrubber.max = String(total || 100);
-      if (this.state.total !== total) this.setState({ total });
+      this.retime(this.plan); this.syncDuration();
     }
     this.drawAt(this.time);
     this.onChange();
@@ -207,19 +251,45 @@ class SlideEngine {
     if (cur) lines.push(cur);
     return lines.length ? lines : [""];
   }
-  drawPhotoCell(x: number, y: number, w: number, h: number, r: number, p: number, seed: number, photo?: Photo) {
+  // Vẽ 1 ô ảnh. fit='auto': nếu tỉ lệ ảnh lệch nhiều so với ô → "vừa khung"
+  // (không cắt ảnh), lấp nền bằng chính ảnh đó làm mờ; ngược lại "phủ đầy" với
+  // Ken Burns NHẸ. Zoom đã giảm mạnh để hạn chế cắt ảnh.
+  drawPhotoCell(x: number, y: number, w: number, h: number, r: number, p: number, seed: number, photo?: Photo, fit: "auto" | "cover" | "contain" = "auto") {
     const c = this.ctx!; const img = photo ? this.imgs.get(photo.id) : null;
     c.save(); this.roundRect(x, y, w, h, r); c.clip();
     if (img && img.complete && img.naturalWidth) {
-      const z = 1.05 + (this.getTheme().kb || 0.09) * p;
-      const s = Math.max(w / img.naturalWidth, h / img.naturalHeight) * z;
-      const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
-      const sx = (iw - w) / 2, sy = (ih - h) / 2;
-      const dx = ((seed % 2) ? 1 : -1) * sx * 0.35 * (2 * p - 1);
-      const dy = (((seed >> 1) & 1) ? 1 : -1) * sy * 0.35 * (2 * p - 1);
-      c.drawImage(img, x + (w - iw) / 2 + dx, y + (h - ih) / 2 + dy, iw, ih);
+      const iAR = img.naturalWidth / img.naturalHeight, cAR = w / h;
+      const mismatch = iAR > cAR ? iAR / cAR : cAR / iAR;
+      const kb = this.getTheme().kb || 0.05;
+      const mode = fit === "auto" ? (mismatch > 1.5 ? "contain" : "cover") : fit;
+      if (mode === "contain") {
+        // Nền: bản phủ đầy, làm mờ + tối, để không có viền đen.
+        const cs = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+        const bw = img.naturalWidth * cs, bh = img.naturalHeight * cs;
+        c.save(); try { c.filter = "blur(26px) brightness(.65)"; } catch { /* */ } c.drawImage(img, x + (w - bw) / 2, y + (h - bh) / 2, bw, bh); c.restore();
+        // Tiền cảnh: nguyên ảnh (không cắt), phóng rất nhẹ.
+        const z = 1 + kb * 0.4 * p;
+        const fs = Math.min(w / img.naturalWidth, h / img.naturalHeight) * z;
+        const iw = img.naturalWidth * fs, ih = img.naturalHeight * fs;
+        c.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+      } else {
+        const z = 1.02 + kb * p; // zoom nhẹ
+        const s = Math.max(w / img.naturalWidth, h / img.naturalHeight) * z;
+        const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
+        const sx = (iw - w) / 2, sy = (ih - h) / 2;
+        const dx = ((seed % 2) ? 1 : -1) * sx * 0.18 * (2 * p - 1);
+        const dy = (((seed >> 1) & 1) ? 1 : -1) * sy * 0.18 * (2 * p - 1);
+        c.drawImage(img, x + (w - iw) / 2 + dx, y + (h - ih) / 2 + dy, iw, ih);
+      }
     } else { c.fillStyle = "#d8d2c8"; c.fillRect(x, y, w, h); }
     c.restore();
+  }
+  // Hướng ảnh: L (ngang) / P (dọc) / S (vuông) từ kích thước thật.
+  orientOf(photo?: Photo): "L" | "P" | "S" {
+    const img = photo ? this.imgs.get(photo.id) : null;
+    if (!img || !img.naturalWidth) return "S";
+    const r = img.naturalWidth / img.naturalHeight;
+    return r > 1.15 ? "L" : r < 0.87 ? "P" : "S";
   }
   drawEmpty() {
     const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
@@ -242,6 +312,7 @@ class SlideEngine {
       case "OUTRO": this.drawOutro(slide, p); break;
       case "QUOTE": this.drawQuote(slide, p); break;
       case "FULL": this.drawPhotoCell(0, 0, W, H, 0, p, 3, slide.photos[0]); break;
+      case "PANO": this.drawPhotoCell(0, 0, W, H, 0, p, 3, slide.photos[0], "contain"); break;
       case "FRAME": this.drawFrame(slide, p); break;
       case "POLAROID": this.drawPolaroid(slide, p); break;
       case "SPLIT": this.drawSplit(slide, p); break;
@@ -301,13 +372,30 @@ class SlideEngine {
   }
   drawFrame(slide: Slide, p: number) {
     const th = this.getTheme(), W = this.W, H = this.H;
-    const mx = 180, my = 140, x = mx, y = my, w = W - 2 * mx, h = H - 2 * my;
+    // Khổ dọc: lề hẹp ngang, rộng dọc để khung ảnh đứng đúng tỉ lệ.
+    const V = H > W;
+    const mx = V ? 110 : 180, my = V ? 200 : 140, x = mx, y = my, w = W - 2 * mx, h = H - 2 * my;
     this.drawPhotoCell(x, y, w, h, th.radius, p, 5, slide.photos[0]);
     this.text(this.coupleName(), x, y - 52, 26, th.sub, th.body, 600, "left", false, 2, 1);
     if (this.state.date) this.text(this.state.date, x + w, y + h + 18, 22, th.sub, th.body, 500, "right", false, 3, 1);
   }
   drawSplit(slide: Slide, p: number) {
     const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
+    if (H > W) {
+      // Khổ dọc: ảnh chiếm nửa trên/dưới, chữ ở phần còn lại.
+      const vside = slide.side || 0; const ph = Math.round(H * 0.56);
+      const py = vside === 0 ? 0 : H - ph;
+      this.drawPhotoCell(0, py, W, ph, 0, p, 4, slide.photos[0]);
+      const pad = 76; const ty = vside === 0 ? ph : 0; const thh = H - ph;
+      const a = this.smooth(p, 0, 0.2); c.save(); c.globalAlpha *= a;
+      const size = 44; const lines = this.wrap(slide.text || "", size, th.title, th.titleItalic, W - pad * 2); const lh = size * 1.3;
+      let y = ty + thh / 2 - (lines.length * lh + 92) / 2;
+      c.strokeStyle = th.accent; c.lineWidth = 2; c.beginPath(); c.moveTo(pad, y); c.lineTo(pad + 56, y); c.stroke(); y += 32;
+      for (const l of lines) { this.text(l, pad, y, size, th.ink, th.title, 500, "left", th.titleItalic, 0, 1); y += lh; }
+      y += 22; this.text(this.coupleName().toUpperCase(), pad, y, 18, th.sub, th.body, 600, "left", false, 3, 1);
+      c.restore();
+      return;
+    }
     const side = slide.side || 0; const pw = Math.round(W * 0.55);
     const px = side === 0 ? 0 : W - pw;
     this.drawPhotoCell(px, 0, pw, H, 0, p, 4, slide.photos[0]);
@@ -321,7 +409,16 @@ class SlideEngine {
     c.restore();
   }
   drawDuo(slide: Slide, p: number) {
-    const th = this.getTheme(), W = this.W, H = this.H, M = 70, g = 26;
+    const th = this.getTheme(), W = this.W, H = this.H;
+    if (H > W) {
+      // Khổ dọc: xếp dọc 56/44 (khác DUOV chia đều) — hợp cả ảnh ngang lẫn dọc.
+      const M = 70, g = 24, w = W - 2 * M;
+      const h1 = Math.round((H - 2 * M - g) * 0.56), h2 = (H - 2 * M - g) - h1;
+      this.drawPhotoCell(M, M, w, h1, th.radius, p, 2, slide.photos[0]);
+      this.drawPhotoCell(M, M + h1 + g, w, h2, th.radius, p, 5, slide.photos[1]);
+      return;
+    }
+    const M = 70, g = 26;
     const w = (W - 2 * M - g) / 2, h = H - 2 * M;
     this.drawPhotoCell(M, M, w, h, th.radius, p, 2, slide.photos[0]);
     this.drawPhotoCell(M + w + g, M, w, h, th.radius, p, 5, slide.photos[1]);
@@ -333,7 +430,18 @@ class SlideEngine {
     this.drawPhotoCell(M, M + h + g, w, h, th.radius, p, 5, slide.photos[1]);
   }
   drawTriple(slide: Slide, p: number, mirror = false) {
-    const th = this.getTheme(), W = this.W, H = this.H, M = 70, g = 26;
+    const th = this.getTheme(), W = this.W, H = this.H;
+    if (H > W) {
+      // Khổ dọc: 1 ảnh lớn + hàng 2 ảnh nhỏ (mirror: hàng nhỏ ở trên).
+      const M = 64, g = 22, w = W - 2 * M;
+      const bigH = Math.round((H - 2 * M - g) * 0.62), sh = (H - 2 * M - g) - bigH, sw = (w - g) / 2;
+      const bigY = mirror ? M + sh + g : M, rowY = mirror ? M : M + bigH + g;
+      this.drawPhotoCell(M, bigY, w, bigH, th.radius, p, 2, slide.photos[0]);
+      this.drawPhotoCell(M, rowY, sw, sh, th.radius, p, 4, slide.photos[1]);
+      this.drawPhotoCell(M + sw + g, rowY, sw, sh, th.radius, p, 6, slide.photos[2]);
+      return;
+    }
+    const M = 70, g = 26;
     const bigW = Math.round((W - 2 * M - g) * 0.6), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M, sh = (h - g) / 2;
     const bigX = mirror ? M + rightW + g : M, colX = mirror ? M : M + bigW + g;
     this.drawPhotoCell(bigX, M, bigW, h, th.radius, p, 2, slide.photos[0]);
@@ -346,13 +454,32 @@ class SlideEngine {
     for (let i = 0; i < 3; i++) this.drawPhotoCell(M, M + i * (h + g), w, h, th.radius, p, i + 2, slide.photos[i]);
   }
   drawQuadL(slide: Slide, p: number) {
-    const th = this.getTheme(), W = this.W, H = this.H, M = 64, g = 22;
+    const th = this.getTheme(), W = this.W, H = this.H;
+    if (H > W) {
+      // Khổ dọc: ảnh lớn trên + hàng 3 ảnh nhỏ dưới.
+      const M = 64, g = 20, w = W - 2 * M;
+      const bigH = Math.round((H - 2 * M - g) * 0.6), sh = (H - 2 * M - g) - bigH, sw = (w - 2 * g) / 3;
+      this.drawPhotoCell(M, M, w, bigH, th.radius, p, 2, slide.photos[0]);
+      for (let i = 0; i < 3; i++) this.drawPhotoCell(M + i * (sw + g), M + bigH + g, sw, sh, th.radius, p, i + 3, slide.photos[i + 1]);
+      return;
+    }
+    const M = 64, g = 22;
     const bigW = Math.round((W - 2 * M - g) * 0.62), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M, sh = (h - 2 * g) / 3;
     this.drawPhotoCell(M, M, bigW, h, th.radius, p, 2, slide.photos[0]);
     for (let i = 0; i < 3; i++) this.drawPhotoCell(M + bigW + g, M + i * (sh + g), rightW, sh, th.radius, p, i + 3, slide.photos[i + 1]);
   }
   drawQuint(slide: Slide, p: number) {
-    const th = this.getTheme(), W = this.W, H = this.H, M = 64, g = 20;
+    const th = this.getTheme(), W = this.W, H = this.H;
+    if (H > W) {
+      // Khổ dọc: ảnh lớn trên + lưới 2×2 dưới.
+      const M = 60, g = 20, w = W - 2 * M;
+      const bigH = Math.round((H - 2 * M - g) * 0.52), rest = (H - 2 * M - g) - bigH;
+      const cw = (w - g) / 2, chh = (rest - g) / 2, by = M + bigH + g;
+      this.drawPhotoCell(M, M, w, bigH, th.radius, p, 2, slide.photos[0]);
+      [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((cc, ix) => this.drawPhotoCell(M + cc[0] * (cw + g), by + cc[1] * (chh + g), cw, chh, th.radius, p, ix + 3, slide.photos[ix + 1]));
+      return;
+    }
+    const M = 64, g = 20;
     const bigW = Math.round((W - 2 * M - g) * 0.58), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M;
     const cw = (rightW - g) / 2, chh = (h - g) / 2;
     this.drawPhotoCell(M, M, bigW, h, th.radius, p, 2, slide.photos[0]);
@@ -361,12 +488,13 @@ class SlideEngine {
   }
   drawHex(slide: Slide, p: number) {
     const th = this.getTheme(), W = this.W, H = this.H, M = 56, g = 18;
-    const w = (W - 2 * M - 2 * g) / 3, h = (H - 2 * M - g) / 2;
-    [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]].forEach((cc, ix) => this.drawPhotoCell(M + cc[0] * (w + g), M + cc[1] * (h + g), w, h, th.radius, p, ix + 2, slide.photos[ix]));
+    const cols = H > W ? 2 : 3, rows = H > W ? 3 : 2; // khổ dọc: lưới 2×3 thay vì 3×2
+    const w = (W - 2 * M - (cols - 1) * g) / cols, h = (H - 2 * M - (rows - 1) * g) / rows;
+    for (let ix = 0; ix < 6; ix++) this.drawPhotoCell(M + (ix % cols) * (w + g), M + Math.floor(ix / cols) * (h + g), w, h, th.radius, p, ix + 2, slide.photos[ix]);
   }
   drawPolaroid(slide: Slide, p: number) {
     const c = this.ctx!, W = this.W, H = this.H;
-    const pw = Math.min(W * 0.62, 1180), ph = pw * 0.7, x = (W - pw) / 2, y = (H - (ph + 120)) / 2;
+    const pw = Math.min(W * 0.62, 1180), ph = pw * (H > W ? 1.18 : 0.7), x = (W - pw) / 2, y = (H - (ph + 120)) / 2;
     c.save(); c.translate(W / 2, H / 2); c.rotate(-0.03); c.translate(-W / 2, -H / 2);
     c.fillStyle = "#fff"; c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 60; c.shadowOffsetY = 24;
     this.roundRect(x, y, pw, ph + 120, 8); c.fill(); c.shadowColor = "transparent";
@@ -396,6 +524,8 @@ class SlideEngine {
         case "zoomsoft": this.renderSlide(prev, 1, { scale: 1 + 0.05 * e }); this.renderSlide(cur, p, { alpha: e, scale: 1.06 - 0.06 * e }); break;
         case "zoom": this.renderSlide(prev, 1, { scale: 1 + 0.10 * e }); this.renderSlide(cur, p, { alpha: this.smooth(e, 0, 0.55), scale: 1.15 - 0.15 * e }); break;
         case "slide": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { dx: (1 - e) * W }); break;
+        case "slideleft": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { dx: -(1 - e) * W }); break;
+        case "pushleft": this.renderSlide(prev, 1, { dx: e * W }); this.renderSlide(cur, p, { dx: -(1 - e) * W }); break;
         case "slideup": case "slideU": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { dy: (1 - e) * H }); break;
         case "push": this.renderSlide(prev, 1, { dx: -e * W }); this.renderSlide(cur, p, { dx: (1 - e) * W }); break;
         case "pushup": this.renderSlide(prev, 1, { dy: -e * H }); this.renderSlide(cur, p, { dy: (1 - e) * H }); break;
@@ -497,9 +627,10 @@ class SlideEngine {
     this.pausePreview();
     this._cancelExport = false;
     this.setState({ exporting: true, exportPct: 0, exportError: "" });
-    // Chuyển canvas sang đúng khổ cần xuất rồi vẽ lại.
+    // Chuyển canvas sang đúng khổ cần xuất — dùng kế hoạch cảnh riêng của khổ đó.
     if (aspect === "portrait") this.setSize(1080, 1920); else this.setSize(1920, 1080);
-    this.drawAt(this.time);
+    this.syncTotal();
+    this.time = 0; this.drawAt(0);
     await new Promise((r) => setTimeout(r, 80));
     try {
       const canvas = this.canvas!, fps = 30;
@@ -547,8 +678,10 @@ class SlideEngine {
     }
     this._cancelExport = false;
     this.setState({ exporting: false, exportPct: 0 });
-    // Trả canvas về khổ ngang 16:9 để xem trước.
-    this.setSize(1920, 1080);
+    // Trả canvas về khổ đang xem trước.
+    const pv = this.state.portrait;
+    this.setSize(pv ? 1080 : 1920, pv ? 1920 : 1080);
+    this.syncDuration();
     this.time = 0; this.drawAt(0); this.updateScrub();
   }
   destroy() {
@@ -809,11 +942,19 @@ export default function SlideStudio() {
         {/* Preview */}
         <main className="min-h-[320px]" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "#1a1a1e" }}>
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, minHeight: 0 }}>
-            <div style={{ width: "100%", maxWidth: 1120, aspectRatio: "16 / 9", background: "#000", borderRadius: 12, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.5)", position: "relative" }}>
+            <div style={{ ...(S.portrait ? { height: "100%", maxHeight: 820, aspectRatio: "9 / 16" } : { width: "100%", maxWidth: 1120, aspectRatio: "16 / 9" }), background: "#000", borderRadius: 12, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.5)", position: "relative" }}>
               <canvas width={1920} height={1080} ref={(el) => { if (el && el !== eng.canvas) { eng.canvas = el; eng.ctx = el.getContext("2d"); eng.rebuild(); } }} style={{ width: "100%", height: "100%", display: "block" }} />
               <div style={{ position: "absolute", left: 14, top: 12, display: "flex", gap: 8, alignItems: "center", pointerEvents: "none" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.42)", padding: "4px 10px", borderRadius: 999 }}>Xem trước · 16:9</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.42)", padding: "4px 10px", borderRadius: 999 }}>Xem trước · {S.portrait ? "9:16 dọc" : "16:9 ngang"}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "rgba(0,0,0,.42)", padding: "4px 10px", borderRadius: 999 }}>{S.slideCount} cảnh</span>
+              </div>
+              <div style={{ position: "absolute", right: 14, top: 12, display: "flex", gap: 6 }}>
+                {([["landscape", "Ngang"], ["portrait", "Dọc"]] as const).map(([id, label]) => {
+                  const on = S.portrait === (id === "portrait");
+                  return (
+                    <button key={id} onClick={() => eng.setAspect(id === "portrait")} title={id === "portrait" ? "Xem & chỉnh riêng khổ dọc 9:16 — không ảnh hưởng khổ ngang" : "Xem & chỉnh khổ ngang 16:9"} style={{ height: 26, padding: "0 12px", border: "none", borderRadius: 999, background: on ? green : "rgba(0,0,0,.42)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{label}</button>
+                  );
+                })}
               </div>
             </div>
           </div>
