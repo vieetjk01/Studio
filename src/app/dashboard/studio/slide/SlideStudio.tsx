@@ -14,10 +14,10 @@ type Slide = { type: string; photos: Photo[]; trans: string; text?: string; side
 type Theme = { name: string; bg: string; ink: string; sub: string; accent: string; title: string; body: string; radius: number; dark: boolean; letterbox: boolean; titleItalic: boolean; c1: string; c2: string; trans: string[]; tr: number; kb: number; pace: number; bag: string[]; bagText: string[] };
 
 const THEMES: Record<string, Theme> = {
-  luxe: { name: "Tối giản sang trọng", bg: "#f7f4ef", ink: "#2b2723", sub: "#8a8378", accent: "#a98b5d", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 6, dark: false, letterbox: false, titleItalic: false, c1: "#f7f4ef", c2: "#a98b5d", trans: ["fade", "zoomsoft", "fade", "wipe"], tr: 0.95, kb: 0.07, pace: 1.12, bag: ["FULL", "FRAME", "FULL", "DUO", "FRAME", "FULL", "TRIPLE", "FRAME"], bagText: ["FULL", "SPLIT", "FRAME", "FULL", "SPLIT", "DUO", "FRAME", "FULL", "TRIPLE", "SPLIT"] },
-  romantic: { name: "Lãng mạn ấm áp", bg: "#f6ece7", ink: "#5a4038", sub: "#9c8078", accent: "#c98a7d", title: "Playfair Display", body: "Be Vietnam Pro", radius: 16, dark: false, letterbox: false, titleItalic: true, c1: "#f6ece7", c2: "#c98a7d", trans: ["fade", "slideup", "zoomsoft", "slide"], tr: 0.8, kb: 0.11, pace: 1.0, bag: ["FULL", "DUO", "FULL", "QUAD", "DUO", "FULL", "TRIPLE", "DUO"], bagText: ["FULL", "SPLIT", "DUO", "FULL", "SPLIT", "QUAD", "DUO", "SPLIT", "FULL", "TRIPLE"] },
-  cinematic: { name: "Điện ảnh hiện đại", bg: "#131317", ink: "#f4f1ec", sub: "#b7b2a9", accent: "#c9a24a", title: "Playfair Display", body: "Manrope", radius: 0, dark: true, letterbox: true, titleItalic: false, c1: "#131317", c2: "#c9a24a", trans: ["push", "zoom", "pushup", "slide"], tr: 0.55, kb: 0.17, pace: 0.9, bag: ["FULL", "FULL", "TRIPLE", "FULL", "DUO", "FULL", "FULL", "TRIPLE"], bagText: ["FULL", "SPLIT", "FULL", "FULL", "TRIPLE", "SPLIT", "FULL", "DUO", "FULL", "SPLIT"] },
-  bright: { name: "Trong trẻo tươi sáng", bg: "#ffffff", ink: "#2a2f36", sub: "#8a9099", accent: "#5b9aa8", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 20, dark: false, letterbox: false, titleItalic: false, c1: "#eef4f5", c2: "#5b9aa8", trans: ["slide", "block", "wipe", "pushup"], tr: 0.62, kb: 0.08, pace: 0.98, bag: ["DUO", "QUAD", "FULL", "TRIPLE", "DUO", "QUAD", "FULL", "TRIPLE"], bagText: ["DUO", "SPLIT", "QUAD", "FULL", "SPLIT", "TRIPLE", "DUO", "SPLIT", "QUAD", "FULL"] },
+  luxe: { name: "Tối giản sang trọng", bg: "#f7f4ef", ink: "#2b2723", sub: "#8a8378", accent: "#a98b5d", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 6, dark: false, letterbox: false, titleItalic: false, c1: "#f7f4ef", c2: "#a98b5d", trans: ["fade", "zoomsoft", "fade", "wipe"], tr: 0.95, kb: 0.07, pace: 1.12, bag: ["FULL", "FRAME", "POLAROID", "DUO", "FRAME", "FULL", "TRIPLE", "BANDS", "FULL", "QUADL"], bagText: ["FULL", "SPLIT", "FRAME", "FULL", "SPLIT", "DUO", "BANDS", "FULL", "TRIPLE", "SPLIT"] },
+  romantic: { name: "Lãng mạn ấm áp", bg: "#f6ece7", ink: "#5a4038", sub: "#9c8078", accent: "#c98a7d", title: "Playfair Display", body: "Be Vietnam Pro", radius: 16, dark: false, letterbox: false, titleItalic: true, c1: "#f6ece7", c2: "#c98a7d", trans: ["fade", "slideup", "zoomsoft", "slide"], tr: 0.8, kb: 0.11, pace: 1.0, bag: ["FULL", "DUO", "POLAROID", "QUAD", "DUOV", "FULL", "TRIPLE_R", "DUO", "QUINT", "FULL"], bagText: ["FULL", "SPLIT", "DUO", "FULL", "SPLIT", "QUAD", "DUOV", "SPLIT", "FULL", "TRIPLE"] },
+  cinematic: { name: "Điện ảnh hiện đại", bg: "#131317", ink: "#f4f1ec", sub: "#b7b2a9", accent: "#c9a24a", title: "Playfair Display", body: "Manrope", radius: 0, dark: true, letterbox: true, titleItalic: false, c1: "#131317", c2: "#c9a24a", trans: ["push", "zoom", "pushup", "slide"], tr: 0.55, kb: 0.17, pace: 0.9, bag: ["FULL", "FULL", "TRIPLE_R", "FULL", "DUO", "FULL", "BANDS", "TRIPLE"], bagText: ["FULL", "SPLIT", "FULL", "FULL", "TRIPLE", "SPLIT", "FULL", "DUO", "FULL", "SPLIT"] },
+  bright: { name: "Trong trẻo tươi sáng", bg: "#ffffff", ink: "#2a2f36", sub: "#8a9099", accent: "#5b9aa8", title: "Cormorant Garamond", body: "Be Vietnam Pro", radius: 20, dark: false, letterbox: false, titleItalic: false, c1: "#eef4f5", c2: "#5b9aa8", trans: ["slide", "block", "wipe", "pushup"], tr: 0.62, kb: 0.08, pace: 0.98, bag: ["DUO", "QUAD", "FULL", "TRIPLE", "DUOV", "HEX", "FULL", "QUADL"], bagText: ["DUO", "SPLIT", "QUAD", "FULL", "SPLIT", "TRIPLE_R", "DUOV", "SPLIT", "QUAD", "FULL"] },
 };
 
 type EngineState = {
@@ -103,7 +103,7 @@ class SlideEngine {
 
   slideDur(t: string) {
     const b = this.state.perPhoto;
-    const m: Record<string, number> = { TITLE: 3.8, OUTRO: 4.2, QUOTE: 3.8, FULL: b, FRAME: b + 0.3, SPLIT: b + 1.1, DUO: b + 0.7, TRIPLE: b + 1.2, QUAD: b + 1.6 };
+    const m: Record<string, number> = { TITLE: 3.8, OUTRO: 4.2, QUOTE: 3.8, FULL: b, FRAME: b + 0.3, POLAROID: b + 0.2, SPLIT: b + 1.1, DUO: b + 0.7, DUOV: b + 0.7, TRIPLE: b + 1.2, TRIPLE_R: b + 1.2, BANDS: b + 1.0, QUAD: b + 1.6, QUADL: b + 1.6, QUINT: b + 1.8, HEX: b + 2.0 };
     return (m[t] || b) * (this.getTheme().pace || 1);
   }
   buildPlan(): Slide[] {
@@ -115,7 +115,7 @@ class SlideEngine {
     const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)];
     const th = this.getTheme();
     const trans = this.state.diverse ? (th.trans || ["fade", "slide", "push"]) : ["fade"];
-    const need: Record<string, number> = { FULL: 1, FRAME: 1, SPLIT: 1, DUO: 2, TRIPLE: 3, QUAD: 4 };
+    const need: Record<string, number> = { FULL: 1, FRAME: 1, POLAROID: 1, SPLIT: 1, DUO: 2, DUOV: 2, TRIPLE: 3, TRIPLE_R: 3, BANDS: 3, QUAD: 4, QUADL: 4, QUINT: 5, HEX: 6 };
     const bag = showText ? (th.bagText || th.bag) : th.bag;
     const slides: Slide[] = [{ type: "TITLE", photos: [P[0]], trans: "fade" }];
     let i = 0, bi = 0, cnt = 0, qi = 0, side = 0;
@@ -146,6 +146,45 @@ class SlideEngine {
     if (this.time > total) this.time = Math.max(0, total - 0.01);
     if (this.state.total !== total || this.state.slideCount !== this.plan.length) this.setState({ total, slideCount: this.plan.length });
     this.drawAt(this.time);
+  }
+
+  // Chỉ số slide hiện đang xem (theo thời gian con trỏ).
+  curIndex() {
+    const tt = Math.max(0, Math.min(this.time, this.total - 0.001));
+    let i = this.plan.findIndex((s) => tt >= (s.t0 || 0) && tt < (s.t0 || 0) + (s.dur || 0));
+    if (i < 0) i = this.plan.length - 1;
+    return i;
+  }
+  // Các bố cục ảnh khả dụng theo số ảnh của slide.
+  layoutsFor(k: number): string[] {
+    if (k >= 6) return ["HEX"];
+    if (k === 5) return ["QUINT"];
+    if (k === 4) return ["QUAD", "QUADL"];
+    if (k === 3) return ["TRIPLE", "TRIPLE_R", "BANDS"];
+    if (k === 2) return ["DUO", "DUOV"];
+    return ["FULL", "FRAME", "POLAROID"];
+  }
+  // "Bố cục mới": đổi bố cục + hiệu ứng của RIÊNG slide đang xem (giữ nguyên slide khác).
+  regenSlide() {
+    if (!this.plan.length) return;
+    const i = this.curIndex();
+    const sl = this.plan[i];
+    const TRANS = ["fade", "zoomsoft", "zoom", "slide", "slideup", "slidedown", "push", "pushup", "pushdown", "wipe", "wiperev", "block", "circle", "blur"];
+    const pickDiff = (arr: string[], cur?: string) => { const opts = arr.filter((x) => x !== cur); return (opts.length ? opts : arr)[Math.floor(Math.random() * (opts.length ? opts.length : arr.length))]; };
+    // Đổi hiệu ứng cho mọi loại slide.
+    if (i > 0) sl.trans = pickDiff(TRANS, sl.trans);
+    // Đổi bố cục cho slide ảnh (giữ nguyên số ảnh); slide chữ (SPLIT) thì đổi bên.
+    if (sl.type === "SPLIT") { sl.side = sl.side ? 0 : 1; }
+    else if (!["TITLE", "OUTRO", "QUOTE"].includes(sl.type)) {
+      const opts = this.layoutsFor(sl.photos.length);
+      sl.type = pickDiff(opts, sl.type);
+      // Cập nhật lại thời lượng theo loại mới, dời mốc thời gian các slide sau.
+      let total = 0; this.plan.forEach((s) => { s.t0 = total; s.dur = this.slideDur(s.type); total += s.dur; });
+      this.total = total; if (this.scrubber) this.scrubber.max = String(total || 100);
+      if (this.state.total !== total) this.setState({ total });
+    }
+    this.drawAt(this.time);
+    this.onChange();
   }
 
   roundRect(x: number, y: number, w: number, h: number, r: number) { const c = this.ctx!; r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -188,11 +227,12 @@ class SlideEngine {
     this.text("Kéo thả ảnh cưới của bạn ở bảng bên trái", W / 2, H / 2 + 40, 26, th.sub, th.body, 500, "center", false, 0, 0.9);
     c.globalAlpha = 1;
   }
-  renderSlide(slide: Slide, p: number, opts: { alpha?: number; clipW?: number; dx?: number; dy?: number; scale?: number }) {
+  renderSlide(slide: Slide, p: number, opts: { alpha?: number; clipX?: number; clipW?: number; clipCircle?: number; dx?: number; dy?: number; scale?: number }) {
     const c = this.ctx!, W = 1920, H = 1080, th = this.getTheme();
     c.save();
     c.globalAlpha = opts.alpha == null ? 1 : opts.alpha;
-    if (opts.clipW != null) { c.beginPath(); c.rect(0, 0, opts.clipW, H); c.clip(); }
+    if (opts.clipCircle != null) { const r = opts.clipCircle * Math.hypot(W, H) / 2; c.beginPath(); c.arc(W / 2, H / 2, Math.max(0, r), 0, Math.PI * 2); c.clip(); }
+    else if (opts.clipW != null) { c.beginPath(); c.rect(opts.clipX || 0, 0, opts.clipW, H); c.clip(); }
     if (opts.dx || opts.dy) c.translate(opts.dx || 0, opts.dy || 0);
     if (opts.scale && opts.scale !== 1) { c.translate(W / 2, H / 2); c.scale(opts.scale, opts.scale); c.translate(-W / 2, -H / 2); }
     c.fillStyle = th.bg; c.fillRect(0, 0, W, H);
@@ -202,10 +242,17 @@ class SlideEngine {
       case "QUOTE": this.drawQuote(slide, p); break;
       case "FULL": this.drawPhotoCell(0, 0, W, H, 0, p, 3, slide.photos[0]); break;
       case "FRAME": this.drawFrame(slide, p); break;
+      case "POLAROID": this.drawPolaroid(slide, p); break;
       case "SPLIT": this.drawSplit(slide, p); break;
       case "DUO": this.drawDuo(slide, p); break;
+      case "DUOV": this.drawDuoV(slide, p); break;
       case "TRIPLE": this.drawTriple(slide, p); break;
+      case "TRIPLE_R": this.drawTriple(slide, p, true); break;
+      case "BANDS": this.drawBands(slide, p); break;
       case "QUAD": this.drawQuad(slide, p); break;
+      case "QUADL": this.drawQuadL(slide, p); break;
+      case "QUINT": this.drawQuint(slide, p); break;
+      case "HEX": this.drawHex(slide, p); break;
     }
     c.restore();
   }
@@ -278,12 +325,52 @@ class SlideEngine {
     this.drawPhotoCell(M, M, w, h, th.radius, p, 2, slide.photos[0]);
     this.drawPhotoCell(M + w + g, M, w, h, th.radius, p, 5, slide.photos[1]);
   }
-  drawTriple(slide: Slide, p: number) {
+  drawDuoV(slide: Slide, p: number) {
+    const th = this.getTheme(), W = 1920, H = 1080, M = 90, g = 24;
+    const w = W - 2 * M, h = (H - 2 * M - g) / 2;
+    this.drawPhotoCell(M, M, w, h, th.radius, p, 2, slide.photos[0]);
+    this.drawPhotoCell(M, M + h + g, w, h, th.radius, p, 5, slide.photos[1]);
+  }
+  drawTriple(slide: Slide, p: number, mirror = false) {
     const th = this.getTheme(), W = 1920, H = 1080, M = 70, g = 26;
     const bigW = Math.round((W - 2 * M - g) * 0.6), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M, sh = (h - g) / 2;
+    const bigX = mirror ? M + rightW + g : M, colX = mirror ? M : M + bigW + g;
+    this.drawPhotoCell(bigX, M, bigW, h, th.radius, p, 2, slide.photos[0]);
+    this.drawPhotoCell(colX, M, rightW, sh, th.radius, p, 4, slide.photos[1]);
+    this.drawPhotoCell(colX, M + sh + g, rightW, sh, th.radius, p, 6, slide.photos[2]);
+  }
+  drawBands(slide: Slide, p: number) {
+    const th = this.getTheme(), W = 1920, H = 1080, M = 60, g = 20;
+    const w = W - 2 * M, h = (H - 2 * M - 2 * g) / 3;
+    for (let i = 0; i < 3; i++) this.drawPhotoCell(M, M + i * (h + g), w, h, th.radius, p, i + 2, slide.photos[i]);
+  }
+  drawQuadL(slide: Slide, p: number) {
+    const th = this.getTheme(), W = 1920, H = 1080, M = 64, g = 22;
+    const bigW = Math.round((W - 2 * M - g) * 0.62), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M, sh = (h - 2 * g) / 3;
     this.drawPhotoCell(M, M, bigW, h, th.radius, p, 2, slide.photos[0]);
-    this.drawPhotoCell(M + bigW + g, M, rightW, sh, th.radius, p, 4, slide.photos[1]);
-    this.drawPhotoCell(M + bigW + g, M + sh + g, rightW, sh, th.radius, p, 6, slide.photos[2]);
+    for (let i = 0; i < 3; i++) this.drawPhotoCell(M + bigW + g, M + i * (sh + g), rightW, sh, th.radius, p, i + 3, slide.photos[i + 1]);
+  }
+  drawQuint(slide: Slide, p: number) {
+    const th = this.getTheme(), W = 1920, H = 1080, M = 64, g = 20;
+    const bigW = Math.round((W - 2 * M - g) * 0.58), rightW = (W - 2 * M - g) - bigW, h = H - 2 * M;
+    const cw = (rightW - g) / 2, chh = (h - g) / 2;
+    this.drawPhotoCell(M, M, bigW, h, th.radius, p, 2, slide.photos[0]);
+    const bx = M + bigW + g;
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((cc, ix) => this.drawPhotoCell(bx + cc[0] * (cw + g), M + cc[1] * (chh + g), cw, chh, th.radius, p, ix + 3, slide.photos[ix + 1]));
+  }
+  drawHex(slide: Slide, p: number) {
+    const th = this.getTheme(), W = 1920, H = 1080, M = 56, g = 18;
+    const w = (W - 2 * M - 2 * g) / 3, h = (H - 2 * M - g) / 2;
+    [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]].forEach((cc, ix) => this.drawPhotoCell(M + cc[0] * (w + g), M + cc[1] * (h + g), w, h, th.radius, p, ix + 2, slide.photos[ix]));
+  }
+  drawPolaroid(slide: Slide, p: number) {
+    const c = this.ctx!, W = 1920, H = 1080;
+    const pw = 1180, ph = 820, x = (W - pw) / 2, y = (H - ph) / 2 - 20;
+    c.save(); c.translate(W / 2, H / 2); c.rotate(-0.03); c.translate(-W / 2, -H / 2);
+    c.fillStyle = "#fff"; c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 60; c.shadowOffsetY = 24;
+    this.roundRect(x, y, pw, ph + 120, 8); c.fill(); c.shadowColor = "transparent";
+    this.drawPhotoCell(x + 40, y + 40, pw - 80, ph - 40, 2, p, 3, slide.photos[0]);
+    c.restore();
   }
   drawQuad(slide: Slide, p: number) {
     const th = this.getTheme(), W = 1920, H = 1080, M = 70, g = 26;
@@ -311,8 +398,13 @@ class SlideEngine {
         case "slideup": case "slideU": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { dy: (1 - e) * H }); break;
         case "push": this.renderSlide(prev, 1, { dx: -e * W }); this.renderSlide(cur, p, { dx: (1 - e) * W }); break;
         case "pushup": this.renderSlide(prev, 1, { dy: -e * H }); this.renderSlide(cur, p, { dy: (1 - e) * H }); break;
+        case "slidedown": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { dy: -(1 - e) * H }); break;
+        case "pushdown": this.renderSlide(prev, 1, { dy: e * H }); this.renderSlide(cur, p, { dy: -(1 - e) * H }); break;
         case "wipe": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { clipW: e * W, scale: 1.05 - 0.05 * e }); break;
+        case "wiperev": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { clipX: W - e * W, clipW: e * W, scale: 1.05 - 0.05 * e }); break;
         case "block": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { clipW: e * W }); c.save(); c.fillStyle = th.accent; c.globalAlpha = 0.92; c.fillRect(e * W - 10, 0, 10, H); c.restore(); break;
+        case "circle": this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { clipCircle: e }); break;
+        case "blur": this.renderSlide(prev, 1, { scale: 1 + 0.03 * e }); this.renderSlide(cur, p, { alpha: e, scale: 1.05 - 0.05 * e }); break;
         default: this.renderSlide(prev, 1, {}); this.renderSlide(cur, p, { alpha: e });
       }
     } else { this.renderSlide(cur, p, {}); }
@@ -456,6 +548,28 @@ class SlideEngine {
   }
 }
 
+// Ngân hàng câu cảm xúc mẫu cho tab Câu chuyện (đa dạng độ dài — ngắn & dài).
+const PHRASE_BANK: string[] = [
+  "Và họ đã sống hạnh phúc bên nhau.",
+  "Mãi mãi bắt đầu từ hôm nay.",
+  "Yêu em, hôm nay và mọi ngày sau.",
+  "Từ hôm nay, hai ta là một.",
+  "Cảm ơn em đã chọn anh.",
+  "Nơi nào có em, nơi đó là nhà.",
+  "Chuyện tình mình — chương đẹp nhất vừa mở ra.",
+  "Anh chọn em, giữa hàng triệu người, và chọn lại mỗi ngày.",
+  "Có những người ta gặp một lần rồi thương cả đời — với anh, đó là em.",
+  "Hạnh phúc không phải là điểm đến, mà là hành trình mình cùng nhau đi.",
+  "Mình sẽ cùng nhau đi qua những mùa nắng mưa, tay trong tay, không rời.",
+  "Cảm ơn vì đã đến, đã ở lại, và đã cùng em viết nên câu chuyện của cả hai.",
+  "Yêu là khi hai người không nhìn nhau, mà cùng nhìn về một hướng — và mình đã tìm thấy hướng đi ấy.",
+  "Từ ánh mắt đầu tiên đến lời hẹn ước hôm nay, mỗi khoảnh khắc bên em đều là điều anh trân trọng nhất.",
+  "Ngày hôm nay, trước sự chứng kiến của những người thương yêu, chúng mình chính thức viết tiếp chương mới của cuộc đời.",
+  "Cảm ơn ba mẹ hai bên, cảm ơn bạn bè, cảm ơn tất cả đã ở đây cùng chúng con trong ngày trọng đại này.",
+  "Không cần điều gì lớn lao, chỉ cần mỗi sáng thức dậy được thấy em cười là đủ.",
+  "Mình đã mất cả thanh xuân để tìm nhau, và sẽ dành cả phần đời còn lại để giữ nhau.",
+];
+
 // Load the display fonts the canvas uses (Playfair Display + Be Vietnam Pro;
 // Cormorant/Manrope already ship with the app) once per page.
 function ensureFonts() {
@@ -472,6 +586,35 @@ export default function SlideStudio() {
   if (!engRef.current) { engRef.current = new SlideEngine(); engRef.current.onChange = () => force((n) => n + 1); }
   const eng = engRef.current;
   const S = eng.state;
+  const storyRef = useRef<HTMLTextAreaElement | null>(null);
+  const [sugg, setSugg] = useState<string[]>([]);
+  const [lib, setLib] = useState<string[]>([]);
+  const [own, setOwn] = useState("");
+
+  useEffect(() => {
+    try { const raw = localStorage.getItem("slide_phrases"); if (raw) setLib(JSON.parse(raw)); } catch { /* */ }
+  }, []);
+  const saveLib = (next: string[]) => { setLib(next); try { localStorage.setItem("slide_phrases", JSON.stringify(next)); } catch { /* */ } };
+
+  // Sinh 1 câu gợi ý mới, khác các câu đã hiện (ưu tiên chưa dùng; xen ngắn/dài).
+  function genSuggestion() {
+    const used = new Set([...sugg, ...lib]);
+    const pool = PHRASE_BANK.filter((s) => !used.has(s));
+    const src = pool.length ? pool : PHRASE_BANK.filter((s) => s !== sugg[0]);
+    const pick = src[Math.floor(Math.random() * src.length)] || PHRASE_BANK[0];
+    setSugg((s) => [pick, ...s]);
+  }
+  // Thêm một câu vào ô câu chuyện (mỗi câu là 1 đoạn — cách nhau dòng trống).
+  function appendStory(text: string) {
+    const cur = (storyRef.current?.value ?? eng.state.story ?? "").trim();
+    const next = cur ? cur + "\n\n" + text : text;
+    if (storyRef.current) storyRef.current.value = next;
+    eng.setField("story", next);
+  }
+  function saveOwn() {
+    const t = own.trim(); if (!t || lib.includes(t)) { setOwn(""); return; }
+    saveLib([t, ...lib]); setOwn("");
+  }
 
   useEffect(() => {
     ensureFonts();
@@ -492,7 +635,7 @@ export default function SlideStudio() {
   const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, marginBottom: 6, color: "#6a6459" };
 
   return (
-    <div style={{ height: "calc(100vh - 120px)", minHeight: 560, display: "flex", flexDirection: "column", background: "#e9e5dd", color: "#26241f", borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
+    <div className="lg:h-[calc(100vh-120px)]" style={{ minHeight: 520, display: "flex", flexDirection: "column", background: "#e9e5dd", color: "#26241f", borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
       {/* Header */}
       <header style={{ height: 60, flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", background: "#fffdf9", borderBottom: "1px solid #e7e2d9" }}>
         <div>
@@ -502,9 +645,9 @@ export default function SlideStudio() {
         <button onClick={() => eng.exportVideo()} style={{ height: 40, padding: "0 20px", border: "none", borderRadius: 10, background: green, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 18px rgba(31,157,99,.3)" }}>↓ Xuất video</button>
       </header>
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+      <div className="flex flex-col lg:flex-row" style={{ flex: 1, minHeight: 0 }}>
         {/* Controls */}
-        <aside style={{ width: 400, flex: "none", background: "#fffdf9", borderRight: "1px solid #e7e2d9", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <aside className="w-full lg:w-[400px] lg:flex-none" style={{ background: "#fffdf9", borderRight: "1px solid #e7e2d9", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ flex: "none", display: "flex", gap: 2, padding: "10px 10px 0", borderBottom: "1px solid #efe9df" }}>
             {TABS.map(([id, num, label]) => (
               <button key={id} onClick={() => eng.go(id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 2px 12px", border: "none", borderBottom: S.tab === id ? `2px solid ${green}` : "2px solid transparent", background: "transparent", cursor: "pointer", color: S.tab === id ? green : "#9a9488", fontSize: 11, fontWeight: 700 }}>
@@ -548,8 +691,40 @@ export default function SlideStudio() {
             {S.tab === "story" && (
               <div>
                 <div style={lbl}>Lời nhắn · câu chuyện · cảm nghĩ</div>
-                <textarea onChange={(e) => eng.setField("story", e.target.value)} defaultValue={S.story} placeholder={"Viết những dòng cảm xúc của bạn...\n\nMỗi đoạn cách nhau một dòng trống sẽ thành một slide chữ riêng."} style={{ ...inp, height: 300, padding: 14, lineHeight: 1.6, resize: "vertical" }} />
+                <textarea ref={storyRef} onChange={(e) => eng.setField("story", e.target.value)} defaultValue={S.story} placeholder={"Viết những dòng cảm xúc của bạn...\n\nMỗi đoạn cách nhau một dòng trống sẽ thành một slide chữ riêng."} style={{ ...inp, height: 200, padding: 14, lineHeight: 1.6, resize: "vertical" }} />
                 <div style={{ fontSize: 12, color: "#a49d90", marginTop: 8 }}>{S.showText ? (qn ? `${qn} slide chữ sẽ được tạo từ câu chuyện` : "Chưa có nội dung — cách đoạn bằng một dòng trống") : "Đang tắt slide chữ (bật lại ở tab Phong cách)"}</div>
+
+                {/* Tạo gợi ý câu cảm xúc */}
+                <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={lbl}>Gợi ý câu cảm xúc</span>
+                  <button onClick={genSuggestion} style={{ height: 32, padding: "0 12px", border: "none", borderRadius: 8, background: green, color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>✨ Tạo gợi ý</button>
+                </div>
+                {sugg.length === 0 && <p style={{ fontSize: 12, color: "#a49d90", marginTop: 6 }}>Bấm “Tạo gợi ý” để sinh câu mẫu — mỗi lần một câu mới, câu cũ vẫn giữ lại.</p>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                  {sugg.map((s, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", border: "1px solid #e2dccf", borderRadius: 10, background: "#faf8f3" }}>
+                      <span style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}>{s}</span>
+                      <button onClick={() => appendStory(s)} title="Thêm vào câu chuyện" style={{ flex: "none", height: 28, padding: "0 10px", border: `1px solid ${green}`, borderRadius: 8, background: "#fff", color: green, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Thêm</button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Thư viện câu của bạn (lưu để dùng lần sau) */}
+                <div style={{ marginTop: 18 }}><span style={lbl}>Thư viện câu của bạn</span></div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={own} onChange={(e) => setOwn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveOwn(); }} placeholder="Nhập câu của riêng bạn rồi lưu lại…" style={{ ...inp, flex: 1 }} />
+                  <button onClick={saveOwn} disabled={!own.trim()} style={{ flex: "none", height: 42, padding: "0 14px", border: "1px solid #e2dccf", borderRadius: 10, background: "#fff", fontSize: 13, fontWeight: 700, color: "#6a6459", cursor: "pointer", opacity: own.trim() ? 1 : 0.5 }}>Lưu</button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                  {lib.map((s, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", border: "1px solid #e2dccf", borderRadius: 10, background: "#fff" }}>
+                      <span style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}>{s}</span>
+                      <button onClick={() => appendStory(s)} style={{ flex: "none", height: 28, padding: "0 10px", border: `1px solid ${green}`, borderRadius: 8, background: "#fff", color: green, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Thêm</button>
+                      <button onClick={() => saveLib(lib.filter((_, j) => j !== i))} title="Xoá" style={{ flex: "none", width: 28, height: 28, border: "1px solid #e2dccf", borderRadius: 8, background: "#fff", color: "#b06a6a", fontSize: 14, cursor: "pointer", padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                  {lib.length === 0 && <p style={{ fontSize: 12, color: "#a49d90" }}>Chưa có câu nào — lưu câu bạn thích để dùng cho các video sau.</p>}
+                </div>
               </div>
             )}
             {S.tab === "music" && (
@@ -601,7 +776,7 @@ export default function SlideStudio() {
         </aside>
 
         {/* Preview */}
-        <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "#1a1a1e" }}>
+        <main className="min-h-[320px]" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "#1a1a1e" }}>
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, minHeight: 0 }}>
             <div style={{ width: "100%", maxWidth: 1120, aspectRatio: "16 / 9", background: "#000", borderRadius: 12, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.5)", position: "relative" }}>
               <canvas width={1920} height={1080} ref={(el) => { if (el && el !== eng.canvas) { eng.canvas = el; eng.ctx = el.getContext("2d"); eng.rebuild(); } }} style={{ width: "100%", height: "100%", display: "block" }} />
@@ -616,7 +791,7 @@ export default function SlideStudio() {
             <span ref={(el) => { eng.timeLabel = el; }} style={{ fontSize: 12.5, color: "#cfcbc4", fontVariantNumeric: "tabular-nums", minWidth: 36 }}>0:00</span>
             <input type="range" min={0} max={100} step={0.05} defaultValue={0} ref={(el) => { eng.scrubber = el; if (el) el.max = String(eng.total || 100); }} onChange={(e) => eng.onScrub(parseFloat(e.target.value) || 0)} style={{ flex: 1, accentColor: green }} />
             <span style={{ fontSize: 12.5, color: "#8f8b84", fontVariantNumeric: "tabular-nums", minWidth: 36 }}>{eng.fmt(S.total)}</span>
-            <button onClick={() => { eng.seed = (eng.seed || 1) + 1; eng.rebuild(); }} title="Tạo lại bố cục" style={{ height: 36, padding: "0 14px", border: "1px solid #3a3a40", borderRadius: 9, background: "transparent", color: "#e6e2da", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>↻ Bố cục mới</button>
+            <button onClick={() => eng.regenSlide()} title="Đổi bố cục + hiệu ứng của slide đang xem" style={{ height: 36, padding: "0 14px", border: "1px solid #3a3a40", borderRadius: 9, background: "transparent", color: "#e6e2da", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>↻ Bố cục slide này</button>
           </div>
         </main>
       </div>
