@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.1.0"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.1.1"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -58,7 +58,11 @@ async function api(path) {
   const r = await invoke("http_get", { url: cfg.server + path, token: cfg.token });
   if (r.status === 401) { onRevoked(); throw new Error("device_revoked"); }
   if (r.status === 402) { setPlanLocked(true); throw new Error("plan_expired"); }
-  if (r.status >= 400) throw new Error("HTTP " + r.status);
+  if (r.status >= 400) {
+    let detail = "";
+    try { detail = JSON.parse(b64ToText(r.body_b64)).error || ""; } catch { /* body không phải JSON */ }
+    throw new Error("HTTP " + r.status + (detail ? " · " + detail : ""));
+  }
   setPlanLocked(false);
   return r;
 }
@@ -69,6 +73,8 @@ const apiB64 = async (path) => (await api(path)).body_b64;
 function show(screen) {
   for (const s of ["setup", "folder", "main"]) $("screen-" + s).classList.toggle("hidden", s !== screen);
   $("topStatus").innerHTML = cfg.token ? `<span class="ok">● Đã kết nối</span> ${cfg.server || ""}` : "Chưa kết nối";
+  // Nút "Mở ứng dụng quản lý" trên header chỉ hiện khi đã ở màn trạng thái.
+  $("btnOpenAppTop").classList.toggle("hidden", screen !== "main");
 }
 function setPlanLocked(locked) {
   $("planBanner").classList.toggle("hidden", !locked);
@@ -122,6 +128,14 @@ $("btnFolderNext").onclick = async () => {
   show("main"); refreshStats(); renderLog();
   bootSync(true); // lần đầu: tải TOÀN BỘ hợp đồng đã ký + xuất đủ bộ Excel
 };
+
+// ─── Mở ứng dụng quản lý studio đầy đủ (web app) trong cửa sổ riêng ──────────
+function openStudioApp() {
+  if (!cfg.server) return;
+  invoke("open_app", { url: cfg.server + "/dashboard/studio" }).catch((e) => log("Không mở được ứng dụng: " + e, "err"));
+}
+$("btnOpenApp").onclick = openStudioApp;
+$("btnOpenAppTop").onclick = openStudioApp;
 
 // ─── Màn 3: hành động ────────────────────────────────────────────────────────
 $("btnSyncNow").onclick = () => runSync(true);
@@ -194,24 +208,24 @@ async function saveContract(c) {
 
   // Word
   const docx = await apiB64(`/api/desktop/contracts/${c.id}?format=docx`);
-  await invoke("write_file_b64", { path: join(cfg.dir, baseRel + ".docx"), contents_b64: docx });
+  await invoke("write_file_b64", { path: join(cfg.dir, baseRel + ".docx"), contentsB64: docx });
 
   // PDF: HTML bản in → Edge headless. Không có Edge → giữ file HTML làm dự phòng.
   const html = await apiB64(`/api/desktop/contracts/${c.id}?format=html`);
   const htmlTmp = join(cfg.dir, folderRel, "~print.html");
-  await invoke("write_file_b64", { path: htmlTmp, contents_b64: html });
+  await invoke("write_file_b64", { path: htmlTmp, contentsB64: html });
   try {
     await invoke("edge_pdf", { htmlPath: htmlTmp, pdfPath: join(cfg.dir, baseRel + ".pdf") });
     await invoke("delete_file", { path: htmlTmp }).catch(() => {});
   } catch {
-    await invoke("write_file_b64", { path: join(cfg.dir, baseRel + ".html"), contents_b64: html });
+    await invoke("write_file_b64", { path: join(cfg.dir, baseRel + ".html"), contentsB64: html });
     await invoke("delete_file", { path: htmlTmp }).catch(() => {});
     log(`Không tìm thấy Microsoft Edge — HĐ ${c.code || ""} lưu bản HTML thay PDF.`, "warn");
   }
 
   man.updated_at = c.updated_at;
   man.versions = [...(man.versions || []), { at: c.updated_at, saved: new Date().toISOString(), file: meta.file_base + suffix }];
-  await invoke("write_file_b64", { path: manifestPath, contents_b64: textToB64(JSON.stringify(man, null, 2)) });
+  await invoke("write_file_b64", { path: manifestPath, contentsB64: textToB64(JSON.stringify(man, null, 2)) });
   cfg.saved = cfg.saved || {}; cfg.saved[c.id] = c.updated_at; saveCfg();
   log(`Đã lưu hợp đồng: ${meta.file_base}${suffix}`);
 }
@@ -224,10 +238,10 @@ async function runExports(manual = false) {
   try {
     for (const [type, folder] of EXPORTS) {
       const b64 = await apiB64(`/api/desktop/export?type=${type}`);
-      await invoke("write_file_b64", { path: join(cfg.dir, folder, `${folder}_${today()}.xlsx`), contents_b64: b64 });
+      await invoke("write_file_b64", { path: join(cfg.dir, folder, `${folder}_${today()}.xlsx`), contentsB64: b64 });
     }
     const backup = await apiB64(`/api/desktop/export?type=backup`);
-    await invoke("write_file_b64", { path: join(cfg.dir, "SaoLuu", `mstudo-backup-${today()}.json`), contents_b64: backup });
+    await invoke("write_file_b64", { path: join(cfg.dir, "SaoLuu", `mstudo-backup-${today()}.json`), contentsB64: backup });
     // Dọn file cũ hơn 30 ngày (KHÔNG đụng thư mục HopDong).
     for (const [, folder] of [...EXPORTS, ["", "SaoLuu"]]) {
       await invoke("cleanup_old", { dir: join(cfg.dir, folder), days: KEEP_DAYS }).catch(() => {});

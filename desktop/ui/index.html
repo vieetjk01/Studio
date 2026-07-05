@@ -9,7 +9,10 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="logo">M</span> MStudo Desktop</div>
-    <div class="top-right" id="topStatus"></div>
+    <div class="top-actions">
+      <button id="btnOpenAppTop" class="btn small primary hidden">Mở ứng dụng quản lý</button>
+      <span class="top-right" id="topStatus"></span>
+    </div>
   </header>
 
   <!-- ── Màn 1: Kết nối thiết bị ─────────────────────────────────────── -->
@@ -53,6 +56,13 @@
 
   <!-- ── Màn 3: Trạng thái ───────────────────────────────────────────── -->
   <main id="screen-main" class="screen hidden">
+    <div class="card app-launch">
+      <div>
+        <h2>Ứng dụng quản lý studio</h2>
+        <p class="muted">Mở đầy đủ công cụ (hợp đồng, báo giá, lịch, thu chi, lương, khách hàng…) ngay trong MStudo Desktop.</p>
+      </div>
+      <button id="btnOpenApp" class="btn primary">Mở ứng dụng quản lý →</button>
+    </div>
     <div id="planBanner" class="banner hidden">
       Gói Studio đã hết hạn — đồng bộ tạm dừng, hợp đồng bị khóa. File đã lưu trên máy vẫn giữ nguyên.
     </div>

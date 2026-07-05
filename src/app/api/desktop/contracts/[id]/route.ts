@@ -15,6 +15,16 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const auth = await requireDesktopOwner(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  try {
+    return await handle(req, params, auth.ownerId);
+  } catch (e) {
+    // Lộ nguyên nhân thật ra client để chẩn đoán (thay vì 500 rỗng).
+    return NextResponse.json({ error: (e as Error)?.message || String(e) }, { status: 500 });
+  }
+}
+
+async function handle(req: Request, params: { id: string }, ownerId: string) {
+  const auth = { ownerId };
   const db = createAdminClient();
 
   const { data: contract } = await db

@@ -203,6 +203,25 @@ fn hostname() -> String {
         .unwrap_or_else(|_| "May tinh Windows".to_string())
 }
 
+/// Mở TOÀN BỘ ứng dụng quản lý studio (web app hiện tại) trong một cửa sổ riêng
+/// của client — đăng nhập & dùng đầy đủ chức năng; engine sao lưu vẫn chạy ở
+/// cửa sổ chính. Gọi lại thì đưa cửa sổ đã mở lên trước.
+#[tauri::command]
+async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("studioapp") {
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
+    tauri::WebviewWindowBuilder::new(&app, "studioapp", tauri::WebviewUrl::External(parsed))
+        .title("MStudo — Quản lý studio")
+        .inner_size(1280.0, 860.0)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Mở liên kết trong trình duyệt mặc định (nút "Tải bản cập nhật").
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
@@ -257,7 +276,8 @@ fn main() {
             move_dir,
             hostname,
             open_folder,
-            open_url
+            open_url,
+            open_app
         ])
         .run(tauri::generate_context!())
         .expect("Không khởi động được MStudo Desktop");

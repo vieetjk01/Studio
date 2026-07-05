@@ -17,8 +17,14 @@ body {
   width: 28px; height: 28px; border-radius: 8px; background: var(--green); color: #fff;
   display: inline-flex; align-items: center; justify-content: center; font-weight: 800;
 }
+.top-actions { display: flex; align-items: center; gap: 12px; }
 .top-right { font-size: 12.5px; color: var(--muted); }
 .top-right .ok { color: var(--green); font-weight: 700; }
+.top-actions .btn { margin-top: 0; }
+
+.app-launch { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.app-launch h2 { margin-bottom: 4px; }
+.app-launch .btn { margin-top: 0; flex: none; }
 
 .screen { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
 .screen.hidden, .hidden { display: none; }
