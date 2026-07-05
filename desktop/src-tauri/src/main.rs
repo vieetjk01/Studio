@@ -216,7 +216,9 @@ async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
     let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
     tauri::WebviewWindowBuilder::new(&app, "studioapp", tauri::WebviewUrl::External(parsed))
         .title("MStudo — Quản lý studio")
-        .inner_size(1280.0, 860.0)
+        .inner_size(1360.0, 900.0)
+        .maximized(true)
+        .focused(true)
         .build()
         .map_err(|e| e.to_string())?;
     Ok(())

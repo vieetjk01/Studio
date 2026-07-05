@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.2.2"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.3.0"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -132,16 +132,21 @@ $("btnFolderNext").onclick = async () => {
   bootSync(true); // lần đầu: tải TOÀN BỘ hợp đồng đã ký + xuất đủ bộ Excel
 };
 
-// ─── Mở ứng dụng quản lý studio đầy đủ ───────────────────────────────────────
-// Mở trong TRÌNH DUYỆT MẶC ĐỊNH (Chrome/Edge) — nơi đã có sẵn phiên đăng nhập,
-// nên mọi tính năng chạy đúng. (Webview nhúng có phiên riêng chưa đăng nhập nên
-// bị lớp phủ mờ chặn thao tác — nên không dùng cách nhúng nữa.)
+// ─── Mở TOÀN BỘ ứng dụng quản lý NGAY TRONG CLIENT (cửa sổ nhúng phóng to) ────
+// Cửa sổ nhúng chính là web app thật → giao diện & tính năng y hệt. Đăng nhập
+// một lần trong cửa sổ đó; phiên được lưu lại cho các lần sau.
 function openStudioApp() {
   if (!cfg.server) return;
-  invoke("open_url", { url: cfg.server + "/dashboard/studio" }).catch((e) => log("Không mở được ứng dụng: " + e, "err"));
+  invoke("open_app", { url: cfg.server + "/dashboard/studio" }).catch((e) => log("Không mở được ứng dụng: " + e, "err"));
+}
+// Dự phòng: mở trong trình duyệt ngoài (nếu cửa sổ nhúng gặp sự cố).
+function openStudioBrowser() {
+  if (!cfg.server) return;
+  invoke("open_url", { url: cfg.server + "/dashboard/studio" }).catch(() => {});
 }
 $("btnOpenApp").onclick = openStudioApp;
 $("btnOpenAppTop").onclick = openStudioApp;
+const _obb = $("btnOpenAppBrowser"); if (_obb) _obb.onclick = openStudioBrowser;
 
 // Chuyển tab con: Dữ liệu (offline) ↔ Sao lưu & thiết bị.
 function showSub(sub) {
