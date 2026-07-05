@@ -11,13 +11,24 @@ export default function NotificationBell() {
 
   useEffect(() => {
     const supabase = createClient();
+    let uid: string | null = null;
 
-    // Initial load
-    supabase
-      .from("studio_notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("read", false)
-      .then(({ count }) => setCount(count || 0));
+    // Đếm chỉ thông báo của chính mình. Admin (RLS is_admin) mặc định thấy của
+    // mọi tài khoản → phải lọc theo owner_id nếu không sẽ đếm nhầm cả hệ thống.
+    const refresh = () => {
+      if (!uid) return;
+      supabase
+        .from("studio_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", uid)
+        .eq("read", false)
+        .then(({ count }) => setCount(count || 0));
+    };
+
+    supabase.auth.getUser().then(({ data }) => {
+      uid = data.user?.id ?? null;
+      refresh();
+    });
 
     // Realtime — re-fetch count on any INSERT or UPDATE to studio_notifications
     const channel = supabase
@@ -25,13 +36,7 @@ export default function NotificationBell() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "studio_notifications" },
-        () => {
-          supabase
-            .from("studio_notifications")
-            .select("id", { count: "exact", head: true })
-            .eq("read", false)
-            .then(({ count }) => setCount(count || 0));
-        }
+        () => refresh()
       )
       .subscribe();
 

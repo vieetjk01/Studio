@@ -23,9 +23,18 @@ export default function AnnouncementPopup() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
+    // QUAN TRỌNG: lọc theo owner_id của chính mình. Admin (RLS is_admin) mặc định
+    // thấy thông báo của MỌI tài khoản → nếu không lọc sẽ hiện hàng loạt bản sao.
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user?.id;
+    if (!uid) {
+      setItems([]);
+      return;
+    }
     const { data, error } = await supabase
       .from("studio_notifications")
       .select("id, message, important, created_at")
+      .eq("owner_id", uid)
       .eq("kind", "announcement")
       .eq("read", false)
       .order("created_at", { ascending: false })
@@ -35,6 +44,7 @@ export default function AnnouncementPopup() {
       const { data: d2 } = await supabase
         .from("studio_notifications")
         .select("id, message, created_at")
+        .eq("owner_id", uid)
         .eq("kind", "announcement")
         .eq("read", false)
         .order("created_at", { ascending: false })
