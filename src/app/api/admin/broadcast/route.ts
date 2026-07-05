@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { effectivePlan, studioTier } from "@/lib/plans";
+import { sendPushToOwners } from "@/lib/push";
 import type { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +25,13 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     message?: unknown;
     target?: unknown;
+    push?: unknown;
   };
   const message = String(body.message ?? "").trim();
   const target = (["all", "studio", "booking"].includes(String(body.target))
     ? body.target
     : "all") as Target;
+  const wantPush = body.push === true;
 
   if (!message) return NextResponse.json({ error: "empty_message" }, { status: 400 });
   if (message.length > 1000) return NextResponse.json({ error: "too_long" }, { status: 413 });
@@ -76,5 +79,14 @@ export async function POST(req: Request) {
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, sent: rows.length });
+  // Web push (khi bật): báo cả khi studio không mở webapp. No-op nếu chưa cấu hình VAPID.
+  let pushed = 0;
+  if (wantPush) {
+    pushed = await sendPushToOwners(
+      recipients.map((p) => p.id),
+      { title: "Thông báo hệ thống", body: message, url: "/dashboard/studio/notifications", tag: "mstudo-announcement" }
+    );
+  }
+
+  return NextResponse.json({ ok: true, sent: rows.length, pushed });
 }

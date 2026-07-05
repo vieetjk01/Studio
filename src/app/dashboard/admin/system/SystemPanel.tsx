@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   Megaphone,
@@ -10,8 +10,10 @@ import {
   Settings,
   Send,
   Download,
+  Upload,
   Loader2,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 type Target = "all" | "studio" | "booking";
@@ -31,10 +33,19 @@ const SHORTCUTS = [
 export default function SystemPanel() {
   const [message, setMessage] = useState("");
   const [target, setTarget] = useState<Target>("all");
+  const [push, setPush] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
   const [backing, setBacking] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
+
+  // Khôi phục
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [restoreDoc, setRestoreDoc] = useState<unknown | null>(null);
+  const [preview, setPreview] = useState<{ table: string; rows: number }[] | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  const [restoreErr, setRestoreErr] = useState<string | null>(null);
 
   async function sendBroadcast(e: React.FormEvent) {
     e.preventDefault();
@@ -46,13 +57,14 @@ export default function SystemPanel() {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message.trim(), target }),
+        body: JSON.stringify({ message: message.trim(), target, push }),
       });
       const data = await res.json();
       if (!res.ok) {
         setSendMsg(data.error === "empty_message" ? "Chưa nhập nội dung." : `Lỗi: ${data.error ?? "không gửi được"}`);
       } else {
-        setSendMsg(`Đã gửi tới ${data.sent} studio.`);
+        const extra = push ? ` · đẩy tới ${data.pushed} thiết bị` : "";
+        setSendMsg(`Đã gửi tới ${data.sent} studio${extra}.`);
         setMessage("");
       }
     } catch {
@@ -90,6 +102,76 @@ export default function SystemPanel() {
       setBackupMsg("Lỗi khi tải bản sao lưu.");
     } finally {
       setBacking(false);
+    }
+  }
+
+  async function pickBackupFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRestoreMsg(null);
+    setRestoreErr(null);
+    setPreview(null);
+    setRestoreDoc(null);
+    try {
+      const text = await file.text();
+      const doc = JSON.parse(text);
+      if (doc?.kind !== "mstudo-full-backup" || !doc.data) {
+        setRestoreErr("File không phải bản sao lưu MStudo hợp lệ.");
+        return;
+      }
+      // Xem trước số dòng (không ghi gì).
+      const res = await fetch("/api/admin/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: doc.kind, data: doc.data, apply: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRestoreErr(`Lỗi đọc bản sao lưu: ${data.error ?? "không rõ"}`);
+        return;
+      }
+      setRestoreDoc(doc);
+      setPreview(data.tables ?? []);
+    } catch {
+      setRestoreErr("Không đọc được file (JSON hỏng?).");
+    }
+  }
+
+  async function applyRestore() {
+    if (!restoreDoc || restoring) return;
+    if (!window.confirm(
+      "KHÔI PHỤC sẽ ghi đè dữ liệu hiện tại bằng dữ liệu trong bản sao lưu (cập nhật bản ghi trùng khóa, tạo lại bản ghi thiếu). " +
+      "Nên tải một bản sao lưu mới trước khi khôi phục. Tiếp tục?"
+    )) return;
+    setRestoring(true);
+    setRestoreMsg("Đang khôi phục dữ liệu…");
+    setRestoreErr(null);
+    try {
+      const doc = restoreDoc as { kind: string; data: unknown };
+      const res = await fetch("/api/admin/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: doc.kind, data: doc.data, apply: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRestoreErr(`Khôi phục lỗi: ${data.error ?? "không rõ"}`);
+        setRestoreMsg(null);
+        return;
+      }
+      const failed = (data.failed ?? []) as { table: string; error: string }[];
+      setRestoreMsg(`Đã khôi phục ${data.totalRestored} bản ghi.`);
+      if (failed.length) {
+        setRestoreErr("Một số bảng lỗi: " + failed.map((f) => `${f.table} (${f.error})`).join("; "));
+      }
+      setPreview(null);
+      setRestoreDoc(null);
+      if (fileRef.current) fileRef.current.value = "";
+    } catch {
+      setRestoreErr("Lỗi kết nối khi khôi phục.");
+      setRestoreMsg(null);
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -151,6 +233,10 @@ export default function SystemPanel() {
             </button>
             <span className="text-[11px]" style={{ color: "var(--text3)" }}>{message.length}/1000</span>
           </div>
+          <label className="mt-3 flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
+            <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} />
+            Đẩy web push (báo cả khi studio không mở webapp)
+          </label>
           {sendMsg && (
             <div className="mt-3 rounded-md px-3 py-2 text-sm" style={{ background: "var(--brandSoft)", color: "var(--brand)" }}>
               {sendMsg}
@@ -182,6 +268,60 @@ export default function SystemPanel() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Khôi phục hệ thống */}
+      <div className="card mt-6 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Upload size={18} style={{ color: "#e0b85c" }} />
+          <h2 className="text-base font-semibold">Khôi phục hệ thống</h2>
+        </div>
+        <p className="mb-4 text-[12px]" style={{ color: "var(--text3)" }}>
+          Chọn file JSON đã sao lưu để phục hồi dữ liệu. Bản ghi trùng khóa sẽ được cập nhật, bản ghi
+          thiếu sẽ được tạo lại. Thao tác này <b>không xóa</b> dữ liệu hiện có không nằm trong bản sao lưu.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickBackupFile} className="text-sm" />
+        </div>
+
+        {restoreErr && (
+          <div className="mt-3 flex items-start gap-2 rounded-md px-3 py-2 text-sm" style={{ background: "rgba(224,116,111,.12)", color: "#e0746f" }}>
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+            <span>{restoreErr}</span>
+          </div>
+        )}
+
+        {preview && (
+          <div className="mt-4">
+            <div className="mb-2 flex items-start gap-2 rounded-md px-3 py-2 text-[13px]" style={{ background: "rgba(224,184,92,.12)", color: "#b8901f" }}>
+              <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+              <span>Bản sao lưu chứa dữ liệu dưới đây. Kiểm tra kỹ rồi bấm khôi phục — dữ liệu hiện tại sẽ bị ghi đè bằng các bản ghi này.</span>
+            </div>
+            <div className="max-h-56 overflow-y-auto rounded-md border" style={{ borderColor: "var(--border)" }}>
+              <table className="w-full text-sm">
+                <tbody>
+                  {preview.map((t) => (
+                    <tr key={t.table} className="border-b" style={{ borderColor: "var(--border)" }}>
+                      <td className="px-3 py-1.5" style={{ color: "var(--text2)" }}>{t.table}</td>
+                      <td className="px-3 py-1.5 text-right font-medium">{t.rows.toLocaleString("vi-VN")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button onClick={applyRestore} disabled={restoring} className="btn-primary mt-3 gap-2">
+              {restoring ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+              Khôi phục toàn bộ
+            </button>
+          </div>
+        )}
+
+        {restoreMsg && (
+          <div className="mt-3 rounded-md px-3 py-2 text-sm" style={{ background: "var(--brandSoft)", color: "var(--brand)" }}>
+            {restoreMsg}
+          </div>
+        )}
       </div>
     </div>
   );

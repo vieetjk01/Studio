@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BACKUP_TABLES } from "@/lib/admin/backup-tables";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -10,60 +11,7 @@ export const maxDuration = 300;
  * Chỉ admin. Dùng service-role client nên bỏ qua RLS, lấy đủ mọi studio.
  * Dữ liệu auth (mật khẩu) KHÔNG nằm ở đây — chỉ dữ liệu ứng dụng.
  */
-const TABLES = [
-  "profiles",
-  "site_settings",
-  "sites",
-  "site_blocks",
-  "albums",
-  "album_sources",
-  "photos",
-  "selections",
-  "album_shares",
-  "album_creations",
-  "feedback",
-  "bookings",
-  "upgrade_requests",
-  "filter_usages",
-  "compress_usages",
-  "discount_codes",
-  "discount_redemptions",
-  "affiliate_codes",
-  "affiliate_commissions",
-  "message_templates",
-  "studio_contracts",
-  "contract_items",
-  "contract_crew",
-  "contract_equipment",
-  "contract_products",
-  "contract_quote_options",
-  "contract_payment_plan",
-  "contract_payments",
-  "contract_tasks",
-  "contract_edit_requests",
-  "contract_client_proofs",
-  "contract_templates",
-  "contract_template_items",
-  "studio_crew",
-  "crew_unavailable",
-  "studio_events",
-  "studio_bookings",
-  "studio_equipment",
-  "studio_packages",
-  "studio_pricelist",
-  "studio_services",
-  "studio_expenses",
-  "studio_quotes",
-  "quote_items",
-  "quote_adjustments",
-  "studio_notifications",
-  "desktop_devices",
-  "wedding_invitations",
-  "wedding_rsvps",
-  "story_pages",
-  "story_wishes",
-  "story_uploads",
-] as const;
+const TABLES = BACKUP_TABLES;
 
 const PAGE = 1000;
 
