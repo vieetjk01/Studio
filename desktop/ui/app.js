@@ -167,6 +167,9 @@ function showSub(sub) {
 document.querySelectorAll("#sideNav .side-item").forEach((b) => b.onclick = () => gotoNav(b.dataset.nav));
 // "Tải dữ liệu mới": làm mới cache offline (dùng lại luồng xuất/sao lưu).
 $("btnRefreshData").onclick = () => runExports(true);
+// Kiểm tra cập nhật thủ công (phòng khi app chưa tự báo).
+{ const b = $("btnCheckUpdate"); if (b) b.onclick = () => checkUpdate(true); }
+{ const v = $("appVer"); if (v) v.textContent = "Phiên bản " + APP_VERSION + " (beta)"; }
 
 // ─── Màn 3: hành động ────────────────────────────────────────────────────────
 $("btnSyncNow").onclick = () => runSync(true);
@@ -360,23 +363,27 @@ window.printContract = async function (id) {
 // hiện banner, bấm "Cập nhật ngay" tải + chạy trình cài đặt (app tự thoát).
 const RELEASE_API = "https://api.github.com/repos/vieetjk01/Studio/releases/tags/desktop-dev";
 let _updateUrl = "";
-async function checkUpdate() {
+async function checkUpdate(manual = false) {
   try {
     const r = await invoke("http_get", { url: RELEASE_API, token: null });
-    if (r.status !== 200) return;
+    if (r.status !== 200) { if (manual) alert("Không kiểm tra được (máy chủ trả lỗi). Thử lại sau."); return; }
     const rel = JSON.parse(b64ToText(r.body_b64));
     const asset = (rel.assets || []).find((a) => /-setup\.exe$/i.test(a.name));
-    if (!asset) return;
+    if (!asset) { if (manual) alert("Chưa tìm thấy bản phát hành."); return; }
     _updateUrl = asset.browser_download_url;
     const build = asset.updated_at || "";
-    if (!cfg.installedBuild) { cfg.installedBuild = build; saveCfg(); return; } // baseline lần đầu
+    // baseline lần đầu (chỉ khi tự kiểm tra, không phải bấm tay).
+    if (!cfg.installedBuild && !manual) { cfg.installedBuild = build; saveCfg(); return; }
     if (build && build !== cfg.installedBuild) {
       $("updateText").textContent = "Đã có bản cập nhật mới của MStudo Desktop.";
       $("updateBanner").classList.remove("hidden");
       $("btnUpdate").textContent = "Cập nhật ngay";
       $("btnUpdate").onclick = () => runSelfUpdate(build);
+      if (manual) runSelfUpdate(build); // bấm tay → cập nhật luôn
+    } else if (manual) {
+      alert("Bạn đang dùng bản mới nhất.");
     }
-  } catch { /* mạng lỗi — thử lại lần sau */ }
+  } catch (e) { if (manual) alert("Không kiểm tra được cập nhật: " + (e.message || e)); }
 }
 async function runSelfUpdate(build) {
   if (!_updateUrl) return;
