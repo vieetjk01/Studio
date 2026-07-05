@@ -6,6 +6,7 @@ import { getSessionUser, getProfileById } from "@/lib/auth-guards";
 import DashboardChrome from "@/components/DashboardChrome";
 import NavProgress from "@/components/NavProgress";
 import TrialExpiredBanner from "@/components/TrialExpiredBanner";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
 import { getFeatureFlags, comingSoonNav, desktopHidden } from "@/lib/feature-flags";
 import type { Profile } from "@/lib/types";
@@ -120,6 +121,7 @@ on conflict (id) do update set role='admin', is_active=true;`}
       >
         {children}
       </DashboardChrome>
+      <AnnouncementPopup />
     </div>
   );
 }

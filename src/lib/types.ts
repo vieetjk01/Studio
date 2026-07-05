@@ -282,6 +282,7 @@ export interface StudioNotification {
   kind: NotificationKind;
   message: string;
   read: boolean;
+  important?: boolean;
   created_at: string;
 }
 

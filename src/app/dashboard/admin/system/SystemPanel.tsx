@@ -16,9 +16,10 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-type Target = "all" | "studio" | "booking";
+type Target = "everyone" | "all" | "studio" | "booking";
 
 const TARGET_LABEL: Record<Target, string> = {
+  everyone: "Tất cả tài khoản",
   all: "Tất cả studio",
   studio: "Chỉ gói Studio",
   booking: "Chỉ Photographer / Basic",
@@ -32,7 +33,8 @@ const SHORTCUTS = [
 
 export default function SystemPanel() {
   const [message, setMessage] = useState("");
-  const [target, setTarget] = useState<Target>("all");
+  const [target, setTarget] = useState<Target>("everyone");
+  const [important, setImportant] = useState(false);
   const [push, setPush] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export default function SystemPanel() {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message.trim(), target, push }),
+        body: JSON.stringify({ message: message.trim(), target, push, important }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -208,7 +210,8 @@ export default function SystemPanel() {
             <h2 className="text-base font-semibold">Thông báo tới studio</h2>
           </div>
           <p className="mb-3 text-[12px]" style={{ color: "var(--text3)" }}>
-            Thông báo hiển thị ngay trong webapp (chuông thông báo) của các studio được chọn.
+            Thông báo hiện ngay trong webapp: chuông thông báo + bảng nổi khi người dùng đăng nhập
+            hoặc đang sử dụng. Bật &ldquo;quan trọng&rdquo; để hiện popup giữa màn hình.
           </p>
           <textarea
             className="input min-h-[110px] w-full resize-y"
@@ -223,6 +226,7 @@ export default function SystemPanel() {
               value={target}
               onChange={(e) => setTarget(e.target.value as Target)}
             >
+              <option value="everyone">{TARGET_LABEL.everyone}</option>
               <option value="all">{TARGET_LABEL.all}</option>
               <option value="studio">{TARGET_LABEL.studio}</option>
               <option value="booking">{TARGET_LABEL.booking}</option>
@@ -234,8 +238,12 @@ export default function SystemPanel() {
             <span className="text-[11px]" style={{ color: "var(--text3)" }}>{message.length}/1000</span>
           </div>
           <label className="mt-3 flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
+            <input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} />
+            Thông báo quan trọng — hiện popup nổi giữa màn hình, người dùng phải xác nhận
+          </label>
+          <label className="mt-2 flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
             <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} />
-            Đẩy web push (báo cả khi studio không mở webapp)
+            Đẩy web push (báo cả khi không mở webapp)
           </label>
           {sendMsg && (
             <div className="mt-3 rounded-md px-3 py-2 text-sm" style={{ background: "var(--brandSoft)", color: "var(--brand)" }}>

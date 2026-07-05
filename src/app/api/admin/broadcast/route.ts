@@ -7,16 +7,18 @@ import type { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type Target = "all" | "studio" | "booking";
+type Target = "everyone" | "all" | "studio" | "booking";
 
 /**
- * Gửi thông báo hệ thống tới các studio (hiển thị ngay trong webapp qua chuông
- * thông báo). Chỉ admin. Mỗi studio nhận 1 dòng trong studio_notifications.
+ * Gửi thông báo hệ thống (hiển thị ngay trong webapp qua chuông thông báo và
+ * bảng popup nổi). Chỉ admin. Mỗi tài khoản nhận 1 dòng trong studio_notifications.
  *
- * body: { message: string, target: "all" | "studio" | "booking" }
- *   all     — mọi tài khoản chủ studio đang hoạt động
- *   studio  — chỉ gói Studio (đầy đủ hợp đồng/tài chính)
- *   booking — chỉ Photographer/Basic (đặt lịch)
+ * body: { message: string, target, push?: boolean, important?: boolean }
+ *   everyone — MỌI tài khoản đang hoạt động (kể cả nhân viên phụ, tài khoản free)
+ *   all      — mọi tài khoản chủ studio (có quyền dùng studio)
+ *   studio   — chỉ gói Studio (đầy đủ hợp đồng/tài chính)
+ *   booking  — chỉ Photographer/Basic (đặt lịch)
+ *   important — bật popup nổi bắt buộc xác nhận
  */
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -26,24 +28,28 @@ export async function POST(req: Request) {
     message?: unknown;
     target?: unknown;
     push?: unknown;
+    important?: unknown;
   };
   const message = String(body.message ?? "").trim();
-  const target = (["all", "studio", "booking"].includes(String(body.target))
+  const target = (["everyone", "all", "studio", "booking"].includes(String(body.target))
     ? body.target
-    : "all") as Target;
+    : "everyone") as Target;
   const wantPush = body.push === true;
+  const important = body.important === true;
 
   if (!message) return NextResponse.json({ error: "empty_message" }, { status: 400 });
   if (message.length > 1000) return NextResponse.json({ error: "too_long" }, { status: 413 });
 
   const db = createAdminClient();
 
-  // Chỉ chủ studio (không phải nhân viên phụ), đang hoạt động.
-  const { data: profiles, error } = await db
+  // "everyone" gồm cả nhân viên phụ; các đối tượng còn lại chỉ tính chủ tài khoản.
+  let query = db
     .from("profiles")
     .select("id, role, plan, plan_expires_at, is_active, studio_owner_id")
-    .is("studio_owner_id", null)
     .eq("is_active", true);
+  if (target !== "everyone") query = query.is("studio_owner_id", null);
+
+  const { data: profiles, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -53,6 +59,7 @@ export async function POST(req: Request) {
   >[];
 
   const recipients = owners.filter((p) => {
+    if (target === "everyone") return true; // mọi tài khoản
     const tier = studioTier(effectivePlan(p.plan, p.plan_expires_at), p.role === "admin");
     if (target === "studio") return tier === "full";
     if (target === "booking") return tier === "booking";
@@ -68,15 +75,27 @@ export async function POST(req: Request) {
     contract_id: null,
     kind: "announcement",
     message,
+    important,
   }));
 
-  // Chèn theo lô để tránh payload quá lớn.
+  // Chèn theo lô để tránh payload quá lớn. Nếu cột "important" chưa được thêm
+  // vào DB (chưa chạy migration) thì tự bỏ cột đó và chèn lại — không làm hỏng gửi.
   const CHUNK = 500;
+  let dropImportant = false;
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const { error: insErr } = await db
-      .from("studio_notifications")
-      .insert(rows.slice(i, i + CHUNK));
-    if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+    const slice = rows.slice(i, i + CHUNK);
+    const payload = dropImportant
+      ? slice.map(({ important: _important, ...rest }) => rest)
+      : slice;
+    const { error: insErr } = await db.from("studio_notifications").insert(payload);
+    if (insErr) {
+      if (!dropImportant && /important/i.test(insErr.message)) {
+        dropImportant = true;
+        i -= CHUNK; // thử lại lô này không kèm "important"
+        continue;
+      }
+      return NextResponse.json({ error: insErr.message }, { status: 500 });
+    }
   }
 
   // Web push (khi bật): báo cả khi studio không mở webapp. No-op nếu chưa cấu hình VAPID.
