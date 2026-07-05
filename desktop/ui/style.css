@@ -27,7 +27,9 @@ body {
 .app-launch .btn { margin-top: 0; flex: none; }
 
 .screen { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
-.screen.hidden, .hidden { display: none; }
+/* .hidden phải luôn thắng các quy tắc display khác (vd .dmodal-overlay/.banner.update
+   có 2 class nên độ ưu tiên cao hơn) — nếu không, lớp phủ mờ che cả cửa sổ. */
+.screen.hidden, .hidden { display: none !important; }
 
 .card {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
