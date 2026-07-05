@@ -1721,3 +1721,22 @@ create policy story_uploads_owner_read on public.story_uploads
     select 1 from public.story_pages s
     where s.id = story_id and (s.owner_id = auth.uid() or public.is_admin())
   ));
+
+-- ─── MStudo Desktop (client Windows) ──────────────────────────────────────────
+-- Thiết bị đã đăng ký của chủ studio — tối đa 2 máy hoạt động / tài khoản.
+create table if not exists public.desktop_devices (
+  id           uuid primary key default gen_random_uuid(),
+  owner_id     uuid not null references public.profiles (id) on delete cascade,
+  name         text not null default '',          -- tên máy (VD: PC-Studio-01)
+  token_hash   text not null unique,              -- sha256 của token thiết bị (token chỉ trả về 1 lần)
+  app_version  text,
+  last_sync_at timestamptz,                       -- lần đồng bộ cuối
+  revoked_at   timestamptz,                       -- null = đang hoạt động
+  created_at   timestamptz not null default now()
+);
+create index if not exists desktop_devices_owner_idx on public.desktop_devices (owner_id);
+alter table public.desktop_devices enable row level security;
+drop policy if exists desktop_devices_owner on public.desktop_devices;
+create policy desktop_devices_owner on public.desktop_devices
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());

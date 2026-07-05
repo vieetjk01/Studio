@@ -1,0 +1,32 @@
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireDesktopOwner } from "@/lib/desktop/auth";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Danh sách hợp đồng cho MStudo Desktop.
+ *   GET /api/desktop/contracts?since=ISO      → hợp đồng ĐÃ KÝ thay đổi sau `since`
+ *   GET /api/desktop/contracts?signed=0       → gồm cả hợp đồng chưa ký
+ * Trả kèm `now` để client lưu làm mốc lần-đồng-bộ-cuối (tải bù khi mở app).
+ */
+export async function GET(req: Request) {
+  const auth = await requireDesktopOwner(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const url = new URL(req.url);
+  const since = url.searchParams.get("since");
+  const signedOnly = url.searchParams.get("signed") !== "0";
+
+  let q = createAdminClient()
+    .from("studio_contracts")
+    .select("id, code, title, client_name, client_phone, status, event_date, client_signed_at, studio_signed_at, created_at, updated_at")
+    .eq("owner_id", auth.ownerId)
+    .order("updated_at", { ascending: false })
+    .range(0, 9999);
+  if (signedOnly) q = q.not("client_signed_at", "is", null);
+  if (since) q = q.gt("updated_at", since);
+
+  const { data, error } = await q;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ contracts: data ?? [], now: new Date().toISOString() });
+}

@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -99,6 +99,7 @@ const GROUPS: Group[] = [
       { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
       { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
       { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },
+      { href: "/dashboard/studio/desktop", label: "MStudo Desktop", icon: Monitor, minTier: "full", roles: ["owner", "admin"] },
     ],
   },
 ];
@@ -118,6 +119,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/clients", "Khách hàng", "Danh bạ khách hàng"],
   ["/dashboard/studio/album-designer", "Thiết kế Album", "Chọn khổ → chọn mẫu → chỉnh sửa → xuất file"],
   ["/dashboard/studio/slide", "Slide cưới", "Tự tạo video slide ảnh cưới"],
+  ["/dashboard/studio/desktop", "MStudo Desktop", "Ứng dụng máy tính: tự lưu hợp đồng & sao lưu dữ liệu"],
   ["/dashboard/studio/board", "Bảng công việc", "Theo dõi công việc"],
   ["/dashboard/studio/reports", "Thu chi", "Báo cáo tài chính"],
   ["/dashboard/studio/payroll", "Bảng lương", "Bảng lương nhân viên"],
@@ -147,12 +149,14 @@ export default function StudioShell({
   tier,
   role,
   comingSoon = [],
+  hiddenNav = [],
   children,
 }: {
   profile: Profile;
   tier: StudioTier;
   role: string;
   comingSoon?: string[];
+  hiddenNav?: string[]; // mục ẨN HOÀN TOÀN với non-admin (chưa xuất bản)
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -175,6 +179,7 @@ export default function StudioShell({
   const visibleGroups = GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((it) => {
+      if (hiddenNav.includes(it.href) && role !== "admin") return false;
       if (TIER_RANK[tier] < TIER_RANK[it.minTier]) return false;
       if (role === "accountant") return it.href === "/dashboard/studio" || it.href.startsWith("/dashboard/studio/reports") || it.href.startsWith("/dashboard/studio/payroll");
       if (it.roles && !it.roles.includes(role)) return false;

@@ -1,0 +1,154 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Monitor, Download, ShieldAlert, FileSpreadsheet, FileJson, Laptop, Trash2, RefreshCw } from "lucide-react";
+
+/**
+ * Trang MStudo Desktop: tải bản cài Windows, quản lý thiết bị (tối đa 2 máy),
+ * và xuất dữ liệu ngay trên web (dùng chung API với client desktop).
+ */
+
+type Device = { id: string; name: string; app_version: string | null; last_sync_at: string | null; revoked_at: string | null; created_at: string };
+
+const EXPORTS: [string, string, string][] = [
+  ["customers", "Khách hàng", "Danh bạ khách gộp từ hợp đồng"],
+  ["quotes", "Báo giá", "Danh sách báo giá + tổng tiền"],
+  ["expenses", "Chi tiêu", "Sổ chi tiêu, kèm mã hợp đồng"],
+  ["payroll", "Bảng lương", "Lương thợ/nhân viên theo hợp đồng"],
+  ["bookings", "Đặt lịch", "Yêu cầu đặt lịch + lịch ghi chú"],
+  ["staff", "Nhân viên & sổ thợ", "Tài khoản nhân viên + sổ thợ"],
+];
+
+const fmtTime = (s: string | null) => {
+  if (!s) return "Chưa đồng bộ";
+  const d = new Date(s);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+export default function DesktopPanel() {
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [migrated, setMigrated] = useState(true);
+  const [limit, setLimit] = useState(2);
+  const [loading, setLoading] = useState(true);
+  const downloadUrl = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || "";
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/desktop/devices");
+      const j = await r.json();
+      setDevices(j.devices ?? []);
+      setMigrated(j.migrated !== false);
+      if (j.limit) setLimit(j.limit);
+    } catch { /* */ }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function revoke(id: string) {
+    if (!confirm("Thu hồi thiết bị này? Máy đó sẽ ngừng đồng bộ ngay lập tức.")) return;
+    await fetch(`/api/desktop/devices?id=${id}`, { method: "DELETE" });
+    load();
+  }
+
+  const active = devices.filter((d) => !d.revoked_at);
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* Tải app */}
+      <div className="card p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl" style={{ background: "var(--brandSoft)" }}>
+            <Monitor size={24} style={{ color: "var(--brand)" }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-serif text-xl font-medium">MStudo Desktop cho Windows</h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
+              Ứng dụng chạy trên máy tính: tự động lưu hợp đồng (PDF + Word) về thư mục bạn chọn ngay khi khách ký,
+              và tự xuất Excel toàn bộ dữ liệu hằng ngày để chống mất dữ liệu.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {downloadUrl ? (
+                <a href={downloadUrl} className="btn-primary inline-flex items-center gap-2"><Download size={16} /> Tải bản cài đặt</a>
+              ) : (
+                <button disabled className="btn-primary inline-flex cursor-not-allowed items-center gap-2 opacity-60"><Download size={16} /> Bản cài đặt đang hoàn thiện</button>
+              )}
+              <span className="text-xs" style={{ color: "var(--text2)" }}>Windows 10/11 · 64-bit</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 flex items-start gap-3 rounded-xl p-4 text-sm" style={{ background: "var(--surface2)" }}>
+          <ShieldAlert size={18} className="mt-0.5 flex-none" style={{ color: "var(--brand)" }} />
+          <div style={{ color: "var(--text2)" }}>
+            <b style={{ color: "var(--text)" }}>Khi cài đặt, Windows có thể hiện cảnh báo SmartScreen</b> vì ứng dụng chưa mua chứng chỉ ký số.
+            Bấm <b>“More info” → “Run anyway”</b> (Thông tin thêm → Vẫn chạy) để tiếp tục — file cài chỉ tải từ trang này là an toàn.
+          </div>
+        </div>
+      </div>
+
+      {/* Thiết bị */}
+      <div className="card p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-xl font-medium">Thiết bị của bạn</h2>
+          <button onClick={load} className="btn-ghost inline-flex items-center gap-2 text-sm"><RefreshCw size={14} /> Làm mới</button>
+        </div>
+        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
+          Tối đa {limit} máy hoạt động cho mỗi tài khoản. Máy sẽ tự đăng ký khi bạn đăng nhập trong ứng dụng MStudo Desktop.
+        </p>
+        {!migrated && (
+          <p className="mt-3 rounded-lg p-3 text-sm" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
+            Cơ sở dữ liệu chưa có bảng thiết bị — chạy <code>supabase/schema.sql</code> mới nhất trong Supabase SQL Editor.
+          </p>
+        )}
+        <div className="mt-4 space-y-2">
+          {loading && <p className="text-sm" style={{ color: "var(--text2)" }}>Đang tải…</p>}
+          {!loading && active.length === 0 && (
+            <p className="rounded-xl p-4 text-sm" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
+              Chưa có thiết bị nào. Cài MStudo Desktop rồi đăng nhập để đăng ký máy đầu tiên.
+            </p>
+          )}
+          {active.map((d) => (
+            <div key={d.id} className="flex items-center gap-3 rounded-xl p-4" style={{ background: "var(--surface2)" }}>
+              <Laptop size={20} className="flex-none" style={{ color: "var(--brand)" }} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{d.name || "Máy tính Windows"}</div>
+                <div className="text-xs" style={{ color: "var(--text2)" }}>
+                  {d.app_version ? `v${d.app_version} · ` : ""}Đồng bộ cuối: {fmtTime(d.last_sync_at)}
+                </div>
+              </div>
+              <button onClick={() => revoke(d.id)} title="Thu hồi thiết bị" className="btn-ghost inline-flex items-center gap-1.5 text-sm" style={{ color: "#c05050" }}>
+                <Trash2 size={14} /> Thu hồi
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Xuất dữ liệu ngay */}
+      <div className="card p-6">
+        <h2 className="font-serif text-xl font-medium">Xuất dữ liệu ngay</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
+          Không cần chờ client — tải Excel từng mảng hoặc bản sao lưu đầy đủ ngay tại đây (cùng dữ liệu client sẽ tự lưu).
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {EXPORTS.map(([type, label, desc]) => (
+            <a key={type} href={`/api/desktop/export?type=${type}`} className="flex items-center gap-3 rounded-xl p-4 transition-opacity hover:opacity-80" style={{ background: "var(--surface2)" }}>
+              <FileSpreadsheet size={20} className="flex-none" style={{ color: "#1f9d63" }} />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{label} (.xlsx)</span>
+                <span className="block truncate text-xs" style={{ color: "var(--text2)" }}>{desc}</span>
+              </span>
+            </a>
+          ))}
+          <a href="/api/desktop/export?type=backup" className="flex items-center gap-3 rounded-xl p-4 transition-opacity hover:opacity-80 sm:col-span-2" style={{ background: "var(--surface2)" }}>
+            <FileJson size={20} className="flex-none" style={{ color: "var(--brand)" }} />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">Bản sao lưu đầy đủ (.json)</span>
+              <span className="block text-xs" style={{ color: "var(--text2)" }}>Toàn bộ hợp đồng, báo giá, chi tiêu, lương, lịch… — dùng để khôi phục dữ liệu khi cần</span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}

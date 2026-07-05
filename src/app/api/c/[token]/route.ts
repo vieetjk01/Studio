@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { effectivePlan, studioTier } from "@/lib/plans";
 import { getStudioBrand } from "@/lib/studio-brand";
 import { sendEmail } from "@/lib/email";
 import { sendPushToOwner } from "@/lib/push";
@@ -43,7 +44,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   // Owner / studio info fetched separately (failure here must not break access).
   const { data: ownerObj } = await db
     .from("profiles")
-    .select("full_name, email, pl_phone, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin")
+    .select("full_name, email, pl_phone, pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin, plan, plan_expires_at, role")
     .eq("id", contract.owner_id)
     .maybeSingle();
   // Brand fetched separately (best-effort) so an un-migrated column never breaks
@@ -64,6 +65,18 @@ export async function POST(req: Request, { params }: { params: { token: string }
   // merely holds the token.
   if (!contract.client_phone || digits(body.phone) !== digits(contract.client_phone)) {
     return NextResponse.json({ error: "wrong_phone" }, { status: 401 });
+  }
+
+  // Gói Studio hết hạn → hợp đồng bị KHÓA: khách vẫn xem được nhưng mọi thao tác
+  // ghi từ cổng khách (ký, yêu cầu sửa, gửi brief, chọn gói...) đều bị chặn.
+  const planLocked =
+    studioTier(effectivePlan(ownerObj?.plan, ownerObj?.plan_expires_at), ownerObj?.role === "admin") !== "full";
+  const WRITE_ACTIONS = ["paid", "edit_request", "review", "brief", "choose_quote", "set_messenger", "sign"];
+  if (planLocked && WRITE_ACTIONS.includes(body.action || "")) {
+    return NextResponse.json(
+      { error: "plan_locked", message: "Hợp đồng tạm khóa do gói dịch vụ của studio đã hết hạn. Vui lòng liên hệ studio." },
+      { status: 403 }
+    );
   }
 
   const who = contract.client_name || "Khách";
@@ -243,6 +256,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   // Never expose internal crew/salary to the client (gallery/selection ids hidden).
   return NextResponse.json({
     contract: { ...contract, owner: undefined, gallery_album_id: undefined, selection_album_id: undefined },
+    plan_locked: planLocked,
     studio_name: studioName,
     studio_logo: studioLogo,
     studio_phone: ownerObj?.pl_phone ?? null,

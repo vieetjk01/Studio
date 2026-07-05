@@ -33,6 +33,14 @@ export function slideComingSoon(flags: FeatureFlags): boolean {
   return flags?.slide !== "live";
 }
 
+/**
+ * MStudo Desktop: chưa xuất bản — ẩn HOÀN TOÀN với non-admin (không hiện cả
+ * nhãn "Sắp ra mắt") cho tới khi admin bật live.
+ */
+export function desktopHidden(flags: FeatureFlags): boolean {
+  return flags?.desktop !== "live";
+}
+
 /** Nav hrefs currently flagged "Sắp ra mắt" (used to chip + lock the sidebar). */
 export function comingSoonNav(flags: FeatureFlags): string[] {
   const out: string[] = [];

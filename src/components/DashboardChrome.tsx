@@ -21,6 +21,7 @@ export default function DashboardChrome({
   role,
   showFooter,
   comingSoon = [],
+  hiddenNav = [],
   children,
 }: {
   profile: Profile;
@@ -29,6 +30,7 @@ export default function DashboardChrome({
   role: string;
   showFooter: boolean;
   comingSoon?: string[];
+  hiddenNav?: string[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -52,7 +54,7 @@ export default function DashboardChrome({
 
   if (isStudio && tier !== "none") {
     return (
-      <StudioShell profile={profile} tier={tier} role={role} comingSoon={comingSoon}>
+      <StudioShell profile={profile} tier={tier} role={role} comingSoon={comingSoon} hiddenNav={hiddenNav}>
         {children}
       </StudioShell>
     );

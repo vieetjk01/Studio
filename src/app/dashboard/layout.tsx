@@ -7,7 +7,7 @@ import DashboardChrome from "@/components/DashboardChrome";
 import NavProgress from "@/components/NavProgress";
 import TrialExpiredBanner from "@/components/TrialExpiredBanner";
 import { effectivePlan, planProfilePatch, studioTier } from "@/lib/plans";
-import { getFeatureFlags, comingSoonNav } from "@/lib/feature-flags";
+import { getFeatureFlags, comingSoonNav, desktopHidden } from "@/lib/feature-flags";
 import type { Profile } from "@/lib/types";
 
 export default async function DashboardLayout({
@@ -98,7 +98,10 @@ on conflict (id) do update set role='admin', is_active=true;`}
     : profile.role === "admin" ? "admin" : "owner";
 
   // Feature flags (admin-controlled): "Sắp ra mắt" chips + locks nav for non-admins.
-  const comingSoon = comingSoonNav(await getFeatureFlags());
+  const flags = await getFeatureFlags();
+  const comingSoon = comingSoonNav(flags);
+  // Chưa xuất bản (ẩn hoàn toàn với non-admin, không hiện cả nhãn "Sắp ra mắt").
+  const hiddenNav = desktopHidden(flags) ? ["/dashboard/studio/desktop"] : [];
 
   return (
     <div className="min-h-screen">
@@ -113,6 +116,7 @@ on conflict (id) do update set role='admin', is_active=true;`}
         role={actingRole}
         showFooter={showFooter}
         comingSoon={comingSoon}
+        hiddenNav={hiddenNav}
       >
         {children}
       </DashboardChrome>
