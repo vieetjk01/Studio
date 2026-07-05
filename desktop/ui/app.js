@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.5.0"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.1.9"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -75,9 +75,9 @@ const apiB64 = async (path) => (await api(path)).body_b64;
 // ─── Màn hình ────────────────────────────────────────────────────────────────
 function show(screen) {
   for (const s of ["setup", "folder", "main"]) $("screen-" + s).classList.toggle("hidden", s !== screen);
-  $("topStatus").innerHTML = cfg.token ? `<span class="ok">● Đã kết nối</span> ${cfg.server || ""}` : "Chưa kết nối";
-  // Nút "Mở ứng dụng quản lý" trên header chỉ hiện khi đã ở màn trạng thái.
-  $("btnOpenAppTop").classList.toggle("hidden", screen !== "main");
+  const st = $("topStatus"); if (st) st.innerHTML = cfg.token ? `<span class="ok">● Đã kết nối</span> ${cfg.server || ""}` : "Chưa kết nối";
+  // Màn chính có sidebar riêng (brand ở đó) → ẩn thanh tiêu đề trên cùng.
+  const tb = $("topbar"); if (tb) tb.classList.toggle("hidden", screen === "main");
 }
 function setPlanLocked(locked) {
   $("planBanner").classList.toggle("hidden", !locked);
@@ -128,7 +128,7 @@ $("btnFolderNext").onclick = async () => {
   if (!p || p === "Chưa chọn thư mục") return;
   cfg.dir = p; cfg.saved = cfg.saved || {}; saveCfg();
   log("Đã chọn thư mục lưu: " + p);
-  show("main"); refreshStats(); renderLog(); showSub("data");
+  show("main"); refreshStats(); renderLog(); gotoNav("overview");
   bootSync(true); // lần đầu: tải TOÀN BỘ hợp đồng đã ký + xuất đủ bộ Excel
 };
 
@@ -145,19 +145,25 @@ function openStudioBrowser() {
   invoke("open_url", { url: cfg.server + "/dashboard/studio" }).catch(() => {});
 }
 $("btnOpenApp").onclick = openStudioApp;
-$("btnOpenAppTop").onclick = openStudioApp;
-const _obb = $("btnOpenAppBrowser"); if (_obb) _obb.onclick = openStudioBrowser;
+const _obb = $("btnOpenAppBrowser"); if (_obb) _obb.onclick = (e) => { e.preventDefault(); openStudioBrowser(); };
 
-// Chuyển tab con: Dữ liệu (offline) ↔ Sao lưu & thiết bị.
+// ─── Menu trái: điều hướng giữa các mục dữ liệu + Sao lưu & thiết bị ─────────
+const NAV_TITLE = {
+  overview: "Tổng quan", contracts: "Hợp đồng", quotes: "Báo giá", clients: "Khách hàng",
+  expenses: "Thu chi", payroll: "Lương", calendar: "Lịch & đặt lịch", backup: "Sao lưu & thiết bị",
+};
+function gotoNav(nav) {
+  document.querySelectorAll("#sideNav .side-item").forEach((b) => b.classList.toggle("on", b.dataset.nav === nav));
+  const title = $("pageTitle"); if (title) title.textContent = NAV_TITLE[nav] || "";
+  if (nav === "backup") { showSub("backup"); return; }
+  showSub("data");
+  if (typeof gotoTab === "function") gotoTab(nav); // đặt tab dữ liệu + vẽ lại
+}
 function showSub(sub) {
   $("sub-data").classList.toggle("hidden", sub !== "data");
   $("sub-backup").classList.toggle("hidden", sub !== "backup");
-  $("subData").classList.toggle("on", sub === "data");
-  $("subBackup").classList.toggle("on", sub === "backup");
-  if (sub === "data" && typeof renderData === "function") renderData();
 }
-$("subData").onclick = () => showSub("data");
-$("subBackup").onclick = () => showSub("backup");
+document.querySelectorAll("#sideNav .side-item").forEach((b) => b.onclick = () => gotoNav(b.dataset.nav));
 // "Tải dữ liệu mới": làm mới cache offline (dùng lại luồng xuất/sao lưu).
 $("btnRefreshData").onclick = () => runExports(true);
 
@@ -372,6 +378,6 @@ async function loadCacheFromDisk() {
   if (!cfg.dir) { show("folder"); return; }
   show("main"); refreshStats();
   await loadCacheFromDisk();  // hiển thị dữ liệu offline ngay lập tức
-  showSub("data");            // mặc định mở tab Dữ liệu
+  gotoNav("overview");     // mặc định mở Tổng quan
   bootSync(false);
 })();

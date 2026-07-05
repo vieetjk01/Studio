@@ -2,7 +2,7 @@ name: Build MStudo Desktop (Windows)
 
 # Build file cài đặt Windows (.exe) trên máy ảo Windows của GitHub.
 #  - Chạy tay: tab Actions → "Build MStudo Desktop (Windows)" → Run workflow.
-#  - Tự chạy khi đẩy tag desktop-v* (vd desktop-v0.5.0) và tạo luôn Release.
+#  - Tự chạy khi đẩy tag desktop-v* (vd desktop-dev) và tạo luôn Release.
 on:
   workflow_dispatch:
   push:
@@ -50,11 +50,12 @@ jobs:
 
       # Tạo Release công khai kèm file .exe. Khi đẩy tag desktop-v* thì dùng đúng
       # tag đó; khi bấm chạy tay (workflow_dispatch) thì tự tạo/ghi đè tag
-      # desktop-v0.5.0 — cách này không cần đẩy tag qua git.
+      # desktop-dev — cách này không cần đẩy tag qua git.
       - name: Tạo Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-v0.5.0' }}
-          name: MStudo Desktop ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-v0.5.0' }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-dev' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'MStudo Desktop (bản phát triển)' }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
           generate_release_notes: true

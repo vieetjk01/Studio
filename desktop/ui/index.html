@@ -7,12 +7,8 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <div class="brand"><span class="logo">M</span> MStudo Desktop</div>
-    <div class="top-actions">
-      <button id="btnOpenAppTop" class="btn small primary hidden">Mở ứng dụng quản lý</button>
-      <span class="top-right" id="topStatus"></span>
-    </div>
   </header>
 
   <!-- ── Màn 1: Kết nối thiết bị ─────────────────────────────────────── -->
@@ -54,81 +50,79 @@
     </div>
   </main>
 
-  <!-- ── Màn 3: Trạng thái ───────────────────────────────────────────── -->
+  <!-- ── Màn 3: Ứng dụng (bố cục menu trái giống web app) ────────────── -->
   <main id="screen-main" class="screen hidden">
-    <div class="card app-launch">
-      <div>
-        <h2>Ứng dụng quản lý studio</h2>
-        <p class="muted">Toàn bộ tính năng (hợp đồng, báo giá, lịch, thu chi, lương, khách hàng…) chạy ngay trong client — giao diện y hệt web. Lần đầu hãy đăng nhập trong cửa sổ mở ra.</p>
-        <p class="muted" style="margin-top:6px"><a href="#" id="btnOpenAppBrowser" style="color:var(--green);font-weight:700">Hoặc mở trong trình duyệt →</a></p>
-      </div>
-      <button id="btnOpenApp" class="btn primary">Mở ứng dụng quản lý</button>
-    </div>
-    <div id="planBanner" class="banner hidden">
-      Gói Studio đã hết hạn — đồng bộ tạm dừng, hợp đồng bị khóa. File đã lưu trên máy vẫn giữ nguyên.
-    </div>
-    <div id="updateBanner" class="banner update hidden">
-      <span id="updateText">Đã có phiên bản mới.</span>
-      <button id="btnUpdate" class="btn small primary" style="margin-left:12px">Tải bản cập nhật</button>
-    </div>
-
-    <!-- Tab con: Dữ liệu (offline) · Sao lưu & thiết bị -->
-    <div class="subnav">
-      <button id="subData" class="subtab on" data-sub="data">Dữ liệu</button>
-      <button id="subBackup" class="subtab" data-sub="backup">Sao lưu &amp; thiết bị</button>
-      <button id="btnRefreshData" class="btn small" style="margin-left:auto">↻ Tải dữ liệu mới</button>
-    </div>
-
-    <!-- ── Trình duyệt dữ liệu offline ── -->
-    <section id="sub-data">
-      <div id="dataView"></div>
-    </section>
-
-    <!-- ── Sao lưu & thiết bị ── -->
-    <section id="sub-backup" class="hidden">
-      <div class="grid">
-        <div class="card stat">
-          <div class="stat-label">Lần đồng bộ cuối</div>
-          <div class="stat-value" id="stSync">—</div>
+    <div class="applayout">
+      <aside class="sidebar">
+        <div class="side-brand"><span class="logo">M</span> MStudo</div>
+        <nav class="side-nav" id="sideNav">
+          <div class="side-group">Quản lý</div>
+          <button class="side-item on" data-nav="overview">Tổng quan</button>
+          <button class="side-item" data-nav="contracts">Hợp đồng</button>
+          <button class="side-item" data-nav="quotes">Báo giá</button>
+          <button class="side-item" data-nav="clients">Khách hàng</button>
+          <div class="side-group">Tài chính</div>
+          <button class="side-item" data-nav="expenses">Thu chi</button>
+          <button class="side-item" data-nav="payroll">Lương</button>
+          <div class="side-group">Lịch</div>
+          <button class="side-item" data-nav="calendar">Lịch &amp; đặt lịch</button>
+          <div class="side-group">Hệ thống</div>
+          <button class="side-item" data-nav="backup">Sao lưu &amp; thiết bị</button>
+        </nav>
+        <div class="side-foot">
+          <button id="btnOpenApp" class="btn primary small" style="width:100%">Mở ứng dụng đầy đủ</button>
+          <a href="#" id="btnOpenAppBrowser" class="side-link">Mở trong trình duyệt →</a>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Hợp đồng đã lưu về máy</div>
-          <div class="stat-value" id="stContracts">0</div>
-        </div>
-        <div class="card stat">
-          <div class="stat-label">Xuất Excel gần nhất</div>
-          <div class="stat-value" id="stExport">—</div>
-        </div>
-      </div>
+      </aside>
 
-      <div class="card">
-        <div class="row-between">
-          <h2>Thư mục lưu</h2>
-          <div class="row-gap">
-            <button id="btnOpenFolder" class="btn small">Mở thư mục</button>
-            <button id="btnChangeFolder" class="btn small">Đổi vị trí…</button>
+      <div class="content">
+        <header class="content-top">
+          <div class="content-title" id="pageTitle">Tổng quan</div>
+          <div class="content-actions">
+            <span class="top-right" id="topStatus"></span>
+            <button id="btnRefreshData" class="btn small">↻ Tải dữ liệu mới</button>
           </div>
-        </div>
-        <code id="mainFolderPath" class="folder-path"></code>
-      </div>
-
-      <div class="card">
-        <div class="row-between">
-          <h2>Hoạt động</h2>
-          <div class="row-gap">
-            <button id="btnSyncNow" class="btn small primary">Đồng bộ ngay</button>
-            <button id="btnExportNow" class="btn small">Xuất Excel ngay</button>
+        </header>
+        <div class="content-body">
+          <div id="planBanner" class="banner hidden">
+            Gói Studio đã hết hạn — đồng bộ tạm dừng, hợp đồng bị khóa. File đã lưu trên máy vẫn giữ nguyên.
           </div>
-        </div>
-        <ul id="log" class="log"></ul>
-      </div>
+          <div id="updateBanner" class="banner update hidden">
+            <span id="updateText">Đã có phiên bản mới.</span>
+            <button id="btnUpdate" class="btn small primary" style="margin-left:12px">Tải bản cập nhật</button>
+          </div>
 
-      <div class="card">
-        <h2>Thiết bị</h2>
-        <p class="muted" id="deviceInfo"></p>
-        <button id="btnDisconnect" class="btn danger small">Ngắt kết nối thiết bị này</button>
+          <section id="sub-data">
+            <div id="dataView"></div>
+          </section>
+
+          <section id="sub-backup" class="hidden">
+            <div class="grid">
+              <div class="card stat"><div class="stat-label">Lần đồng bộ cuối</div><div class="stat-value" id="stSync">—</div></div>
+              <div class="card stat"><div class="stat-label">Hợp đồng đã lưu về máy</div><div class="stat-value" id="stContracts">0</div></div>
+              <div class="card stat"><div class="stat-label">Xuất Excel gần nhất</div><div class="stat-value" id="stExport">—</div></div>
+            </div>
+            <div class="card">
+              <div class="row-between"><h2>Thư mục lưu</h2>
+                <div class="row-gap"><button id="btnOpenFolder" class="btn small">Mở thư mục</button><button id="btnChangeFolder" class="btn small">Đổi vị trí…</button></div>
+              </div>
+              <code id="mainFolderPath" class="folder-path"></code>
+            </div>
+            <div class="card">
+              <div class="row-between"><h2>Hoạt động</h2>
+                <div class="row-gap"><button id="btnSyncNow" class="btn small primary">Đồng bộ ngay</button><button id="btnExportNow" class="btn small">Xuất Excel ngay</button></div>
+              </div>
+              <ul id="log" class="log"></ul>
+            </div>
+            <div class="card">
+              <h2>Thiết bị</h2>
+              <p class="muted" id="deviceInfo"></p>
+              <button id="btnDisconnect" class="btn danger small">Ngắt kết nối thiết bị này</button>
+            </div>
+          </section>
+        </div>
       </div>
-    </section>
+    </div>
   </main>
 
   <!-- Cửa sổ chi tiết hợp đồng (offline) -->

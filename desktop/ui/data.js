@@ -53,17 +53,16 @@ const DATA_TABS = [
   ["quotes", "Báo giá"], ["expenses", "Thu chi"], ["payroll", "Lương"], ["calendar", "Lịch"],
 ];
 
+// Điều hướng do menu trái (app.js) gọi.
+function gotoTab(tab) { dataTab = tab; dataQuery = ""; renderData(); }
+
 function renderData() {
   const host = document.getElementById("dataView");
   if (!host) return;
-  const tabs = DATA_TABS.map(([id, label]) =>
-    `<button class="dtab ${id === dataTab ? "on" : ""}" data-tab="${id}">${label}</button>`).join("");
   const needSearch = dataTab !== "overview";
   host.innerHTML =
-    `<div class="dtabs">${tabs}</div>` +
     (needSearch ? `<input id="dataSearch" class="dsearch" placeholder="Tìm kiếm…" value="${esc(dataQuery)}" />` : "") +
     `<div id="dataBody">${renderTab()}</div>`;
-  host.querySelectorAll(".dtab").forEach((b) => b.onclick = () => { dataTab = b.dataset.tab; dataQuery = ""; renderData(); });
   const s = document.getElementById("dataSearch");
   if (s) s.oninput = () => { dataQuery = s.value; document.getElementById("dataBody").innerHTML = renderTab(); bindRowClicks(); };
   bindRowClicks();
@@ -89,6 +88,8 @@ function bindRowClicks() {
   if (add) add.onclick = () => openExpense();
   const addEv = document.getElementById("addEvent");
   if (addEv) addEv.onclick = () => openEvent();
+  const addCt = document.getElementById("addContract");
+  if (addCt) addCt.onclick = () => openContractEdit();
 }
 
 function match(row, fields) {
@@ -141,7 +142,8 @@ function renderContracts() {
   const rows = T("studio_contracts")
     .filter((c) => match(c, [c.code, c.client_name, c.client_phone, c.title]))
     .sort((a, b) => String(b.event_date || b.created_at || "").localeCompare(String(a.event_date || a.created_at || "")));
-  if (!rows.length) return empty(dataQuery ? "Không có hợp đồng khớp." : "Chưa có hợp đồng.");
+  const bar = `<div class="dbar"><button class="btn small primary" id="addContract">＋ Hợp đồng mới</button><span class="dcap" style="margin:0">${rows.length} hợp đồng</span></div>`;
+  if (!rows.length) return bar + empty(dataQuery ? "Không có hợp đồng khớp." : "Chưa có hợp đồng. Bấm ＋ để tạo.");
   const cards = rows.map((c) => {
     const tot = contractTotal(c.id), paid = contractPaid(c.id);
     return `<div class="ccard">
@@ -157,7 +159,106 @@ function renderContracts() {
       </div>
     </div>`;
   }).join("");
-  return `<div class="dcap">${rows.length} hợp đồng</div><div class="ccards">${cards}</div>`;
+  return bar + `<div class="ccards">${cards}</div>`;
+}
+
+// Tạo/sửa hợp đồng đầy đủ (thông tin + hạng mục) — chạy cục bộ + đồng bộ ngầm.
+let _editItems = [];
+function itemsRows() {
+  return _editItems.map((it, i) => `<div class="irow" data-i="${i}">
+    <input class="in-name" placeholder="Hạng mục" value="${esc(it.name || "")}" />
+    <input class="in-qty" type="number" placeholder="SL" value="${esc(it.qty ?? 1)}" />
+    <input class="in-price" type="number" placeholder="Đơn giá" value="${esc(it.unit_price ?? 0)}" />
+    <button class="btn small in-del" data-del="${i}">×</button>
+  </div>`).join("");
+}
+function syncItems() {
+  document.querySelectorAll("#itemsBox .irow").forEach((r) => {
+    const i = +r.dataset.i;
+    if (_editItems[i]) {
+      _editItems[i].name = r.querySelector(".in-name").value;
+      _editItems[i].qty = r.querySelector(".in-qty").value;
+      _editItems[i].unit_price = r.querySelector(".in-price").value;
+    }
+  });
+}
+function drawItems() {
+  const box = document.getElementById("itemsBox");
+  box.innerHTML = itemsRows() + `<div class="itotal">Tổng: ${vnd(_editItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unit_price) || 0), 0))}</div>`;
+  box.querySelectorAll(".in-del").forEach((b) => b.onclick = () => { syncItems(); _editItems.splice(+b.dataset.del, 1); drawItems(); });
+  box.querySelectorAll(".in-qty,.in-price").forEach((inp) => inp.oninput = () => { syncItems(); const t = document.querySelector("#itemsBox .itotal"); if (t) t.textContent = "Tổng: " + vnd(_editItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unit_price) || 0), 0)); });
+}
+function openContractEdit(id) {
+  const c = id ? T("studio_contracts").find((x) => x.id === id) : null;
+  const v = c || { status: "draft", shoot_type: "photo", event_date: "" };
+  _editItems = id ? T("contract_items").filter((i) => i.contract_id === id).sort((a, b) => (a.position || 0) - (b.position || 0)).map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price })) : [];
+  const ov = document.getElementById("dataModal");
+  ov.querySelector(".dmodal").innerHTML = `
+    <div class="dmodal-head">
+      <div class="dmodal-title">${id ? "Sửa hợp đồng" : "Hợp đồng mới"}</div>
+      <button id="dmClose" class="btn small">Đóng</button>
+    </div>
+    <div class="dmodal-body dform">
+      <div class="fgrid">
+        <div><label>Mã HĐ</label><input id="ctCode" value="${esc(v.code || "")}" placeholder="VD: HD-2026-001" /></div>
+        <div><label>Trạng thái</label><select id="ctStatus" class="dsel" style="width:100%;height:40px">${statusOptions(CONTRACT_STATUS, v.status)}</select></div>
+      </div>
+      <label>Tiêu đề</label><input id="ctTitle" value="${esc(v.title || "")}" placeholder="VD: Chụp ảnh cưới" />
+      <div class="fgrid">
+        <div><label>Tên khách</label><input id="ctName" value="${esc(v.client_name || "")}" /></div>
+        <div><label>SĐT khách</label><input id="ctPhone" value="${esc(v.client_phone || "")}" /></div>
+      </div>
+      <div class="fgrid">
+        <div><label>Loại dịch vụ</label><select id="ctShoot" class="dsel" style="width:100%;height:40px">${statusOptions(SHOOT_TYPE, v.shoot_type)}</select></div>
+        <div><label>Ngày chụp</label><input id="ctDate" type="date" value="${esc((v.event_date || "").slice(0, 10))}" /></div>
+      </div>
+      <label>Địa điểm</label><input id="ctLoc" value="${esc(v.location || "")}" />
+      <label>Ghi chú</label><input id="ctNote" value="${esc(v.note || "")}" />
+      <label style="margin-top:14px">Hạng mục</label>
+      <div id="itemsBox" class="items-box"></div>
+      <button id="ctAddItem" class="btn small" style="margin-top:8px">＋ Thêm hạng mục</button>
+      <div class="dform-actions">
+        ${id ? `<button id="ctDelete" class="btn small danger">Xóa HĐ</button>` : ""}
+        <button id="ctSave" class="btn small primary" style="margin-left:auto">Lưu</button>
+      </div>
+    </div>`;
+  ov.classList.remove("hidden");
+  drawItems();
+  const close = () => ov.classList.add("hidden");
+  document.getElementById("dmClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.getElementById("ctAddItem").onclick = () => { syncItems(); _editItems.push({ id: uuid(), name: "", qty: 1, unit_price: 0 }); drawItems(); };
+  if (id) document.getElementById("ctDelete").onclick = async () => {
+    if (!confirm("Xóa hợp đồng này và toàn bộ hạng mục?")) return;
+    for (const it of T("contract_items").filter((i) => i.contract_id === id)) await window.localMutate("contract_items", "delete", { id: it.id, contract_id: id });
+    await window.localMutate("studio_contracts", "delete", { id });
+    close();
+  };
+  document.getElementById("ctSave").onclick = async () => {
+    syncItems();
+    const title = document.getElementById("ctTitle").value.trim() || "Hợp đồng";
+    const cid = id || uuid();
+    const crow = {
+      id: cid, code: document.getElementById("ctCode").value.trim(), title,
+      client_name: document.getElementById("ctName").value.trim(),
+      client_phone: document.getElementById("ctPhone").value.trim(),
+      shoot_type: document.getElementById("ctShoot").value,
+      event_date: document.getElementById("ctDate").value || null,
+      location: document.getElementById("ctLoc").value.trim(),
+      note: document.getElementById("ctNote").value.trim(),
+      status: document.getElementById("ctStatus").value,
+    };
+    if (!id) crow.client_token = "c" + uuid().replace(/-/g, "").slice(0, 22);
+    await window.localMutate("studio_contracts", id ? "update" : "insert", crow);
+    const existing = T("contract_items").filter((i) => i.contract_id === cid);
+    for (let idx = 0; idx < _editItems.length; idx++) {
+      const it = _editItems[idx];
+      const row = { id: it.id, contract_id: cid, name: (it.name || "").trim(), qty: Math.round(Number(it.qty) || 0), unit_price: Math.round(Number(it.unit_price) || 0), position: idx };
+      await window.localMutate("contract_items", existing.find((e) => e.id === it.id) ? "update" : "insert", row);
+    }
+    for (const e of existing) if (!_editItems.find((it) => it.id === e.id)) await window.localMutate("contract_items", "delete", { id: e.id, contract_id: cid });
+    close();
+  };
 }
 
 function openContract(id) {
@@ -172,7 +273,7 @@ function openContract(id) {
     <div class="dmodal-head">
       <div><div class="dmodal-title">${esc(c.title || "Hợp đồng")} · ${esc(c.code || "")}</div>
       <div class="muted">${esc(c.client_name || "")} · ${esc(c.client_phone || "")} · ${D(c.event_date)}</div></div>
-      <button id="dmClose" class="btn small">Đóng</button>
+      <div class="row-gap"><button id="dmEdit" class="btn small primary">Sửa</button><button id="dmClose" class="btn small">Đóng</button></div>
     </div>
     <div class="dmodal-body">
       <div class="drow"><span class="badge">${CONTRACT_STATUS[c.status] || c.status || ""}</span>
@@ -189,6 +290,7 @@ function openContract(id) {
   ov.querySelector(".dmodal").innerHTML = html;
   ov.classList.remove("hidden");
   document.getElementById("dmClose").onclick = () => ov.classList.add("hidden");
+  document.getElementById("dmEdit").onclick = () => { ov.classList.add("hidden"); openContractEdit(id); };
   ov.onclick = (e) => { if (e.target === ov) ov.classList.add("hidden"); };
 }
 

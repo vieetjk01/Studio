@@ -23,6 +23,7 @@ const TABLES: Record<string, TableCfg> = {
   studio_events: { owner: true, cols: ["contract_id", "title", "event_date", "event_time", "note", "remind"] },
   studio_contracts: { owner: true, cols: ["code", "title", "client_name", "client_phone", "client_email", "shoot_type", "event_date", "event_time", "location", "status", "deposit", "note", "client_token"] },
   // Bảng con: sửa hạng mục / thanh toán / lương của hợp đồng thuộc tài khoản.
+  contract_items: { parent: { col: "contract_id", table: "studio_contracts" }, cols: ["contract_id", "name", "qty", "unit_price", "position"] },
   contract_payments: { parent: { col: "contract_id", table: "studio_contracts" }, cols: ["contract_id", "amount", "method", "kind", "note", "paid_at"] },
   contract_crew: { parent: { col: "contract_id", table: "studio_contracts" }, cols: ["contract_id", "name", "phone", "role", "salary", "status", "note", "paid", "paid_at", "position"] },
 };

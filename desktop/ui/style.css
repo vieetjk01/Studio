@@ -27,9 +27,37 @@ body {
 .app-launch .btn { margin-top: 0; flex: none; }
 
 .screen { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+#screen-main { max-width: none; margin: 0; padding: 0; }
 /* .hidden phải luôn thắng các quy tắc display khác (vd .dmodal-overlay/.banner.update
    có 2 class nên độ ưu tiên cao hơn) — nếu không, lớp phủ mờ che cả cửa sổ. */
 .screen.hidden, .hidden { display: none !important; }
+
+/* ── Bố cục ứng dụng: menu trái + nội dung (giống web app) ── */
+.applayout { display: grid; grid-template-columns: 232px 1fr; height: 100vh; }
+.sidebar { display: flex; flex-direction: column; background: #14322a; color: #e8f2ec; }
+.side-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; padding: 18px 18px 14px; }
+.side-brand .logo { background: var(--green); }
+.side-nav { flex: 1; overflow-y: auto; padding: 6px 10px 10px; }
+.side-group { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #7fa894; margin: 14px 10px 6px; }
+.side-item {
+  display: block; width: 100%; text-align: left; padding: 9px 12px; margin: 2px 0; border: none;
+  background: transparent; color: #cfe3d8; font-size: 13.5px; font-weight: 600; border-radius: 9px; cursor: pointer;
+}
+.side-item:hover { background: rgba(255,255,255,.07); }
+.side-item.on { background: var(--green); color: #fff; }
+.side-foot { padding: 12px; border-top: 1px solid #0f261f; display: flex; flex-direction: column; gap: 8px; }
+.side-foot .btn { margin-top: 0; }
+.side-link { color: #9fd3bb; font-size: 12px; text-decoration: none; text-align: center; }
+
+.content { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+.content-top {
+  height: 58px; flex: none; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; background: var(--card); border-bottom: 1px solid var(--border);
+}
+.content-title { font-size: 17px; font-weight: 800; }
+.content-actions { display: flex; align-items: center; gap: 12px; }
+.content-actions .btn { margin-top: 0; }
+.content-body { flex: 1; overflow-y: auto; padding: 22px; }
 
 .card {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
@@ -162,3 +190,11 @@ input[type="url"], input[type="text"] {
   height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px;
   background: var(--card); color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 2px;
 }
+
+/* Form hợp đồng: lưới 2 cột + hàng hạng mục */
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.items-box { display: flex; flex-direction: column; gap: 6px; }
+.irow { display: grid; grid-template-columns: 1fr 70px 120px 34px; gap: 6px; align-items: center; }
+.irow input { height: 36px; }
+.irow .in-del { margin-top: 0; height: 36px; padding: 0; color: var(--danger); }
+.itotal { text-align: right; font-weight: 700; font-size: 13.5px; margin-top: 4px; }
