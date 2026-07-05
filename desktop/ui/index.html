@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MStudo Desktop</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">M</span> MStudo Desktop</div>
+    <div class="top-right" id="topStatus"></div>
+  </header>
+
+  <!-- ── Màn 1: Kết nối thiết bị ─────────────────────────────────────── -->
+  <main id="screen-setup" class="screen">
+    <div class="card">
+      <h1>Kết nối với tài khoản studio</h1>
+      <p class="muted">
+        Mở <b>mstudo → MStudo Desktop</b> trên trình duyệt (tài khoản chủ studio), bấm
+        <b>“Kết nối thiết bị mới”</b> rồi dán <b>mã kết nối</b> và <b>địa chỉ máy chủ</b> vào đây.
+      </p>
+      <label>Địa chỉ máy chủ</label>
+      <input id="inServer" type="url" placeholder="https://mstudo.com" spellcheck="false" />
+      <label>Mã kết nối thiết bị</label>
+      <input id="inToken" type="text" placeholder="msd_..." spellcheck="false" autocomplete="off" />
+      <button id="btnConnect" class="btn primary">Kết nối</button>
+      <p id="setupMsg" class="msg"></p>
+    </div>
+  </main>
+
+  <!-- ── Màn 2: Chọn thư mục lưu ─────────────────────────────────────── -->
+  <main id="screen-folder" class="screen hidden">
+    <div class="card">
+      <h1>Chọn thư mục lưu dữ liệu</h1>
+      <p class="muted">
+        Hợp đồng (PDF + Word) và các file Excel sao lưu sẽ tự động lưu vào đây.
+        Có thể đổi vị trí bất cứ lúc nào trong phần cài đặt.
+      </p>
+      <div class="folder-row">
+        <code id="folderPath" class="folder-path">Chưa chọn thư mục</code>
+        <button id="btnPickFolder" class="btn">Chọn thư mục…</button>
+      </div>
+      <div class="tree muted">
+        <div>📁 HopDong/ — mỗi hợp đồng 1 thư mục (PDF + Word, bản mới khi ký lại)</div>
+        <div>📁 KhachHang/ · BaoGia/ · ChiTieu/ · Luong/ · LichHen/ · NhanVien/ — Excel hằng ngày</div>
+        <div>📁 SaoLuu/ — bản JSON đầy đủ để khôi phục · tự dọn file cũ hơn 30 ngày</div>
+      </div>
+      <button id="btnFolderNext" class="btn primary" disabled>Bắt đầu đồng bộ</button>
+      <p id="folderMsg" class="msg"></p>
+    </div>
+  </main>
+
+  <!-- ── Màn 3: Trạng thái ───────────────────────────────────────────── -->
+  <main id="screen-main" class="screen hidden">
+    <div id="planBanner" class="banner hidden">
+      Gói Studio đã hết hạn — đồng bộ tạm dừng, hợp đồng bị khóa. File đã lưu trên máy vẫn giữ nguyên.
+    </div>
+    <div class="grid">
+      <div class="card stat">
+        <div class="stat-label">Lần đồng bộ cuối</div>
+        <div class="stat-value" id="stSync">—</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Hợp đồng đã lưu về máy</div>
+        <div class="stat-value" id="stContracts">0</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Xuất Excel gần nhất</div>
+        <div class="stat-value" id="stExport">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row-between">
+        <h2>Thư mục lưu</h2>
+        <div class="row-gap">
+          <button id="btnOpenFolder" class="btn small">Mở thư mục</button>
+          <button id="btnChangeFolder" class="btn small">Đổi vị trí…</button>
+        </div>
+      </div>
+      <code id="mainFolderPath" class="folder-path"></code>
+    </div>
+
+    <div class="card">
+      <div class="row-between">
+        <h2>Hoạt động</h2>
+        <div class="row-gap">
+          <button id="btnSyncNow" class="btn small primary">Đồng bộ ngay</button>
+          <button id="btnExportNow" class="btn small">Xuất Excel ngay</button>
+        </div>
+      </div>
+      <ul id="log" class="log"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Thiết bị</h2>
+      <p class="muted" id="deviceInfo"></p>
+      <button id="btnDisconnect" class="btn danger small">Ngắt kết nối thiết bị này</button>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

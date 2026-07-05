@@ -106,11 +106,21 @@ MStudo/                                  ← studio chọn vị trí gốc
 4. Bảng + API `desktop_devices` (đăng ký, thu hồi, giới hạn 2).
 5. Khóa hợp đồng khi hết hạn gói.
 
-**Giai đoạn B — client Windows (repo riêng `mstudo-desktop`, Tauri)**
-1. Shell đăng nhập + WebView app; chọn thư mục lưu; cấu hình.
-2. Engine lưu file (ghi an toàn, retry, log) + tải bù + realtime hợp đồng.
-3. Lịch xuất hằng ngày + khi mở app; dọn 30 ngày; màn hình "Trạng thái sao lưu".
-4. Auto-update; đóng gói NSIS; hướng dẫn cài.
+**Giai đoạn B — client Windows (thư mục `desktop/` trong repo, Tauri v2)**
+1. ✅ Scaffold hoàn chỉnh: UI tiếng Việt 3 màn hình (kết nối → chọn thư mục →
+   trạng thái) + Rust commands (HTTP, ghi file an toàn, chọn thư mục, dọn 30
+   ngày, di chuyển dữ liệu). Build trên máy Windows theo `desktop/README.md`.
+2. ✅ Xác thực bằng MÃ KẾT NỐI thiết bị: nút "Kết nối thiết bị mới" trên trang
+   web tạo token `msd_` hiện 1 lần → dán vào app (thay cho đăng nhập webview —
+   đơn giản, không phụ thuộc cookie).
+3. ✅ PDF hợp đồng: server trả HTML bản in → client chuyển PDF bằng Microsoft
+   Edge headless (sẵn trên Win 10/11, giữ nguyên ảnh chữ ký); không có Edge →
+   giữ bản HTML dự phòng.
+4. ✅ Engine: tải bù theo mốc đồng bộ cuối (chỉ dời mốc khi lưu trọn vẹn),
+   mỗi HĐ 1 thư mục + bản mới khi sửa (manifest mstudo.json), Excel hằng ngày
+   + khi mở app, dọn 30 ngày (không đụng HopDong), đổi thư mục có hỏi di chuyển.
+5. Còn lại: auto-update (tauri-plugin-updater + khóa ký), build file cài NSIS
+   trên Windows, upload + đặt NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL.
 
 **Giai đoạn C — hoàn thiện**
 1. Khôi phục ngược (xem trước + xung đột).

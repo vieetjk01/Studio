@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Monitor, Download, ShieldAlert, FileSpreadsheet, FileJson, Laptop, Trash2, RefreshCw } from "lucide-react";
+import { Monitor, Download, ShieldAlert, FileSpreadsheet, FileJson, Laptop, Trash2, RefreshCw, Plus, Copy, Check } from "lucide-react";
 
 /**
  * Trang MStudo Desktop: tải bản cài Windows, quản lý thiết bị (tối đa 2 máy),
@@ -30,7 +30,12 @@ export default function DesktopPanel() {
   const [migrated, setMigrated] = useState(true);
   const [limit, setLimit] = useState(2);
   const [loading, setLoading] = useState(true);
+  const [pairing, setPairing] = useState(false);
+  const [pairToken, setPairToken] = useState("");
+  const [pairErr, setPairErr] = useState("");
+  const [copied, setCopied] = useState("");
   const downloadUrl = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || "";
+  const serverUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   async function load() {
     setLoading(true);
@@ -49,6 +54,30 @@ export default function DesktopPanel() {
     if (!confirm("Thu hồi thiết bị này? Máy đó sẽ ngừng đồng bộ ngay lập tức.")) return;
     await fetch(`/api/desktop/devices?id=${id}`, { method: "DELETE" });
     load();
+  }
+
+  // Tạo mã kết nối cho máy mới — token chỉ hiện MỘT lần, dán vào app desktop.
+  async function pair() {
+    setPairing(true); setPairErr(""); setPairToken("");
+    try {
+      const r = await fetch("/api/desktop/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `Máy đăng ký ${new Date().toLocaleDateString("vi-VN")}` }),
+      });
+      const j = await r.json();
+      if (!r.ok) {
+        setPairErr(j.error === "device_limit" ? `Đã đạt giới hạn ${limit} máy — thu hồi một thiết bị cũ trước.` : "Không tạo được mã kết nối. Đã chạy schema.sql mới nhất chưa?");
+      } else {
+        setPairToken(j.token);
+        load();
+      }
+    } catch { setPairErr("Không tạo được mã kết nối."); }
+    setPairing(false);
+  }
+
+  async function copyText(text: string, tag: string) {
+    try { await navigator.clipboard.writeText(text); setCopied(tag); setTimeout(() => setCopied(""), 2000); } catch { /* */ }
   }
 
   const active = devices.filter((d) => !d.revoked_at);
@@ -90,11 +119,33 @@ export default function DesktopPanel() {
       <div className="card p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl font-medium">Thiết bị của bạn</h2>
-          <button onClick={load} className="btn-ghost inline-flex items-center gap-2 text-sm"><RefreshCw size={14} /> Làm mới</button>
+          <div className="flex items-center gap-2">
+            <button onClick={pair} disabled={pairing} className="btn-primary inline-flex items-center gap-2 text-sm"><Plus size={14} /> Kết nối thiết bị mới</button>
+            <button onClick={load} className="btn-ghost inline-flex items-center gap-2 text-sm"><RefreshCw size={14} /> Làm mới</button>
+          </div>
         </div>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
-          Tối đa {limit} máy hoạt động cho mỗi tài khoản. Máy sẽ tự đăng ký khi bạn đăng nhập trong ứng dụng MStudo Desktop.
+          Tối đa {limit} máy hoạt động cho mỗi tài khoản. Bấm “Kết nối thiết bị mới” để lấy mã, rồi dán vào ứng dụng MStudo Desktop trên máy tính.
         </p>
+        {pairErr && <p className="mt-3 rounded-lg p-3 text-sm" style={{ background: "#fbeaea", color: "#8f3d3d" }}>{pairErr}</p>}
+        {pairToken && (
+          <div className="mt-3 rounded-xl p-4" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+            <p className="text-sm font-medium">Mã kết nối — chỉ hiện MỘT lần, hãy dán ngay vào app:</p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-xs" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>{pairToken}</code>
+              <button onClick={() => copyText(pairToken, "token")} className="btn-ghost inline-flex flex-none items-center gap-1.5 text-sm">
+                {copied === "token" ? <Check size={14} /> : <Copy size={14} />} {copied === "token" ? "Đã chép" : "Chép mã"}
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs" style={{ color: "var(--text2)" }}>Địa chỉ máy chủ:</span>
+              <code className="rounded px-2 py-1 text-xs" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>{serverUrl}</code>
+              <button onClick={() => copyText(serverUrl, "server")} className="btn-ghost inline-flex items-center gap-1.5 text-xs">
+                {copied === "server" ? <Check size={12} /> : <Copy size={12} />} {copied === "server" ? "Đã chép" : "Chép"}
+              </button>
+            </div>
+          </div>
+        )}
         {!migrated && (
           <p className="mt-3 rounded-lg p-3 text-sm" style={{ background: "var(--surface2)", color: "var(--text2)" }}>
             Cơ sở dữ liệu chưa có bảng thiết bị — chạy <code>supabase/schema.sql</code> mới nhất trong Supabase SQL Editor.
