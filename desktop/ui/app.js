@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.2.0"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.2.1"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -132,10 +132,13 @@ $("btnFolderNext").onclick = async () => {
   bootSync(true); // lần đầu: tải TOÀN BỘ hợp đồng đã ký + xuất đủ bộ Excel
 };
 
-// ─── Mở ứng dụng quản lý studio đầy đủ (web app) trong cửa sổ riêng ──────────
+// ─── Mở ứng dụng quản lý studio đầy đủ ───────────────────────────────────────
+// Mở trong TRÌNH DUYỆT MẶC ĐỊNH (Chrome/Edge) — nơi đã có sẵn phiên đăng nhập,
+// nên mọi tính năng chạy đúng. (Webview nhúng có phiên riêng chưa đăng nhập nên
+// bị lớp phủ mờ chặn thao tác — nên không dùng cách nhúng nữa.)
 function openStudioApp() {
   if (!cfg.server) return;
-  invoke("open_app", { url: cfg.server + "/dashboard/studio" }).catch((e) => log("Không mở được ứng dụng: " + e, "err"));
+  invoke("open_url", { url: cfg.server + "/dashboard/studio" }).catch((e) => log("Không mở được ứng dụng: " + e, "err"));
 }
 $("btnOpenApp").onclick = openStudioApp;
 $("btnOpenAppTop").onclick = openStudioApp;
