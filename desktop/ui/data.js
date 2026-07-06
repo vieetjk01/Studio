@@ -330,7 +330,7 @@ function openContract(id) {
       <div class="row-gap"><button id="dmPrint" class="btn small">🖨 In PDF</button><button id="dmEdit" class="btn small primary">Sửa</button><button id="dmClose" class="btn small">Đóng</button></div>
     </div>
     <div class="dmodal-body">
-      <div class="drow"><span class="badge">${CONTRACT_STATUS[c.status] || c.status || ""}</span>
+      <div class="drow"><span class="badge">${CONTRACT_STATUS[c.status] || esc(c.status) || ""}</span>
         ${c.client_signed_at ? `<span class="badge ok">Khách đã ký ${D(c.client_signed_at)}</span>` : `<span class="badge warn">Chưa ký</span>`}</div>
       ${c.location ? `<p><b>Địa điểm:</b> ${esc(c.location)}</p>` : ""}
       <h4>Hạng mục</h4>
@@ -383,7 +383,7 @@ function openClient(name, phone) {
     </div>
     <div class="dmodal-body">
       <p class="dtotals"><b>Tổng giá trị:</b> ${vnd(total)} · <b>Đã thu:</b> ${vnd(paid)} · <b>Còn:</b> ${vnd(Math.max(0, total - paid))}</p>
-      ${cs.length ? `<table class="dtable"><thead><tr><th>Mã</th><th>Hợp đồng</th><th>Ngày</th><th>Trạng thái</th><th class="r">Giá trị</th></tr></thead><tbody>${cs.map((c) => `<tr data-open-contract="${c.id}" class="clickable"><td>${esc(c.code || "")}</td><td>${esc(c.title || "")}</td><td>${D(c.event_date)}</td><td>${CONTRACT_STATUS[c.status] || c.status || ""}</td><td class="r">${vnd(contractTotal(c.id))}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">Chưa có hợp đồng.</p>`}
+      ${cs.length ? `<table class="dtable"><thead><tr><th>Mã</th><th>Hợp đồng</th><th>Ngày</th><th>Trạng thái</th><th class="r">Giá trị</th></tr></thead><tbody>${cs.map((c) => `<tr data-open-contract="${c.id}" class="clickable"><td>${esc(c.code || "")}</td><td>${esc(c.title || "")}</td><td>${D(c.event_date)}</td><td>${CONTRACT_STATUS[c.status] || esc(c.status) || ""}</td><td class="r">${vnd(contractTotal(c.id))}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">Chưa có hợp đồng.</p>`}
     </div>`;
   ov.classList.remove("hidden");
   const close = () => ov.classList.add("hidden");
@@ -402,7 +402,7 @@ function renderQuotes() {
     .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
   const bar = `<div class="dbar"><button class="btn small primary" id="addQuote">＋ Báo giá mới</button><span class="dcap" style="margin:0">${rows.length} báo giá</span></div>`;
   if (!rows.length) return bar + empty(dataQuery ? "Không có báo giá khớp." : "Chưa có báo giá. Bấm ＋ để tạo.");
-  const body = rows.map((q) => `<tr data-quote="${q.id}" class="clickable"><td>${esc(q.code || "")}</td><td>${esc(q.client_name || "")}</td><td>${esc(q.client_phone || "")}</td><td>${D(q.event_date)}</td><td><span class="badge">${QUOTE_STATUS[q.status] || q.status || ""}</span></td><td class="r">${vnd(quoteTotal(q.id))}</td></tr>`).join("");
+  const body = rows.map((q) => `<tr data-quote="${q.id}" class="clickable"><td>${esc(q.code || "")}</td><td>${esc(q.client_name || "")}</td><td>${esc(q.client_phone || "")}</td><td>${D(q.event_date)}</td><td><span class="badge">${QUOTE_STATUS[q.status] || esc(q.status) || ""}</span></td><td class="r">${vnd(quoteTotal(q.id))}</td></tr>`).join("");
   return bar + table(["Mã", "Khách", "SĐT", "Ngày", "Trạng thái", "Tổng"], body, "");
 }
 // Tạo/sửa báo giá (dùng lại trình hạng mục _editItems như hợp đồng).

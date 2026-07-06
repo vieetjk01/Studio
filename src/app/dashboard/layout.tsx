@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, getProfileById } from "@/lib/auth-guards";
 import DashboardChrome from "@/components/DashboardChrome";
 import NavProgress from "@/components/NavProgress";
@@ -33,7 +34,8 @@ export default async function DashboardLayout({
   // Auto-downgrade an expired paid plan back to free (resets the synced limits).
   if (profile && profile.role !== "admin" && effectivePlan(profile.plan, profile.plan_expires_at) === "free" && profile.plan !== "free") {
     const patch = { ...planProfilePatch("free"), plan_cycle: null, plan_expires_at: null };
-    await createClient().from("profiles").update(patch).eq("id", user.id);
+    // Cột plan* là cột nhạy cảm — chỉ service-role được ghi (xem grant ở schema C1).
+    await createAdminClient().from("profiles").update(patch).eq("id", user.id);
     profile = { ...profile, ...patch };
   }
 

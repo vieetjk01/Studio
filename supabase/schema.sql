@@ -207,6 +207,27 @@ drop policy if exists profiles_admin_all on public.profiles;
 create policy profiles_admin_all on public.profiles
   for all using (public.is_admin()) with check (public.is_admin());
 
+-- ── Chống leo thang đặc quyền (C1) ──────────────────────────────────────────
+-- RLS chỉ lọc theo DÒNG, không theo CỘT. Nếu để authenticated có UPDATE toàn
+-- bảng, một user có thể tự sửa role='admin' / plan / studio_owner_id trên chính
+-- dòng của mình qua anon client. Vì vậy: thu hồi UPDATE toàn bảng rồi CHỈ cấp
+-- lại các cột cấu hình an toàn. Mọi cột nhạy cảm (role, is_active, plan*,
+-- studio_owner_id, studio_role, *_limit, can_*, trial_used_at, referred_by,
+-- google_refresh_token) chỉ được sửa qua service-role ở API server.
+revoke update on public.profiles from authenticated, anon;
+grant update (
+  full_name,
+  monthly_revenue_target,
+  pl_show_clauses,
+  booking_token, calendar_token,
+  pl_phone, pl_facebook,
+  pl_bank_holder, pl_bank_account, pl_bank_name, pl_bank_bin,
+  pl_bg, pl_text, pl_accent, pl_logo_url,
+  studio_logo_url, studio_brand_name,
+  pl_hidden_lists, pl_list_labels,
+  auto_client_emails
+) on public.profiles to authenticated;
+
 -- albums ---------------------------------------------------------------------
 -- Owners (and admins) manage their albums.
 drop policy if exists albums_owner_all on public.albums;

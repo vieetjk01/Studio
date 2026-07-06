@@ -59,19 +59,25 @@ export async function POST(req: Request) {
   if (!id || !UUID_RE.test(id)) return NextResponse.json({ error: "bad_id" }, { status: 400 });
 
   // Kiểm tra quyền sở hữu cho update/delete (và parent cho bảng con).
-  async function ownsExisting(): Promise<boolean> {
-    const { data } = await db.from(table).select("id").eq("id", id).maybeSingle();
-    if (!data) return false;
-    if (cfg!.owner) {
-      const { data: o } = await db.from(table).select("owner_id").eq("id", id).maybeSingle();
-      return (o as { owner_id?: string } | null)?.owner_id === owner;
-    }
-    return true; // với bảng con, kiểm parent ở dưới
-  }
   async function ownsParent(parentId: unknown): Promise<boolean> {
     if (!cfg!.parent || typeof parentId !== "string") return false;
     const { data } = await db.from(cfg!.parent.table).select("owner_id").eq("id", parentId).maybeSingle();
     return (data as { owner_id?: string } | null)?.owner_id === owner;
+  }
+  async function ownsExisting(): Promise<boolean> {
+    if (cfg!.owner) {
+      const { data: o } = await db.from(table).select("owner_id").eq("id", id).maybeSingle();
+      return (o as { owner_id?: string } | null)?.owner_id === owner;
+    }
+    // Bảng con: xác minh HỢP ĐỒNG/BÁO GIÁ CHA CỦA BẢN GHI HIỆN CÓ thuộc owner.
+    // KHÔNG tin parent_id do client gửi — nếu không, kẻ tấn công gửi id của
+    // studio khác kèm parent_id của chính mình để xóa/cướp bản ghi chéo tenant.
+    if (cfg!.parent) {
+      const { data: existing } = await db.from(table).select(cfg!.parent.col).eq("id", id).maybeSingle();
+      if (!existing) return false;
+      return ownsParent((existing as unknown as Record<string, unknown>)[cfg!.parent.col]);
+    }
+    return false;
   }
 
   try {

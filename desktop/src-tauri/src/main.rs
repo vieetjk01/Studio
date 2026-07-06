@@ -228,6 +228,12 @@ async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
 /// để trình cài đặt ghi đè. Không cần khóa ký — dùng chính bản phát hành hiện có.
 #[tauri::command]
 async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    // Chỉ cho phép tải bản cài từ đúng repo phát hành chính thức. Nếu không,
+    // lệnh này trở thành công cụ chạy .exe tùy ý (RCE) khi JS bị lợi dụng.
+    const ALLOWED_PREFIX: &str = "https://github.com/vieetjk01/";
+    if !url.starts_with(ALLOWED_PREFIX) {
+        return Err("nguồn cập nhật không hợp lệ".to_string());
+    }
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(600))
         .build()

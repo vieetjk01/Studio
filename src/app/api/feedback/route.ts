@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { limitByIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 /** Public: submit feedback for a gallery. */
 export async function POST(req: Request) {
+  const limited = limitByIp(req, "feedback", 10, 60_000);
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => ({}))) as {
     albumId?: string;
     clientName?: string;

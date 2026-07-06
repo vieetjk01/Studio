@@ -258,6 +258,7 @@ export default function ContractView({ token }: { token: string }) {
     } catch { /* fall back to the original file */ }
     const form = new FormData();
     form.append("file", upload);
+    form.append("phone", phone);
     if (planId) form.append("plan_id", planId);
     const res = await fetch(`/api/c/${token}/proof`, { method: "POST", body: form });
     if (res.ok) {

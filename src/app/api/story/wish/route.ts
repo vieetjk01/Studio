@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToOwner } from "@/lib/push";
+import { limitByIp } from "@/lib/rate-limit";
 import type { StoryConfig } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 /** Public guest wish for a Love Story page (no login). Looked up by slug. */
 export async function POST(req: Request) {
+  const limited = limitByIp(req, "wish", 10, 60_000);
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => ({}))) as { slug?: string; guest_name?: string; wish?: string };
   const slug = (body.slug ?? "").trim();
   const name = (body.guest_name ?? "").trim().slice(0, 120);

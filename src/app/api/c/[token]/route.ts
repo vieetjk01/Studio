@@ -4,6 +4,7 @@ import { effectivePlan, studioTier } from "@/lib/plans";
 import { getStudioBrand } from "@/lib/studio-brand";
 import { sendEmail } from "@/lib/email";
 import { sendPushToOwner } from "@/lib/push";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,10 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
  * The client's phone (contract.client_phone) acts as the view password.
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
+  // F5: làm chậm dò SĐT theo từng token (SĐT là "mật khẩu" entropy thấp).
+  if (!rateLimit(`c-portal:${params.token}`, 20, 60_000)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
   const body = (await req.json().catch(() => ({}))) as {
     phone?: string;
     message?: string;
@@ -169,6 +174,10 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   if (body.action === "sign") {
+    // M5: không cho ký đè. Khi đã có chữ ký, hợp đồng là bất biến (chống chối bỏ).
+    if (contract.client_signed_at) {
+      return NextResponse.json({ error: "already_signed" }, { status: 409 });
+    }
     const name = body.name?.trim();
     const signature = body.signature?.trim();
     if (!name) return NextResponse.json({ error: "no_name" }, { status: 400 });

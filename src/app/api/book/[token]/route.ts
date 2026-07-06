@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToOwner } from "@/lib/push";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { limitByIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 /** Public booking request for a studio (resolved by booking_token). */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
+  const limited = limitByIp(req, "book", 8, 60_000);
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => ({}))) as {
     name?: string;
     phone?: string;

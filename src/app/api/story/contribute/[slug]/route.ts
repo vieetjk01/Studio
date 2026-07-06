@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadGuestFile } from "@/lib/story-drive";
 import { sendPushToOwner } from "@/lib/push";
+import { limitByIp } from "@/lib/rate-limit";
 import type { StoryConfig } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,10 @@ const MAX_BYTES = 60 * 1024 * 1024; // 60MB (allows short videos)
  * in the story feed once approved.
  */
 export async function POST(req: Request, { params }: { params: { slug: string } }) {
+  // H5: chặn lạm dụng upload (làm đầy Drive cặp đôi / spam) — giới hạn theo IP.
+  const limited = limitByIp(req, "story-contribute", 12, 60_000);
+  if (limited) return limited;
+
   const db = createAdminClient();
   const { data: story } = await db
     .from("story_pages")

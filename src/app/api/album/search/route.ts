@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
  * server-side and never returned to the client).
  */
 export async function GET(req: Request) {
-  const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
+  const raw = new URL(req.url).searchParams.get("q")?.trim() ?? "";
+  // H3: loại ký tự cấu trúc của bộ lọc PostgREST (`% , ( )`) trước khi nội suy
+  // vào `.or(...)`. Nếu không, `q` chứa `),status.eq.published` có thể phá điều
+  // kiện gallery_pinned và liệt kê mọi album đã publish (kể cả gallery riêng tư).
+  const q = raw.replace(/[%,()]/g, " ").trim();
   if (!q) return NextResponse.json({ galleries: [] });
 
   const db = createAdminClient();

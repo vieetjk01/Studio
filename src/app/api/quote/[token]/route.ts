@@ -4,6 +4,7 @@ import { convertQuoteToContract } from "@/lib/quote-convert";
 import { effectivePlan, studioTier } from "@/lib/plans";
 import { sendEmail } from "@/lib/email";
 import { sendPushToOwner } from "@/lib/push";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,10 @@ export const dynamic = "force-dynamic";
  *              'full' tier) immediately spawns the contract.
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
+  // M6: chặn spam thao tác/tạo hợp đồng rác theo từng token báo giá.
+  if (!rateLimit(`quote:${params.token}`, 20, 60_000)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
   const body = await req.json().catch(() => ({}));
   const action = body.action as string | undefined;
   if (!action) return NextResponse.json({ error: "missing action" }, { status: 400 });

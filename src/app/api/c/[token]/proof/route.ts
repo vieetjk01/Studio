@@ -9,12 +9,21 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   // Validate token
   const { data: contract } = await db
     .from("studio_contracts")
-    .select("id, owner_id")
+    .select("id, owner_id, client_phone")
     .eq("client_token", params.token)
     .maybeSingle();
   if (!contract) return NextResponse.json({ error: "invalid_token" }, { status: 403 });
 
   const form = await req.formData();
+
+  // M1: cùng cổng SĐT như route hợp đồng chính (fail-closed) — chỉ khách đã xác
+  // thực SĐT mới upload được, tránh ai cầm link token cũng spam bucket/notification.
+  const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+  const phone = form.get("phone") as string | null;
+  if (!contract.client_phone || digits(phone) !== digits(contract.client_phone)) {
+    return NextResponse.json({ error: "wrong_phone" }, { status: 401 });
+  }
+
   const file = form.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "no_file" }, { status: 400 });
 
@@ -36,7 +45,17 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const { data: { publicUrl } } = db.storage.from("payment-proofs").getPublicUrl(path);
 
   const note = (form.get("note") as string | null) || null;
-  const planId = (form.get("plan_id") as string | null) || null;
+  let planId = (form.get("plan_id") as string | null) || null;
+  // Chỉ chấp nhận plan_id thuộc đúng hợp đồng này (chống gắn plan_id tùy ý).
+  if (planId) {
+    const { data: plan } = await db
+      .from("contract_payment_plan")
+      .select("id")
+      .eq("id", planId)
+      .eq("contract_id", contract.id)
+      .maybeSingle();
+    if (!plan) planId = null;
+  }
   await db.from("contract_client_proofs").insert({
     contract_id: contract.id,
     url: publicUrl,
