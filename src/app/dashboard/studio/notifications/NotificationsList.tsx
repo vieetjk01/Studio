@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell, FileCheck, CheckCheck, Megaphone } from "lucide-react";
+import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell, FileCheck, CheckCheck, Megaphone, UserPlus, ArrowUpCircle, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PushToggle from "@/components/PushToggle";
 import type { StudioNotification, NotificationKind } from "@/lib/types";
@@ -16,6 +16,9 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   payment: Wallet,
   quote_accepted: FileCheck,
   announcement: Megaphone,
+  new_user: UserPlus,
+  upgrade_request: ArrowUpCircle,
+  contact: Mail,
   info: Bell,
 };
 const TONE: Record<NotificationKind, string> = {
@@ -27,6 +30,9 @@ const TONE: Record<NotificationKind, string> = {
   payment: "#6ba3c7",
   quote_accepted: "#3fb98a",
   announcement: "#c78bd1",
+  new_user: "#6ba3c7",
+  upgrade_request: "#e0b85c",
+  contact: "#7bb38a",
   info: "var(--text3)",
 };
 
@@ -35,6 +41,9 @@ function targetHref(n: StudioNotification): string | null {
   if (n.contract_id) return `/dashboard/studio/contracts/${n.contract_id}`;
   if (n.kind === "quote_accepted") return "/dashboard/studio/quotes";
   if (n.kind === "review") return "/dashboard/studio/ranking";
+  if (n.kind === "new_user") return "/dashboard/admin";
+  if (n.kind === "upgrade_request") return "/dashboard/settings";
+  if (n.kind === "contact") return "/dashboard/settings";
   return null;
 }
 

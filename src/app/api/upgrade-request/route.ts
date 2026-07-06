@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planProfilePatch, type Plan } from "@/lib/plans";
+import { notifyAdmins } from "@/lib/notify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -137,5 +138,13 @@ export async function POST(req: Request) {
       if (dc) await db.from("discount_codes").update({ used_count: (dc.used_count ?? 0) + 1 }).eq("id", dc.id);
     }
   }
+
+  // Báo cho quản trị viên có yêu cầu nâng cấp mới.
+  const planLabel = validPlan ? ` gói ${validPlan}/${validCycle}` : "";
+  await notifyAdmins(
+    "upgrade_request",
+    `Yêu cầu nâng cấp${planLabel} từ ${user.email}${activated ? " (đã tự kích hoạt bằng mã giảm giá)" : ""}`,
+  );
+
   return NextResponse.json({ ok: true, activated });
 }

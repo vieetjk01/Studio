@@ -273,6 +273,9 @@ export type NotificationKind =
   | "payment"
   | "quote_accepted"
   | "announcement"
+  | "new_user"
+  | "upgrade_request"
+  | "contact"
   | "info";
 
 export interface StudioNotification {

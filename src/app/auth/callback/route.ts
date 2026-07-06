@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_DOMAIN } from "@/lib/hosts";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/notify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,26 @@ export async function GET(request: NextRequest) {
       response.cookies.set("aff_ref", "", { maxAge: 0, path: "/" });
     }
   }
+
+  // 4.5) Thông báo admin khi có TÀI KHOẢN MỚI (chỉ trong ~60s kể từ lúc tạo, và
+  //      không phải nhân viên phụ) — tránh báo lại mỗi lần đăng nhập.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const db = createAdminClient();
+      const { data: prof } = await db
+        .from("profiles")
+        .select("created_at, email, studio_owner_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (
+        prof && !prof.studio_owner_id && prof.created_at &&
+        Date.now() - new Date(prof.created_at).getTime() < 60_000
+      ) {
+        await notifyAdmins("new_user", `Tài khoản mới đăng ký: ${prof.email || user.email}`);
+      }
+    }
+  } catch { /* không chặn đăng nhập nếu thông báo lỗi */ }
 
   // 5) Return the SAME response object that now carries the Set-Cookie headers.
   return response;

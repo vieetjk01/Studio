@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { limitByIp } from "@/lib/rate-limit";
+import { notifyAdmins } from "@/lib/notify-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Báo cho quản trị viên có liên hệ / góp ý mới.
+  await notifyAdmins("contact", `Liên hệ / góp ý mới từ ${name}${body.email ? ` (${body.email.trim()})` : ""}`);
 
   return NextResponse.json({ ok: true });
 }
