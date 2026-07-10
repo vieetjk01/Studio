@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wand2, Undo2, Redo2, Plus, Trash2, Shuffle, Loader2, Download, ImagePlus, ArrowLeft, Copy } from "lucide-react";
+import { Wand2, Undo2, Redo2, Plus, Trash2, Shuffle, Loader2, Download, ImagePlus, ArrowLeft, Copy, ChevronLeft, ChevronRight, Type, Lock, Unlock, Save, LayoutGrid, Maximize, Images } from "lucide-react";
 import { buildPdf, cmToPt, type PdfPageSpec } from "@/lib/album-pdf";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -14,8 +14,11 @@ type Cell = {
   photo: string | null; full: string | null; scale: number; posX: number; posY: number; filter: string;
   text: string; role: "title" | "sub" | "body" | "deco"; align: "left" | "center" | "right";
   size: number | null; color: string | null; overlay: boolean; upper: boolean;
+  locked?: boolean; // khóa layer — không kéo/resize được cho tới khi mở khóa
 };
 type Spread = { id: number; layout: string; cells: Cell[] };
+/** Album đã lưu trên server, dùng để mở lại trong editor. */
+export type SavedDesign = { id: string; name: string; folder?: string | null; spreads?: Spread[] };
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const FILTERS = [
@@ -138,12 +141,13 @@ function buildSpread(layout: string, id: number): Spread {
   return { id, layout, cells };
 }
 
-export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: ADTpl; onBack: () => void }) {
+export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSize; tpl: ADTpl; onBack: () => void; initial?: SavedDesign | null }) {
   const aspect = (2 * size.w) / size.h; // spread = two pages wide
-  const [spreads, setSpreads] = useState<Spread[]>(() => SEED_PLAN.map((l, i) => buildSpread(l, i + 1)));
+  const [spreads, setSpreads] = useState<Spread[]>(() =>
+    initial?.spreads?.length ? initial.spreads : SEED_PLAN.map((l, i) => buildSpread(l, i + 1)),
+  );
   const [cur, setCur] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
-  const [tab, setTab] = useState<"layout" | "photo" | "text" | "deco">("layout");
   const [pickCount, setPickCount] = useState(3);
   const [laySrc, setLaySrc] = useState<"all" | "mine" | "fav">("all");
   const [laySearch, setLaySearch] = useState("");
@@ -151,7 +155,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [mine, setMine] = useState<{ name: string; rects: Rect[] }[]>([]);
   const [zoom, setZoom] = useState(1);
   const [lib, setLib] = useState<Lib[]>([]);
-  const [folder, setFolder] = useState("");
+  const [folder, setFolder] = useState(initial?.folder ?? "");
   const [loadingLib, setLoadingLib] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -160,17 +164,32 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [showExport, setShowExport] = useState(false);
   const [exportSel, setExportSel] = useState<Set<number>>(new Set());
   const [canvasW, setCanvasW] = useState(700);
+  // Đại tu giao diện: nhiều spread, dải bố cục ngang, dải trang, lưu server.
+  const [multi, setMulti] = useState(false);              // xem nhiều spread liên tục
+  const [railOpen, setRailOpen] = useState(true);          // mở dải bố cục ngang
+  const [showLib, setShowLib] = useState(true);            // ngăn thư viện ảnh
+  const [designId, setDesignId] = useState<string | null>(initial?.id ?? null);
+  const [name, setName] = useState(initial?.name ?? "Album chưa đặt tên");
+  const [saving, setSaving] = useState(false);
+  const dirty = useRef(false);
+  const dragPage = useRef<number | null>(null); // kéo-thả sắp xếp trang
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dims = useRef<Record<string, { w: number; h: number; approx?: boolean }>>({});
   const hist = useRef<string[]>([]);
   const fut = useRef<string[]>([]);
   const [, force] = useState(0);
 
+  // Khi mở album đã lưu, đẩy bộ đếm UID vượt mọi uid sẵn có để tránh trùng.
+  useEffect(() => {
+    const maxUid = Math.max(0, ...spreads.flatMap((s) => s.cells.map((c) => c.uid)));
+    if (maxUid >= UID) UID = maxUid + 1;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const spread = spreads[cur];
   const selCell = spread?.cells.find((c) => c.uid === sel) || null;
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2400); };
-  const snapshot = useCallback(() => { hist.current.push(JSON.stringify(spreads)); if (hist.current.length > 40) hist.current.shift(); fut.current = []; force((n) => n + 1); }, [spreads]);
+  const snapshot = useCallback(() => { hist.current.push(JSON.stringify(spreads)); if (hist.current.length > 40) hist.current.shift(); fut.current = []; dirty.current = true; force((n) => n + 1); }, [spreads]);
   const undo = () => { const s = hist.current.pop(); if (!s) return; fut.current.push(JSON.stringify(spreads)); setSpreads(JSON.parse(s)); force((n) => n + 1); };
   const redo = () => { const s = fut.current.pop(); if (!s) return; hist.current.push(JSON.stringify(spreads)); setSpreads(JSON.parse(s)); force((n) => n + 1); };
 
@@ -248,6 +267,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const onCellDown = (e: React.PointerEvent, c: Cell, mode: string) => {
     e.stopPropagation();
     setSel(c.uid);
+    if (c.locked) return; // layer bị khóa: chỉ chọn, không kéo/resize
     drag.current = { uid: c.uid, mode, sx: e.clientX, sy: e.clientY, c0: { ...c }, moved: false };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -393,6 +413,42 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     showToast("Đã dàn lại bố cục toàn album.");
   }
 
+  /* ── Khóa layer ─────────────────────────────────────────────────────── */
+  const toggleLock = (uid: number) => patchCell(uid, { locked: !spread.cells.find((c) => c.uid === uid)?.locked });
+
+  /* ── Sắp xếp lại trang bằng kéo-thả (dải trang dưới cùng) ───────────── */
+  function reorderSpread(from: number, to: number) {
+    if (from === to || from < 0 || to < 0 || from >= spreads.length || to >= spreads.length) return;
+    snapshot();
+    setSpreads((sp) => { const n = sp.slice(); const [m] = n.splice(from, 1); n.splice(to, 0, m); return n; });
+    setCur(to); setSel(null);
+  }
+
+  /* ── Lưu / tự lưu lên server ────────────────────────────────────────── */
+  const save = useCallback(async (silent = false): Promise<void> => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/album-designer/designs", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: designId, name, size, tpl, spreads, folder }),
+      });
+      const d = await res.json();
+      if (!res.ok) { if (!silent) showToast(d.error === "too_large" ? "Album quá lớn để lưu." : "Lưu thất bại."); return; }
+      if (d.id && !designId) setDesignId(d.id);
+      dirty.current = false;
+      if (!silent) showToast("Đã lưu album.");
+    } catch { if (!silent) showToast("Lỗi mạng khi lưu."); }
+    finally { setSaving(false); }
+  }, [saving, designId, name, size, tpl, spreads, folder]);
+
+  // Tự lưu mỗi 20s nếu có thay đổi VÀ album đã từng được lưu (có id) —
+  // tránh tạo bản nháp rác khi người dùng chỉ xem thử.
+  useEffect(() => {
+    const t = setInterval(() => { if (dirty.current && designId) save(true); }, 20_000);
+    return () => clearInterval(t);
+  }, [designId, save]);
+
   /* ── DPI ────────────────────────────────────────────────────────────── */
   function cellDpi(c: Cell): number | null {
     if (!c.photo) return null;
@@ -491,55 +547,118 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   /* ── Render ─────────────────────────────────────────────────────────── */
   const panel: React.CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)" };
   const scenesUsed = usedIds.size;
+  const bar = "flex items-center justify-center rounded-lg px-2 h-8 text-sm";
+  // Bố cục hiển thị trên dải ngang theo nguồn đang chọn.
+  const railLayouts: Rect[][] =
+    laySrc === "mine" ? mine.filter((m) => !laySearch || m.name.toLowerCase().includes(laySearch.toLowerCase())).map((m) => m.rects)
+    : laySrc === "fav" ? favs
+    : variants;
+  const nbW = spreadPxW * 0.52, nbH = spreadPxH * 0.52; // spread hàng xóm (chế độ Nhiều Spread)
 
   return (
     <div className="animate-[vkFade_.4s_ease_both]">
-      {/* Top toolbar */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button onClick={onBack} className="btn-ghost gap-1"><ArrowLeft size={15} /> Đổi khổ/mẫu</button>
-        <span className="text-sm font-semibold" style={{ color: "var(--text2)" }}>{size.name} · {tpl.name} · {spreads.length} trang</span>
+      {/* ── Thanh công cụ trên ── */}
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-2xl p-2" style={panel}>
+        <button onClick={onBack} className={`btn-ghost ${bar} gap-1`} title="Đổi khổ / mở album khác"><ArrowLeft size={15} /></button>
+        <input value={name} onChange={(e) => { setName(e.target.value); dirty.current = true; }} className="input h-8 w-40 text-sm font-semibold" placeholder="Tên album" />
+        <span className="mx-0.5 h-5 w-px" style={{ background: "var(--border)" }} />
+        <button onClick={() => { setCur((c) => Math.max(0, c - 1)); setSel(null); }} disabled={cur === 0} className={`btn-ghost ${bar} disabled:opacity-40`}><ChevronLeft size={16} /></button>
+        <span className="min-w-[52px] text-center text-xs font-semibold" style={{ color: "var(--text2)" }}>{cur + 1}/{spreads.length}</span>
+        <button onClick={() => { setCur((c) => Math.min(spreads.length - 1, c + 1)); setSel(null); }} disabled={cur === spreads.length - 1} className={`btn-ghost ${bar} disabled:opacity-40`}><ChevronRight size={16} /></button>
+        <span className="mx-0.5 h-5 w-px" style={{ background: "var(--border)" }} />
+        <button onClick={() => setShowLib((v) => !v)} className={`btn-ghost ${bar} gap-1`} title="Thư viện ảnh" style={{ color: showLib ? "var(--brand)" : "var(--text2)" }}><Images size={15} /></button>
+        <button onClick={addText} className={`btn-ghost ${bar} gap-1`} title="Thêm dòng chữ"><Type size={15} /></button>
+        <button onClick={autoDesignAll} className={`btn-ghost ${bar} gap-1`}><Wand2 size={15} /> Auto Design</button>
+        <button onClick={reflowAll} className={`btn-ghost ${bar} gap-1`}><Shuffle size={15} /> Dàn lại</button>
+        <button onClick={() => selCell && toggleLock(selCell.uid)} disabled={!selCell} className={`btn-ghost ${bar} gap-1 disabled:opacity-40`} title="Khóa/mở khóa layer" style={{ color: selCell?.locked ? "var(--brand)" : "var(--text2)" }}>{selCell?.locked ? <Lock size={15} /> : <Unlock size={15} />}</button>
+        <button onClick={dupSpread} className={`btn-ghost ${bar} gap-1`}><Copy size={15} /> Clone</button>
         <span className="flex-1" />
-        <button onClick={undo} disabled={!hist.current.length} className="btn-ghost px-2 disabled:opacity-40"><Undo2 size={15} /></button>
-        <button onClick={redo} disabled={!fut.current.length} className="btn-ghost px-2 disabled:opacity-40"><Redo2 size={15} /></button>
-        <div className="flex items-center gap-1 rounded-lg px-1" style={panel}>
-          <button onClick={() => setZoom((z) => clamp(+(z - 0.1).toFixed(1), 0.5, 1.6))} className="px-2 text-lg">−</button>
-          <span className="w-12 text-center text-xs">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom((z) => clamp(+(z + 0.1).toFixed(1), 0.5, 1.6))} className="px-2 text-lg">+</button>
-        </div>
+        <button onClick={undo} disabled={!hist.current.length} className={`btn-ghost ${bar} disabled:opacity-40`}><Undo2 size={15} /></button>
+        <button onClick={redo} disabled={!fut.current.length} className={`btn-ghost ${bar} disabled:opacity-40`}><Redo2 size={15} /></button>
         <div className="flex overflow-hidden rounded-lg text-xs font-semibold" style={panel}>
           {(["pdf", "jpg", "png"] as const).map((f) => (
             <button key={f} onClick={() => setFmt(f)} className="px-2.5 py-2" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>
           ))}
         </div>
-        <button onClick={() => { setExportSel(new Set(spreads.map((_, i) => i))); setShowExport(true); }} disabled={exporting} className="btn-primary gap-1.5">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Xuất file</button>
+        <button onClick={() => save()} disabled={saving} className={`btn-ghost ${bar} gap-1.5`}>{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Lưu</button>
+        <button onClick={() => { setExportSel(new Set(spreads.map((_, i) => i))); setShowExport(true); }} disabled={exporting} className="btn-primary gap-1.5">{exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Xuất</button>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[220px_1fr_300px]">
-        {/* Library */}
-        <div className="rounded-2xl p-3" style={panel}>
-          <p className="text-sm font-extrabold">Thư viện ảnh</p>
-          <p className="mb-2 text-[11.5px]" style={{ color: "var(--text2)" }}>{lib.length} ảnh · {scenesUsed} đã dùng</p>
-          <div className="mb-2 flex gap-1">
-            <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="Dán link folder Drive…" className="input flex-1 text-xs" />
-            <button onClick={loadLibrary} disabled={loadingLib} className="btn-ghost px-2">{loadingLib ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}</button>
-          </div>
-          <div className="grid max-h-[52vh] grid-cols-2 gap-1.5 overflow-y-auto">
-            {lib.map((p) => (
-              <button key={p.id} onClick={() => onThumbClick(p)} draggable onDragStart={() => { dragLib.current = p; }} className="relative aspect-square overflow-hidden rounded-lg" style={{ cursor: "grab" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.thumb} alt="" className="h-full w-full object-cover" loading="lazy" draggable={false} />
-                {usedIds.has(p.thumb) && <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white" style={{ background: "var(--brand)" }}>✓</span>}
-              </button>
-            ))}
-          </div>
-          <button onClick={autoDesignAll} className="btn-primary mt-2 w-full gap-1.5"><Wand2 size={15} /> Tự thiết kế cả album</button>
-          <button onClick={autoFill} className="btn-ghost mt-1.5 w-full gap-1.5 text-sm"><Wand2 size={14} /> Rải vào ô trống</button>
-          <p className="mt-1 text-center text-[11px]" style={{ color: "var(--text3)" }}>Kéo ảnh vào ô · tự khớp hướng ảnh</p>
+      {/* ── Dải bố cục ngang ── */}
+      <div className="mb-2 rounded-2xl p-2" style={panel}>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setRailOpen((o) => !o)} className={`btn-ghost ${bar} gap-1 font-semibold`}><LayoutGrid size={14} /> Bố cục</button>
+          {railOpen && (<>
+            <div className="flex gap-1">
+              {([["all", "Tất cả"], ["mine", "Của tôi"], ["fav", "Yêu thích"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setLaySrc(k)} className="rounded-md px-2 py-1 text-xs font-semibold" style={{ background: laySrc === k ? "var(--brand)" : "var(--surface)", color: laySrc === k ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>{l}</button>
+              ))}
+            </div>
+            {laySrc === "all" && (
+              <div className="flex items-center gap-1">
+                <span className="text-[11px]" style={{ color: "var(--text3)" }}>Số ảnh</span>
+                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                  <button key={n} onClick={() => chooseCount(n)} className="h-7 w-7 rounded-md text-xs font-semibold" style={{ background: pickCount === n ? "var(--brand)" : "var(--surface)", color: pickCount === n ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>{n}</button>
+                ))}
+              </div>
+            )}
+            <input value={laySearch} onChange={(e) => setLaySearch(e.target.value)} placeholder="Tìm tên / category…" className="input h-7 w-40 text-xs" />
+            <button onClick={saveMine} className={`btn-ghost ${bar} gap-1 text-xs`}><Plus size={13} /> Lưu bố cục</button>
+          </>)}
         </div>
+        {railOpen && (
+          railLayouts.length ? (
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+              {railLayouts.map((v, i) => {
+                const active = sig(v) === curPhotoSig, faved = favSet.has(sig(v));
+                return (
+                  <div key={i} className="relative flex-none" style={{ width: 88 }}>
+                    <button onClick={() => applyRects(v)} className="w-full rounded-lg p-1" style={{ border: `2px solid ${active ? "var(--brand)" : "var(--border)"}` }}><LayoutMini rects={v} aspect={aspect} active={active} /></button>
+                    <button onClick={() => toggleFav(v)} title="Yêu thích" className="absolute right-1 top-1 leading-none text-[13px]" style={{ color: faved ? "#e0b85c" : "var(--text3)" }}>{faved ? "★" : "☆"}</button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className="mt-2 text-center text-xs" style={{ color: "var(--text3)" }}>{laySrc === "mine" ? "Chưa có bố cục đã lưu. Chọn trang rồi nhấn “Lưu bố cục”." : "Chưa có bố cục yêu thích. Nhấn ☆ trên mẫu."}</p>
+        )}
+      </div>
 
-        {/* Canvas */}
-        <div>
-          <div ref={stageRef} className="flex items-center justify-center overflow-hidden rounded-2xl p-4" style={{ ...panel, minHeight: 420 }}>
+      {/* ── Khu làm việc ── */}
+      <div className="flex items-start gap-3">
+        {/* Thư viện ảnh (thu gọn được) */}
+        {showLib && (
+          <div className="w-[200px] flex-none rounded-2xl p-3" style={panel}>
+            <p className="text-sm font-extrabold">Thư viện ảnh</p>
+            <p className="mb-2 text-[11.5px]" style={{ color: "var(--text2)" }}>{lib.length} ảnh · {scenesUsed} đã dùng</p>
+            <div className="mb-2 flex gap-1">
+              <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="Dán link folder Drive…" className="input flex-1 text-xs" />
+              <button onClick={loadLibrary} disabled={loadingLib} className="btn-ghost px-2">{loadingLib ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}</button>
+            </div>
+            <div className="grid max-h-[46vh] grid-cols-2 gap-1.5 overflow-y-auto">
+              {lib.map((p) => (
+                <button key={p.id} onClick={() => onThumbClick(p)} draggable onDragStart={() => { dragLib.current = p; }} className="relative aspect-square overflow-hidden rounded-lg" style={{ cursor: "grab" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.thumb} alt="" className="h-full w-full object-cover" loading="lazy" draggable={false} />
+                  {usedIds.has(p.thumb) && <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white" style={{ background: "var(--brand)" }}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <button onClick={autoDesignAll} className="btn-primary mt-2 w-full gap-1.5"><Wand2 size={15} /> Tự thiết kế cả album</button>
+            <button onClick={autoFill} className="btn-ghost mt-1.5 w-full gap-1.5 text-sm"><Wand2 size={14} /> Rải vào ô trống</button>
+            <p className="mt-1 text-center text-[11px]" style={{ color: "var(--text3)" }}>Kéo ảnh vào ô · tự khớp hướng ảnh</p>
+          </div>
+        )}
+
+        {/* Canvas + thanh trạng thái */}
+        <div className="min-w-0 flex-1">
+          <div ref={stageRef} className="flex items-center justify-center gap-4 overflow-hidden rounded-2xl p-4" style={{ ...panel, minHeight: 440 }}>
+            {/* Spread trước (ngữ cảnh) */}
+            {multi && cur > 0 && (
+              <button onClick={() => { setCur(cur - 1); setSel(null); }} className="flex-none opacity-60 transition-opacity hover:opacity-90" title="Spread trước">
+                <SpreadView s={spreads[cur - 1]} w={nbW} h={nbH} page={tpl.page} ink={tpl.ink} />
+              </button>
+            )}
+            {/* Spread hiện tại — tương tác */}
             <div onClick={() => setSel(null)} style={{ position: "relative", width: spreadPxW, height: spreadPxH, background: tpl.page, boxShadow: "0 10px 40px rgba(0,0,0,.18)" }}>
               <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,.08)" }} />
               {spread?.cells.map((c) => {
@@ -550,7 +669,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
                     onDragOver={c.type === "photo" ? (e) => e.preventDefault() : undefined}
                     onDrop={c.type === "photo" ? () => { if (dragLib.current) { fillCell(c.uid, dragLib.current); dragLib.current = null; } } : undefined}
                     onDoubleClick={() => { if (c.type === "photo" && c.photo) patchCell(c.uid, { scale: 1, posX: 50, posY: 50 }); }}
-                    style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, outline: selected ? "2.5px solid var(--brand)" : "none", cursor: "grab", overflow: "visible" }}>
+                    style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, outline: selected ? "2.5px solid var(--brand)" : "none", cursor: c.locked ? "default" : "grab", overflow: "visible" }}>
                     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
                       {c.type === "photo" ? (c.photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -561,131 +680,70 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
                         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: c.align === "center" ? "center" : c.align === "right" ? "flex-end" : "flex-start", textAlign: c.align, padding: 4, fontFamily: c.role === "body" ? "var(--font-manrope), sans-serif" : "var(--font-cormorant), serif", fontSize: (c.size || ROLE_SIZE[c.role]) * scale, color: c.color || (c.overlay ? "#fff" : tpl.ink), textTransform: c.upper ? "uppercase" : "none", letterSpacing: c.role === "sub" ? ".18em" : undefined, lineHeight: c.role === "body" ? 1.7 : 1.2, textShadow: c.overlay ? "0 1px 6px rgba(0,0,0,.5)" : undefined, whiteSpace: "pre-wrap" }}>{c.text}</div>
                       )}
                     </div>
+                    {c.locked && <span style={{ position: "absolute", right: 3, top: 3, background: "var(--brand)", color: "#fff", borderRadius: 4, padding: "1px 3px", fontSize: 9 }}>🔒</span>}
                     {dpi != null && dpi < 230 && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 4, color: "#fff", background: dpi < 150 ? "#cc4b4b" : "#c08a1e" }}>{dpi < 150 ? "⚠ " : ""}{dpi} DPI</span>}
-                    {selected && (["nw", "ne", "sw", "se"] as const).map((m) => (
+                    {selected && !c.locked && (["nw", "ne", "sw", "se"] as const).map((m) => (
                       <span key={m} onPointerDown={(e) => onCellDown(e, c, m)} style={{ position: "absolute", width: 12, height: 12, background: "var(--brand)", borderRadius: 2, cursor: `${m}-resize`, left: m.includes("w") ? -6 : undefined, right: m.includes("e") ? -6 : undefined, top: m.includes("n") ? -6 : undefined, bottom: m.includes("s") ? -6 : undefined }} />
                     ))}
                   </div>
                 );
               })}
             </div>
+            {/* Spread sau (ngữ cảnh) */}
+            {multi && cur < spreads.length - 1 && (
+              <button onClick={() => { setCur(cur + 1); setSel(null); }} className="flex-none opacity-60 transition-opacity hover:opacity-90" title="Spread sau">
+                <SpreadView s={spreads[cur + 1]} w={nbW} h={nbH} page={tpl.page} ink={tpl.ink} />
+              </button>
+            )}
           </div>
-          {/* Spread rail */}
+
+          {/* Thanh trạng thái */}
+          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl px-3 py-1.5 text-xs" style={{ ...panel, color: "var(--text2)" }}>
+            <span>{multi ? "Nhiều Spread" : "1 Spread"} · {spreads.length} trang · {Math.round(zoom * 100)}%</span>
+            <span className="text-[11px]" style={{ color: "var(--text3)" }}>click chọn layer · kéo ảnh để đổi</span>
+            <span className="flex-1" />
+            <button onClick={() => setZoom((z) => clamp(+(z - 0.1).toFixed(1), 0.5, 1.6))} className="px-1.5 text-base">−</button>
+            <input type="range" min={0.5} max={1.6} step={0.05} value={zoom} onChange={(e) => setZoom(+e.target.value)} className="w-28 accent-[var(--brand)]" />
+            <button onClick={() => setZoom((z) => clamp(+(z + 0.1).toFixed(1), 0.5, 1.6))} className="px-1.5 text-base">+</button>
+            <button onClick={() => setZoom(1)} className="btn-ghost gap-1 px-2 py-1"><Maximize size={13} /> Fit</button>
+            <button onClick={() => setMulti((v) => !v)} className="rounded-md px-2 py-1 font-semibold" style={{ background: multi ? "var(--brandSoft)" : "transparent", color: multi ? "var(--brand)" : "var(--text2)", border: "1px solid var(--border)" }}>Nhiều Spread</button>
+          </div>
+
+          {/* ── Dải trang (kéo-thả để sắp xếp) ── */}
           <div className="mt-2 flex items-center gap-2 overflow-x-auto rounded-2xl p-2" style={panel}>
             {spreads.map((s, i) => (
-              <button key={s.id} onClick={() => { setCur(i); setSel(null); }} className="flex-none rounded-lg p-1" style={{ border: `2px solid ${i === cur ? "var(--brand)" : "transparent"}` }}>
-                <div style={{ width: 64, height: 64 / aspect, background: tpl.page, borderRadius: 4, position: "relative", overflow: "hidden" }}>
-                  {s.cells.filter((c) => c.type === "photo").slice(0, 4).map((c, k) => <span key={k} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, background: c.photo ? "var(--brand)" : "var(--surface2)", opacity: c.photo ? 0.55 : 1, borderRadius: 1 }} />)}
-                </div>
-                <span className="text-[10px]" style={{ color: "var(--text3)" }}>{i === 0 ? "Bìa" : i + 1}</span>
+              <button key={s.id} onClick={() => { setCur(i); setSel(null); }}
+                draggable onDragStart={() => { dragPage.current = i; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { if (dragPage.current != null) { reorderSpread(dragPage.current, i); dragPage.current = null; } }}
+                className="flex-none rounded-lg p-1" style={{ border: `2px solid ${i === cur ? "var(--brand)" : "transparent"}`, cursor: "grab" }} title="Kéo để đổi thứ tự trang">
+                <SpreadView s={s} w={64} h={64 / aspect} page={tpl.page} ink={tpl.ink} />
+                <span className="mt-0.5 block text-center text-[10px]" style={{ color: "var(--text3)" }}>{i === 0 ? "Bìa" : i + 1}</span>
               </button>
             ))}
-            <button onClick={addSpread} className="flex-none rounded-lg px-3 py-4 text-lg" style={{ border: "1px dashed var(--border)", color: "var(--text3)" }}>＋</button>
+            <button onClick={addSpread} className="flex-none rounded-lg px-3 py-4 text-lg" style={{ border: "1px dashed var(--border)", color: "var(--text3)" }} title="Thêm trang">＋</button>
           </div>
         </div>
 
-        {/* Properties */}
-        <div className="rounded-2xl p-3" style={panel}>
-          <div className="mb-3 flex gap-1 border-b" style={{ borderColor: "var(--border)" }}>
-            {([["layout", "Bố cục"], ["photo", "Ảnh"], ["text", "Chữ"], ["deco", "Trang trí"]] as const).map(([k, l]) => (
-              <button key={k} onClick={() => setTab(k)} className="px-2 py-1.5 text-[12.5px] font-semibold" style={{ color: tab === k ? "var(--brand)" : "var(--text2)", borderBottom: `2px solid ${tab === k ? "var(--brand)" : "transparent"}` }}>{l}</button>
-            ))}
+        {/* Panel thuộc tính (theo ngữ cảnh) */}
+        <div className="w-[280px] flex-none rounded-2xl p-3" style={panel}>
+          {/* Công cụ trang — luôn hiển thị */}
+          <p className="mb-2 text-sm font-extrabold">{cur === 0 ? "Bìa" : `Trang ${cur + 1}`} <span className="text-[11px] font-normal" style={{ color: "var(--text3)" }}>· {size.name}</span></p>
+          <div className="mb-2 grid grid-cols-2 gap-1.5">
+            <button onClick={dupSpread} className="btn-ghost gap-1 text-xs"><Copy size={13} /> Nhân đôi</button>
+            <button onClick={delSpread} className="btn-ghost gap-1 text-xs" style={{ color: "#cc4b4b" }}><Trash2 size={13} /> Xoá trang</button>
+            <button onClick={() => moveSpread(-1)} disabled={cur === 0} className="btn-ghost gap-1 text-xs disabled:opacity-40"><ChevronLeft size={13} /> Trước</button>
+            <button onClick={() => moveSpread(1)} disabled={cur === spreads.length - 1} className="btn-ghost gap-1 text-xs disabled:opacity-40">Sau <ChevronRight size={13} /></button>
+            <button onClick={shuffle} className="btn-ghost col-span-2 gap-1 text-xs"><Shuffle size={13} /> Đổi vị trí ảnh trong trang</button>
           </div>
+          <div className="mb-3 h-px" style={{ background: "var(--border)" }} />
 
-          {tab === "layout" && (<div className="space-y-3">
-            {/* Chọn số ảnh → hiện gợi ý bố cục theo số lượng */}
-            <div className="rounded-xl p-3" style={{ background: "var(--surface2)" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[12.5px] font-semibold">Số ảnh trong trang</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => chooseCount(pickCount - 1)} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>−</button>
-                  <span className="w-5 text-center text-sm font-bold">{pickCount}</span>
-                  <button onClick={() => chooseCount(pickCount + 1)} className="flex h-7 w-7 items-center justify-center rounded-md text-lg" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>+</button>
-                </div>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                  <button key={n} onClick={() => chooseCount(n)} className="h-7 w-7 rounded-md text-xs font-semibold" style={{ background: pickCount === n ? "var(--brand)" : "var(--panel)", color: pickCount === n ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>{n}</button>
-                ))}
-              </div>
+          {/* Ô ảnh được chọn */}
+          {selCell?.type === "photo" && (<div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold">Ảnh</span>
+              <button onClick={() => toggleLock(selCell.uid)} className="btn-ghost gap-1 px-2 py-1 text-xs" style={{ color: selCell.locked ? "var(--brand)" : "var(--text2)" }}>{selCell.locked ? <><Lock size={12} /> Đã khóa</> : <><Unlock size={12} /> Khóa</>}</button>
             </div>
-            {/* Nguồn bố cục + tìm kiếm (giống thanh trên cùng của phần mềm mẫu) */}
-            <div className="flex items-center gap-1">
-              {([["all", "Tất cả"], ["mine", "Của tôi"], ["fav", "Yêu thích"]] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setLaySrc(k)} className="flex-1 rounded-md py-1.5 text-xs font-semibold" style={{ background: laySrc === k ? "var(--brand)" : "var(--panel)", color: laySrc === k ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>
-                  {l}{k === "fav" && favs.length ? ` (${favs.length})` : k === "mine" && mine.length ? ` (${mine.length})` : ""}
-                </button>
-              ))}
-            </div>
-            <input value={laySearch} onChange={(e) => setLaySearch(e.target.value)} placeholder="Tìm tên / category…" className="input w-full text-xs" />
-
-            {laySrc === "all" && (<>
-              {!laySearch && (<>
-                <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Gợi ý bố cục cho {pickCount} ảnh ({variants.length} mẫu)</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {variants.map((v, vi) => {
-                    const active = sig(v) === curPhotoSig, faved = favSet.has(sig(v));
-                    return (
-                      <div key={vi} className="relative">
-                        <button onClick={() => applyRects(v)} className="w-full rounded-lg p-1.5" style={{ border: `2px solid ${active ? "var(--brand)" : "var(--border)"}` }}>
-                          <LayoutMini rects={v} aspect={aspect} active={active} />
-                        </button>
-                        <button onClick={() => toggleFav(v)} title="Yêu thích" className="absolute right-1 top-1 leading-none text-[13px]" style={{ color: faved ? "#e0b85c" : "var(--text3)" }}>{faved ? "★" : "☆"}</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>)}
-              <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Bố cục kèm chữ</p>
-              <div className="grid grid-cols-3 gap-2">
-                {Object.entries(LAYOUTS).filter(([, L]) => L.texts?.length).filter(([, L]) => !laySearch || L.label.toLowerCase().includes(laySearch.toLowerCase())).map(([k, L]) => (
-                  <button key={k} onClick={() => applyLayout(k)} className="rounded-lg p-1.5" style={{ border: `1px solid ${spread?.layout === k ? "var(--brand)" : "var(--border)"}` }}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
-                      {L.photos.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: 0.45, borderRadius: 1 }} />)}
-                      {L.texts?.map((t, i) => <span key={`t${i}`} style={{ position: "absolute", left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, height: `${t.h}%`, background: "var(--text3)", opacity: 0.4, borderRadius: 1 }} />)}
-                    </div>
-                    <span className="mt-0.5 block text-[10px]" style={{ color: "var(--text3)" }}>{L.label}</span>
-                  </button>
-                ))}
-              </div>
-            </>)}
-
-            {laySrc === "mine" && (mine.length ? (
-              <div className="grid grid-cols-3 gap-2">
-                {mine.filter((m) => !laySearch || m.name.toLowerCase().includes(laySearch.toLowerCase())).map((m, mi) => (
-                  <div key={mi} className="relative">
-                    <button onClick={() => applyRects(m.rects)} className="w-full rounded-lg p-1.5" style={{ border: "1px solid var(--border)" }}><LayoutMini rects={m.rects} aspect={aspect} /></button>
-                    <button onClick={() => delMine(mi)} title="Xoá" className="absolute right-1 top-1 leading-none text-[12px]" style={{ color: "#cc4b4b" }}>✕</button>
-                    <span className="block text-center text-[10px]" style={{ color: "var(--text3)" }}>{m.name}</span>
-                  </div>
-                ))}
-              </div>
-            ) : <p className="py-4 text-center text-xs" style={{ color: "var(--text3)" }}>Chưa có bố cục nào. Nhấn “Lưu bố cục hiện tại”.</p>)}
-
-            {laySrc === "fav" && (favs.length ? (
-              <div className="grid grid-cols-3 gap-2">
-                {favs.map((v, fi) => (
-                  <div key={fi} className="relative">
-                    <button onClick={() => applyRects(v)} className="w-full rounded-lg p-1.5" style={{ border: "1px solid var(--border)" }}><LayoutMini rects={v} aspect={aspect} /></button>
-                    <button onClick={() => toggleFav(v)} title="Bỏ yêu thích" className="absolute right-1 top-1 leading-none text-[13px]" style={{ color: "#e0b85c" }}>★</button>
-                  </div>
-                ))}
-              </div>
-            ) : <p className="py-4 text-center text-xs" style={{ color: "var(--text3)" }}>Chưa có bố cục yêu thích. Nhấn ☆ trên mẫu để lưu.</p>)}
-
-            <button onClick={saveMine} className="btn-ghost w-full justify-start gap-2 text-sm"><Plus size={14} /> Lưu bố cục hiện tại</button>
-            <button onClick={reflowAll} className="btn-ghost w-full justify-start gap-2 text-sm"><Shuffle size={14} /> Dàn lại cả album</button>
-            <button onClick={addText} className="btn-ghost w-full justify-start gap-2 text-sm"><Plus size={14} /> Thêm dòng chữ</button>
-            <button onClick={shuffle} className="btn-ghost w-full justify-start gap-2 text-sm"><Shuffle size={14} /> Đổi vị trí ảnh</button>
-            <div className="flex gap-1.5">
-              <button onClick={() => moveSpread(-1)} disabled={cur === 0} className="btn-ghost flex-1 gap-1 text-sm disabled:opacity-40"><ArrowLeft size={14} /> Trước</button>
-              <button onClick={() => moveSpread(1)} disabled={cur === spreads.length - 1} className="btn-ghost flex-1 gap-1 text-sm disabled:opacity-40">Sau <ArrowLeft size={14} className="rotate-180" /></button>
-            </div>
-            <button onClick={dupSpread} className="btn-ghost w-full justify-start gap-2 text-sm"><Copy size={14} /> Nhân đôi trang</button>
-            <button onClick={delSpread} className="btn-ghost w-full justify-start gap-2 text-sm" style={{ color: "#cc4b4b" }}><Trash2 size={14} /> Xoá trang này</button>
-          </div>)}
-
-          {tab === "photo" && (selCell?.type === "photo" ? (<div className="space-y-3">
             <Slider label="Phóng to" min={1} max={2.6} step={0.05} value={selCell.scale} onChange={(v) => patchCell(selCell.uid, { scale: v })} />
             <Slider label="Dời ngang" min={0} max={100} step={1} value={selCell.posX} onChange={(v) => patchCell(selCell.uid, { posX: v })} />
             <Slider label="Dời dọc" min={0} max={100} step={1} value={selCell.posY} onChange={(v) => patchCell(selCell.uid, { posY: v })} />
@@ -705,9 +763,14 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
             </div>
             {(() => { const dpi = cellDpi(selCell); return dpi != null ? <p className="text-[11.5px]" style={{ color: dpi < 150 ? "#cc4b4b" : dpi < 230 ? "#c08a1e" : "var(--text2)" }}>~{dpi} DPI · {dpi < 150 ? "quá thấp để in" : dpi < 230 ? "hơi thấp" : "tốt để in"}</p> : null; })()}
             <button onClick={() => clearPhoto(selCell.uid)} className="btn-ghost w-full text-sm">Bỏ ảnh khỏi ô</button>
-          </div>) : <p className="py-6 text-center text-xs" style={{ color: "var(--text3)" }}>Chọn một ô ảnh để chỉnh.</p>)}
+          </div>)}
 
-          {tab === "text" && (selCell?.type === "text" ? (<div className="space-y-3">
+          {/* Dòng chữ được chọn */}
+          {selCell?.type === "text" && (<div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold">Chữ</span>
+              <button onClick={() => toggleLock(selCell.uid)} className="btn-ghost gap-1 px-2 py-1 text-xs" style={{ color: selCell.locked ? "var(--brand)" : "var(--text2)" }}>{selCell.locked ? <><Lock size={12} /> Đã khóa</> : <><Unlock size={12} /> Khóa</>}</button>
+            </div>
             <textarea value={selCell.text} onChange={(e) => patchCell(selCell.uid, { text: e.target.value })} rows={2} className="input w-full text-sm" />
             <Slider label="Cỡ chữ" min={10} max={72} step={1} value={selCell.size || ROLE_SIZE[selCell.role]} onChange={(v) => patchCell(selCell.uid, { size: v })} />
             <div className="flex flex-wrap gap-1.5">
@@ -719,10 +782,15 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
               {(["left", "center", "right"] as const).map((a) => <button key={a} onClick={() => patchCell(selCell.uid, { align: a })} className="flex-1 rounded-md py-1.5 text-xs" style={{ background: selCell.align === a ? "var(--brandSoft)" : "var(--surface)", color: selCell.align === a ? "var(--brand)" : "var(--text2)" }}>{a === "left" ? "Trái" : a === "center" ? "Giữa" : "Phải"}</button>)}
             </div>
             <button onClick={() => delCell(selCell.uid)} className="btn-ghost w-full text-sm" style={{ color: "#cc4b4b" }}>Xoá dòng chữ</button>
-          </div>) : <div className="py-6 text-center"><button onClick={addText} className="btn-ghost gap-1 text-sm"><Plus size={14} /> Thêm dòng chữ</button></div>)}
+          </div>)}
 
-          {tab === "deco" && (<div className="grid grid-cols-2 gap-2">
-            {DECOS.map((d) => <button key={d.label} onClick={() => addDeco(d)} className="rounded-lg py-3 text-center" style={{ border: "1px solid var(--border)" }}><div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20 }}>{d.text}</div><span className="text-[11px]" style={{ color: "var(--text2)" }}>{d.label}</span></button>)}
+          {/* Không chọn gì → trang trí */}
+          {!selCell && (<div>
+            <p className="mb-2 text-xs font-semibold" style={{ color: "var(--text2)" }}>Chèn trang trí</p>
+            <div className="grid grid-cols-2 gap-2">
+              {DECOS.map((d) => <button key={d.label} onClick={() => addDeco(d)} className="rounded-lg py-3 text-center" style={{ border: "1px solid var(--border)" }}><div style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 20 }}>{d.text}</div><span className="text-[11px]" style={{ color: "var(--text2)" }}>{d.label}</span></button>)}
+            </div>
+            <p className="mt-3 text-center text-[11px]" style={{ color: "var(--text3)" }}>Nhấp một ô ảnh/chữ để chỉnh.</p>
           </div>)}
         </div>
       </div>
@@ -773,6 +841,26 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
       )}
 
       {toast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 90, background: "var(--brand)", color: "#fff", padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+    </div>
+  );
+}
+
+/** Render TĨNH một spread (ảnh + chữ, không tương tác) — dùng cho spread hàng
+ * xóm ở chế độ Nhiều Spread và cho dải trang dưới cùng. */
+function SpreadView({ s, w, h, page, ink }: { s: Spread; w: number; h: number; page: string; ink: string }) {
+  return (
+    <div style={{ position: "relative", width: w, height: h, background: page, overflow: "hidden", borderRadius: 4, boxShadow: "0 6px 22px rgba(0,0,0,.14)" }}>
+      <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,.06)" }} />
+      {s.cells.map((c) => c.type === "photo" ? (
+        c.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={c.uid} src={c.photo} alt="" draggable={false} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, objectFit: "cover", objectPosition: `${c.posX}% ${c.posY}%`, filter: filterCss(c.filter) }} />
+        ) : (
+          <div key={c.uid} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, background: "var(--surface2)" }} />
+        )
+      ) : (
+        <div key={c.uid} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, display: "flex", alignItems: "center", justifyContent: c.align === "center" ? "center" : c.align === "right" ? "flex-end" : "flex-start", textAlign: c.align, overflow: "hidden", color: c.color || (c.overlay ? "#fff" : ink), fontFamily: c.role === "body" ? "var(--font-manrope), sans-serif" : "var(--font-cormorant), serif", fontSize: (c.size || ROLE_SIZE[c.role]) * (h / 500), textTransform: c.upper ? "uppercase" : "none", lineHeight: 1.2, whiteSpace: "pre-wrap" }}>{c.text}</div>
+      ))}
     </div>
   );
 }

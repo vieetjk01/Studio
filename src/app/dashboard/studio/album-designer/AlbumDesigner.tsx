@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ArrowRight } from "lucide-react";
-import AlbumEditor from "./AlbumEditor";
+import { useEffect, useState } from "react";
+import { Check, ArrowRight, Plus, Trash2, Loader2, Clock, BookImage } from "lucide-react";
+import AlbumEditor, { type ADSize, type ADTpl, type SavedDesign } from "./AlbumEditor";
 
 /**
- * Thiết kế Album — trình thiết kế album cưới (Chọn khổ → Chọn mẫu → Chỉnh sửa →
- * Xuất file). Bản khởi tạo: hoàn thiện Bước 1 (khổ) & Bước 2 (mẫu); Bước 3
- * (editor kéo-thả + AI rải ảnh) và Bước 4 (xuất file) đang xây tiếp.
- * Đang gắn nhãn "Sắp ra mắt" — chỉ admin thấy để hoàn thiện.
+ * Thiết kế Album — trình thiết kế album cưới.
+ *   Trang chính: album đã lưu (mở lại) + "Tạo mới".
+ *   Tạo mới: Chọn khổ → Chọn mẫu → Editor (kéo-thả, AI rải ảnh, xuất PDF in).
+ * Album được LƯU trên server nên có thể làm dở rồi quay lại.
  */
 
 type Size = { id: string; name: string; dim: string; w: number; h: number; tag: string };
@@ -39,71 +39,140 @@ const TEMPLATES: Tpl[] = [
 ];
 const CATS = ["Tất cả", "Hiện đại", "Editorial", "Lãng mạn", "Sang trọng"];
 
-const STEPS = [
-  { key: "size", label: "Khổ giấy" },
-  { key: "template", label: "Bộ mẫu" },
-  { key: "editor", label: "Chỉnh sửa" },
-  { key: "export", label: "Xuất file" },
-] as const;
-type Step = (typeof STEPS)[number]["key"];
+type SavedRow = { id: string; name: string; size: ADSize; tpl: ADTpl; updated_at: string };
+type Step = "home" | "size" | "template" | "editor";
 
 export default function AlbumDesigner() {
-  const [step, setStep] = useState<Step>("size");
-  const [size, setSize] = useState<Size | null>(null);
+  const [step, setStep] = useState<Step>("home");
   const [customW, setCustomW] = useState("30");
   const [customH, setCustomH] = useState("30");
   const [cat, setCat] = useState("Tất cả");
-  const [tpl, setTpl] = useState<Tpl | null>(null);
+  // Trạng thái mở editor.
+  const [edSize, setEdSize] = useState<ADSize | null>(null);
+  const [edTpl, setEdTpl] = useState<ADTpl | null>(null);
+  const [initial, setInitial] = useState<SavedDesign | null>(null);
+  // Album đã lưu.
+  const [saved, setSaved] = useState<SavedRow[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [opening, setOpening] = useState<string | null>(null);
 
-  const stepIdx = STEPS.findIndex((s) => s.key === step);
-  const reachable = (i: number) => i === 0 || (i <= 1 && !!size) || (i <= 2 && !!size && !!tpl) || i <= stepIdx;
+  async function loadSaved() {
+    setLoadingSaved(true);
+    try {
+      const res = await fetch("/api/album-designer/designs");
+      const d = await res.json();
+      setSaved(d.designs || []);
+    } catch { /* bỏ qua */ } finally { setLoadingSaved(false); }
+  }
+  useEffect(() => { if (step === "home") loadSaved(); }, [step]);
+
+  async function openSaved(id: string) {
+    setOpening(id);
+    try {
+      const res = await fetch(`/api/album-designer/designs?id=${id}`);
+      const d = await res.json();
+      if (!res.ok || !d.design) return;
+      const dg = d.design as { id: string; name: string; size: ADSize; tpl: ADTpl; spreads: unknown[]; folder?: string };
+      setEdSize(dg.size); setEdTpl(dg.tpl);
+      setInitial({ id: dg.id, name: dg.name, folder: dg.folder, spreads: dg.spreads as SavedDesign["spreads"] });
+      setStep("editor");
+    } finally { setOpening(null); }
+  }
+
+  async function del(id: string) {
+    setSaved((p) => p.filter((s) => s.id !== id));
+    await fetch(`/api/album-designer/designs?id=${id}`, { method: "DELETE" }).catch(() => {});
+  }
+
+  function startNew() { setInitial(null); setEdSize(null); setEdTpl(null); setStep("size"); }
+  function chooseSize(s: Size) { setEdSize({ name: s.name, w: s.w, h: s.h }); setStep("template"); }
+  function chooseTpl(t: Tpl) { setEdTpl({ id: t.id, name: t.name, page: t.page, ink: t.ink, font: t.font }); setStep("editor"); }
 
   const eyebrow = "text-[11px] font-bold uppercase tracking-[0.05em]";
   const h2 = "text-[26px] font-extrabold tracking-tight sm:text-[28px]";
   const card = "rounded-2xl p-4 transition-all";
   const cardStyle: React.CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", boxShadow: "0 1px 2px rgba(20,24,33,.05), 0 8px 24px rgba(20,24,33,.05)" };
 
+  // ── Editor ────────────────────────────────────────────────────────────────
+  if (step === "editor" && edSize && edTpl) {
+    return <AlbumEditor size={edSize} tpl={edTpl} initial={initial} onBack={() => setStep("home")} />;
+  }
+
   return (
     <div className="animate-[vkFade_.5s_ease_both] pb-16">
-      {/* Step bar */}
-      <div className="mb-8 flex flex-wrap items-center gap-2">
-        {STEPS.map((s, i) => {
-          const done = i < stepIdx;
-          const active = i === stepIdx;
-          const can = reachable(i);
-          return (
-            <button
-              key={s.key}
-              onClick={() => can && setStep(s.key)}
-              disabled={!can}
-              className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-              style={{ background: active ? "var(--brandSoft)" : "transparent", color: active ? "var(--brand)" : "var(--text2)" }}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold" style={{ background: done || active ? "var(--brand)" : "var(--surface2)", color: done || active ? "#fff" : "var(--text3)" }}>
-                {done ? <Check size={13} /> : i + 1}
-              </span>
-              {s.label}
+      {/* ── TRANG CHÍNH — album đã lưu ── */}
+      {step === "home" && (
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <span className={eyebrow} style={{ color: "var(--brand)" }}>Thiết kế Album</span>
+              <h1 className={`${h2} mt-1`}>Album của bạn</h1>
+              <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Mở album đang làm dở, hoặc tạo album mới để in.</p>
+            </div>
+            <button onClick={startNew} className="btn-primary gap-1.5"><Plus size={16} /> Tạo album mới</button>
+          </div>
+
+          {loadingSaved ? (
+            <div className="flex justify-center py-16"><Loader2 className="animate-spin" style={{ color: "var(--brand)" }} /></div>
+          ) : saved.length === 0 ? (
+            <button onClick={startNew} className={`${card} flex w-full flex-col items-center py-16 text-center`} style={{ ...cardStyle, borderStyle: "dashed" }}>
+              <BookImage size={30} style={{ color: "var(--brand)" }} />
+              <p className="mt-3 font-semibold">Chưa có album nào</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Nhấn để tạo album đầu tiên — chọn khổ, rồi AI tự rải ảnh & dàn trang.</p>
             </button>
-          );
-        })}
-      </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {saved.map((s) => {
+                const ar = s.size?.w && s.size?.h ? (s.size.w / s.size.h) : 1;
+                return (
+                  <div key={s.id} className={`${card} text-left`} style={cardStyle}>
+                    <button onClick={() => openSaved(s.id)} disabled={!!opening} className="block w-full">
+                      <div className="flex h-[110px] items-center justify-center rounded-xl" style={{ background: s.tpl?.page || "var(--surface2)" }}>
+                        {opening === s.id ? <Loader2 className="animate-spin" /> : <div style={{ width: ar >= 1 ? 84 : 84 * ar, height: ar >= 1 ? 84 / ar : 84, border: `2px solid ${s.tpl?.ink || "var(--brand)"}`, opacity: 0.5, borderRadius: 4 }} />}
+                      </div>
+                      <p className="mt-2 truncate text-[14px] font-bold">{s.name}</p>
+                      <p className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text3)" }}><Clock size={11} /> {new Date(s.updated_at).toLocaleDateString("vi-VN")} · {s.size?.name}</p>
+                    </button>
+                    <button onClick={() => del(s.id)} className="mt-2 flex items-center gap-1 text-[11px] font-semibold" style={{ color: "#cc4b4b" }}><Trash2 size={12} /> Xoá</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step bar (chỉ khi tạo mới) */}
+      {(step === "size" || step === "template") && (
+        <div className="mb-8 flex flex-wrap items-center gap-2">
+          {([["size", "Khổ giấy"], ["template", "Bộ mẫu"]] as const).map(([k, l], i) => {
+            const active = step === k;
+            const done = (k === "size" && step === "template");
+            return (
+              <button key={k} onClick={() => setStep(k)} className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: active ? "var(--brandSoft)" : "transparent", color: active ? "var(--brand)" : "var(--text2)" }}>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold" style={{ background: done || active ? "var(--brand)" : "var(--surface2)", color: done || active ? "#fff" : "var(--text3)" }}>{done ? <Check size={13} /> : i + 1}</span>
+                {l}
+              </button>
+            );
+          })}
+          <button onClick={() => setStep("home")} className="ml-auto text-xs font-semibold" style={{ color: "var(--text3)" }}>← Về album của tôi</button>
+        </div>
+      )}
 
       {/* STEP 1 — Chọn khổ */}
       {step === "size" && (
         <div className="mx-auto max-w-5xl">
           <div className="mb-6 text-center">
-            <span className={eyebrow} style={{ color: "var(--brand)" }}>Bước 1 / 4</span>
+            <span className={eyebrow} style={{ color: "var(--brand)" }}>Bước 1 / 2</span>
             <h1 className={`${h2} mt-1`}>Chọn khổ album</h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Chọn khổ in cố định trước khi thiết kế.</p>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {SIZES.map((s) => {
-              const ar = s.w / s.h;
-              const maxPx = 98;
-              const pw = ar >= 1 ? maxPx : maxPx * ar;
-              const ph = ar >= 1 ? maxPx / ar : maxPx;
+              const ar = s.w / s.h, maxPx = 98;
+              const pw = ar >= 1 ? maxPx : maxPx * ar, ph = ar >= 1 ? maxPx / ar : maxPx;
               return (
-                <button key={s.id} onClick={() => { setSize(s); setStep("template"); }} className={`${card} text-left hover:-translate-y-0.5`} style={cardStyle}>
+                <button key={s.id} onClick={() => chooseSize(s)} className={`${card} text-left hover:-translate-y-0.5`} style={cardStyle}>
                   <div className="flex h-[120px] items-center justify-center">
                     <div style={{ width: pw, height: ph, border: "2px solid var(--brand)", borderRadius: 6, background: "linear-gradient(135deg, var(--brandSoft), var(--surface2))" }} />
                   </div>
@@ -114,28 +183,14 @@ export default function AlbumDesigner() {
               );
             })}
           </div>
-          {/* Custom size */}
           <div className={`${card} mt-4 flex flex-wrap items-end gap-3`} style={cardStyle}>
             <div className="flex-1">
               <p className="text-[15px] font-extrabold">Khổ tùy chỉnh</p>
               <p className="text-[12.5px]" style={{ color: "var(--text2)" }}>Nhập kích thước riêng (cm).</p>
             </div>
-            <label className="text-xs" style={{ color: "var(--text2)" }}>Rộng
-              <input value={customW} onChange={(e) => setCustomW(e.target.value)} inputMode="decimal" className="input ml-2 w-[74px]" />
-            </label>
-            <label className="text-xs" style={{ color: "var(--text2)" }}>Cao
-              <input value={customH} onChange={(e) => setCustomH(e.target.value)} inputMode="decimal" className="input ml-2 w-[74px]" />
-            </label>
-            <button
-              onClick={() => {
-                const w = parseFloat(customW) || 30, h = parseFloat(customH) || 30;
-                setSize({ id: "custom", name: `Tùy chỉnh ${w}×${h}`, dim: `${w} × ${h} cm`, w, h, tag: "Tùy chỉnh" });
-                setStep("template");
-              }}
-              className="btn-primary gap-1.5"
-            >
-              Tiếp tục <ArrowRight size={15} />
-            </button>
+            <label className="text-xs" style={{ color: "var(--text2)" }}>Rộng<input value={customW} onChange={(e) => setCustomW(e.target.value)} inputMode="decimal" className="input ml-2 w-[74px]" /></label>
+            <label className="text-xs" style={{ color: "var(--text2)" }}>Cao<input value={customH} onChange={(e) => setCustomH(e.target.value)} inputMode="decimal" className="input ml-2 w-[74px]" /></label>
+            <button onClick={() => { const w = parseFloat(customW) || 30, h = parseFloat(customH) || 30; chooseSize({ id: "custom", name: `Tùy chỉnh ${w}×${h}`, dim: `${w} × ${h} cm`, w, h, tag: "Tùy chỉnh" }); }} className="btn-primary gap-1.5">Tiếp tục <ArrowRight size={15} /></button>
           </div>
         </div>
       )}
@@ -144,7 +199,7 @@ export default function AlbumDesigner() {
       {step === "template" && (
         <div className="mx-auto max-w-6xl">
           <div className="mb-6 text-center">
-            <span className={eyebrow} style={{ color: "var(--brand)" }}>Bước 2 / 4</span>
+            <span className={eyebrow} style={{ color: "var(--brand)" }}>Bước 2 / 2</span>
             <h1 className={`${h2} mt-1`}>Chọn bộ mẫu</h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Phông chữ + màu trang + phong cách dàn trang.</p>
           </div>
@@ -155,7 +210,7 @@ export default function AlbumDesigner() {
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {TEMPLATES.filter((t) => cat === "Tất cả" || t.cat === cat).map((t) => (
-              <button key={t.id} onClick={() => { setTpl(t); setStep("editor"); }} className={`${card} text-left hover:-translate-y-[3px]`} style={cardStyle}>
+              <button key={t.id} onClick={() => chooseTpl(t)} className={`${card} text-left hover:-translate-y-[3px]`} style={cardStyle}>
                 <div className="flex h-[150px] items-center justify-center gap-[5px] overflow-hidden rounded-[11px] p-3.5" style={{ background: t.page }}>
                   <span style={{ fontFamily: t.font, color: t.ink, fontSize: 26, textTransform: t.upper ? "uppercase" : "none", letterSpacing: t.upper ? ".08em" : undefined }}>{t.sample}</span>
                 </div>
@@ -170,15 +225,6 @@ export default function AlbumDesigner() {
             ))}
           </div>
         </div>
-      )}
-
-      {/* STEP 3 — Editor */}
-      {step === "editor" && size && tpl && (
-        <AlbumEditor
-          size={{ name: size.name, w: size.w, h: size.h }}
-          tpl={{ id: tpl.id, name: tpl.name, page: tpl.page, ink: tpl.ink, font: tpl.font }}
-          onBack={() => setStep("template")}
-        />
       )}
     </div>
   );

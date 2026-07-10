@@ -1406,6 +1406,29 @@ create policy site_blocks_owner_all on public.site_blocks
   with check (exists (select 1 from public.sites s where s.id = site_id and (s.owner_id = auth.uid() or public.is_admin())));
 
 -- ============================================================================
+-- Album Designer — album đã lưu (thiết kế dàn trang để in)
+-- Mỗi bản là một cuốn album: khổ + bộ mẫu + danh sách spread (jsonb) + link
+-- folder Drive để nạp lại thư viện ảnh. Studio (và nhân viên) sửa album của mình.
+-- ============================================================================
+create table if not exists public.album_designs (
+  id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references public.profiles (id) on delete cascade,
+  name        text not null default 'Album chưa đặt tên',
+  size        jsonb not null default '{}'::jsonb,   -- { name, w, h }
+  tpl         jsonb not null default '{}'::jsonb,   -- { id, name, page, ink, font }
+  spreads     jsonb not null default '[]'::jsonb,   -- Spread[]
+  folder      text,                                 -- link folder Drive (nạp lại thư viện)
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists album_designs_owner_idx on public.album_designs (owner_id, updated_at desc);
+alter table public.album_designs enable row level security;
+drop policy if exists album_designs_owner_all on public.album_designs;
+create policy album_designs_owner_all on public.album_designs
+  for all using (owner_id = auth.uid() or public.is_admin())
+  with check (owner_id = auth.uid() or public.is_admin());
+
+-- ============================================================================
 -- Customer quotes (báo giá gửi khách trước khi ký hợp đồng)
 -- Studio creates a quote with line items, shares a public /q/[token] link.
 -- Client can check/uncheck optional items, request adjustments, or accept.
