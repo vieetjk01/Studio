@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, Send, Check } from "lucide-react";
 
 /** Public guest RSVP + well-wishes form. Posts to /api/thiep/rsvp by slug. */
 export default function RsvpForm({ slug, note }: { slug: string; note?: string }) {
   const [name, setName] = useState("");
+
+  // Tự điền tên từ link cá nhân hóa (?guest=…) — đồng bộ với bì thư & lời mời.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const g = (sp.get("guest") || sp.get("g") || "").trim();
+    if (g) setName(g.slice(0, 120));
+  }, []);
   const [side, setSide] = useState<"groom" | "bride" | "both">("both");
   const [attending, setAttending] = useState(true);
   const [num, setNum] = useState(1);

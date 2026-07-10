@@ -1,5 +1,6 @@
 import type { WeddingConfig, WeddingInvitation } from "@/lib/types";
 import type { Wish } from "./shared";
+import EnvelopeIntro from "./EnvelopeIntro";
 import ClassicTemplate from "./designs/ClassicTemplate";
 import ElegantTemplate from "./designs/ElegantTemplate";
 import FloralTemplate from "./designs/FloralTemplate";
@@ -28,8 +29,10 @@ export default function WeddingRenderer({ inv, wishes = [], guest = "" }: { inv:
   const cfg = inv.config as WeddingConfig;
   const accent = cfg?.accent || "#b08968";
   const label = cfg?.guest_greeting?.trim() || "Trân trọng kính mời";
+  const couple = [cfg?.groom_name, cfg?.bride_name].filter(Boolean).join(" & ");
   return (
     <>
+      {guest && <EnvelopeIntro name={guest} label={label} couple={couple} accent={accent} />}
       {guest && <GuestGreeting name={guest} accent={accent} label={label} />}
       <Template inv={inv} wishes={wishes} />
     </>
