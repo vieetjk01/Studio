@@ -242,8 +242,11 @@ export default function WeddingEditor({ token }: { token: string }) {
 
         {/* Khách mời — link + QR cá nhân hóa */}
         <Section title="Khách mời (link & QR riêng)" icon={<Users size={16} />}>
+          <Field label="Lời mời (hiện phía trên tên khách trong thiệp)">
+            <input className={inp} value={cfg.guest_greeting ?? ""} onChange={(e) => patch({ guest_greeting: e.target.value })} placeholder="Trân trọng kính mời" />
+          </Field>
           <GuestManager baseUrl={absBase} accent={cfg.accent || "#b08968"} guests={cfg.guests ?? []} onChange={(guests) => patch({ guests })} />
-          <p className="text-xs text-stone-400">Nhớ bấm <b>“Lưu”</b> sau khi thêm/bớt khách để lưu danh sách.</p>
+          <p className="text-xs text-stone-400">Tên khách hiển thị bằng <b>font viết tay</b> trong thiệp. Nhớ bấm <b>“Lưu”</b> sau khi thêm/bớt khách.</p>
         </Section>
 
         {/* Style */}

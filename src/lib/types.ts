@@ -702,6 +702,7 @@ export type WeddingConfig = {
   music_autoplay?: boolean;  // thử tự phát (trình duyệt có thể chặn)
   guestbook_enabled?: boolean; // hiện sổ lưu bút (lời chúc của khách)
   guests?: string[];           // danh sách khách mời → link + QR cá nhân hóa cho từng người
+  guest_greeting?: string;     // lời mời phía trên tên khách (mặc định "Trân trọng kính mời")
   accent?: string;           // màu nhấn (#rrggbb) — ghi đè màu của template
   font?: "serif" | "sans";   // ghi đè phông của template
 };

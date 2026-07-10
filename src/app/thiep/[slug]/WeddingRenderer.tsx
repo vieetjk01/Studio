@@ -25,25 +25,28 @@ const TEMPLATES = {
 /** Dispatches to the chosen template — each is its own distinct design. */
 export default function WeddingRenderer({ inv, wishes = [], guest = "" }: { inv: WeddingInvitation; wishes?: Wish[]; guest?: string }) {
   const Template = TEMPLATES[inv.template as keyof typeof TEMPLATES] ?? ClassicTemplate;
-  const accent = (inv.config as WeddingConfig)?.accent || "#b08968";
+  const cfg = inv.config as WeddingConfig;
+  const accent = cfg?.accent || "#b08968";
+  const label = cfg?.guest_greeting?.trim() || "Trân trọng kính mời";
   return (
     <>
-      {guest && <GuestGreeting name={guest} accent={accent} />}
+      {guest && <GuestGreeting name={guest} accent={accent} label={label} />}
       <Template inv={inv} wishes={wishes} />
     </>
   );
 }
 
 /**
- * Lời mời cá nhân hóa — dải nổi trên cùng khi khách mở link riêng (?guest=…).
- * Hiển thị trên MỌI mẫu thiệp mà không cần sửa từng template.
+ * Ô "tên khách mời" cá nhân hóa — hiện khi khách mở link riêng (?guest=…).
+ * Nổi trên cùng, hiển thị trên MỌI mẫu thiệp mà không cần sửa từng template.
+ * Tên khách dùng FONT VIẾT TAY (Dancing Script / --font-script).
  */
-function GuestGreeting({ name, accent }: { name: string; accent: string }) {
+function GuestGreeting({ name, accent, label }: { name: string; accent: string; label: string }) {
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, display: "flex", justifyContent: "center", padding: "10px 12px", pointerEvents: "none" }}>
-      <div style={{ pointerEvents: "auto", maxWidth: "92%", background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)", border: `1px solid ${accent}`, color: "#3a3530", borderRadius: 999, padding: "7px 18px", boxShadow: "0 6px 24px rgba(0,0,0,.14)", fontFamily: "var(--font-cormorant), serif", textAlign: "center", lineHeight: 1.25 }}>
-        <span style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase", color: accent }}>Trân trọng kính mời</span>
-        <span style={{ display: "block", fontSize: 19, fontWeight: 600 }}>{name}</span>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, display: "flex", justifyContent: "center", padding: "12px", pointerEvents: "none" }}>
+      <div style={{ pointerEvents: "auto", maxWidth: "94%", background: "rgba(255,255,255,0.94)", backdropFilter: "blur(8px)", border: `1px solid ${accent}`, color: "#3a3530", borderRadius: 18, padding: "10px 26px", boxShadow: "0 8px 28px rgba(0,0,0,.16)", textAlign: "center", lineHeight: 1.15 }}>
+        <span style={{ display: "block", fontFamily: "var(--font-cormorant), serif", fontSize: 12, letterSpacing: ".16em", textTransform: "uppercase", color: accent }}>{label}</span>
+        <span style={{ display: "block", marginTop: 2, fontFamily: "var(--font-script), cursive", fontSize: 30, lineHeight: 1.1, color: "#2c2621" }}>{name}</span>
       </div>
     </div>
   );

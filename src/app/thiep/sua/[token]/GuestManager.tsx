@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Copy, Check, Download, QrCode, Loader2, ListPlus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Copy, Check, Download, QrCode, Loader2, ListPlus, Upload } from "lucide-react";
+import { parseGuestFile } from "@/lib/guest-import";
 
 /**
  * Quản lý KHÁCH MỜI cho thiệp cưới:
@@ -24,6 +25,8 @@ export default function GuestManager({
   const [qrMap, setQrMap] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [zipping, setZipping] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const linkFor = useCallback((name: string) => `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}guest=${encodeURIComponent(name)}`, [baseUrl]);
 
@@ -53,6 +56,17 @@ export default function GuestManager({
   const addBulk = () => { if (bulk.trim()) { addNames(bulk); setBulk(""); setShowBulk(false); } };
   const remove = (i: number) => onChange(guests.filter((_, k) => k !== i));
 
+  async function importFile(file: File) {
+    setImporting(true);
+    try {
+      const names = await parseGuestFile(file);
+      if (names.length) addNames(names.join("\n"));
+      else alert("Không đọc được tên nào trong file. Hãy đảm bảo cột đầu (cột A) chứa tên khách.");
+    } catch {
+      alert("Không đọc được file. Hỗ trợ .xlsx, .csv, .txt (nếu là .xls cũ, hãy lưu lại thành .xlsx).");
+    } finally { setImporting(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+
   async function copy(text: string, key: string) {
     try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500); } catch { /* */ }
   }
@@ -71,8 +85,9 @@ export default function GuestManager({
       ctx.font = "500 24px 'Cormorant Garamond', Georgia, serif";
       ctx.fillText("TRÂN TRỌNG KÍNH MỜI", W / 2, W - pad + 66);
       ctx.fillStyle = "#1a1205";
-      ctx.font = "600 40px 'Cormorant Garamond', Georgia, serif";
-      ctx.fillText(name.length > 28 ? name.slice(0, 27) + "…" : name, W / 2, W - pad + 118);
+      // Tên khách kiểu viết tay (dùng font script hệ thống — canvas không dùng được biến CSS).
+      ctx.font = "italic 46px 'Segoe Script', 'Brush Script MT', 'Comic Sans MS', cursive";
+      ctx.fillText(name.length > 24 ? name.slice(0, 23) + "…" : name, W / 2, W - pad + 122);
       cv.toBlob((b) => resolve(b!), "image/png");
     };
     img.src = qr;
@@ -130,7 +145,11 @@ export default function GuestManager({
           </div>
         </div>
       ) : (
-        <button onClick={() => setShowBulk(true)} className={btn}><ListPlus size={14} /> Nhập theo danh sách</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowBulk(true)} className={btn}><ListPlus size={14} /> Nhập theo danh sách</button>
+          <button onClick={() => fileRef.current?.click()} disabled={importing} className={btn}>{importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Nhập từ file (Excel/CSV)</button>
+          <input ref={fileRef} type="file" accept=".xlsx,.csv,.txt,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importFile(f); }} />
+        </div>
       )}
 
       {/* Thanh công cụ + danh sách khách */}
