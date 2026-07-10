@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllPhotos } from "@/lib/photos";
+import { limitByIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,10 @@ export async function POST(
   req: Request,
   { params }: { params: { slug: string } }
 ) {
+  // H7: chặn dò mật khẩu album (giới hạn theo IP + slug).
+  const limited = limitByIp(req, `album-pw:${params.slug}`, 10, 60_000);
+  if (limited) return limited;
+
   const { password } = (await req.json().catch(() => ({}))) as {
     password?: string;
   };

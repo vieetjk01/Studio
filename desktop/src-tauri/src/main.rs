@@ -260,16 +260,28 @@ async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), Stri
     Ok(())
 }
 
+/// Chặn ký tự điều khiển / xuống dòng trong tham số mở ngoài (phòng thủ chiều sâu).
+fn has_control_chars(s: &str) -> bool {
+    s.chars().any(|c| c.is_control())
+}
+
 /// Mở liên kết trong trình duyệt mặc định (nút "Tải bản cập nhật").
+///
+/// Dùng `explorer` (không qua `cmd`): Rust truyền tham số thẳng cho CreateProcess
+/// nên KHÔNG có shell để chèn lệnh — trước đây `cmd /C start` cho phép chèn lệnh
+/// qua ký tự `&`, `|`, `>`… nếu URL bị thao túng (command injection).
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") && !url.starts_with("http://") {
         return Err("bad_url".to_string());
     }
+    if has_control_chars(&url) {
+        return Err("bad_url".to_string());
+    }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &url])
+        std::process::Command::new("explorer")
+            .arg(&url)
             .spawn()
             .map_err(|e| e.to_string())?;
         return Ok(());
@@ -282,12 +294,16 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 /// Mở một file bằng ứng dụng mặc định (PDF/HTML để in hợp đồng).
+/// Dùng `explorer` trực tiếp — không qua `cmd` (xem ghi chú ở `open_url`).
 #[tauri::command]
 fn open_file(path: String) -> Result<(), String> {
+    if has_control_chars(&path) {
+        return Err("bad_path".to_string());
+    }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &path])
+        std::process::Command::new("explorer")
+            .arg(&path)
             .spawn()
             .map_err(|e| e.to_string())?;
         return Ok(());
