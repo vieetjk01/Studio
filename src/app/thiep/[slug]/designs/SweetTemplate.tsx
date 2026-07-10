@@ -4,7 +4,7 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtDate, readConfig, GiftCard, GuestBlock, type TemplateProps } from "../shared";
 
 /**
  * "Ngọt ngào" — thiệp cuộn dọc đầy đủ, tông hồng pastel (theo mẫu tham khảo):
@@ -17,7 +17,7 @@ const DEFAULT_DRESS = ["#f3d0d4", "#c98a86", "#8ba888", "#d9c6a5"];
 
 const initial = (s?: string) => (s || "").trim().split(/\s+/).pop()?.charAt(0).toUpperCase() || "";
 
-export default function SweetTemplate({ inv, wishes }: TemplateProps) {
+export default function SweetTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const soft = `${accent}1f`;
@@ -124,6 +124,9 @@ export default function SweetTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      {/* Tên khách mời (sau phần Ngày Trọng Đại) */}
+      {guest && <GuestBlock name={guest} label={c.guest_greeting?.trim() || "Trân trọng kính mời"} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />}
 
       {/* Đếm ngược */}
       {c.wedding_date && (

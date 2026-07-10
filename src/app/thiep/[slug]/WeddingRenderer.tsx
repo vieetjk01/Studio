@@ -35,25 +35,9 @@ export default function WeddingRenderer({ inv, wishes = [], guest = "" }: { inv:
   return (
     <>
       {guest && <EnvelopeIntro name={guest} label={label} couple={couple} accent={accent} />}
-      {guest && <GuestSection name={guest} accent={accent} label={label} />}
-      <Template inv={inv} wishes={wishes} />
+      {/* Tên khách mời được đưa VÀO nội dung mỗi mẫu (sau phần "Ngày trọng đại"),
+          không còn cố định ở đầu trang. */}
+      <Template inv={inv} wishes={wishes} guest={guest} />
     </>
-  );
-}
-
-/**
- * Phần "tên khách mời + lời mời" — là MỘT KHỐI RIÊNG nằm ĐẦU nội dung thiệp
- * (cuộn theo trang, không cố định). Hiển thị trên mọi mẫu. Tên khách dùng FONT
- * VIẾT TAY (Great Vibes / --font-hand).
- */
-function GuestSection({ name, accent, label }: { name: string; accent: string; label: string }) {
-  return (
-    <section style={{ background: `linear-gradient(180deg, ${accent}14, transparent)`, borderBottom: `1px solid ${accent}33`, padding: "44px 20px 40px", textAlign: "center" }}>
-      <div style={{ margin: "0 auto", maxWidth: 560 }}>
-        <p style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 13, letterSpacing: ".22em", textTransform: "uppercase", color: accent }}>{label}</p>
-        <p style={{ fontFamily: "var(--font-hand), cursive", fontSize: 46, lineHeight: 1.1, color: "#2c2621", margin: "6px 0 14px" }}>{name}</p>
-        <span style={{ display: "inline-block", width: 66, height: 1, background: accent, opacity: 0.55 }} />
-      </div>
-    </section>
   );
 }

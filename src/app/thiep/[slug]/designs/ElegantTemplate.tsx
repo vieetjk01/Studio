@@ -4,12 +4,12 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtDate, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
 
 // Sang trọng: nền tối, chữ vàng lớn, khung mảnh, gạch vàng, tên có ánh kim (shimmer).
 const PAL = { bg: "#15110d", surface: "rgba(255,255,255,0.04)", text: "#ece6da", muted: "rgba(236,230,218,0.6)", border: "rgba(201,168,106,0.3)", accent: "#c9a86a" };
 
-export default function ElegantTemplate({ inv, wishes }: TemplateProps) {
+export default function ElegantTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const wrap: CSSProperties & Record<string, string> = {
@@ -75,6 +75,8 @@ export default function ElegantTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       {gallery.length > 0 && (
         <section className="mx-auto max-w-4xl px-6 py-14 text-center">

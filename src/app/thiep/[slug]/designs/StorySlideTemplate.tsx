@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
 
 // Story — trải nghiệm "story trượt" toàn màn hình (430×760): thanh tiến trình,
 // chạm hai bên để chuyển, nút "Tham gia ♥" mở trang chi tiết (RSVP). Port 1b.
@@ -23,7 +23,7 @@ function useCountdown(date?: string) {
   return { d: String(d), h: pad(h), m: pad(m), s: pad(s) };
 }
 
-export default function StorySlideTemplate({ inv, wishes }: TemplateProps) {
+export default function StorySlideTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || ACCENT;
   const cm = "var(--font-cormorant), serif";
@@ -187,6 +187,8 @@ export default function StorySlideTemplate({ inv, wishes }: TemplateProps) {
                 {events.find((e) => e.map_url) && <a href={events.find((e) => e.map_url)!.map_url} target="_blank" rel="noreferrer" style={{ textAlign: "center", textDecoration: "none", fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#1a1014", background: accent, borderRadius: 12, padding: 13 }}>Chỉ đường tới địa điểm</a>}
               </div>
             )}
+
+            <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: "rgba(255,255,255,.06)", text: "#f0e6e2", muted: "#b09aa0", border: "rgba(255,255,255,.16)" }} />
 
             {hasGift && (
               <div style={{ marginTop: 20, display: "flex", gap: 10 }}>

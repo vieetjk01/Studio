@@ -2,13 +2,13 @@ import type { CSSProperties } from "react";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
 
 // Editorial — tạp chí sáng, tông đất terracotta, tít Cormorant khổ lớn, băng ảnh
 // tự trôi. Port từ mẫu studio (thiep-1c).
 const PAL = { bg: "#f4f1ec", panel: "#fff", ink: "#241f21", muted: "#8f867f", line: "#e4ddd3", accent: "#b5624f", accentSoft: "#efe3dc" };
 
-export default function EditorialTemplate({ inv, wishes }: TemplateProps) {
+export default function EditorialTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const cm = "var(--font-cormorant), serif";
@@ -100,6 +100,8 @@ export default function EditorialTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.panel, text: PAL.ink, muted: PAL.muted, border: PAL.line }} />
 
       {/* STORY */}
       {c.story && (

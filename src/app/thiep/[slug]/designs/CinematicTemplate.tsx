@@ -2,13 +2,13 @@ import type { CSSProperties } from "react";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
 
 // Cinematic — cột 430px, tông kem sang trọng, cánh hoa rơi, ảnh bìa Ken Burns +
 // light-leak, tên Cormorant lớn, chữ viết tay Dancing Script. Port từ mẫu studio.
 const PAL = { bg: "#f7efe9", panel: "#fffdfb", ink: "#4a3a3e", muted: "#9c8488", line: "#ecdcd6", accent: "#c98a92", accentDeep: "#b06e78", soft: "#f6e7e3", gold: "#e8c9a8" };
 
-export default function CinematicTemplate({ inv, wishes }: TemplateProps) {
+export default function CinematicTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const cm = "var(--font-cormorant), serif";
@@ -87,6 +87,8 @@ export default function CinematicTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.panel, text: PAL.ink, muted: PAL.muted, border: PAL.line }} />
 
       {/* ALBUM */}
       {gallery.length > 0 && (

@@ -3,14 +3,14 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
 
 // Royal — cột 480px, tông kem/vàng ấm sang trọng, chữ viết tay (Great Vibes →
 // var(--font-script)), cánh hoa rơi, bìa Ken Burns, cuộn hiện dần. Port mẫu
 // "Bảo Hân & Hoàng Phú".
 const PAL = { bg: "#f7f1e7", paper: "#fffdf8", ink: "#413a30", soft: "#6f6659", muted: "#9c9483", line: "#e7ddcc", accent: "#a67c52", gold: "#b89968" };
 
-export default function RoyalTemplate({ inv, wishes }: TemplateProps) {
+export default function RoyalTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const cm = "var(--font-cormorant), serif";
@@ -101,6 +101,8 @@ export default function RoyalTemplate({ inv, wishes }: TemplateProps) {
             ))}
           </section>
         )}
+
+        <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.paper, text: PAL.ink, muted: PAL.muted, border: PAL.line }} />
 
         {/* COUNTDOWN */}
         {c.wedding_date && (

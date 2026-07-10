@@ -4,12 +4,12 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtDate, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
 
 // Cổ điển: đối xứng, trang nhã, timeline DỌC, ảnh bìa zoom chậm (Ken Burns).
 const PAL = { bg: "#fbf7f2", surface: "#ffffff", text: "#3a3530", muted: "rgba(58,53,48,0.6)", border: "rgba(58,53,48,0.14)", accent: "#b08968" };
 
-export default function ClassicTemplate({ inv, wishes }: TemplateProps) {
+export default function ClassicTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const wrap: CSSProperties & Record<string, string> = {
@@ -77,6 +77,8 @@ export default function ClassicTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       {gallery.length > 0 && (
         <section className="mx-auto max-w-4xl px-6 py-14 text-center">

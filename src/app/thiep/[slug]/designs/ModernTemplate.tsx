@@ -5,7 +5,7 @@ import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
 import StoryGallery from "../StoryGallery";
-import { fmtDate, fmtShort, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtDate, fmtShort, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
 
 // Hiện đại: tối giản, sans đậm, bố cục SPLIT, số mục cỡ lớn, gallery kiểu STORY.
 const PAL = { bg: "#ffffff", surface: "#f5f6f4", text: "#1c1d1b", muted: "rgba(28,29,27,0.55)", border: "rgba(28,29,27,0.12)", accent: "#2f7d77" };
@@ -14,7 +14,7 @@ function Index({ n, accent }: { n: string; accent: string }) {
   return <span className="block font-sans text-6xl font-extrabold leading-none sm:text-7xl" style={{ color: accent, opacity: 0.18 }}>{n}</span>;
 }
 
-export default function ModernTemplate({ inv, wishes }: TemplateProps) {
+export default function ModernTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const wrap: CSSProperties & Record<string, string> = {
@@ -80,6 +80,8 @@ export default function ModernTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       {/* Gallery — story style */}
       {gallery.length > 0 && (

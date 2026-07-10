@@ -4,13 +4,13 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, type TemplateProps } from "../shared";
+import { fmtDate, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
 
 // Hoa: hồng pastel, cánh hoa bay, ảnh bìa khung VÒM, gallery POLAROID nghiêng.
 const PAL = { bg: "#fdf3f4", surface: "#ffffff", text: "#4a373c", muted: "rgba(74,55,60,0.6)", border: "rgba(215,122,147,0.24)", accent: "#d77a93" };
 const PETALS = ["🌸", "🌷", "🌹", "🏵️", "💮"];
 
-export default function FloralTemplate({ inv, wishes }: TemplateProps) {
+export default function FloralTemplate({ inv, wishes, guest }: TemplateProps) {
   const { c, groom, bride, events, gallery, hasGift } = readConfig(inv);
   const accent = c.accent || PAL.accent;
   const wrap: CSSProperties & Record<string, string> = {
@@ -80,6 +80,8 @@ export default function FloralTemplate({ inv, wishes }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       {gallery.length > 0 && (
         <section className="mx-auto max-w-4xl px-6 py-14 text-center">
