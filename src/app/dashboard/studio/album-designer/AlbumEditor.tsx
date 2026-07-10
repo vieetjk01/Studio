@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wand2, Undo2, Redo2, Plus, Trash2, Shuffle, Loader2, Download, ImagePlus, ArrowLeft, Copy } from "lucide-react";
+import { buildPdf, cmToPt, type PdfPageSpec } from "@/lib/album-pdf";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 export type ADSize = { name: string; w: number; h: number };
@@ -150,7 +151,8 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [loadingLib, setLoadingLib] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [fmt, setFmt] = useState<"jpg" | "png">("jpg");
+  const [fmt, setFmt] = useState<"jpg" | "png" | "pdf">("pdf");
+  const [bleedMm, setBleedMm] = useState(3); // bleed mặc định 3mm (chuẩn nhà in)
   const [showExport, setShowExport] = useState(false);
   const [exportSel, setExportSel] = useState<Set<number>>(new Set());
   const [canvasW, setCanvasW] = useState(700);
@@ -351,14 +353,27 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     return Math.round((Math.min(dd.w, dd.h) / c.scale) / (cellCm / 2.54));
   }
 
-  /* ── Export per-page PNG ────────────────────────────────────────────── */
+  /* ── Export (JPG/PNG từng trang · PDF chuẩn in cả cuốn) ─────────────────
+   * `bleedMm` > 0: mở rộng canvas ra mỗi phía; ô ảnh CHẠM mép trim được kéo
+   * giãn vào vùng bleed để sau khi nhà in xén không lộ viền trắng. */
   const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = rej; im.src = src; });
-  async function exportSpread(s: Spread, idx: number) {
-    const DPI = 300, W = Math.round((2 * size.w) * DPI / 2.54), H = Math.round(size.h * DPI / 2.54);
+  async function renderSpreadCanvas(s: Spread, bleed_mm: number): Promise<HTMLCanvasElement> {
+    const DPI = 300;
+    const trimW = Math.round((2 * size.w) * DPI / 2.54), trimH = Math.round(size.h * DPI / 2.54);
+    const bl = Math.round((bleed_mm / 10) * DPI / 2.54);
+    const W = trimW + 2 * bl, H = trimH + 2 * bl;
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const ctx = cv.getContext("2d")!; ctx.fillStyle = tpl.page; ctx.fillRect(0, 0, W, H);
     for (const c of s.cells) {
-      const cx = (c.x / 100) * W, cy = (c.y / 100) * H, cw = (c.w / 100) * W, ch = (c.h / 100) * H;
+      let cx = bl + (c.x / 100) * trimW, cy = bl + (c.y / 100) * trimH;
+      let cw = (c.w / 100) * trimW, ch = (c.h / 100) * trimH;
+      if (bl > 0 && c.type === "photo") {
+        // Kéo ô sát mép trim ra tận mép giấy (bleed) để tránh viền trắng khi xén.
+        if (c.x <= 0.5) { cx -= bl; cw += bl; }
+        if (c.y <= 0.5) { cy -= bl; ch += bl; }
+        if (c.x + c.w >= 99.5) cw += bl;
+        if (c.y + c.h >= 99.5) ch += bl;
+      }
       if (c.type === "photo" && c.full) {
         try {
           const im = await loadImg(c.full);
@@ -369,7 +384,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
         } catch { /* skip broken image */ }
       } else if (c.type === "text" && c.text) {
         ctx.save(); ctx.fillStyle = c.color || (c.overlay ? "#fff" : tpl.ink);
-        const fs = (c.size || ROLE_SIZE[c.role]) * (H / baseH);
+        const fs = (c.size || ROLE_SIZE[c.role]) * (trimH / baseH);
         ctx.font = `${fs}px ${c.role === "body" ? "Manrope, sans-serif" : "'Cormorant Garamond', serif"}`;
         ctx.textAlign = c.align; ctx.textBaseline = "middle";
         const tx = c.align === "center" ? cx + cw / 2 : c.align === "right" ? cx + cw : cx;
@@ -377,20 +392,47 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
         ctx.restore();
       }
     }
-    // toBlob is far more memory-friendly than toDataURL for large print canvases.
-    const mime = fmt === "png" ? "image/png" : "image/jpeg";
-    const ext = fmt === "png" ? "png" : "jpg";
-    const blob: Blob = await new Promise((res) => cv.toBlob((b) => res(b!), mime, fmt === "png" ? undefined : 0.95));
+    return cv;
+  }
+  const canvasToBytes = (cv: HTMLCanvasElement, q = 0.95): Promise<Uint8Array> =>
+    new Promise((res) => cv.toBlob(async (b) => res(new Uint8Array(await b!.arrayBuffer())), "image/jpeg", q));
+
+  async function exportImages(indices: number[]) {
+    for (const i of indices) {
+      const cv = await renderSpreadCanvas(spreads[i], 0); // ảnh: không bleed
+      const mime = fmt === "png" ? "image/png" : "image/jpeg";
+      const ext = fmt === "png" ? "png" : "jpg";
+      const blob: Blob = await new Promise((res) => cv.toBlob((b) => res(b!), mime, fmt === "png" ? undefined : 0.95));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `album-${size.name}-trang-${i + 1}.${ext}`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      await new Promise((r) => setTimeout(r, 450));
+    }
+  }
+  async function exportPdf(indices: number[]) {
+    const trimWpt = cmToPt(2 * size.w), trimHpt = cmToPt(size.h), blPt = cmToPt(bleedMm / 10);
+    const pages: PdfPageSpec[] = [];
+    for (const i of indices) {
+      const cv = await renderSpreadCanvas(spreads[i], bleedMm);
+      pages.push({
+        jpeg: await canvasToBytes(cv), widthPx: cv.width, heightPx: cv.height,
+        boxWpt: trimWpt + 2 * blPt, boxHpt: trimHpt + 2 * blPt, trimMarginPt: blPt,
+      });
+    }
+    const blob = buildPdf(pages);
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `album-${size.name}-trang-${idx + 1}.${ext}`; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    const a = document.createElement("a"); a.href = url; a.download = `album-${size.name}-${pages.length}trang.pdf`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 8000);
   }
   async function exportPages(indices: number[]) {
     const list = indices.filter((i) => i >= 0 && i < spreads.length).sort((a, b) => a - b);
     if (!list.length) { showToast("Chưa chọn trang nào để xuất."); return; }
     setShowExport(false);
     setExporting(true);
-    try { for (const i of list) { await exportSpread(spreads[i], i); await new Promise((r) => setTimeout(r, 450)); } showToast(`Đã xuất ${list.length} trang (${fmt.toUpperCase()} · 300 DPI · ảnh gốc).`); }
+    try {
+      if (fmt === "pdf") { await exportPdf(list); showToast(`Đã xuất PDF ${list.length} trang · 300 DPI · bleed ${bleedMm}mm + dấu cắt.`); }
+      else { await exportImages(list); showToast(`Đã xuất ${list.length} trang (${fmt.toUpperCase()} · 300 DPI · ảnh gốc).`); }
+    }
     catch { showToast("Xuất file gặp lỗi — thử lại hoặc giảm số trang."); }
     finally { setExporting(false); }
   }
@@ -414,7 +456,7 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
           <button onClick={() => setZoom((z) => clamp(+(z + 0.1).toFixed(1), 0.5, 1.6))} className="px-2 text-lg">+</button>
         </div>
         <div className="flex overflow-hidden rounded-lg text-xs font-semibold" style={panel}>
-          {(["jpg", "png"] as const).map((f) => (
+          {(["pdf", "jpg", "png"] as const).map((f) => (
             <button key={f} onClick={() => setFmt(f)} className="px-2.5 py-2" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>
           ))}
         </div>
@@ -602,12 +644,20 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
               <h3 className="text-base font-extrabold">Xuất album</h3>
               <button onClick={() => setShowExport(false)} className="text-xl" style={{ color: "var(--text3)" }}>×</button>
             </div>
-            <p className="mb-3 text-xs" style={{ color: "var(--text2)" }}>{size.name} · {exportSel.size}/{spreads.length} trang · 300 DPI · ảnh gốc</p>
-            <div className="mb-3 flex items-center gap-2">
+            <p className="mb-3 text-xs" style={{ color: "var(--text2)" }}>{size.name} · {exportSel.size}/{spreads.length} trang · 300 DPI · ảnh gốc{fmt === "pdf" ? ` · bleed ${bleedMm}mm + dấu cắt` : ""}</p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold" style={{ color: "var(--text2)" }}>Định dạng</span>
               <div className="flex overflow-hidden rounded-lg text-xs font-semibold" style={{ border: "1px solid var(--border)" }}>
-                {(["jpg", "png"] as const).map((f) => <button key={f} onClick={() => setFmt(f)} className="px-3 py-1.5" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>)}
+                {(["pdf", "jpg", "png"] as const).map((f) => <button key={f} onClick={() => setFmt(f)} className="px-3 py-1.5" style={{ background: fmt === f ? "var(--brandSoft)" : "transparent", color: fmt === f ? "var(--brand)" : "var(--text2)" }}>{f.toUpperCase()}</button>)}
               </div>
+              {fmt === "pdf" && (
+                <label className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "var(--text2)" }}>
+                  Bleed
+                  <select value={bleedMm} onChange={(e) => setBleedMm(+e.target.value)} className="input px-1.5 py-1 text-xs">
+                    {[0, 3, 5].map((b) => <option key={b} value={b}>{b}mm</option>)}
+                  </select>
+                </label>
+              )}
               <span className="flex-1" />
               <button onClick={() => setExportSel(new Set(spreads.map((_, i) => i)))} className="text-xs font-semibold" style={{ color: "var(--brand)" }}>Chọn tất cả</button>
               <button onClick={() => setExportSel(new Set())} className="text-xs font-semibold" style={{ color: "var(--text3)" }}>Bỏ chọn</button>
