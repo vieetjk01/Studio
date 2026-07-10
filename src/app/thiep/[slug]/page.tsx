@@ -17,13 +17,23 @@ async function load(slug: string): Promise<WeddingInvitation | null> {
   return data as WeddingInvitation;
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+/** Tên khách mời từ query (?guest=…) — cắt gọn, chống rỗng. */
+function readGuest(sp?: { [k: string]: string | string[] | undefined }): string {
+  const raw = sp?.guest ?? sp?.g;
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return (v ?? "").toString().trim().slice(0, 80);
+}
+
+export async function generateMetadata({ params, searchParams }: { params: { slug: string }; searchParams?: { [k: string]: string | string[] | undefined } }): Promise<Metadata> {
   const inv = await load(params.slug);
   if (!inv) return { title: "Không tìm thấy thiệp cưới" };
   const c = inv.config as WeddingConfig;
   const couple = [c.groom_name, c.bride_name].filter(Boolean).join(" ❤ ") || "Thiệp cưới";
+  const guest = readGuest(searchParams);
   const title = `Thiệp cưới · ${couple}`;
-  const description = c.cover_quote || `Trân trọng kính mời bạn đến chung vui cùng ${couple}.`;
+  const description = guest
+    ? `Trân trọng kính mời ${guest} đến chung vui cùng ${couple}.`
+    : c.cover_quote || `Trân trọng kính mời bạn đến chung vui cùng ${couple}.`;
   return {
     title,
     description,
@@ -32,9 +42,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function WeddingInvitationPage({ params }: { params: { slug: string } }) {
+export default async function WeddingInvitationPage({ params, searchParams }: { params: { slug: string }; searchParams?: { [k: string]: string | string[] | undefined } }) {
   const inv = await load(params.slug);
   if (!inv) notFound();
+  const guest = readGuest(searchParams);
 
   // Draft (not published yet): show a clear notice instead of bouncing home, so
   // the studio/couple immediately knows they just need to hit "Xuất bản".
@@ -62,5 +73,5 @@ export default async function WeddingInvitationPage({ params }: { params: { slug
     .limit(100);
   const wishes = ((wishRows ?? []) as Wish[]).filter((w) => w.wish && w.guest_name);
 
-  return <WeddingRenderer inv={inv} wishes={wishes} />;
+  return <WeddingRenderer inv={inv} wishes={wishes} guest={guest} />;
 }

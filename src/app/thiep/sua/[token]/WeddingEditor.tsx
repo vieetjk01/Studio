@@ -9,6 +9,7 @@ import { BANKS } from "@/lib/banks";
 import { checkImageFile, compressImage } from "@/lib/image";
 import { thiepUrl } from "@/lib/hosts";
 import { WEDDING_TEMPLATE_LIST } from "../../[slug]/templates";
+import GuestManager from "./GuestManager";
 import type { WeddingBank, WeddingConfig, WeddingEventBlock, WeddingRsvp } from "@/lib/types";
 
 type Loaded = {
@@ -100,6 +101,8 @@ export default function WeddingEditor({ token }: { token: string }) {
   }
 
   const publicUrl = thiepUrl(`/${slug}`);
+  // URL tuyệt đối để tạo QR (trên single-host thiepUrl trả về đường dẫn tương đối).
+  const absBase = publicUrl.startsWith("http") ? publicUrl : (typeof window !== "undefined" ? window.location.origin + publicUrl : publicUrl);
   const attendingCount = rsvps.filter((r) => r.attending).reduce((s, r) => s + (r.num_guests || 0), 0);
 
   return (
@@ -235,6 +238,12 @@ export default function WeddingEditor({ token }: { token: string }) {
               {rsvps.length === 0 && <p className="text-stone-400">Chưa có phản hồi nào.</p>}
             </div>
           </div>
+        </Section>
+
+        {/* Khách mời — link + QR cá nhân hóa */}
+        <Section title="Khách mời (link & QR riêng)" icon={<Users size={16} />}>
+          <GuestManager baseUrl={absBase} accent={cfg.accent || "#b08968"} guests={cfg.guests ?? []} onChange={(guests) => patch({ guests })} />
+          <p className="text-xs text-stone-400">Nhớ bấm <b>“Lưu”</b> sau khi thêm/bớt khách để lưu danh sách.</p>
         </Section>
 
         {/* Style */}
