@@ -9,6 +9,7 @@ import CinematicTemplate from "./designs/CinematicTemplate";
 import StorySlideTemplate from "./designs/StorySlideTemplate";
 import EditorialTemplate from "./designs/EditorialTemplate";
 import RoyalTemplate from "./designs/RoyalTemplate";
+import SweetTemplate from "./designs/SweetTemplate";
 
 export type { Wish };
 
@@ -21,6 +22,7 @@ const TEMPLATES = {
   story: StorySlideTemplate,
   editorial: EditorialTemplate,
   royal: RoyalTemplate,
+  sweet: SweetTemplate,
 } as const;
 
 /** Dispatches to the chosen template — each is its own distinct design. */

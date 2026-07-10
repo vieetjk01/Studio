@@ -13,11 +13,13 @@ export default function Reveal({
   anim = "up",
   delay = 0,
   className = "",
+  style,
 }: {
   children: React.ReactNode;
   anim?: Anim;
   delay?: number;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
@@ -48,6 +50,7 @@ export default function Reveal({
       ref={ref}
       className={className}
       style={{
+        ...style,
         opacity: shown ? 1 : 0,
         transform: shown ? "none" : hidden[anim],
         transition: `opacity .7s ease ${delay}ms, transform .8s cubic-bezier(.16,.8,.3,1) ${delay}ms`,

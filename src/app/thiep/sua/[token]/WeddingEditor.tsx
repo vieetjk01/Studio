@@ -216,6 +216,41 @@ export default function WeddingEditor({ token }: { token: string }) {
           )}
         </Section>
 
+        {/* Hồ sơ & chi tiết (mẫu "Ngọt ngào" dùng đầy đủ; mẫu khác bỏ qua nếu trống) */}
+        <Section title="Cô dâu, chú rể & chi tiết" icon={<Heart size={16} />}>
+          <Field label="Địa điểm ngắn (hiện ở bìa)"><input className={inp} value={cfg.location ?? ""} onChange={(e) => patch({ location: e.target.value })} placeholder="Hà Nội, Việt Nam" /></Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 rounded-lg border border-stone-200 p-3">
+              <p className="text-sm font-medium text-rose-700">Cô dâu</p>
+              <Field label="Vai vế"><input className={inp} value={cfg.bride_role ?? ""} onChange={(e) => patch({ bride_role: e.target.value })} placeholder="Trưởng nữ" /></Field>
+              <Field label="Cha mẹ (dòng phụ)"><input className={inp} value={cfg.bride_subtitle ?? ""} onChange={(e) => patch({ bride_subtitle: e.target.value })} placeholder="Con Ông … và Bà …" /></Field>
+              <Field label="Ảnh chân dung"><ImageUpload current={cfg.bride_photo} onUpload={uploadImage} onChange={(url) => patch({ bride_photo: url || undefined })} /></Field>
+            </div>
+            <div className="space-y-2 rounded-lg border border-stone-200 p-3">
+              <p className="text-sm font-medium text-rose-700">Chú rể</p>
+              <Field label="Vai vế"><input className={inp} value={cfg.groom_role ?? ""} onChange={(e) => patch({ groom_role: e.target.value })} placeholder="Út nam" /></Field>
+              <Field label="Cha mẹ (dòng phụ)"><input className={inp} value={cfg.groom_subtitle ?? ""} onChange={(e) => patch({ groom_subtitle: e.target.value })} placeholder="Con Ông … và Bà …" /></Field>
+              <Field label="Ảnh chân dung"><ImageUpload current={cfg.groom_photo} onUpload={uploadImage} onChange={(url) => patch({ groom_photo: url || undefined })} /></Field>
+            </div>
+          </div>
+          <Field label="Link Google Maps (nút Chỉ đường)"><input className={inp} value={cfg.map_url ?? ""} onChange={(e) => patch({ map_url: e.target.value })} placeholder="https://maps.google.com/…" /></Field>
+          <div>
+            <span className="mb-1 block text-xs font-medium text-stone-500">Màu trang phục (Dress code)</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {(cfg.dress_code ?? []).map((col, i) => (
+                <span key={i} className="relative">
+                  <input type="color" value={col} onChange={(e) => { const d = [...(cfg.dress_code ?? [])]; d[i] = e.target.value; patch({ dress_code: d }); }} className="h-9 w-9 rounded-full border border-stone-300" />
+                  <button type="button" onClick={() => patch({ dress_code: (cfg.dress_code ?? []).filter((_, k) => k !== i) })} className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">×</button>
+                </span>
+              ))}
+              <button type="button" onClick={() => patch({ dress_code: [...(cfg.dress_code ?? []), "#c98a86"] })} className="inline-flex items-center gap-1 rounded-lg border border-stone-300 px-2.5 py-1.5 text-xs"><Plus size={13} /> Thêm màu</button>
+            </div>
+          </div>
+          <Field label="Ghi chú dress code"><input className={inp} value={cfg.dress_code_note ?? ""} onChange={(e) => patch({ dress_code_note: e.target.value })} placeholder="Mong quý khách mặc theo tông màu trên…" /></Field>
+          <Field label="Lời cảm ơn (cuối thiệp)"><textarea className={`${inp} min-h-[70px]`} value={cfg.thanks_note ?? ""} onChange={(e) => patch({ thanks_note: e.target.value })} placeholder="Xin chân thành cảm ơn và hẹn gặp Quý khách trong ngày trọng đại 💛" /></Field>
+          <Field label="Ảnh phần cảm ơn"><ImageUpload current={cfg.thanks_photo} onUpload={uploadImage} onChange={(url) => patch({ thanks_photo: url || undefined })} /></Field>
+        </Section>
+
         {/* RSVP */}
         <Section title="Xác nhận tham dự (RSVP)" icon={<Users size={16} />}>
           <Toggle checked={cfg.rsvp_enabled !== false} onChange={(v) => patch({ rsvp_enabled: v })} label="Cho phép khách xác nhận & gửi lời chúc" />

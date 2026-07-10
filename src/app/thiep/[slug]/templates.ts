@@ -94,6 +94,11 @@ export const WEDDING_SKINS: Record<string, WeddingSkin> = {
     accent: "#a67c52", bg: "#f7f1e7", surface: "#fffdf8", text: "#413a30",
     muted: "#9c9483", border: "#e7ddcc", font: "serif", hero: "overlay", motif: "floral", dark: false,
   },
+  sweet: {
+    name: "sweet", label: "Ngọt ngào (hồng · cuộn dọc đầy đủ)",
+    accent: "#c98a86", bg: "#fbeef0", surface: "#fff8f6", text: "#5a3f42",
+    muted: "rgba(90,63,66,0.6)", border: "rgba(201,138,134,0.24)", font: "serif", hero: "overlay", motif: "floral", dark: false,
+  },
 };
 
 export const WEDDING_TEMPLATE_LIST = Object.values(WEDDING_SKINS).map((s) => ({ name: s.name, label: s.label }));

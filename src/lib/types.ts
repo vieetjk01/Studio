@@ -703,11 +703,21 @@ export type WeddingConfig = {
   guestbook_enabled?: boolean; // hiện sổ lưu bút (lời chúc của khách)
   guests?: string[];           // danh sách khách mời → link + QR cá nhân hóa cho từng người
   guest_greeting?: string;     // lời mời phía trên tên khách (mặc định "Trân trọng kính mời")
+  location?: string;           // địa điểm ngắn hiện ở bìa (vd "Hà Nội, Việt Nam")
+  groom_role?: string;         // vai vế chú rể (vd "Út nam")
+  bride_role?: string;         // vai vế cô dâu (vd "Trưởng nữ")
+  groom_photo?: string;        // ảnh chân dung chú rể (khối hồ sơ)
+  bride_photo?: string;        // ảnh chân dung cô dâu
+  dress_code?: string[];       // màu trang phục (dress code) — danh sách mã màu
+  dress_code_note?: string;
+  map_url?: string;            // link Google Maps (nút "Chỉ đường")
+  thanks_note?: string;        // lời cảm ơn ở cuối thiệp
+  thanks_photo?: string;       // ảnh tròn ở phần cảm ơn
   accent?: string;           // màu nhấn (#rrggbb) — ghi đè màu của template
   font?: "serif" | "sans";   // ghi đè phông của template
 };
 
-export const WEDDING_TEMPLATES = ["classic", "elegant", "floral", "modern", "cinematic", "story", "editorial", "royal"] as const;
+export const WEDDING_TEMPLATES = ["classic", "elegant", "floral", "modern", "cinematic", "story", "editorial", "royal", "sweet"] as const;
 export type WeddingTemplate = (typeof WEDDING_TEMPLATES)[number];
 
 export interface WeddingInvitation {
