@@ -67,10 +67,29 @@ fn pick_folder() -> Option<String> {
         .map(|p| p.to_string_lossy().to_string())
 }
 
+/// Lấy đuôi file (chữ thường), rỗng nếu không có.
+fn ext_lower(path: &str) -> String {
+    Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
+}
+
+/// Đuôi file mà app được phép GHI — chỉ tài liệu/dữ liệu, KHÔNG thực thi.
+/// Nếu webview bị lợi dụng (XSS vượt CSP), đây là chốt chặn cuối để kẻ tấn công
+/// không thể ghi .exe/.bat/.ps1… (vd thả vào thư mục Startup) chiếm quyền máy.
+const WRITABLE_EXTS: &[&str] = &["docx", "xlsx", "json", "html", "htm", "txt", "csv", "pdf", "mstmp"];
+/// Đuôi file mà app được phép MỞ bằng ứng dụng mặc định (không mở file thực thi).
+const OPENABLE_EXTS: &[&str] = &["pdf", "html", "htm", "docx", "xlsx", "txt", "csv", "png", "jpg", "jpeg"];
+
 /// Ghi file AN TOÀN: tạo thư mục cha, ghi ra .tmp rồi đổi tên — không hỏng file
 /// khi mất điện giữa chừng. Nội dung nhận dạng base64 (dùng cho mọi loại file).
 #[tauri::command]
 fn write_file_b64(path: String, contents_b64: String) -> Result<(), String> {
+    if has_control_chars(&path) || !WRITABLE_EXTS.contains(&ext_lower(&path).as_str()) {
+        return Err("ext_not_allowed".to_string());
+    }
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(contents_b64.as_bytes())
         .map_err(|e| e.to_string())?;
@@ -134,6 +153,17 @@ fn cleanup_old(dir: String, days: u64) -> Result<u32, String> {
 /// Windows 10/11). Trả lỗi nếu không tìm thấy Edge — frontend sẽ giữ bản HTML.
 #[tauri::command]
 fn edge_pdf(html_path: String, pdf_path: String) -> Result<(), String> {
+    // Chỉ nhận nguồn HTML và đích PDF hợp lệ (tránh bị dùng để ghi file lạ).
+    if has_control_chars(&html_path) || has_control_chars(&pdf_path) {
+        return Err("bad_path".to_string());
+    }
+    let src_ext = ext_lower(&html_path);
+    if src_ext != "html" && src_ext != "htm" {
+        return Err("bad_source".to_string());
+    }
+    if ext_lower(&pdf_path) != "pdf" {
+        return Err("bad_target".to_string());
+    }
     let candidates = [
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
@@ -295,9 +325,10 @@ fn open_url(url: String) -> Result<(), String> {
 
 /// Mở một file bằng ứng dụng mặc định (PDF/HTML để in hợp đồng).
 /// Dùng `explorer` trực tiếp — không qua `cmd` (xem ghi chú ở `open_url`).
+/// Chỉ mở tài liệu/ảnh; không cho mở file thực thi (chống lạm dụng để chạy .exe).
 #[tauri::command]
 fn open_file(path: String) -> Result<(), String> {
-    if has_control_chars(&path) {
+    if has_control_chars(&path) || !OPENABLE_EXTS.contains(&ext_lower(&path).as_str()) {
         return Err("bad_path".to_string());
     }
     #[cfg(target_os = "windows")]

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { limitByIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,10 @@ const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
  * `wedding-photos` bucket via the service role and return its public URL.
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
+  // Chặn lạm dụng nếu edit_token bị lộ (spam làm đầy bucket ảnh cưới).
+  const limited = limitByIp(req, "thiep-upload", 40, 60_000);
+  if (limited) return limited;
+
   const db = createAdminClient();
   const { data: inv } = await db
     .from("wedding_invitations")
