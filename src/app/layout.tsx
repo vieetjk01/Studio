@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Hanken_Grotesk, Cormorant_Garamond, Manrope, Dancing_Script } from "next/font/google";
+import { Hanken_Grotesk, Cormorant_Garamond, Manrope, Dancing_Script, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 import { ThemeProvider, THEME_BOOT_SCRIPT } from "@/lib/theme";
@@ -33,6 +33,13 @@ const dancing = Dancing_Script({
   subsets: ["latin", "vietnamese"],
   weight: ["500", "600", "700"],
   variable: "--font-script",
+});
+
+// Handwriting font riêng cho TÊN KHÁCH MỜI (bì thư, phần lời mời, love story).
+const greatVibes = Great_Vibes({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400"],
+  variable: "--font-hand",
 });
 
 const DEFAULT_TITLE = "mstudo — Phần mềm quản lý studio ảnh";
@@ -93,7 +100,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" data-theme="light" className={`${hanken.variable} ${cormorant.variable} ${manrope.variable} ${dancing.variable}`}>
+    <html lang="vi" data-theme="light" className={`${hanken.variable} ${cormorant.variable} ${manrope.variable} ${dancing.variable} ${greatVibes.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>

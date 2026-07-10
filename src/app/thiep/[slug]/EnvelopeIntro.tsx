@@ -23,8 +23,9 @@ export default function EnvelopeIntro({ name, label, couple, accent }: { name: s
   function open() {
     if (opening) return;
     setOpening(true);
-    setTimeout(() => setDone(true), 1100);   // sau khi nắp mở + thiệp trồi lên
-    setTimeout(() => { setGone(true); document.body.style.overflow = ""; }, 1900); // gỡ overlay
+    // Giữ tấm thiệp có tên khách hiện đủ lâu để khách đọc, rồi mới mờ dần.
+    setTimeout(() => setDone(true), 2600);   // bắt đầu mờ overlay
+    setTimeout(() => { setGone(true); document.body.style.overflow = ""; }, 3500); // gỡ overlay
   }
 
   if (gone) return null;
@@ -58,11 +59,11 @@ export default function EnvelopeIntro({ name, label, couple, accent }: { name: s
             position: "absolute", left: "6%", right: "6%", top: "8%", bottom: "8%", borderRadius: 8,
             background: "linear-gradient(#fffdfa,#fbf5ec)", boxShadow: "0 6px 18px rgba(0,0,0,.14)",
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 12,
-            transform: opening ? "translateY(-64%)" : "translateY(0)", transition: `transform 1s ${ease} .35s`,
+            transform: opening ? "translateY(-72%) scale(1.06)" : "translateY(0)", transition: `transform 1.1s ${ease} .4s`,
             zIndex: opening ? 5 : 1,
           }}>
             <span style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: dark }}>{label}</span>
-            <span style={{ fontFamily: "var(--font-script), cursive", fontSize: 30, lineHeight: 1.1, color: "#2c2621", marginTop: 2 }}>{name}</span>
+            <span style={{ fontFamily: "var(--font-hand), cursive", fontSize: 38, lineHeight: 1.05, color: "#2c2621", marginTop: 4 }}>{name}</span>
           </div>
 
           {/* Mặt trước bì (túi dưới) — che nửa dưới tấm thiệp */}

@@ -33,24 +33,25 @@ export default function WeddingRenderer({ inv, wishes = [], guest = "" }: { inv:
   return (
     <>
       {guest && <EnvelopeIntro name={guest} label={label} couple={couple} accent={accent} />}
-      {guest && <GuestGreeting name={guest} accent={accent} label={label} />}
+      {guest && <GuestSection name={guest} accent={accent} label={label} />}
       <Template inv={inv} wishes={wishes} />
     </>
   );
 }
 
 /**
- * Ô "tên khách mời" cá nhân hóa — hiện khi khách mở link riêng (?guest=…).
- * Nổi trên cùng, hiển thị trên MỌI mẫu thiệp mà không cần sửa từng template.
- * Tên khách dùng FONT VIẾT TAY (Dancing Script / --font-script).
+ * Phần "tên khách mời + lời mời" — là MỘT KHỐI RIÊNG nằm ĐẦU nội dung thiệp
+ * (cuộn theo trang, không cố định). Hiển thị trên mọi mẫu. Tên khách dùng FONT
+ * VIẾT TAY (Great Vibes / --font-hand).
  */
-function GuestGreeting({ name, accent, label }: { name: string; accent: string; label: string }) {
+function GuestSection({ name, accent, label }: { name: string; accent: string; label: string }) {
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, display: "flex", justifyContent: "center", padding: "12px", pointerEvents: "none" }}>
-      <div style={{ pointerEvents: "auto", maxWidth: "94%", background: "rgba(255,255,255,0.94)", backdropFilter: "blur(8px)", border: `1px solid ${accent}`, color: "#3a3530", borderRadius: 18, padding: "10px 26px", boxShadow: "0 8px 28px rgba(0,0,0,.16)", textAlign: "center", lineHeight: 1.15 }}>
-        <span style={{ display: "block", fontFamily: "var(--font-cormorant), serif", fontSize: 12, letterSpacing: ".16em", textTransform: "uppercase", color: accent }}>{label}</span>
-        <span style={{ display: "block", marginTop: 2, fontFamily: "var(--font-script), cursive", fontSize: 30, lineHeight: 1.1, color: "#2c2621" }}>{name}</span>
+    <section style={{ background: `linear-gradient(180deg, ${accent}14, transparent)`, borderBottom: `1px solid ${accent}33`, padding: "44px 20px 40px", textAlign: "center" }}>
+      <div style={{ margin: "0 auto", maxWidth: 560 }}>
+        <p style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 13, letterSpacing: ".22em", textTransform: "uppercase", color: accent }}>{label}</p>
+        <p style={{ fontFamily: "var(--font-hand), cursive", fontSize: 46, lineHeight: 1.1, color: "#2c2621", margin: "6px 0 14px" }}>{name}</p>
+        <span style={{ display: "inline-block", width: 66, height: 1, background: accent, opacity: 0.55 }} />
       </div>
-    </div>
+    </section>
   );
 }

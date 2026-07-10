@@ -45,6 +45,14 @@ export default function StoryFeed({
   const [nameInput, setNameInput] = useState("");
   useEffect(() => {
     try {
+      // Ưu tiên tên từ link cá nhân hóa (?guest=…) — đồng bộ với thiệp cưới.
+      const sp = new URLSearchParams(window.location.search);
+      const fromUrl = (sp.get("guest") || sp.get("g") || "").trim().slice(0, 60);
+      if (fromUrl) {
+        setGuestName(fromUrl); setWishName(fromUrl); setAskName(false);
+        try { localStorage.setItem(`story_guest_${slug}`, fromUrl); } catch { /* ignore */ }
+        return;
+      }
       const saved = localStorage.getItem(`story_guest_${slug}`) || "";
       if (saved) { setGuestName(saved); setWishName(saved); }
       else setAskName(true);
