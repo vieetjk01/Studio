@@ -145,6 +145,10 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const [sel, setSel] = useState<number | null>(null);
   const [tab, setTab] = useState<"layout" | "photo" | "text" | "deco">("layout");
   const [pickCount, setPickCount] = useState(3);
+  const [laySrc, setLaySrc] = useState<"all" | "mine" | "fav">("all");
+  const [laySearch, setLaySearch] = useState("");
+  const [favs, setFavs] = useState<Rect[][]>([]);
+  const [mine, setMine] = useState<{ name: string; rects: Rect[] }[]>([]);
   const [zoom, setZoom] = useState(1);
   const [lib, setLib] = useState<Lib[]>([]);
   const [folder, setFolder] = useState("");
@@ -171,6 +175,31 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
   const redo = () => { const s = fut.current.pop(); if (!s) return; hist.current.push(JSON.stringify(spreads)); setSpreads(JSON.parse(s)); force((n) => n + 1); };
 
   const patchCell = (uid: number, p: Partial<Cell>) => setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, cells: s.cells.map((c) => c.uid === uid ? { ...c, ...p } : c) }));
+
+  /* ── Thư viện bố cục: Yêu thích + Của tôi (lưu trong trình duyệt) ────────── */
+  useEffect(() => {
+    try {
+      setFavs(JSON.parse(localStorage.getItem("ad_favs") || "[]"));
+      setMine(JSON.parse(localStorage.getItem("ad_mine") || "[]"));
+    } catch { /* localStorage trống/hỏng — bỏ qua */ }
+  }, []);
+  const favSet = useMemo(() => new Set(favs.map(sig)), [favs]);
+  const toggleFav = (rects: Rect[]) => {
+    const k = sig(rects);
+    const next = favSet.has(k) ? favs.filter((f) => sig(f) !== k) : [rects, ...favs];
+    setFavs(next); try { localStorage.setItem("ad_favs", JSON.stringify(next)); } catch {}
+  };
+  const saveMine = () => {
+    const rects = spread.cells.filter((c) => c.type === "photo").map((c) => [c.x, c.y, c.w, c.h] as Rect);
+    if (!rects.length) { showToast("Trang này chưa có ô ảnh để lưu."); return; }
+    const next = [{ name: `Của tôi ${mine.length + 1}`, rects }, ...mine];
+    setMine(next); try { localStorage.setItem("ad_mine", JSON.stringify(next)); } catch {}
+    showToast("Đã lưu bố cục vào 'Của tôi'.");
+  };
+  const delMine = (i: number) => {
+    const next = mine.filter((_, k) => k !== i);
+    setMine(next); try { localStorage.setItem("ad_mine", JSON.stringify(next)); } catch {}
+  };
 
   // Measure canvas width.
   useEffect(() => {
@@ -340,6 +369,28 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
     while (next.length < needed) next.push(buildSpread(SEED_PLAN[next.length % SEED_PLAN.length], (next.at(-1)?.id ?? 0) + 1));
     setSpreads(fillEmpty(next));
     showToast(`Đã tự thiết kế ${needed} trang từ ${lib.length} ảnh.`);
+  }
+  // "Dàn lại": đổi bố cục MỌI trang sang một biến thể khác (giữ nguyên ảnh & chữ)
+  // — một chạm làm mới cách dàn cả cuốn album.
+  function reflowAll() {
+    snapshot();
+    setSpreads((sp) => sp.map((s, idx) => {
+      const photos = s.cells.filter((c) => c.type === "photo" && c.photo);
+      const texts = s.cells.filter((c) => c.type === "text");
+      const n = Math.max(1, s.cells.filter((c) => c.type === "photo").length);
+      const vs = layoutVariants(n, aspect);
+      if (!vs.length) return s;
+      const pick = vs[(idx + 1) % vs.length]; // lệch theo trang để đa dạng
+      let pi = 0;
+      const photoCells: Cell[] = pick.map(([x, y, w, h]) => {
+        const base: Cell = { uid: UID++, type: "photo", x, y, w, h, photo: null, full: null, scale: 1, posX: 50, posY: 50, filter: "none", text: "", role: "body", align: "center", size: null, color: null, overlay: false, upper: false };
+        const p = photos[pi++];
+        return p ? { ...base, photo: p.photo, full: p.full, scale: p.scale, posX: p.posX, posY: p.posY, filter: p.filter } : base;
+      });
+      return { ...s, layout: `auto:${pick.length}`, cells: [...photoCells, ...texts] };
+    }));
+    setSel(null);
+    showToast("Đã dàn lại bố cục toàn album.");
   }
 
   /* ── DPI ────────────────────────────────────────────────────────────── */
@@ -558,32 +609,72 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
                 ))}
               </div>
             </div>
-            <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Gợi ý bố cục cho {pickCount} ảnh ({variants.length} mẫu)</p>
-            <div className="grid grid-cols-3 gap-2">
-              {variants.map((v, vi) => {
-                const active = sig(v) === curPhotoSig;
-                return (
-                  <button key={vi} onClick={() => applyRects(v)} className="rounded-lg p-1.5" style={{ border: `2px solid ${active ? "var(--brand)" : "var(--border)"}` }}>
-                    <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
-                      {v.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: active ? 0.7 : 0.45, borderRadius: 1 }} />)}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {/* Bố cục kèm chữ (tựa đề / tạp chí) */}
-            <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Bố cục kèm chữ</p>
-            <div className="grid grid-cols-3 gap-2">
-              {Object.entries(LAYOUTS).filter(([, L]) => L.texts?.length).map(([k, L]) => (
-                <button key={k} onClick={() => applyLayout(k)} className="rounded-lg p-1.5" style={{ border: `1px solid ${spread?.layout === k ? "var(--brand)" : "var(--border)"}` }}>
-                  <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
-                    {L.photos.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: 0.45, borderRadius: 1 }} />)}
-                    {L.texts?.map((t, i) => <span key={`t${i}`} style={{ position: "absolute", left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, height: `${t.h}%`, background: "var(--text3)", opacity: 0.4, borderRadius: 1 }} />)}
-                  </div>
-                  <span className="mt-0.5 block text-[10px]" style={{ color: "var(--text3)" }}>{L.label}</span>
+            {/* Nguồn bố cục + tìm kiếm (giống thanh trên cùng của phần mềm mẫu) */}
+            <div className="flex items-center gap-1">
+              {([["all", "Tất cả"], ["mine", "Của tôi"], ["fav", "Yêu thích"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setLaySrc(k)} className="flex-1 rounded-md py-1.5 text-xs font-semibold" style={{ background: laySrc === k ? "var(--brand)" : "var(--panel)", color: laySrc === k ? "#fff" : "var(--text2)", border: "1px solid var(--border)" }}>
+                  {l}{k === "fav" && favs.length ? ` (${favs.length})` : k === "mine" && mine.length ? ` (${mine.length})` : ""}
                 </button>
               ))}
             </div>
+            <input value={laySearch} onChange={(e) => setLaySearch(e.target.value)} placeholder="Tìm tên / category…" className="input w-full text-xs" />
+
+            {laySrc === "all" && (<>
+              {!laySearch && (<>
+                <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Gợi ý bố cục cho {pickCount} ảnh ({variants.length} mẫu)</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {variants.map((v, vi) => {
+                    const active = sig(v) === curPhotoSig, faved = favSet.has(sig(v));
+                    return (
+                      <div key={vi} className="relative">
+                        <button onClick={() => applyRects(v)} className="w-full rounded-lg p-1.5" style={{ border: `2px solid ${active ? "var(--brand)" : "var(--border)"}` }}>
+                          <LayoutMini rects={v} aspect={aspect} active={active} />
+                        </button>
+                        <button onClick={() => toggleFav(v)} title="Yêu thích" className="absolute right-1 top-1 leading-none text-[13px]" style={{ color: faved ? "#e0b85c" : "var(--text3)" }}>{faved ? "★" : "☆"}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>)}
+              <p className="text-[11.5px] font-semibold" style={{ color: "var(--text2)" }}>Bố cục kèm chữ</p>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(LAYOUTS).filter(([, L]) => L.texts?.length).filter(([, L]) => !laySearch || L.label.toLowerCase().includes(laySearch.toLowerCase())).map(([k, L]) => (
+                  <button key={k} onClick={() => applyLayout(k)} className="rounded-lg p-1.5" style={{ border: `1px solid ${spread?.layout === k ? "var(--brand)" : "var(--border)"}` }}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
+                      {L.photos.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: 0.45, borderRadius: 1 }} />)}
+                      {L.texts?.map((t, i) => <span key={`t${i}`} style={{ position: "absolute", left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, height: `${t.h}%`, background: "var(--text3)", opacity: 0.4, borderRadius: 1 }} />)}
+                    </div>
+                    <span className="mt-0.5 block text-[10px]" style={{ color: "var(--text3)" }}>{L.label}</span>
+                  </button>
+                ))}
+              </div>
+            </>)}
+
+            {laySrc === "mine" && (mine.length ? (
+              <div className="grid grid-cols-3 gap-2">
+                {mine.filter((m) => !laySearch || m.name.toLowerCase().includes(laySearch.toLowerCase())).map((m, mi) => (
+                  <div key={mi} className="relative">
+                    <button onClick={() => applyRects(m.rects)} className="w-full rounded-lg p-1.5" style={{ border: "1px solid var(--border)" }}><LayoutMini rects={m.rects} aspect={aspect} /></button>
+                    <button onClick={() => delMine(mi)} title="Xoá" className="absolute right-1 top-1 leading-none text-[12px]" style={{ color: "#cc4b4b" }}>✕</button>
+                    <span className="block text-center text-[10px]" style={{ color: "var(--text3)" }}>{m.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="py-4 text-center text-xs" style={{ color: "var(--text3)" }}>Chưa có bố cục nào. Nhấn “Lưu bố cục hiện tại”.</p>)}
+
+            {laySrc === "fav" && (favs.length ? (
+              <div className="grid grid-cols-3 gap-2">
+                {favs.map((v, fi) => (
+                  <div key={fi} className="relative">
+                    <button onClick={() => applyRects(v)} className="w-full rounded-lg p-1.5" style={{ border: "1px solid var(--border)" }}><LayoutMini rects={v} aspect={aspect} /></button>
+                    <button onClick={() => toggleFav(v)} title="Bỏ yêu thích" className="absolute right-1 top-1 leading-none text-[13px]" style={{ color: "#e0b85c" }}>★</button>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="py-4 text-center text-xs" style={{ color: "var(--text3)" }}>Chưa có bố cục yêu thích. Nhấn ☆ trên mẫu để lưu.</p>)}
+
+            <button onClick={saveMine} className="btn-ghost w-full justify-start gap-2 text-sm"><Plus size={14} /> Lưu bố cục hiện tại</button>
+            <button onClick={reflowAll} className="btn-ghost w-full justify-start gap-2 text-sm"><Shuffle size={14} /> Dàn lại cả album</button>
             <button onClick={addText} className="btn-ghost w-full justify-start gap-2 text-sm"><Plus size={14} /> Thêm dòng chữ</button>
             <button onClick={shuffle} className="btn-ghost w-full justify-start gap-2 text-sm"><Shuffle size={14} /> Đổi vị trí ảnh</button>
             <div className="flex gap-1.5">
@@ -682,6 +773,15 @@ export default function AlbumEditor({ size, tpl, onBack }: { size: ADSize; tpl: 
       )}
 
       {toast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 90, background: "var(--brand)", color: "#fff", padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+    </div>
+  );
+}
+
+/** Thumbnail sơ đồ bố cục (các ô ảnh) theo tỉ lệ spread. */
+function LayoutMini({ rects, aspect, active }: { rects: Rect[]; aspect: number; active?: boolean }) {
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: `${aspect}`, background: "var(--surface2)", borderRadius: 3, overflow: "hidden" }}>
+      {rects.map((r, i) => <span key={i} style={{ position: "absolute", left: `${r[0]}%`, top: `${r[1]}%`, width: `${r[2]}%`, height: `${r[3]}%`, background: "var(--brand)", opacity: active ? 0.7 : 0.45, borderRadius: 1 }} />)}
     </div>
   );
 }
