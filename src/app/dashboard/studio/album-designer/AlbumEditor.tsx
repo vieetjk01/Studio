@@ -9,14 +9,23 @@ export type ADSize = { name: string; w: number; h: number };
 export type ADTpl = { id: string; name: string; page: string; ink: string; font: string };
 type Lib = { id: string; thumb: string; full: string; name: string; w?: number | null; h?: number | null };
 type Orient = "l" | "p" | "s";
+type CellShape = "rect" | "rounded" | "circle";
 type Cell = {
   uid: number; type: "photo" | "text"; x: number; y: number; w: number; h: number;
   photo: string | null; full: string | null; scale: number; posX: number; posY: number; filter: string;
   text: string; role: "title" | "sub" | "body" | "deco"; align: "left" | "center" | "right";
   size: number | null; color: string | null; overlay: boolean; upper: boolean;
   locked?: boolean; // khóa layer — không kéo/resize được cho tới khi mở khóa
+  // Mặt nạ & hiệu ứng ảnh (bo góc/tròn, viền, làm mờ, phủ màu):
+  shape?: CellShape;   // rect | rounded (bo góc) | circle (tròn/elip)
+  radius?: number;     // độ bo góc (px thiết kế, theo baseH 500) khi shape=rounded
+  borderW?: number;    // độ dày viền (px thiết kế)
+  borderColor?: string;
+  blur?: number;       // làm mờ ảnh (px thiết kế)
+  tint?: string | null; // phủ màu lên ảnh
+  tintA?: number;      // độ đậm phủ màu 0..100
 };
-type Spread = { id: number; layout: string; cells: Cell[] };
+type Spread = { id: number; layout: string; cells: Cell[]; bg?: string };
 /** Album đã lưu trên server, dùng để mở lại trong editor. */
 export type SavedDesign = { id: string; name: string; folder?: string | null; spreads?: Spread[] };
 
@@ -181,6 +190,31 @@ const ROLE_SIZE = { title: 26, sub: 12, body: 13, deco: 24 } as const;
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const filterCss = (k: string) => FILTERS.find((f) => f.k === k)?.css || "none";
+/** border-radius CSS cho ô ảnh (k = hệ số quy đổi px thiết kế → px hiển thị). */
+const cellRadius = (c: Cell, k: number) =>
+  c.shape === "circle" ? "9999px" : c.shape === "rounded" ? `${Math.max(0, c.radius ?? 24) * k}px` : "0";
+/** filter tổng hợp: bộ lọc màu + làm mờ (blur tính theo px thiết kế). */
+const cellFilter = (c: Cell, k: number) => {
+  const base = filterCss(c.filter);
+  const parts: string[] = [];
+  if (base && base !== "none") parts.push(base);
+  if (c.blur) parts.push(`blur(${(c.blur * k).toFixed(2)}px)`);
+  return parts.length ? parts.join(" ") : "none";
+};
+/** Vẽ đường bao ô (rect / bo góc / tròn-elip) lên canvas — dùng để clip & viền. */
+function cellPath(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, w: number, h: number, k: number) {
+  ctx.beginPath();
+  if (c.shape === "circle") { ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); return; }
+  const r = c.shape === "rounded" ? Math.min((c.radius ?? 24) * k, w / 2, h / 2) : 0;
+  if (r > 0) {
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  } else ctx.rect(x, y, w, h);
+}
 let UID = 1;
 
 function buildSpread(layout: string, id: number): Spread {
@@ -473,6 +507,7 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
 
   /* ── Khóa layer ─────────────────────────────────────────────────────── */
   const toggleLock = (uid: number) => patchCell(uid, { locked: !spread.cells.find((c) => c.uid === uid)?.locked });
+  const setSpreadBg = (bg?: string) => { snapshot(); setSpreads((sp) => sp.map((s, i) => i !== cur ? s : { ...s, bg })); };
 
   /* ── Sắp xếp lại trang bằng kéo-thả (dải trang dưới cùng) ───────────── */
   function reorderSpread(from: number, to: number) {
@@ -528,7 +563,8 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
     const bl = Math.round((bleed_mm / 10) * DPI / 2.54);
     const W = trimW + 2 * bl, H = trimH + 2 * bl;
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-    const ctx = cv.getContext("2d")!; ctx.fillStyle = tpl.page; ctx.fillRect(0, 0, W, H);
+    const ctx = cv.getContext("2d")!; ctx.fillStyle = s.bg || tpl.page; ctx.fillRect(0, 0, W, H);
+    const kpx = trimH / baseH; // px thiết kế → px export (bo góc/viền/blur)
     for (const c of s.cells) {
       let cx = bl + (c.x / 100) * trimW, cy = bl + (c.y / 100) * trimH;
       let cw = (c.w / 100) * trimW, ch = (c.h / 100) * trimH;
@@ -542,10 +578,14 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
       if (c.type === "photo" && c.full) {
         try {
           const im = await loadImg(c.full);
-          ctx.save(); ctx.beginPath(); ctx.rect(cx, cy, cw, ch); ctx.clip(); ctx.filter = filterCss(c.filter);
+          ctx.save(); cellPath(ctx, c, cx, cy, cw, ch, kpx); ctx.clip(); ctx.filter = cellFilter(c, kpx);
           const s0 = Math.max(cw / im.width, ch / im.height) * c.scale, dw = im.width * s0, dh = im.height * s0;
           const dx = cx + (cw - dw) * (c.posX / 100), dy = cy + (ch - dh) * (c.posY / 100);
-          ctx.drawImage(im, dx, dy, dw, dh); ctx.restore();
+          ctx.drawImage(im, dx, dy, dw, dh);
+          ctx.filter = "none";
+          if (c.tint && c.tintA) { ctx.globalAlpha = c.tintA / 100; ctx.fillStyle = c.tint; ctx.fillRect(cx, cy, cw, ch); ctx.globalAlpha = 1; }
+          ctx.restore();
+          if (c.borderW) { ctx.save(); cellPath(ctx, c, cx, cy, cw, ch, kpx); ctx.lineWidth = c.borderW * kpx; ctx.strokeStyle = c.borderColor || "#ffffff"; ctx.stroke(); ctx.restore(); }
         } catch { /* skip broken image */ }
       } else if (c.type === "text" && c.text) {
         ctx.save(); ctx.fillStyle = c.color || (c.overlay ? "#fff" : tpl.ink);
@@ -717,7 +757,7 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
               </button>
             )}
             {/* Spread hiện tại — tương tác */}
-            <div onClick={() => setSel(null)} style={{ position: "relative", width: spreadPxW, height: spreadPxH, background: tpl.page, boxShadow: "0 10px 40px rgba(0,0,0,.18)" }}>
+            <div onClick={() => setSel(null)} style={{ position: "relative", width: spreadPxW, height: spreadPxH, background: spread?.bg || tpl.page, boxShadow: "0 10px 40px rgba(0,0,0,.18)" }}>
               <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,.08)" }} />
               {spread?.cells.map((c) => {
                 const selected = c.uid === sel;
@@ -728,11 +768,12 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
                     onDrop={c.type === "photo" ? () => { if (dragLib.current) { fillCell(c.uid, dragLib.current); dragLib.current = null; } } : undefined}
                     onDoubleClick={() => { if (c.type === "photo" && c.photo) patchCell(c.uid, { scale: 1, posX: 50, posY: 50 }); }}
                     style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, outline: selected ? "2.5px solid var(--brand)" : "none", cursor: c.locked ? "default" : "grab", overflow: "visible" }}>
-                    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-                      {c.type === "photo" ? (c.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={c.photo} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${c.posX}% ${c.posY}%`, transform: `scale(${c.scale})`, filter: filterCss(c.filter) }} />
-                      ) : (
+                    <div style={{ position: "absolute", inset: 0, overflow: "hidden", boxSizing: "border-box", borderRadius: c.type === "photo" ? cellRadius(c, scale) : undefined, border: c.type === "photo" && c.borderW ? `${c.borderW * scale}px solid ${c.borderColor || "#ffffff"}` : undefined }}>
+                      {c.type === "photo" ? (c.photo ? (<>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={c.photo} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${c.posX}% ${c.posY}%`, transform: `scale(${c.scale})`, filter: cellFilter(c, scale) }} />
+                        {!!(c.tint && c.tintA) && <div style={{ position: "absolute", inset: 0, background: c.tint!, opacity: (c.tintA ?? 0) / 100, pointerEvents: "none" }} />}
+                      </>) : (
                         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text3)", background: "repeating-linear-gradient(45deg,var(--surface),var(--surface) 6px,var(--surface2) 6px,var(--surface2) 12px)" }}>＋ Kéo ảnh</div>
                       )) : (
                         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: c.align === "center" ? "center" : c.align === "right" ? "flex-end" : "flex-start", textAlign: c.align, padding: 4, fontFamily: c.role === "body" ? "var(--font-manrope), sans-serif" : "var(--font-cormorant), serif", fontSize: (c.size || ROLE_SIZE[c.role]) * scale, color: c.color || (c.overlay ? "#fff" : tpl.ink), textTransform: c.upper ? "uppercase" : "none", letterSpacing: c.role === "sub" ? ".18em" : undefined, lineHeight: c.role === "body" ? 1.7 : 1.2, textShadow: c.overlay ? "0 1px 6px rgba(0,0,0,.5)" : undefined, whiteSpace: "pre-wrap" }}>{c.text}</div>
@@ -794,6 +835,15 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
             <button onClick={() => moveSpread(1)} disabled={cur === spreads.length - 1} className="btn-ghost gap-1 text-xs disabled:opacity-40">Sau <ChevronRight size={13} /></button>
             <button onClick={shuffle} className="btn-ghost col-span-2 gap-1 text-xs"><Shuffle size={13} /> Đổi vị trí ảnh trong trang</button>
           </div>
+          {/* Nền trang */}
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold" style={{ color: "var(--text2)" }}>Nền trang</span>
+            <button onClick={() => setSpreadBg(undefined)} className="rounded-md px-2 py-1 text-[11px]" style={{ border: "1px solid var(--border)", color: !spread?.bg ? "var(--brand)" : "var(--text2)" }}>Mặc định</button>
+            {["#ffffff", "#faf6ef", "#f3ece2", "#efe7df", "#eef1ea", "#f7edf0", "#1a1a1c"].map((col) => (
+              <button key={col} onClick={() => setSpreadBg(col)} className="h-6 w-6 rounded-full" style={{ background: col, border: `2px solid ${spread?.bg === col ? "var(--brand)" : "var(--border)"}` }} />
+            ))}
+            <input type="color" value={spread?.bg && spread.bg.startsWith("#") ? spread.bg : "#ffffff"} onChange={(e) => setSpreadBg(e.target.value)} className="h-6 w-8 rounded border" style={{ borderColor: "var(--border)" }} title="Màu tùy chọn" />
+          </div>
           <div className="mb-3 h-px" style={{ background: "var(--border)" }} />
 
           {/* Ô ảnh được chọn */}
@@ -819,6 +869,36 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
                 ))}
               </div>
             </div>
+            {/* Khung ảnh: bo góc / tròn-elip + viền */}
+            <div>
+              <p className="mb-1 text-xs font-semibold" style={{ color: "var(--text2)" }}>Khung ảnh</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([["rect", "Vuông"], ["rounded", "Bo góc"], ["circle", "Tròn/Elip"]] as const).map(([sh, l]) => (
+                  <button key={sh} onClick={() => patchCell(selCell.uid, { shape: sh })} className="rounded-md py-1.5 text-xs" style={{ border: `1.5px solid ${(selCell.shape || "rect") === sh ? "var(--brand)" : "var(--border)"}`, color: (selCell.shape || "rect") === sh ? "var(--brand)" : "var(--text2)" }}>{l}</button>
+                ))}
+              </div>
+            </div>
+            {selCell.shape === "rounded" && <Slider label="Độ bo góc" min={4} max={80} step={2} value={selCell.radius ?? 24} onChange={(v) => patchCell(selCell.uid, { radius: v })} />}
+            <Slider label="Làm mờ (Blur)" min={0} max={16} step={0.5} value={selCell.blur ?? 0} onChange={(v) => patchCell(selCell.uid, { blur: v })} />
+            <Slider label="Viền" min={0} max={12} step={1} value={selCell.borderW ?? 0} onChange={(v) => patchCell(selCell.uid, { borderW: v })} />
+            {!!selCell.borderW && (
+              <div className="flex flex-wrap gap-1.5">
+                {["#ffffff", "#000000", "#b08968", "#c98a86", "#d4af37"].map((col) => (
+                  <button key={col} onClick={() => patchCell(selCell.uid, { borderColor: col })} className="h-6 w-6 rounded-full" style={{ background: col, border: `2px solid ${(selCell.borderColor || "#ffffff") === col ? "var(--brand)" : "var(--border)"}` }} />
+                ))}
+              </div>
+            )}
+            {/* Phủ màu (tint / đổi màu) */}
+            <div>
+              <p className="mb-1 text-xs font-semibold" style={{ color: "var(--text2)" }}>Phủ màu</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button onClick={() => patchCell(selCell.uid, { tint: null, tintA: 0 })} className="rounded-md px-2 py-1 text-[11px]" style={{ border: "1px solid var(--border)", color: !selCell.tint ? "var(--brand)" : "var(--text2)" }}>Không</button>
+                {["#000000", "#ffffff", "#b08968", "#c98a86", "#3f5a4a", "#7a5c5c"].map((col) => (
+                  <button key={col} onClick={() => patchCell(selCell.uid, { tint: col, tintA: selCell.tintA || 35 })} className="h-6 w-6 rounded-full" style={{ background: col, border: `2px solid ${selCell.tint === col ? "var(--brand)" : "var(--border)"}` }} />
+                ))}
+              </div>
+            </div>
+            {!!selCell.tint && <Slider label="Độ đậm phủ màu" min={5} max={90} step={5} value={selCell.tintA ?? 35} onChange={(v) => patchCell(selCell.uid, { tintA: v })} />}
             {(() => { const dpi = cellDpi(selCell); return dpi != null ? <p className="text-[11.5px]" style={{ color: dpi < 150 ? "#cc4b4b" : dpi < 230 ? "#c08a1e" : "var(--text2)" }}>~{dpi} DPI · {dpi < 150 ? "quá thấp để in" : dpi < 230 ? "hơi thấp" : "tốt để in"}</p> : null; })()}
             <button onClick={() => clearPhoto(selCell.uid)} className="btn-ghost w-full text-sm">Bỏ ảnh khỏi ô</button>
           </div>)}
@@ -907,14 +987,14 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
  * xóm ở chế độ Nhiều Spread và cho dải trang dưới cùng. */
 function SpreadView({ s, w, h, page, ink }: { s: Spread; w: number; h: number; page: string; ink: string }) {
   return (
-    <div style={{ position: "relative", width: w, height: h, background: page, overflow: "hidden", borderRadius: 4, boxShadow: "0 6px 22px rgba(0,0,0,.14)" }}>
+    <div style={{ position: "relative", width: w, height: h, background: s.bg || page, overflow: "hidden", borderRadius: 4, boxShadow: "0 6px 22px rgba(0,0,0,.14)" }}>
       <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,.06)" }} />
       {s.cells.map((c) => c.type === "photo" ? (
         c.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={c.uid} src={c.photo} alt="" draggable={false} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, objectFit: "cover", objectPosition: `${c.posX}% ${c.posY}%`, filter: filterCss(c.filter) }} />
+          <img key={c.uid} src={c.photo} alt="" draggable={false} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, objectFit: "cover", objectPosition: `${c.posX}% ${c.posY}%`, filter: cellFilter(c, h / 500), borderRadius: cellRadius(c, h / 500), boxSizing: "border-box", border: c.borderW ? `${c.borderW * (h / 500)}px solid ${c.borderColor || "#fff"}` : undefined }} />
         ) : (
-          <div key={c.uid} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, background: "var(--surface2)" }} />
+          <div key={c.uid} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, background: "var(--surface2)", borderRadius: cellRadius(c, h / 500) }} />
         )
       ) : (
         <div key={c.uid} style={{ position: "absolute", left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, height: `${c.h}%`, display: "flex", alignItems: "center", justifyContent: c.align === "center" ? "center" : c.align === "right" ? "flex-end" : "flex-start", textAlign: c.align, overflow: "hidden", color: c.color || (c.overlay ? "#fff" : ink), fontFamily: c.role === "body" ? "var(--font-manrope), sans-serif" : "var(--font-cormorant), serif", fontSize: (c.size || ROLE_SIZE[c.role]) * (h / 500), textTransform: c.upper ? "uppercase" : "none", lineHeight: 1.2, whiteSpace: "pre-wrap" }}>{c.text}</div>
