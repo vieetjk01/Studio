@@ -6,7 +6,7 @@ import {
   Music, LayoutTemplate, FolderOpen, X,
 } from "lucide-react";
 import { BANKS } from "@/lib/banks";
-import { checkImageFile, compressImage } from "@/lib/image";
+import { checkImageFile, compressToLimit } from "@/lib/image";
 import { thiepUrl } from "@/lib/hosts";
 import { WEDDING_TEMPLATE_LIST } from "../../[slug]/templates";
 import GuestManager from "./GuestManager";
@@ -69,7 +69,8 @@ export default function WeddingEditor({ token }: { token: string }) {
     if (!check.ok) { setErr(check.error); return null; }
     let blob: Blob = file;
     try {
-      const dataUrl = await compressImage(file, { maxDim: 1600, quality: 0.82, mime: "image/webp" });
+      // Nén ảnh xuống ≤ 1MB trước khi tải lên.
+      const dataUrl = await compressToLimit(file, 1024 * 1024);
       const b = await (await fetch(dataUrl)).blob();
       if (b.size > 0) blob = b;
     } catch { /* fall back to original */ }
@@ -223,13 +224,13 @@ export default function WeddingEditor({ token }: { token: string }) {
             <div className="space-y-2 rounded-lg border border-stone-200 p-3">
               <p className="text-sm font-medium text-rose-700">Cô dâu</p>
               <Field label="Vai vế"><input className={inp} value={cfg.bride_role ?? ""} onChange={(e) => patch({ bride_role: e.target.value })} placeholder="Trưởng nữ" /></Field>
-              <Field label="Cha mẹ (dòng phụ)"><input className={inp} value={cfg.bride_subtitle ?? ""} onChange={(e) => patch({ bride_subtitle: e.target.value })} placeholder="Con Ông … và Bà …" /></Field>
+              <Field label="Cha mẹ — không bắt buộc (có nhập mới hiện trong thiệp)"><input className={inp} value={cfg.bride_subtitle ?? ""} onChange={(e) => patch({ bride_subtitle: e.target.value })} placeholder="Con Ông … và Bà …" /></Field>
               <Field label="Ảnh chân dung"><ImageUpload current={cfg.bride_photo} onUpload={uploadImage} onChange={(url) => patch({ bride_photo: url || undefined })} /></Field>
             </div>
             <div className="space-y-2 rounded-lg border border-stone-200 p-3">
               <p className="text-sm font-medium text-rose-700">Chú rể</p>
               <Field label="Vai vế"><input className={inp} value={cfg.groom_role ?? ""} onChange={(e) => patch({ groom_role: e.target.value })} placeholder="Út nam" /></Field>
-              <Field label="Cha mẹ (dòng phụ)"><input className={inp} value={cfg.groom_subtitle ?? ""} onChange={(e) => patch({ groom_subtitle: e.target.value })} placeholder="Con Ông … và Bà …" /></Field>
+              <Field label="Cha mẹ — không bắt buộc (có nhập mới hiện trong thiệp)"><input className={inp} value={cfg.groom_subtitle ?? ""} onChange={(e) => patch({ groom_subtitle: e.target.value })} placeholder="Con Ông … và Bà …" /></Field>
               <Field label="Ảnh chân dung"><ImageUpload current={cfg.groom_photo} onUpload={uploadImage} onChange={(url) => patch({ groom_photo: url || undefined })} /></Field>
             </div>
           </div>
@@ -258,6 +259,10 @@ export default function WeddingEditor({ token }: { token: string }) {
           <Field label="Lời nhắn RSVP (không bắt buộc)">
             <input className={inp} value={cfg.rsvp_note ?? ""} onChange={(e) => patch({ rsvp_note: e.target.value })} placeholder="Vui lòng phản hồi trước ngày…" />
           </Field>
+          <Field label="Link Love Story (để trống sẽ tự lấy theo hợp đồng nếu có)">
+            <input className={inp} value={cfg.story_url ?? ""} onChange={(e) => patch({ story_url: e.target.value })} placeholder="https://…/story/… hoặc /story/ten-cua-ban" />
+          </Field>
+          <p className="text-xs text-stone-400">Nút “Xem Love Story” sẽ hiện ở cuối thiệp (cạnh phần xác nhận tham dự) khi có link.</p>
           <div className="mt-3 rounded-lg bg-stone-100 p-3 text-sm">
             <p className="mb-2 font-medium">{rsvps.length} phản hồi · {attendingCount} khách sẽ tham dự</p>
             <div className="max-h-64 space-y-2 overflow-auto">

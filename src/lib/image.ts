@@ -52,3 +52,31 @@ export async function compressImage(
     return dataUrl;
   }
 }
+
+/** Kích thước byte thực của một data URL (bỏ phần header, base64 → byte). */
+export function dataUrlBytes(u: string): number {
+  const i = u.indexOf(",");
+  const b64 = i >= 0 ? u.slice(i + 1) : u;
+  return Math.ceil((b64.length * 3) / 4);
+}
+
+/** Ngưỡng mặc định cho ảnh sau khi nén (1MB). */
+export const IMAGE_TARGET_BYTES = 1024 * 1024;
+
+/**
+ * Nén ảnh xuống DƯỚI `maxBytes` (mặc định 1MB): hạ dần chất lượng rồi hạ kích
+ * thước cho tới khi đạt ngưỡng. Luôn trả về data URL (lần cuối nhỏ nhất).
+ */
+export async function compressToLimit(file: File, maxBytes = IMAGE_TARGET_BYTES): Promise<string> {
+  // SVG/GIF không rasterize được — trả nguyên (đã qua checkImageFile ≤2MB).
+  if (file.type === "image/svg+xml" || file.type === "image/gif") {
+    return compressImage(file);
+  }
+  let dim = 1600;
+  for (const quality of [0.82, 0.72, 0.62, 0.52, 0.44]) {
+    const out = await compressImage(file, { maxDim: dim, quality, mime: "image/webp" });
+    if (dataUrlBytes(out) <= maxBytes) return out;
+    dim = Math.max(900, Math.round(dim * 0.85));
+  }
+  return compressImage(file, { maxDim: 900, quality: 0.4, mime: "image/webp" });
+}

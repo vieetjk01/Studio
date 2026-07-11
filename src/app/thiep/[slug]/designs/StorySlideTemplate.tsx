@@ -188,7 +188,7 @@ export default function StorySlideTemplate({ inv, wishes, guest }: TemplateProps
               </div>
             )}
 
-            <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: "rgba(255,255,255,.06)", text: "#f0e6e2", muted: "#b09aa0", border: "rgba(255,255,255,.16)" }} />
+            <ExtraSections c={c} groom={groom} bride={bride} guest={guest} dark pal={{ accent, surface: "rgba(255,255,255,.06)", text: "#f0e6e2", muted: "#b09aa0", border: "rgba(255,255,255,.16)" }} />
 
             {hasGift && (
               <div style={{ marginTop: 20, display: "flex", gap: 10 }}>

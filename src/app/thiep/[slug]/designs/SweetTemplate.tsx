@@ -23,7 +23,6 @@ export default function SweetTemplate({ inv, wishes, guest }: TemplateProps) {
   const soft = `${accent}1f`;
   const brideRole = c.bride_role || "Trưởng nữ";
   const groomRole = c.groom_role || "Út nam";
-  const parents = "Con Ông ……… và Bà ………";
   const dress = c.dress_code?.length ? c.dress_code : DEFAULT_DRESS;
   const thanks = c.thanks_note || "Xin chân thành cảm ơn và hẹn gặp Quý khách trong ngày trọng đại 💛";
   const location = c.location || "Việt Nam";
@@ -39,7 +38,7 @@ export default function SweetTemplate({ inv, wishes, guest }: TemplateProps) {
   const eyebrow = (t: string) => <p className="text-[11px] uppercase tracking-[0.34em]" style={{ color: accent }}>{t}</p>;
   const heart = <div className="mx-auto my-6 flex items-center justify-center"><Heart size={20} style={{ color: accent, fill: accent }} /></div>;
 
-  const Profile = ({ role, name, photo }: { role: string; name: string; photo?: string }) => (
+  const Profile = ({ role, name, photo, sub }: { role: string; name: string; photo?: string; sub?: string }) => (
     <Reveal anim="up" className="text-center">
       <div className="mx-auto mb-5 h-52 w-52 overflow-hidden rounded-full" style={{ border: `3px solid ${accent}`, background: soft }}>
         {photo ? (
@@ -49,7 +48,7 @@ export default function SweetTemplate({ inv, wishes, guest }: TemplateProps) {
       </div>
       {eyebrow(role)}
       <h3 className="mt-1 text-3xl" style={{ fontFamily: "var(--font-hand), cursive", color: PAL.text }}>{name}</h3>
-      <p className="mx-auto mt-2 max-w-xs text-sm" style={{ color: PAL.muted }}>{parents}</p>
+      {sub && <p className="mx-auto mt-2 max-w-xs text-sm" style={{ color: PAL.muted }}>{sub}</p>}
     </Reveal>
   );
 
@@ -84,8 +83,8 @@ export default function SweetTemplate({ inv, wishes, guest }: TemplateProps) {
       {/* Hồ sơ cô dâu & chú rể */}
       <section className="px-6 py-16">
         <div className="mx-auto grid max-w-3xl gap-14 sm:grid-cols-2">
-          <Profile role={brideRole} name={bride} photo={bridePhoto} />
-          <Profile role={groomRole} name={groom} photo={groomPhoto} />
+          <Profile role={brideRole} name={bride} photo={bridePhoto} sub={c.bride_subtitle} />
+          <Profile role={groomRole} name={groom} photo={groomPhoto} sub={c.groom_subtitle} />
         </div>
       </section>
 

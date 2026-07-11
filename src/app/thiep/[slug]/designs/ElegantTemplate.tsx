@@ -76,7 +76,7 @@ export default function ElegantTemplate({ inv, wishes, guest }: TemplateProps) {
         </section>
       )}
 
-      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
+      <ExtraSections c={c} groom={groom} bride={bride} guest={guest} dark pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       {gallery.length > 0 && (
         <section className="mx-auto max-w-4xl px-6 py-14 text-center">

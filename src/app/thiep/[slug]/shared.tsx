@@ -51,12 +51,12 @@ const initialOf = (s?: string) => (s || "").trim().split(/\s+/).pop()?.charAt(0)
  * Khối "lời mời + TÊN KHÁCH MỜI" — nằm TRONG nội dung thiệp (cuộn theo trang,
  * không cố định). Đặt sau phần "Ngày trọng đại" của mỗi mẫu. Tên dùng font viết tay.
  */
-export function GuestBlock({ name, label, pal }: { name: string; label: string; pal: FullPal }) {
+export function GuestBlock({ name, label, pal, dark }: { name: string; label: string; pal: FullPal; dark?: boolean }) {
   return (
-    <section style={{ padding: "44px 20px", textAlign: "center", background: `${pal.accent}12`, borderTop: `1px solid ${pal.border}`, borderBottom: `1px solid ${pal.border}` }}>
-      <p style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 12, letterSpacing: ".24em", textTransform: "uppercase", color: pal.accent }}>{label}</p>
-      <p style={{ fontFamily: "var(--font-hand), cursive", fontSize: 44, lineHeight: 1.08, color: pal.text, margin: "6px 0 12px" }}>{name}</p>
-      <span style={{ display: "inline-block", width: 60, height: 1, background: pal.accent, opacity: 0.5 }} />
+    <section style={{ padding: "44px 20px", textAlign: "center", background: dark ? "rgba(255,255,255,.06)" : `${pal.accent}12`, borderTop: `1px solid ${pal.border}`, borderBottom: `1px solid ${pal.border}` }}>
+      <p style={{ fontFamily: "var(--font-cormorant), serif", fontSize: 12.5, letterSpacing: ".24em", textTransform: "uppercase", color: pal.accent }}>{label}</p>
+      <p style={{ fontFamily: "var(--font-hand), cursive", fontSize: 46, lineHeight: 1.08, color: dark ? "#ffffff" : pal.text, margin: "6px 0 12px" }}>{name}</p>
+      <span style={{ display: "inline-block", width: 60, height: 1, background: pal.accent, opacity: 0.6 }} />
     </section>
   );
 }
@@ -66,28 +66,31 @@ export function GuestBlock({ name, label, pal }: { name: string; label: string; 
  * rể (ảnh tròn + vai vế + cha mẹ) + nút chỉ đường + màu trang phục (dress code).
  * Chỉ hiện phần nào có dữ liệu. Đặt ngay sau phần "Ngày trọng đại".
  */
-export function ExtraSections({ c, groom, bride, guest, pal }: { c: WeddingConfig; groom: string; bride: string; guest?: string; pal: FullPal }) {
+export function ExtraSections({ c, groom, bride, guest, pal, dark }: { c: WeddingConfig; groom: string; bride: string; guest?: string; pal: FullPal; dark?: boolean }) {
   const label = c.guest_greeting?.trim() || "Trân trọng kính mời";
   const hasProfiles = !!(c.bride_photo || c.groom_photo || c.bride_role || c.groom_role || c.bride_subtitle || c.groom_subtitle);
   const dress = (c.dress_code ?? []).filter(Boolean);
+  // Màu chữ dễ đọc trên nền tối.
+  const nameColor = dark ? "#ffffff" : pal.text;
+  const subColor = dark ? "rgba(255,255,255,.82)" : pal.muted;
 
   const Profile = ({ role, name, photo, sub }: { role: string; name: string; photo?: string; sub?: string }) => (
     <div style={{ textAlign: "center" }}>
-      <div style={{ margin: "0 auto 18px", width: 176, height: 176, borderRadius: "50%", overflow: "hidden", border: `3px solid ${pal.accent}`, background: `${pal.accent}18` }}>
+      <div style={{ margin: "0 auto 18px", width: 176, height: 176, borderRadius: "50%", overflow: "hidden", border: `3px solid ${pal.accent}`, background: dark ? "rgba(255,255,255,.08)" : `${pal.accent}18` }}>
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, color: pal.accent, fontFamily: "var(--font-hand), cursive" }}>{initialOf(name)}</div>}
       </div>
-      <p style={{ fontSize: 11, letterSpacing: ".3em", textTransform: "uppercase", color: pal.accent }}>{role}</p>
-      <h3 style={{ marginTop: 4, fontSize: 30, lineHeight: 1.1, fontFamily: "var(--font-hand), cursive", color: pal.text }}>{name}</h3>
-      {sub && <p style={{ margin: "8px auto 0", maxWidth: 260, fontSize: 14, color: pal.muted }}>{sub}</p>}
+      <p style={{ fontSize: 11.5, letterSpacing: ".3em", textTransform: "uppercase", color: pal.accent }}>{role}</p>
+      <h3 style={{ marginTop: 4, fontSize: 30, lineHeight: 1.1, fontFamily: "var(--font-hand), cursive", color: nameColor }}>{name}</h3>
+      {sub && <p style={{ margin: "8px auto 0", maxWidth: 260, fontSize: 14, color: subColor }}>{sub}</p>}
     </div>
   );
 
   return (
     <>
-      {guest && <GuestBlock name={guest} label={label} pal={pal} />}
+      {guest && <GuestBlock name={guest} label={label} pal={pal} dark={dark} />}
 
       {hasProfiles && (
         <section style={{ padding: "52px 24px" }}>
@@ -105,12 +108,12 @@ export function ExtraSections({ c, groom, bride, guest, pal }: { c: WeddingConfi
       )}
 
       {dress.length > 0 && (
-        <section style={{ padding: "44px 20px", textAlign: "center", background: `${pal.accent}0f` }}>
-          <p style={{ fontSize: 11, letterSpacing: ".3em", textTransform: "uppercase", color: pal.accent }}>Màu trang phục · Dress code</p>
+        <section style={{ padding: "44px 20px", textAlign: "center", background: dark ? "rgba(255,255,255,.05)" : `${pal.accent}0f` }}>
+          <p style={{ fontSize: 11.5, letterSpacing: ".3em", textTransform: "uppercase", color: pal.accent }}>Màu trang phục · Dress code</p>
           <div style={{ margin: "18px auto 0", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12 }}>
             {dress.map((col, i) => <span key={i} style={{ width: 42, height: 42, borderRadius: "50%", background: col, border: "2px solid #fff", boxShadow: "0 2px 8px rgba(0,0,0,.12)" }} />)}
           </div>
-          {c.dress_code_note && <p style={{ margin: "16px auto 0", maxWidth: 420, fontSize: 14, color: pal.muted }}>{c.dress_code_note}</p>}
+          {c.dress_code_note && <p style={{ margin: "16px auto 0", maxWidth: 420, fontSize: 14, color: subColor }}>{c.dress_code_note}</p>}
         </section>
       )}
     </>

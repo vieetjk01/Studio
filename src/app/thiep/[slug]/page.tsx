@@ -73,5 +73,18 @@ export default async function WeddingInvitationPage({ params, searchParams }: { 
     .limit(100);
   const wishes = ((wishRows ?? []) as Wish[]).filter((w) => w.wish && w.guest_name);
 
-  return <WeddingRenderer inv={inv} wishes={wishes} guest={guest} />;
+  // Link Love Story: ưu tiên link nhập tay; nếu trống thì tự lấy theo hợp đồng.
+  const cfg = inv.config as WeddingConfig;
+  let storyUrl = cfg.story_url?.trim() || "";
+  if (!storyUrl && inv.contract_id) {
+    const { data: sp } = await db
+      .from("story_pages")
+      .select("slug, published")
+      .eq("contract_id", inv.contract_id)
+      .eq("published", true)
+      .maybeSingle();
+    if (sp?.slug) storyUrl = `/story/${sp.slug}`;
+  }
+
+  return <WeddingRenderer inv={inv} wishes={wishes} guest={guest} storyUrl={storyUrl} />;
 }

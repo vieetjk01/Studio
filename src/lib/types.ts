@@ -713,6 +713,7 @@ export type WeddingConfig = {
   map_url?: string;            // link Google Maps (nút "Chỉ đường")
   thanks_note?: string;        // lời cảm ơn ở cuối thiệp
   thanks_photo?: string;       // ảnh tròn ở phần cảm ơn
+  story_url?: string;          // link Love Story (nếu trống → tự lấy theo hợp đồng)
   accent?: string;           // màu nhấn (#rrggbb) — ghi đè màu của template
   font?: "serif" | "sans";   // ghi đè phông của template
 };
