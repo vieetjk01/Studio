@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mainUrl } from "@/lib/hosts";
 import type { WeddingConfig, WeddingInvitation } from "@/lib/types";
 import WeddingRenderer, { type Wish } from "./WeddingRenderer";
 
@@ -77,14 +78,20 @@ export default async function WeddingInvitationPage({ params, searchParams }: { 
   const cfg = inv.config as WeddingConfig;
   let storyUrl = cfg.story_url?.trim() || "";
   if (!storyUrl && inv.contract_id) {
-    const { data: sp } = await db
+    // limit(1) thay vì maybeSingle: hợp đồng có thể gắn >1 story (tránh lỗi).
+    const { data: sps } = await db
       .from("story_pages")
-      .select("slug, published")
+      .select("slug")
       .eq("contract_id", inv.contract_id)
       .eq("published", true)
-      .maybeSingle();
-    if (sp?.slug) storyUrl = `/story/${sp.slug}`;
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    const slug = sps?.[0]?.slug;
+    if (slug) storyUrl = `/story/${slug}`;
   }
+  // Trang story phục vụ ở HOST CHÍNH; thiệp có thể ở subdomain khác nên đường
+  // dẫn tương đối sẽ sai host → chuyển sang URL tuyệt đối trên host chính.
+  if (storyUrl.startsWith("/")) storyUrl = mainUrl(storyUrl);
 
   return <WeddingRenderer inv={inv} wishes={wishes} guest={guest} storyUrl={storyUrl} />;
 }
