@@ -25,6 +25,17 @@ export type ContractMarker = {
   contract_crew: { id: string }[];
 };
 
+/** Mốc thời gian (studio_events) kèm thông tin HỢP ĐỒNG CHÍNH (nếu có). */
+export type EventRow = StudioEvent & { contract?: { title: string; event_date: string | null } | null };
+
+/** Nhãn mốc: nếu mốc thuộc hợp đồng và KHÁC ngày hợp đồng chính → ghi rõ
+ *  "{Tên mốc} — [Tên hợp đồng chính]" để không nhầm mốc thuộc hợp đồng nào. */
+function eventLabel(e: EventRow): string {
+  const c = e.contract;
+  if (c && c.event_date && c.event_date !== e.event_date) return `${e.title} — [${c.title}]`;
+  return e.title;
+}
+
 const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 // Default marker colour + the swatch palette the user can pick from per shoot.
@@ -46,7 +57,7 @@ export default function CalendarView({
   feedUrl,
 }: {
   ownerId: string;
-  initialEvents: StudioEvent[];
+  initialEvents: EventRow[];
   contracts: ContractMarker[];
   feedUrl: string;
 }) {
@@ -55,7 +66,7 @@ export default function CalendarView({
   const todayStr = new Date().toISOString().slice(0, 10);
   const [y, mIdx] = todayStr.split("-").map(Number);
   const [cursor, setCursor] = useState({ year: y, month: mIdx - 1 });
-  const [events, setEvents] = useState<StudioEvent[]>(initialEvents);
+  const [events, setEvents] = useState<EventRow[]>(initialEvents);
   const [contractList, setContractList] = useState<ContractMarker[]>(contracts);
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"month" | "week">("month");
@@ -141,7 +152,7 @@ export default function CalendarView({
       .single();
     setBusy(false);
     if (data) {
-      setEvents((p) => [...p, data as StudioEvent]);
+      setEvents((p) => [...p, data as EventRow]);
       setTitle("");
       setTime("");
       setNote("");
@@ -290,8 +301,8 @@ export default function CalendarView({
                       );
                     })}
                     {evs.map((e) => (
-                      <span key={e.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#6ba3c7 18%,transparent)", color: "var(--text2)" }} title={e.title}>
-                        {e.title}
+                      <span key={e.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#6ba3c7 18%,transparent)", color: "var(--text2)" }} title={eventLabel(e)}>
+                        {eventLabel(e)}
                       </span>
                     ))}
                   </div>
@@ -373,7 +384,7 @@ export default function CalendarView({
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 text-sm font-medium">
                       {e.remind ? <Bell size={12} style={{ color: "#6ba3c7" }} /> : <BellOff size={12} style={{ color: "var(--text3)" }} />}
-                      {e.title}{e.event_time ? ` · ${e.event_time}` : ""}
+                      {eventLabel(e)}{e.event_time ? ` · ${e.event_time}` : ""}
                     </p>
                     {e.note && <p className="text-[11px]" style={{ color: "var(--text3)" }}>{e.note}</p>}
                   </div>
@@ -417,7 +428,7 @@ export default function CalendarView({
               <ul className="space-y-2">
                 {upcoming.map((e) => (
                   <li key={e.id} className="flex justify-between text-sm">
-                    <span>{e.title}</span>
+                    <span>{eventLabel(e)}</span>
                     <span style={{ color: "var(--text3)" }}>{fmtDate(e.event_date)}</span>
                   </li>
                 ))}
@@ -510,7 +521,7 @@ function WeekView({
                     <div className="min-w-0">
                       <p className="flex items-center gap-1 font-medium">
                         {e.remind ? <Bell size={10} style={{ color: "#6ba3c7", flex: "none" }} /> : <BellOff size={10} style={{ color: "var(--text3)", flex: "none" }} />}
-                        <span className="truncate">{e.event_time ? `${e.event_time} · ` : ""}{e.title}</span>
+                        <span className="truncate">{e.event_time ? `${e.event_time} · ` : ""}{eventLabel(e)}</span>
                       </p>
                       {e.note && <p style={{ color: "var(--text3)" }}>{e.note}</p>}
                     </div>

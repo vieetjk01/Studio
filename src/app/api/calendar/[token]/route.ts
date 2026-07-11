@@ -37,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
 
   const [{ data: contracts }, { data: events }] = await Promise.all([
     db.from("studio_contracts").select("id, title, client_name, event_date, event_time, location, status").eq("owner_id", owner.id).not("event_date", "is", null).in("status", ["approved", "in_progress", "completed"]),
-    db.from("studio_events").select("id, title, event_date, event_time, note").eq("owner_id", owner.id),
+    db.from("studio_events").select("id, title, event_date, event_time, note, contract:studio_contracts(title, event_date)").eq("owner_id", owner.id),
   ]);
 
   const now = new Date();
@@ -51,8 +51,11 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   for (const c of (contracts ?? []) as Array<{ id: string; title: string; client_name: string | null; event_date: string; event_time: string | null; location: string | null }>) {
     body.push(vevent(`c-${c.id}`, c.event_date, c.event_time, c.title + (c.client_name ? ` · ${c.client_name}` : ""), c.location, null, now));
   }
-  for (const e of (events ?? []) as Array<{ id: string; title: string; event_date: string; event_time: string | null; note: string | null }>) {
-    body.push(vevent(`e-${e.id}`, e.event_date, e.event_time, e.title, null, e.note, now));
+  for (const e of (events ?? []) as Array<{ id: string; title: string; event_date: string; event_time: string | null; note: string | null; contract: { title: string; event_date: string | null } | { title: string; event_date: string | null }[] | null }>) {
+    // Mốc khác ngày hợp đồng chính → ghi rõ "{Tên mốc} — [Tên hợp đồng chính]".
+    const cc = Array.isArray(e.contract) ? e.contract[0] : e.contract;
+    const summary = cc && cc.event_date && cc.event_date !== e.event_date ? `${e.title} — [${cc.title}]` : e.title;
+    body.push(vevent(`e-${e.id}`, e.event_date, e.event_time, summary, null, e.note, now));
   }
   body.push("END:VCALENDAR");
 

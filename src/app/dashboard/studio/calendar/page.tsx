@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { mainUrl } from "@/lib/hosts";
-import type { StudioEvent } from "@/lib/types";
-import CalendarView, { type ContractMarker } from "./CalendarView";
+import CalendarView, { type ContractMarker, type EventRow } from "./CalendarView";
 
 
 export default async function CalendarPage() {
@@ -23,7 +22,8 @@ export default async function CalendarPage() {
 
   const supabase = createClient();
   const [{ data: events }, { data: contracts }] = await Promise.all([
-    supabase.from("studio_events").select("*").eq("owner_id", profile.id).order("event_date"),
+    // Kèm tên & ngày của HỢP ĐỒNG CHÍNH để lịch ghi rõ mốc thuộc hợp đồng nào.
+    supabase.from("studio_events").select("*, contract:studio_contracts(title, event_date)").eq("owner_id", profile.id).order("event_date"),
     (profile.actingRole === "staff"
       ? supabase.from("studio_contracts").select("id, title, client_name, client_phone, location, event_date, event_time, status, shoot_type, calendar_color, contract_items(name, qty), contract_crew(id)").eq("owner_id", profile.id).eq("assigned_to", profile.actingUserId)
       : supabase.from("studio_contracts").select("id, title, client_name, client_phone, location, event_date, event_time, status, shoot_type, calendar_color, contract_items(name, qty), contract_crew(id)").eq("owner_id", profile.id)
@@ -44,7 +44,7 @@ export default async function CalendarPage() {
   return (
     <CalendarView
       ownerId={profile.id}
-      initialEvents={(events ?? []) as StudioEvent[]}
+      initialEvents={(events ?? []) as unknown as EventRow[]}
       contracts={(contracts ?? []) as ContractMarker[]}
       feedUrl={feedUrl}
     />
