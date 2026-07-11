@@ -21,8 +21,6 @@ export default function SiteNav({
   fontVar?: string;
 }) {
   const [open, setOpen] = useState(false);
-  // Nhiều mục (menu dài) → thu vào nút "Menu" thả xuống ở MỌI kích thước cho gọn.
-  const collapse = items.length > 5;
 
   const brand = logo ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -35,20 +33,17 @@ export default function SiteNav({
     <header className={`s-hdr${bottom ? " s-hdr--bottom" : ""}`}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>{brand}</div>
 
-      {!collapse && (
-        <nav className="s-nav-desktop">
-          {items.map((n) => (
-            <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
-          ))}
-        </nav>
-      )}
+      <nav className="s-nav-desktop">
+        {items.map((n) => (
+          <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
+        ))}
+      </nav>
 
       <div className="s-hdr-right">
         {bookingHref && <a href={bookingHref} className="s-cta">Đặt lịch</a>}
         {items.length > 0 && (
-          <button type="button" className={`s-burger${collapse ? " s-burger--always" : ""}`} aria-label="Menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <button type="button" className="s-burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? <X size={19} /> : <Menu size={19} />}
-            {collapse && <span>Menu</span>}
           </button>
         )}
       </div>

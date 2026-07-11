@@ -51,7 +51,9 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
   const customCssTag = t.customCss ? <style dangerouslySetInnerHTML={{ __html: t.customCss }} /> : null;
 
   const navPos = t.navPosition || "top";
-  const navItems = blocks.filter((b) => b.type !== "hero").map((b) => ({ id: b.id, label: str(b.config?.heading) || SITE_BLOCK_LABEL[b.type] }));
+  const navItems = blocks
+    .filter((b) => b.type !== "hero" && b.config?.navHidden !== true)
+    .map((b) => ({ id: b.id, label: str(b.config?.navLabel) || str(b.config?.heading) || SITE_BLOCK_LABEL[b.type] }));
 
   const brand = t.logo ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -76,9 +78,14 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
           // page width with their own layout (set width:"contained" to box it).
           const isFullHtml = b.type === "html" && b.config?.width !== "contained";
           const half = b.config?.width === "half" && !isHero;
-          // Hero & full HTML break out to full-bleed; half blocks split the column.
-          const style: React.CSSProperties = isHero || isFullHtml
-            ? { flex: "1 1 100%", width: "100vw", marginLeft: "calc(50% - 50vw)" }
+          // Hero & full HTML break out to full-bleed — CHỈ khi menu ở trên/dưới.
+          // Với menu trái/phải (sidebar), full-bleed 100vw sẽ tràn ĐÈ lên sidebar
+          // và lệch, nên giữ trong cột nội dung (width 100%).
+          const fullBleedOk = navPos === "top" || navPos === "bottom";
+          const style: React.CSSProperties = (isHero || isFullHtml)
+            ? (fullBleedOk
+                ? { flex: "1 1 100%", width: "100vw", marginLeft: "calc(50% - 50vw)" }
+                : { flex: "1 1 100%", width: "100%" })
             : { flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 300 : 0 };
           return (
             <div id={`sec-${b.id}`} key={b.id} style={style}>

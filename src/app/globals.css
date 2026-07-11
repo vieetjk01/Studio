@@ -329,16 +329,17 @@ body {
   position: relative;
   color: inherit;
   text-decoration: none;
-  opacity: 0.82;
-  padding: 7px 14px;
-  border-radius: 999px;
-  font-weight: 500;
+  opacity: 0.72;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 450;
+  font-size: 13.5px;
   white-space: nowrap;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
 .s-navlink:hover {
   opacity: 1;
-  background: color-mix(in srgb, var(--s-accent) 14%, transparent);
+  color: var(--s-accent);
 }
 .s-cta {
   display: inline-flex;
@@ -369,8 +370,8 @@ body {
 .s-hdr--bottom { position: fixed; top: auto; bottom: 0; border-bottom: none; border-top: 1px solid var(--s-border); }
 .s-hdr-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .s-nav-desktop {
-  display: flex; align-items: center; gap: 4px; font-size: 14px;
-  max-width: 60vw; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  display: flex; align-items: center; gap: 2px; font-size: 14px;
+  max-width: 68vw; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
 }
 .s-nav-desktop::-webkit-scrollbar { display: none; }
 .s-burger {

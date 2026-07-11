@@ -1071,6 +1071,13 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
         <Field label="Tiêu đề"><input style={insInput} value={S("heading")} onFocus={onBeforeEdit} onChange={(e) => onEdit("heading", e.target.value)} onBlur={(e) => onEdit("heading", e.target.value, true)} /></Field>
       ) : null}
 
+      {/* Tên hiển thị trên MENU (rút gọn), riêng cho từng khối — trừ hero. */}
+      {block.type !== "hero" && (
+        <Field label="Tên trên menu (để trống = dùng tiêu đề)">
+          <input style={insInput} value={S("navLabel")} placeholder={S("heading") || SITE_BLOCK_LABEL[block.type]} onFocus={onBeforeEdit} onChange={(e) => onEdit("navLabel", e.target.value)} onBlur={(e) => onEdit("navLabel", e.target.value, true)} />
+        </Field>
+      )}
+
       {block.type === "hero" && (
         <Field label="Mô tả ngắn"><input style={insInput} value={S("subheading")} onFocus={onBeforeEdit} onChange={(e) => onEdit("subheading", e.target.value)} onBlur={(e) => onEdit("subheading", e.target.value, true)} /></Field>
       )}
