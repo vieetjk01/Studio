@@ -181,9 +181,15 @@ function layoutVariants(n: number, aspect: number): Rect[][] {
   return out.slice(0, 30);
 }
 const DECOS: { label: string; text: string; size: number }[] = [
-  { label: "Đường kẻ", text: "———", size: 22 }, { label: "Dấu &", text: "&", size: 40 },
+  { label: "Đường kẻ", text: "———", size: 22 }, { label: "Đường dài", text: "——————", size: 20 },
+  { label: "Dấu &", text: "&", size: 40 }, { label: "and", text: "and", size: 24 },
   { label: "Ngày cưới", text: "12 · 10 · 2025", size: 16 }, { label: "Save the date", text: "Save the date", size: 20 },
+  { label: "The Wedding", text: "THE WEDDING", size: 18 }, { label: "Forever", text: "Forever & Always", size: 20 },
   { label: "Hoa văn", text: "❧", size: 30 }, { label: "Điểm nhấn", text: "✦", size: 24 },
+  { label: "Hoa", text: "❀", size: 30 }, { label: "Sao", text: "✧ ✦ ✧", size: 22 },
+  { label: "Trái tim", text: "♡", size: 30 }, { label: "Nhẫn", text: "◦○◦", size: 26 },
+  { label: "Lá", text: "☘", size: 28 }, { label: "Chấm", text: "• • •", size: 22 },
+  { label: "Mũi tên", text: "❯", size: 26 }, { label: "Khung", text: "◇", size: 30 },
 ];
 const ROLE_SIZE = { title: 26, sub: 12, body: 13, deco: 24 } as const;
 
@@ -255,6 +261,11 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
   const [bleedMm, setBleedMm] = useState(3); // bleed mặc định 3mm (chuẩn nhà in)
   const [showExport, setShowExport] = useState(false);
   const [exportSel, setExportSel] = useState<Set<number>>(new Set());
+  const [showAuto, setShowAuto] = useState(false);
+  const [autoSpreads, setAutoSpreads] = useState(6);
+  const [autoMin, setAutoMin] = useState(1);
+  const [autoMax, setAutoMax] = useState(6);
+  const [autoPlan, setAutoPlan] = useState<{ count: number; rects: Rect[] }[]>([]);
   const [canvasW, setCanvasW] = useState(700);
   // Đại tu giao diện: nhiều spread, dải bố cục ngang, dải trang, lưu server.
   const [multi, setMulti] = useState(false);              // xem nhiều spread liên tục
@@ -482,6 +493,40 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
     setSpreads(fillEmpty(next));
     showToast(`Đã tự thiết kế ${needed} trang từ ${lib.length} ảnh.`);
   }
+
+  /* ── Auto Design có XEM TRƯỚC phương án ─────────────────────────────────── */
+  const blankPhotoCell = useCallback(([x, y, w, h]: Rect): Cell => ({ uid: UID++, type: "photo", x, y, w, h, photo: null, full: null, scale: 1, posX: 50, posY: 50, filter: "none", text: "", role: "body", align: "center", size: null, color: null, overlay: false, upper: false }), []);
+  // Dựng phương án: chia ảnh vào N spread, mỗi spread 1 bố cục theo số ảnh.
+  const buildAutoPlan = useCallback((spreadsN: number, minC: number, maxC: number): { count: number; rects: Rect[] }[] => {
+    const total = Math.max(lib.length, spreadsN); // đảm bảo đủ ảnh danh nghĩa
+    const plan: { count: number; rects: Rect[] }[] = [];
+    let remaining = total;
+    for (let i = 0; i < spreadsN; i++) {
+      const left = spreadsN - i;
+      let c = Math.round(remaining / left);
+      c = Math.max(minC, Math.min(maxC, c));
+      c = Math.min(c, Math.max(minC, remaining - (left - 1) * minC)); // chừa min cho các trang sau
+      c = Math.max(1, Math.min(9, c));
+      remaining -= c;
+      const vs = layoutVariants(c, aspect);
+      const rects = vs.length ? vs[(i * 3 + c) % vs.length] : [[2, 2, 96, 96] as Rect];
+      plan.push({ count: c, rects });
+    }
+    return plan;
+  }, [lib.length, aspect]);
+  const openAuto = () => {
+    if (!lib.length) { showToast("Hãy nạp thư viện ảnh trước."); return; }
+    setAutoPlan(buildAutoPlan(autoSpreads, autoMin, autoMax));
+    setShowAuto(true);
+  };
+  const regenAuto = () => setAutoPlan(buildAutoPlan(autoSpreads, autoMin, autoMax));
+  function applyAutoPlan() {
+    snapshot();
+    const built: Spread[] = autoPlan.map((p, i) => ({ id: i + 1, layout: `auto:${p.count}`, cells: p.rects.map(blankPhotoCell) }));
+    setSpreads(fillEmpty(built));
+    setCur(0); setSel(null); setShowAuto(false);
+    showToast(`Đã tạo ${built.length} spread theo phương án.`);
+  }
   // "Dàn lại": đổi bố cục MỌI trang sang một biến thể khác (giữ nguyên ảnh & chữ)
   // — một chạm làm mới cách dàn cả cuốn album.
   function reflowAll() {
@@ -666,7 +711,7 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
         <span className="mx-0.5 h-5 w-px" style={{ background: "var(--border)" }} />
         <button onClick={() => setShowLib((v) => !v)} className={`btn-ghost ${bar} gap-1`} title="Thư viện ảnh" style={{ color: showLib ? "var(--brand)" : "var(--text2)" }}><Images size={15} /></button>
         <button onClick={addText} className={`btn-ghost ${bar} gap-1`} title="Thêm dòng chữ"><Type size={15} /></button>
-        <button onClick={autoDesignAll} className={`btn-ghost ${bar} gap-1`}><Wand2 size={15} /> Auto Design</button>
+        <button onClick={openAuto} className={`btn-ghost ${bar} gap-1`}><Wand2 size={15} /> Auto Design</button>
         <button onClick={reflowAll} className={`btn-ghost ${bar} gap-1`}><Shuffle size={15} /> Dàn lại</button>
         <button onClick={() => selCell && toggleLock(selCell.uid)} disabled={!selCell} className={`btn-ghost ${bar} gap-1 disabled:opacity-40`} title="Khóa/mở khóa layer" style={{ color: selCell?.locked ? "var(--brand)" : "var(--text2)" }}>{selCell?.locked ? <Lock size={15} /> : <Unlock size={15} />}</button>
         <button onClick={dupSpread} className={`btn-ghost ${bar} gap-1`}><Copy size={15} /> Clone</button>
@@ -741,7 +786,7 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
                 </button>
               ))}
             </div>
-            <button onClick={autoDesignAll} className="btn-primary mt-2 w-full gap-1.5"><Wand2 size={15} /> Tự thiết kế cả album</button>
+            <button onClick={openAuto} className="btn-primary mt-2 w-full gap-1.5"><Wand2 size={15} /> Tự thiết kế cả album</button>
             <button onClick={autoFill} className="btn-ghost mt-1.5 w-full gap-1.5 text-sm"><Wand2 size={14} /> Rải vào ô trống</button>
             <p className="mt-1 text-center text-[11px]" style={{ color: "var(--text3)" }}>Kéo ảnh vào ô · tự khớp hướng ảnh</p>
           </div>
@@ -974,6 +1019,47 @@ export default function AlbumEditor({ size, tpl, onBack, initial }: { size: ADSi
               })}
             </div>
             <button onClick={() => exportPages([...exportSel])} disabled={!exportSel.size} className="btn-primary mt-4 w-full gap-1.5 disabled:opacity-50"><Download size={15} /> Xuất {exportSel.size} trang ({fmt.toUpperCase()})</button>
+          </div>
+        </div>
+      )}
+
+      {/* Auto Design — xem trước phương án trước khi áp dụng */}
+      {showAuto && (
+        <div onClick={() => setShowAuto(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl rounded-2xl p-5" style={{ background: "var(--panel)", boxShadow: "0 24px 70px rgba(0,0,0,.4)", maxHeight: "88vh", overflowY: "auto" }}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-extrabold">Tự động thiết kế Album</h3>
+              <button onClick={() => setShowAuto(false)} className="text-xl" style={{ color: "var(--text3)" }}>×</button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Tùy chọn */}
+              <div className="space-y-3">
+                <p className="text-xs" style={{ color: "var(--text2)" }}>{lib.length} ảnh trong thư viện · tạo spread mới rồi rải ảnh tự động.</p>
+                <label className="block text-xs font-semibold" style={{ color: "var(--text2)" }}>Số spread
+                  <input type="number" min={1} max={60} value={autoSpreads} onChange={(e) => setAutoSpreads(clamp(+e.target.value || 1, 1, 60))} className="input mt-1 w-full text-sm" />
+                </label>
+                <Slider label="Số ảnh tối thiểu / trang" min={1} max={9} step={1} value={autoMin} onChange={(v) => setAutoMin(Math.min(v, autoMax))} />
+                <Slider label="Số ảnh tối đa / trang" min={1} max={9} step={1} value={autoMax} onChange={(v) => setAutoMax(Math.max(v, autoMin))} />
+                <button onClick={regenAuto} className="btn-ghost w-full gap-1.5 text-sm"><Shuffle size={14} /> Tạo lại phương án</button>
+              </div>
+              {/* Xem trước phương án */}
+              <div>
+                <p className="mb-2 text-xs font-semibold" style={{ color: "var(--text2)" }}>Xem trước phương án ({autoPlan.length} spread)</p>
+                <div className="max-h-[46vh] space-y-1.5 overflow-y-auto rounded-lg p-1" style={{ background: "var(--surface2)" }}>
+                  {autoPlan.map((p, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-md px-2 py-1.5" style={{ background: "var(--panel)" }}>
+                      <span style={{ width: 54, flexShrink: 0, display: "block" }}><LayoutMini rects={p.rects} aspect={aspect} /></span>
+                      <span className="text-xs font-semibold">Spread {i + 1}</span>
+                      <span className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "var(--brandSoft)", color: "var(--brand)" }}>{p.count} ảnh</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowAuto(false)} className="btn-ghost text-sm">Hủy</button>
+              <button onClick={applyAutoPlan} className="btn-primary gap-1.5 text-sm"><Wand2 size={15} /> Áp dụng</button>
+            </div>
           </div>
         </div>
       )}
