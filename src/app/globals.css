@@ -358,6 +358,57 @@ body {
   filter: brightness(1.08);
 }
 
+/* ── Responsive header (top/bottom nav) ──────────────────────────────────── */
+.s-hdr {
+  position: sticky; top: 0; left: 0; right: 0; z-index: 30;
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  padding: 12px 24px; border-bottom: 1px solid var(--s-border);
+  background: color-mix(in srgb, var(--s-bg) 85%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.s-hdr--bottom { position: fixed; top: auto; bottom: 0; border-bottom: none; border-top: 1px solid var(--s-border); }
+.s-hdr-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.s-nav-desktop {
+  display: flex; align-items: center; gap: 4px; font-size: 14px;
+  max-width: 60vw; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+}
+.s-nav-desktop::-webkit-scrollbar { display: none; }
+.s-burger {
+  display: none; align-items: center; justify-content: center;
+  width: 42px; height: 42px; border: 1px solid var(--s-border); border-radius: 12px;
+  background: transparent; color: inherit; cursor: pointer; flex-shrink: 0;
+}
+.s-mobile-menu {
+  position: absolute; left: 12px; right: 12px; top: calc(100% + 8px);
+  background: var(--s-bg); border: 1px solid var(--s-border); border-radius: 18px;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.28); padding: 8px;
+  display: flex; flex-direction: column; gap: 2px; max-height: 78vh; overflow-y: auto;
+}
+.s-mobile-menu--up { top: auto; bottom: calc(100% + 8px); }
+.s-mobile-menu .s-navlink { display: block; padding: 13px 16px; border-radius: 12px; opacity: 0.92; }
+.s-mobile-menu .s-cta { margin: 8px; justify-content: center; }
+@media (max-width: 860px) {
+  .s-nav-desktop { display: none; }
+  .s-burger { display: inline-flex; }
+  .s-hdr > .s-hdr-right > .s-cta { display: none; }
+}
+
+/* ── Sidebar nav → collapses to a top bar on mobile ──────────────────────── */
+@media (max-width: 860px) {
+  .s-shell { flex-direction: column !important; min-height: 0 !important; }
+  .s-sidebar {
+    position: sticky !important; top: 0; width: 100% !important; height: auto !important;
+    flex-direction: row !important; align-items: center !important; gap: 12px !important;
+    padding: 12px 16px !important; overflow-x: auto; z-index: 30;
+    border-right: none !important; border-left: none !important;
+    border-bottom: 1px solid var(--s-border);
+    background: color-mix(in srgb, var(--s-bg) 88%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .s-sidebar > nav { flex-direction: row !important; flex-wrap: nowrap !important; overflow-x: auto; }
+  .s-sidebar .s-cta { margin-top: 0 !important; }
+}
+
 /* ── mstudo marketing landing — self-contained Manrope + green theme ──────── */
 /* Scoped tokens so the homepage can be light-by-default & toggle to dark
    independently of the dark-only app shell. */

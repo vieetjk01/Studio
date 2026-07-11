@@ -1,4 +1,5 @@
 import HtmlEmbed from "@/components/HtmlEmbed";
+import SiteNav from "@/components/SiteNav";
 import { vnd, SITE_BLOCK_LABEL, type SiteBlock } from "@/lib/types";
 import type { SiteData } from "@/lib/site-loader";
 
@@ -43,6 +44,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
+    overflowX: "hidden", // chặn tràn ngang do các khối full-bleed 100vw (gây "lệch")
   } as React.CSSProperties;
 
   // Advanced: user-authored CSS applied site-wide (scoped under the site root).
@@ -93,40 +95,18 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     </footer>
   );
 
-  // Top / bottom navigation — a modern pill bar.
+  // Top / bottom navigation — responsive header (hamburger trên mobile).
   if (navPos === "top" || navPos === "bottom") {
     const bottom = navPos === "bottom";
     const bar = blocks.length > 0 && (
-      <header
-        style={{
-          position: bottom ? "fixed" : "sticky",
-          top: bottom ? undefined : 0,
-          bottom: bottom ? 0 : undefined,
-          left: 0,
-          right: 0,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          justifyContent: "space-between",
-          padding: "12px 24px",
-          borderBottom: bottom ? undefined : "1px solid var(--s-border)",
-          borderTop: bottom ? "1px solid var(--s-border)" : undefined,
-          background: "color-mix(in srgb, var(--s-bg) 80%, transparent)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>{brand}</div>
-        <nav style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, fontSize: 14, justifyContent: "center" }}>
-          {navItems.map((n) => (
-            <a key={n.id} href={`#sec-${n.id}`} className="s-navlink">{n.label}</a>
-          ))}
-        </nav>
-        {owner?.booking_token ? (
-          <a href={`/book/${owner.booking_token}`} className="s-cta">Đặt lịch</a>
-        ) : <span style={{ width: 1 }} />}
-      </header>
+      <SiteNav
+        items={navItems}
+        bookingHref={owner?.booking_token ? `/book/${owner.booking_token}` : null}
+        logo={t.logo || null}
+        name={name}
+        bottom={bottom}
+        fontVar={fontVar}
+      />
     );
     return (
       <div style={wrap}>
@@ -145,9 +125,10 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
   return (
     <div style={wrap}>
       {customCssTag}
-      <div style={{ display: "flex", flexDirection: navPos === "right" ? "row-reverse" : "row", minHeight: "100vh" }}>
+      <div className="s-shell" style={{ display: "flex", flexDirection: navPos === "right" ? "row-reverse" : "row", minHeight: "100vh" }}>
         {blocks.length > 0 && (
           <aside
+            className="s-sidebar"
             style={{
               width: 230,
               flexShrink: 0,
