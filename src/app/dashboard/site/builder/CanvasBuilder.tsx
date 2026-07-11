@@ -781,7 +781,7 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
     case "hero": {
       const img = S("image");
       return (
-        <section style={{ position: "relative", minHeight: 360, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 32, backgroundImage: img ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.5)),url(${img})` : undefined, backgroundSize: "cover", backgroundPosition: "center", color: img ? "#fff" : "var(--s-text)" }}>
+        <section style={{ position: "relative", minHeight: 360, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 32, backgroundImage: img ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.5)),url(${img})` : undefined, backgroundSize: "cover", backgroundPosition: S("imagePos") || "center", color: img ? "#fff" : "var(--s-text)" }}>
           <div style={{ maxWidth: 760 }}>
             <Editable value={S("heading")} placeholder="Tiêu đề lớn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("heading", v)} style={{ fontFamily: fontHead, fontSize: "clamp(34px,5.4vw,68px)", lineHeight: 1.05 }} />
             <Editable value={S("subheading")} placeholder="Mô tả ngắn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("subheading", v)} style={{ marginTop: 14, fontSize: 18, opacity: 0.9 }} />
@@ -1073,6 +1073,19 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
 
       {block.type === "hero" && (
         <Field label="Mô tả ngắn"><input style={insInput} value={S("subheading")} onFocus={onBeforeEdit} onChange={(e) => onEdit("subheading", e.target.value)} onBlur={(e) => onEdit("subheading", e.target.value, true)} /></Field>
+      )}
+      {block.type === "hero" && (
+        <Field label="Vị trí ảnh bìa (chỉnh nếu chủ thể bị lệch)">
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {([["center", "Giữa"], ["top", "Giữa trên"], ["left", "Trái"], ["right", "Phải"], ["50% 25%", "Trên"]] as const).map(([v, l]) => {
+              const active = (S("imagePos") || "center") === v;
+              return (
+                <button key={v} type="button" onClick={() => { onBeforeEdit?.(); onEdit("imagePos", v, true); }}
+                  style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: `1px solid ${active ? "var(--brand)" : "var(--border)"}`, background: active ? "var(--brandSoft)" : "var(--surface)", color: active ? "var(--brand)" : "var(--text2)" }}>{l}</button>
+              );
+            })}
+          </div>
+        </Field>
       )}
       {(block.type === "about") && (
         <Field label="Nội dung"><textarea style={{ ...insInput, minHeight: 90 }} value={S("text")} onFocus={onBeforeEdit} onChange={(e) => onEdit("text", e.target.value)} onBlur={(e) => onEdit("text", e.target.value, true)} /></Field>

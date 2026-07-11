@@ -196,7 +196,8 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
             padding: left ? "24px 6vw" : 24,
             backgroundImage: img ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.55)), url(${img})` : undefined,
             backgroundSize: "cover",
-            backgroundPosition: "center",
+            // Tiêu điểm ảnh bìa (chỉnh khi chủ thể lệch): center/top/left/right…
+            backgroundPosition: str(c.imagePos, "center"),
             color: img ? "#fff" : undefined,
           }}
         >

@@ -374,12 +374,16 @@ body {
 }
 .s-nav-desktop::-webkit-scrollbar { display: none; }
 .s-burger {
-  display: none; align-items: center; justify-content: center;
-  width: 42px; height: 42px; border: 1px solid var(--s-border); border-radius: 12px;
+  display: none; align-items: center; justify-content: center; gap: 7px;
+  height: 42px; padding: 0 14px; border: 1px solid var(--s-border); border-radius: 12px;
   background: transparent; color: inherit; cursor: pointer; flex-shrink: 0;
+  font: inherit; font-size: 14px; font-weight: 500;
 }
+.s-burger:hover { background: color-mix(in srgb, var(--s-accent) 12%, transparent); }
+.s-burger--always { display: inline-flex; } /* nhiều mục → luôn dùng menu thả xuống */
 .s-mobile-menu {
-  position: absolute; left: 12px; right: 12px; top: calc(100% + 8px);
+  position: absolute; right: 12px; left: auto; top: calc(100% + 8px);
+  width: min(320px, calc(100vw - 24px));
   background: var(--s-bg); border: 1px solid var(--s-border); border-radius: 18px;
   box-shadow: 0 20px 55px rgba(0, 0, 0, 0.28); padding: 8px;
   display: flex; flex-direction: column; gap: 2px; max-height: 78vh; overflow-y: auto;
