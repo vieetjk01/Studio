@@ -38,7 +38,7 @@ export default function WeddingRenderer({ inv, wishes = [], guest = "", storyUrl
       {/* Tên khách mời được đưa VÀO nội dung mỗi mẫu (sau phần "Ngày trọng đại"),
           không còn cố định ở đầu trang. */}
       <Template inv={inv} wishes={wishes} guest={guest} />
-      {storyUrl && <StoryCta url={storyUrl} accent={accent} />}
+      {storyUrl && <StoryCta url={guest ? `${storyUrl}${storyUrl.includes("?") ? "&" : "?"}guest=${encodeURIComponent(guest)}` : storyUrl} accent={accent} />}
     </>
   );
 }
