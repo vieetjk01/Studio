@@ -36,6 +36,12 @@ const TEMPLATES: Tpl[] = [
   { id: "noir", name: "Noir", cat: "Sang trọng", page: "#1a1a1c", ink: "#ece7dd", font: CM, sample: "NOIR", upper: true },
   { id: "velvet", name: "Velvet", cat: "Sang trọng", page: "#241d24", ink: "#efe6ea", font: CM, sample: "Velvet" },
   { id: "lumen", name: "Lumen", cat: "Hiện đại", page: "#f7f7f5", ink: "#1c1c1e", font: "var(--font-manrope), sans-serif", sample: "Lumen" },
+  { id: "korea", name: "Hàn Quốc", cat: "Hiện đại", page: "#f4f2ee", ink: "#2b2a28", font: "var(--font-manrope), sans-serif", sample: "Seoul" },
+  { id: "ivory", name: "Ivory", cat: "Editorial", page: "#faf7f1", ink: "#26221c", font: CM, sample: "Ivory" },
+  { id: "film", name: "Film", cat: "Lãng mạn", page: "#efe7db", ink: "#4b3f31", font: CM, sample: "Kodak" },
+  { id: "sage", name: "Sage", cat: "Lãng mạn", page: "#eef1ea", ink: "#38402f", font: CM, sample: "Sage" },
+  { id: "onyx", name: "Onyx", cat: "Sang trọng", page: "#101012", ink: "#e8e6e2", font: CM, sample: "ONYX", upper: true },
+  { id: "mocha", name: "Mocha", cat: "Sang trọng", page: "#efe7df", ink: "#4a3b30", font: CM, sample: "Mocha" },
 ];
 const CATS = ["Tất cả", "Hiện đại", "Editorial", "Lãng mạn", "Sang trọng"];
 
