@@ -44,7 +44,8 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     background: "var(--s-bg)",
     color: "var(--s-text)",
     minHeight: "100vh",
-    overflowX: "hidden", // chặn tràn ngang do các khối full-bleed 100vw (gây "lệch")
+    // KHÔNG dùng overflow-x:hidden ở đây — nó sẽ phá position:sticky của menu.
+    // Full-bleed dùng width:100% (không 100vw) nên vốn không gây tràn ngang.
   } as React.CSSProperties;
 
   // Advanced: user-authored CSS applied site-wide (scoped under the site root).
@@ -71,29 +72,44 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
         </div>
       </div>
     ) : (
-      <div style={{ maxWidth: t.contentWidth === "full" ? "100%" : 1040, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
-        {blocks.map((b) => {
-          const isHero = b.type === "hero";
-          // HTML embeds default to full-bleed so designers can use the whole
-          // page width with their own layout (set width:"contained" to box it).
-          const isFullHtml = b.type === "html" && b.config?.width !== "contained";
-          const half = b.config?.width === "half" && !isHero;
-          // Hero & full HTML break out to full-bleed — CHỈ khi menu ở trên/dưới.
-          // Với menu trái/phải (sidebar), full-bleed 100vw sẽ tràn ĐÈ lên sidebar
-          // và lệch, nên giữ trong cột nội dung (width 100%).
-          const fullBleedOk = navPos === "top" || navPos === "bottom";
-          const style: React.CSSProperties = (isHero || isFullHtml)
-            ? (fullBleedOk
-                ? { flex: "1 1 100%", width: "100vw", marginLeft: "calc(50% - 50vw)" }
-                : { flex: "1 1 100%", width: "100%" })
-            : { flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 300 : 0 };
-          return (
-            <div id={`sec-${b.id}`} key={b.id} style={style}>
-              <Block block={b} data={data} fontVar={fontVar} demo={demo} />
-            </div>
+      (() => {
+        // Render theo ĐOẠN: khối full-bleed (hero / html full) chiếm nguyên bề
+        // rộng trang bằng width:100% (KHÔNG dùng 100vw → tránh lệch do thanh
+        // cuộn); các khối thường gom vào cột giới hạn (căn giữa).
+        const maxw = t.contentWidth === "full" ? "100%" : 1040;
+        const out: React.ReactNode[] = [];
+        let boxed: React.ReactNode[] = [];
+        const flush = () => {
+          if (!boxed.length) return;
+          out.push(
+            <div key={`box-${out.length}`} style={{ maxWidth: maxw, margin: "0 auto", width: "100%", display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
+              {boxed}
+            </div>,
           );
-        })}
-      </div>
+          boxed = [];
+        };
+        for (const b of blocks) {
+          const isHero = b.type === "hero";
+          const isFullHtml = b.type === "html" && b.config?.width !== "contained";
+          if (isHero || isFullHtml) {
+            flush();
+            out.push(
+              <div id={`sec-${b.id}`} key={b.id} style={{ width: "100%" }}>
+                <Block block={b} data={data} fontVar={fontVar} demo={demo} />
+              </div>,
+            );
+          } else {
+            const half = b.config?.width === "half";
+            boxed.push(
+              <div id={`sec-${b.id}`} key={b.id} style={{ flex: half ? "1 1 calc(50% - 0.5px)" : "1 1 100%", minWidth: half ? 300 : 0 }}>
+                <Block block={b} data={data} fontVar={fontVar} demo={demo} />
+              </div>,
+            );
+          }
+        }
+        flush();
+        return <div style={{ width: "100%" }}>{out}</div>;
+      })()
     );
 
   const footer = (
