@@ -394,6 +394,12 @@ alter table public.site_settings add column if not exists upgrade_content  jsonb
 --   { "story": "coming_soon" }  → Love Story hiện nhãn "Sắp ra mắt" & tạm khoá.
 alter table public.site_settings add column if not exists feature_flags jsonb not null default '{}'::jsonb;
 
+-- Google Drive của ADMIN để lưu nội dung người dùng (logo, ảnh) thay cho dung
+-- lượng Supabase. Kết nối 1 lần trong Cài đặt hệ thống → app lưu refresh_token
+-- và id thư mục đã tạo. Xem src/lib/mstudo-drive.ts.
+alter table public.site_settings add column if not exists drive_refresh_token text;
+alter table public.site_settings add column if not exists drive_folder_id     text;
+
 alter table public.site_settings enable row level security;
 drop policy if exists site_settings_public_read on public.site_settings;
 create policy site_settings_public_read on public.site_settings
