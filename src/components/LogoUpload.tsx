@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-const MAX_BYTES = 3 * 1024 * 1024; // 3 MB
-const MAX_LABEL = "3 MB";
+const MAX_BYTES = 500 * 1024; // 500 KB
+const MAX_LABEL = "500 KB";
 
 interface Props {
   value: string;
