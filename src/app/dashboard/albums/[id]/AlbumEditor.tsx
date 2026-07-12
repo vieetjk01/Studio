@@ -22,6 +22,7 @@ import { studioUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
+import { CATEGORY_PRESETS, slugifyVi } from "@/lib/category";
 import type { Album, AlbumSource, Photo, SourceKind, AlbumPhase, SourceStage } from "@/lib/types";
 
 export default function AlbumEditor({
@@ -74,6 +75,8 @@ export default function AlbumEditor({
     is_showcase: album.is_showcase,
     is_pinned: album.is_pinned,
     kind: album.kind ?? "",
+    category: album.category ?? "",
+    category_label: album.category_label ?? "",
   });
   const [hasPassword, setHasPassword] = useState(!!album.password_hash);
   const [newPassword, setNewPassword] = useState("");
@@ -118,6 +121,8 @@ export default function AlbumEditor({
         is_showcase: form.is_showcase,
         is_pinned: form.is_pinned,
         kind: form.kind || null,
+        category: form.category || null,
+        category_label: form.category_label || null,
       })
       .eq("id", album.id);
     setSaving(false);
@@ -406,6 +411,28 @@ export default function AlbumEditor({
               🔒 Hiện ở trang chủ công khai — nâng cấp gói Photographer/Studio
             </Link>
           )}
+
+          <div>
+            <label className="label">Loại album (phân loại)</label>
+            <input
+              className="input"
+              list="album-category-presets"
+              placeholder="VD: Cưới, Sự kiện, Doanh nghiệp…"
+              value={form.category_label}
+              onChange={(e) => {
+                const label = e.target.value;
+                setForm({ ...form, category_label: label, category: slugifyVi(label) });
+              }}
+            />
+            <datalist id="album-category-presets">
+              {CATEGORY_PRESETS.map((c) => (
+                <option key={c.slug} value={c.label} />
+              ))}
+            </datalist>
+            <p className="mt-1 text-xs text-accent-muted">
+              Nhóm album theo loại để hiển thị riêng trong thư viện và trên trang web. Bạn có thể tự đặt loại mới.
+            </p>
+          </div>
 
           <div>
             <label className="label">{t("status")}</label>

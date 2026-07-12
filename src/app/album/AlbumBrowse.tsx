@@ -58,6 +58,7 @@ import { Search, Calendar, Lock, Pin, Play } from "lucide-react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { VIDEO_CATEGORY } from "@/lib/types";
+import { categoryLabel } from "@/lib/category";
 
 export interface GalleryCard {
   slug: string;
@@ -71,7 +72,7 @@ export interface GalleryCard {
 }
 
 function catLabel(cat: string | null, custom: string | null) {
-  return cat?.trim() || custom?.trim() || "Other";
+  return categoryLabel(cat, custom);
 }
 const isVideoCat = (c: string | null) => (c ?? "").trim().toLowerCase() === VIDEO_CATEGORY;
 function periodKey(d: string | null, months: readonly string[], other: string) {
@@ -117,10 +118,10 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
   // Distinct image categories actually in use (the studio's own labels).
   const imageCats = useMemo(() => {
     const seen = new Set<string>();
-    const out: string[] = [];
+    const out: { slug: string; label: string }[] = [];
     for (const g of images) {
       const c = g.category?.trim();
-      if (c && !seen.has(c)) { seen.add(c); out.push(c); }
+      if (c && !seen.has(c)) { seen.add(c); out.push({ slug: c, label: categoryLabel(c, g.category_label) }); }
     }
     return out;
   }, [images]);
@@ -198,7 +199,7 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
           <div className="mt-4 flex flex-wrap gap-2">
             <CatTab active={cat === "all"} onClick={() => setCat("all")}>{tr.filterAll}</CatTab>
             {imageCats.map((c) => (
-              <CatTab key={c} active={cat === c} onClick={() => setCat(c)}>{c}</CatTab>
+              <CatTab key={c.slug} active={cat === c.slug} onClick={() => setCat(c.slug)}>{c.label}</CatTab>
             ))}
           </div>
         ) : (

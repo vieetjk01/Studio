@@ -100,9 +100,10 @@ export async function middleware(request: NextRequest) {
         if (CUSTOMER.some((p) => pathname.startsWith(p))) {
           return NextResponse.next();
         }
-        // Everything else on the subdomain is the portfolio site.
+        // Everything else on the subdomain is the portfolio site. Preserve the
+        // sub-path so bespoke multi-page sites (e.g. vieetjk /cuoi) keep working.
         const url = request.nextUrl.clone();
-        url.pathname = `/site/${sub}`;
+        url.pathname = `/site/${sub}${pathname === "/" ? "" : pathname}`;
         return NextResponse.rewrite(url);
       }
     }
@@ -122,9 +123,10 @@ export async function middleware(request: NextRequest) {
     if (CUSTOMER.some((p) => pathname.startsWith(p))) {
       return NextResponse.next();
     }
-    // Portfolio: the /site route resolves the tenant by custom_domain.
+    // Portfolio: the /site route resolves the tenant by custom_domain. Preserve
+    // the sub-path so bespoke multi-page sites (e.g. vieetjk /cuoi) keep working.
     const url = request.nextUrl.clone();
-    url.pathname = `/site/${host}`;
+    url.pathname = `/site/${host}${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
   }
 
