@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Logo from "./Logo";
 import LangSwitch from "./LangSwitch";
+import BookingButton from "./BookingButton";
 import { VJK_CSS } from "./styles";
 import { BRAND, CONTACT, SERVICES, UI, tr, type Lang } from "@/lib/vieetjk/content";
 
@@ -30,19 +31,19 @@ function IconMail() {
 
 export default function VieetjkChrome({
   children,
-  bookingHref,
+  bookingToken,
   logoUrl = null,
   active = "",
   lang,
 }: {
   children: React.ReactNode;
-  bookingHref: string | null;
+  bookingToken: string | null;
   logoUrl?: string | null;
   active?: string;
   lang: Lang;
 }) {
   const [open, setOpen] = useState(false);
-  const book = bookingHref || CONTACT.phoneHref;
+  const book = bookingToken ? `/book/${bookingToken}` : CONTACT.phoneHref;
 
   const nav = [
     { href: "/", label: tr(lang, UI.navHome), slug: "" },
@@ -68,7 +69,7 @@ export default function VieetjkChrome({
           </nav>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <LangSwitch lang={lang} />
-            <a href={book} className="vjk-cta head">{tr(lang, UI.book)}</a>
+            <span className="head"><BookingButton token={bookingToken} lang={lang} label={tr(lang, UI.book)} align="right" /></span>
             <button className="vjk-burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 {open ? <path d="M6 6l12 12M18 6L6 18" /> : <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>}
@@ -81,7 +82,9 @@ export default function VieetjkChrome({
             {nav.map((n) => (
               <a key={n.href} href={n.href} onClick={() => setOpen(false)}>{n.label}</a>
             ))}
-            <a href={book} className="vjk-cta" onClick={() => setOpen(false)}>{tr(lang, UI.bookNow)}</a>
+            <div style={{ marginTop: 16 }}>
+              <BookingButton token={bookingToken} lang={lang} label={tr(lang, UI.bookNow)} />
+            </div>
           </div>
         )}
       </header>
@@ -116,8 +119,8 @@ export default function VieetjkChrome({
             </div>
           </div>
           <div className="vjk-foot-bottom">
-            <span>© {BRAND.name} — {tr(lang, BRAND.tagline)}</span>
-            <span>{tr(lang, UI.builtWith)}</span>
+            <span>{tr(lang, BRAND.copyright)}</span>
+            <span>{tr(lang, BRAND.tagline)}</span>
           </div>
         </div>
       </footer>

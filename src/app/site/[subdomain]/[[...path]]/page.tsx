@@ -6,7 +6,7 @@ import { loadSiteBundle, type SiteData } from "@/lib/site-loader";
 import SiteRenderer from "@/components/SiteRenderer";
 import type { Site } from "@/lib/types";
 import { BRAND, getService, tr, type Lang } from "@/lib/vieetjk/content";
-import { loadVieetjkData, bookingHref } from "@/lib/vieetjk/data";
+import { loadVieetjkData } from "@/lib/vieetjk/data";
 import VieetjkChrome from "@/components/vieetjk/VieetjkChrome";
 import VieetjkHome from "@/components/vieetjk/VieetjkHome";
 import VieetjkService from "@/components/vieetjk/VieetjkService";
@@ -85,11 +85,10 @@ export default async function SitePage({ params }: { params: Params }) {
   if (vieetjk) {
     const lang = currentLang();
     const data = await loadVieetjkData();
-    const href = bookingHref(data.bookingToken);
 
     if (path.length === 0) {
       return (
-        <VieetjkChrome bookingHref={href} logoUrl={data.logoUrl} active="" lang={lang}>
+        <VieetjkChrome bookingToken={data.bookingToken} logoUrl={data.logoUrl} active="" lang={lang}>
           <VieetjkHome data={data} lang={lang} />
         </VieetjkChrome>
       );
@@ -97,7 +96,7 @@ export default async function SitePage({ params }: { params: Params }) {
     const svc = getService(path[0]);
     if (svc && path.length === 1) {
       return (
-        <VieetjkChrome bookingHref={href} logoUrl={data.logoUrl} active={svc.slug} lang={lang}>
+        <VieetjkChrome bookingToken={data.bookingToken} logoUrl={data.logoUrl} active={svc.slug} lang={lang}>
           <VieetjkService service={svc} data={data} lang={lang} />
         </VieetjkChrome>
       );
