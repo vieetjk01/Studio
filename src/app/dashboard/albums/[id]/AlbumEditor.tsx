@@ -33,6 +33,7 @@ export default function AlbumEditor({
   canPinHome = true,
   studioName = "Studio",
   studioHost = null,
+  studioCats = [],
 }: {
   album: Album;
   initialSources: AlbumSource[];
@@ -41,6 +42,7 @@ export default function AlbumEditor({
   canPinHome?: boolean;
   studioName?: string;
   studioHost?: string | null;
+  studioCats?: { slug: string; label: string }[];
 }) {
   const { t } = useLang();
   const supabase = createClient();
@@ -425,12 +427,17 @@ export default function AlbumEditor({
               }}
             />
             <datalist id="album-category-presets">
-              {CATEGORY_PRESETS.map((c) => (
-                <option key={c.slug} value={c.label} />
+              {/* Loại của CHÍNH studio đã dùng (ưu tiên), rồi tới gợi ý mẫu. */}
+              {studioCats.map((c) => (
+                <option key={`s-${c.slug}`} value={c.label} />
+              ))}
+              {CATEGORY_PRESETS.filter((p) => !studioCats.some((c) => c.slug === p.slug)).map((c) => (
+                <option key={`p-${c.slug}`} value={c.label} />
               ))}
             </datalist>
             <p className="mt-1 text-xs text-accent-muted">
-              Nhóm album theo loại để hiển thị riêng trong thư viện và trên trang web. Bạn có thể tự đặt loại mới.
+              Tự đặt loại theo ý bạn — loại mới sẽ tự lưu để chọn cho album khác.{" "}
+              <Link href="/dashboard/studio/album-categories" className="underline">Quản lý loại album</Link>
             </p>
           </div>
 
