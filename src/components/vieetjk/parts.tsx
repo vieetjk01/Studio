@@ -15,7 +15,7 @@ export function Gallery({ albums, emptyHint }: { albums: VjkAlbum[]; emptyHint?:
   return (
     <div className="vjk-gal">
       {albums.map((a) => (
-        <a key={a.id} href={`/showcase/${a.slug}`} className="vjk-gal-item" title={a.title}>
+        <a key={a.id} href={`/album/${a.slug}`} className="vjk-gal-item" title={a.title}>
           {a.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={a.cover_url} alt={a.title} loading="lazy" />

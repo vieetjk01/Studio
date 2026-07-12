@@ -108,12 +108,15 @@ export async function loadVieetjkData(): Promise<VjkData> {
   if (!ownerId) return empty;
 
   const [{ data: albums }, { data: pl }] = await Promise.all([
+    // Album công khai của studio: đã "Hiện ở trang chủ" (gallery_pinned) nên
+    // khách xem không cần mật khẩu — đúng nguồn dùng cho portfolio.
     db
       .from("albums")
       .select("id, slug, title, cover_url, category, category_label")
       .eq("owner_id", ownerId)
       .eq("status", "published")
-      .eq("is_showcase", true)
+      .eq("phase", "delivery")
+      .eq("gallery_pinned", true)
       .order("created_at", { ascending: false })
       .limit(60),
     db
