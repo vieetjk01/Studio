@@ -4,28 +4,29 @@ import { useState } from "react";
 import { VJK_RED, BRAND } from "@/lib/vieetjk/content";
 
 /**
- * Logo Vieetjk.
- * - Nếu có file /vieetjk-logo.png (đặt trong thư mục public/) sẽ dùng ảnh đó.
- * - Nếu chưa có, hiển thị logo vector dự phòng: tam giác play đỏ + chữ "tjk" trắng.
+ * Logo Vieetjk. Thứ tự ưu tiên:
+ *   1. src  — logo studio đã upload trong dashboard (studio_logo_url / pl_logo_url)
+ *   2. /vieetjk-logo.png — file đặt trong thư mục public/
+ *   3. logo vector dự phòng: tam giác play đỏ + chữ "tjk" trắng
  */
-export default function Logo({ height = 30 }: { height?: number }) {
-  const [imgFailed, setImgFailed] = useState(false);
+export default function Logo({ src, height = 30 }: { src?: string | null; height?: number }) {
+  const candidate = src || "/vieetjk-logo.png";
+  const [failed, setFailed] = useState(false);
 
-  if (!imgFailed) {
+  if (!failed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src="/vieetjk-logo.png"
+        src={candidate}
         alt={BRAND.name}
         height={height}
-        style={{ height, width: "auto", display: "block" }}
-        onError={() => setImgFailed(true)}
+        style={{ height, width: "auto", maxHeight: height, display: "block", objectFit: "contain" }}
+        onError={() => setFailed(true)}
       />
     );
   }
 
-  // Logo dựng lại bằng vector (dùng khi chưa có file /vieetjk-logo.png):
-  // tam giác play đỏ + chữ "tjk" trắng — hợp nền tối.
+  // Fallback vector (khi chưa có logo studio và chưa có file).
   return (
     <span className="vjk-logo" aria-label={BRAND.name} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
       <svg viewBox="0 0 40 40" width={Math.round(height * 0.8)} height={Math.round(height * 0.8)} aria-hidden="true" focusable="false">

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
+import { brandFrom } from "@/lib/studio-brand";
 import { BRAND } from "./content";
 
 export type VjkAlbum = {
@@ -25,6 +26,8 @@ export type VjkData = {
   /** Chủ studio (để lấy link đặt lịch, tên hiển thị). */
   ownerId: string | null;
   bookingToken: string | null;
+  /** Logo studio đã upload trong dashboard (studio_logo_url → pl_logo_url). */
+  logoUrl: string | null;
   /** Album showcase công khai (đã lọc trạng thái published + is_showcase). */
   albums: VjkAlbum[];
   /** Bảng giá studio, gom theo list_key (cuoi / dinh-hon...). */
@@ -73,7 +76,9 @@ export function priceItemsForLists(
   return out;
 }
 
-async function resolveOwner(db: SupabaseClient): Promise<{ ownerId: string | null; bookingToken: string | null }> {
+async function resolveOwner(
+  db: SupabaseClient,
+): Promise<{ ownerId: string | null; bookingToken: string | null; logoUrl: string | null }> {
   // 1) Ưu tiên site có custom_domain = vieetjk.com.
   const { data: byDomain } = await db
     .from("sites")
@@ -93,18 +98,24 @@ async function resolveOwner(db: SupabaseClient): Promise<{ ownerId: string | nul
   }
 
   let bookingToken: string | null = null;
+  let logoUrl: string | null = null;
   if (ownerId) {
-    const { data: prof } = await db.from("profiles").select("booking_token").eq("id", ownerId).maybeSingle();
+    const { data: prof } = await db
+      .from("profiles")
+      .select("booking_token, full_name, studio_brand_name, studio_logo_url, pl_logo_url")
+      .eq("id", ownerId)
+      .maybeSingle();
     bookingToken = (prof?.booking_token as string | undefined) ?? null;
+    logoUrl = brandFrom(prof).logoUrl;
   }
-  return { ownerId, bookingToken };
+  return { ownerId, bookingToken, logoUrl };
 }
 
 export async function loadVieetjkData(): Promise<VjkData> {
   const db = createAdminClient();
-  const { ownerId, bookingToken } = await resolveOwner(db);
+  const { ownerId, bookingToken, logoUrl } = await resolveOwner(db);
 
-  const empty: VjkData = { ownerId, bookingToken, albums: [], priceByList: {} };
+  const empty: VjkData = { ownerId, bookingToken, logoUrl, albums: [], priceByList: {} };
   if (!ownerId) return empty;
 
   const [{ data: albums }, { data: pl }] = await Promise.all([
@@ -135,6 +146,7 @@ export async function loadVieetjkData(): Promise<VjkData> {
   return {
     ownerId,
     bookingToken,
+    logoUrl,
     albums: (albums ?? []) as VjkAlbum[],
     priceByList,
   };

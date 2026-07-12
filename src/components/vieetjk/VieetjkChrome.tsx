@@ -38,10 +38,12 @@ function IconMail() {
 export default function VieetjkChrome({
   children,
   bookingHref,
+  logoUrl = null,
   active = "",
 }: {
   children: React.ReactNode;
   bookingHref: string | null;
+  logoUrl?: string | null;
   active?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -54,7 +56,7 @@ export default function VieetjkChrome({
       <header className="vjk-header">
         <div className="vjk-wrap vjk-headin">
           <a href="/" aria-label={BRAND.name}>
-            <Logo />
+            <Logo src={logoUrl} />
           </a>
           <nav className="vjk-nav">
             {NAV.map((n) => (
@@ -88,7 +90,7 @@ export default function VieetjkChrome({
         <div className="vjk-wrap">
           <div className="vjk-foot-grid">
             <div>
-              <a href="/" aria-label={BRAND.name}><Logo /></a>
+              <a href="/" aria-label={BRAND.name}><Logo src={logoUrl} height={34} /></a>
               <p style={{ marginTop: 16, maxWidth: "34ch" }}>{BRAND.tagline}. {BRAND.heroSub}</p>
               <div className="vjk-foot-social">
                 <a href={CONTACT.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><IconFacebook /></a>
