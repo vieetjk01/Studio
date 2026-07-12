@@ -9,10 +9,10 @@ import {
   bookingHref,
   albumsForCategories,
   itemsForList,
-  priceForMatches,
+  itemForMatches,
   type VjkData,
 } from "@/lib/vieetjk/data";
-import { Gallery, PriceTiers, WeddingPackages, InfoGrid, ProcessSteps, WhyUs, type WeddingRow } from "./parts";
+import { Gallery, PriceTiers, WeddingPricing, InfoGrid, ProcessSteps, WhyUs, type WeddingGroup } from "./parts";
 
 function Header({ service, lang, book }: { service: ServiceContent; lang: Lang; book: string }) {
   return (
@@ -74,17 +74,30 @@ export default function VieetjkService({
 
   // ── WEDDING ──────────────────────────────────────────────────────────────
   if (service.variant === "wedding") {
-    const rows: WeddingRow[] = [
+    const fullBase = data.bookingToken ? `/gia/${data.bookingToken}` : null;
+    const groups: WeddingGroup[] = [
       { title: tr(lang, UI.wedding), key: "cuoi" },
       { title: tr(lang, UI.engagement), key: "dinh-hon" },
-    ].map((r) => ({
-      title: r.title,
-      cards: WEDDING_MAIN.map((p) => ({
-        label: tr(lang, p.label),
-        note: tr(lang, p.note),
-        price: priceForMatches(itemsForList(data.priceByList, r.key), p.match),
-      })),
-    }));
+    ].map((g) => {
+      const items = itemsForList(data.priceByList, g.key);
+      return {
+        title: g.title,
+        cards: WEDDING_MAIN.map((p) => {
+          const it = itemForMatches(items, p.match);
+          const bookHref = data.bookingToken
+            ? `/book/${data.bookingToken}?list=${g.key}${it ? `&pkg=${encodeURIComponent(it.name)}` : ""}`
+            : "/#lien-he";
+          return {
+            name: tr(lang, p.label),
+            note: tr(lang, p.note),
+            price: it?.price ?? null,
+            detail: it?.description ?? "",
+            bookHref,
+            fullHref: fullBase ? `${fullBase}?list=${g.key}` : null,
+          };
+        }),
+      };
+    });
 
     return (
       <>
@@ -98,7 +111,7 @@ export default function VieetjkService({
         <section className="vjk-section alt" id="bang-gia">
           <div className="vjk-wrap">
             <SectionHead eyebrow={tr(lang, UI.pricing)} title={lang === "vi" ? "Các gói chính" : "Main packages"} />
-            <WeddingPackages rows={rows} lang={lang} />
+            <WeddingPricing groups={groups} lang={lang} />
             {service.priceNote && <div className="vjk-note">{tr(lang, service.priceNote)}</div>}
           </div>
         </section>

@@ -16,7 +16,12 @@ export const VJK_RED = "#c1121f";
 
 export const BRAND = {
   domain: "vieetjk.com",
-  name: "VIEETJK",
+  name: "tjk media",
+  company: "Vieetjk",
+  copyright: {
+    vi: "© 2026 Vieetjk. Một sản phẩm của Vieetjk",
+    en: "© 2026 Vieetjk. A product of Vieetjk",
+  },
   tagline: { vi: "Quay phim · Chụp ảnh · Quảng Ngãi", en: "Film · Photography · Quảng Ngãi" },
   heroTitle: {
     vi: "Lưu giữ khoảnh khắc,\nkể câu chuyện của bạn",
@@ -55,10 +60,10 @@ export const UI = {
   engagement: { vi: "Đính hôn", en: "Engagement" },
   contactPrice: { vi: "Liên hệ", en: "Contact" },
   galleryEmpty: {
-    vi: "Bộ sưu tập đang được cập nhật. Ghé lại sớm để xem sản phẩm mới của Vieetjk nhé!",
-    en: "Our gallery is being updated. Check back soon for new work from Vieetjk!",
+    vi: "Bộ sưu tập đang được cập nhật. Ghé lại sớm để xem sản phẩm mới của tjk media nhé!",
+    en: "Our gallery is being updated. Check back soon for new work from tjk media!",
   },
-  aboutHeading: { vi: "Về Vieetjk", en: "About Vieetjk" },
+  aboutHeading: { vi: "Về tjk media", en: "About tjk media" },
   aboutTitle: {
     vi: "Kể câu chuyện của bạn bằng hình ảnh",
     en: "Telling your story through images",
@@ -66,20 +71,41 @@ export const UI = {
   homeWorkTitle: { vi: "Khoảnh khắc chúng tôi đã lưu giữ", en: "Moments we've captured" },
   ctaHomeTitle: { vi: "Sẵn sàng lưu giữ khoảnh khắc của bạn?", en: "Ready to capture your moment?" },
   ctaHomeSub: {
-    vi: "Liên hệ Vieetjk để được tư vấn gói dịch vụ phù hợp và nhận báo giá chi tiết.",
-    en: "Contact Vieetjk for advice on the right package and a detailed quote.",
+    vi: "Liên hệ tjk media để được tư vấn gói dịch vụ phù hợp và nhận báo giá chi tiết.",
+    en: "Contact tjk media for advice on the right package and a detailed quote.",
   },
   builtWith: { vi: "Được xây dựng với ♥ tại Quảng Ngãi", en: "Made with ♥ in Quảng Ngãi" },
   eventTypesTitle: { vi: "Chúng tôi nhận các sự kiện", en: "Events we cover" },
   processTitle: { vi: "Quy trình làm việc", en: "How we work" },
   bizServicesTitle: { vi: "Dịch vụ hình ảnh doanh nghiệp", en: "Business imagery services" },
-  whyUsTitle: { vi: "Vì sao chọn Vieetjk", en: "Why choose Vieetjk" },
+  whyUsTitle: { vi: "Vì sao chọn tjk media", en: "Why choose tjk media" },
+  // Đánh giá khách hàng
+  reviewsEyebrow: { vi: "Đánh giá", en: "Reviews" },
+  reviewsTitle: { vi: "Khách hàng nói gì về chúng tôi", en: "What our clients say" },
+  // Ô liên hệ / góp ý
+  feedbackEyebrow: { vi: "Liên hệ", en: "Get in touch" },
+  feedbackTitle: { vi: "Liên hệ & góp ý", en: "Contact & feedback" },
+  feedbackLead: {
+    vi: "Bạn có câu hỏi, nhu cầu hoặc góp ý? Gửi cho tjk media, chúng tôi phản hồi sớm nhất.",
+    en: "Have a question, a project or feedback? Send it to tjk media and we'll reply soon.",
+  },
+  fName: { vi: "Họ tên", en: "Your name" },
+  fContact: { vi: "Email hoặc số điện thoại", en: "Email or phone" },
+  fMessage: { vi: "Nội dung", en: "Message" },
+  fSend: { vi: "Gửi liên hệ", en: "Send message" },
+  fSending: { vi: "Đang gửi…", en: "Sending…" },
+  fSent: { vi: "Đã gửi — cảm ơn bạn!", en: "Sent — thank you!" },
+  fError: { vi: "Gửi thất bại, vui lòng thử lại.", en: "Failed to send, please try again." },
+  // Bộ chọn dịch vụ khi đặt lịch
+  bookChoose: { vi: "Bạn muốn đặt dịch vụ nào?", en: "Which service would you like?" },
+  bookOther: { vi: "Dịch vụ khác", en: "Other service" },
+  viewFullPrice: { vi: "Xem bảng giá đầy đủ", en: "Full price list" },
 };
 
 export const ABOUT = {
   body: {
-    vi: "Vieetjk là studio quay phim và chụp ảnh tại Quảng Ngãi. Chúng tôi tin mỗi khoảnh khắc đều xứng đáng được kể lại bằng hình ảnh chân thật và giàu cảm xúc — từ ngày cưới trọng đại, sự kiện sôi động, đến hình ảnh chuyên nghiệp cho doanh nghiệp.",
-    en: "Vieetjk is a film and photography studio in Quảng Ngãi. We believe every moment deserves to be told through honest, emotive imagery — from your wedding day to lively events and professional business visuals.",
+    vi: "tjk media là studio quay phim và chụp ảnh tại Quảng Ngãi. Chúng tôi tin mỗi khoảnh khắc đều xứng đáng được kể lại bằng hình ảnh chân thật và giàu cảm xúc — từ ngày cưới trọng đại, sự kiện sôi động, đến hình ảnh chuyên nghiệp cho doanh nghiệp.",
+    en: "tjk media is a film and photography studio in Quảng Ngãi. We believe every moment deserves to be told through honest, emotive imagery — from your wedding day to lively events and professional business visuals.",
   },
   stats: [
     { value: "500+", label: { vi: "Dự án đã thực hiện", en: "Projects delivered" } },
@@ -149,8 +175,8 @@ export const SERVICES: ServiceContent[] = [
       en: "Wedding & engagement reportage — photo and film that capture the feeling.",
     },
     intro: {
-      vi: "Ngày cưới chỉ diễn ra một lần. Vieetjk theo sát từng khoảnh khắc — ánh mắt, nụ cười, giọt nước mắt hạnh phúc — bằng phong cách phóng sự chân thật, tự nhiên. Nhận chụp ảnh và quay phim cho lễ cưới, đính hôn, đám hỏi.",
-      en: "Your wedding happens only once. Vieetjk follows every moment — a glance, a smile, a happy tear — in an honest, natural reportage style. Photo & film for weddings, engagements and betrothals.",
+      vi: "Ngày cưới chỉ diễn ra một lần. tjk media theo sát từng khoảnh khắc — ánh mắt, nụ cười, giọt nước mắt hạnh phúc — bằng phong cách phóng sự chân thật, tự nhiên. Nhận chụp ảnh và quay phim cho lễ cưới, đính hôn, đám hỏi.",
+      en: "Your wedding happens only once. tjk media follows every moment — a glance, a smile, a happy tear — in an honest, natural reportage style. Photo & film for weddings, engagements and betrothals.",
     },
     categories: ["cuoi", "cuoi-hoi", "dinh-hon"],
     bookingListKey: "cuoi",
@@ -171,8 +197,8 @@ export const SERVICES: ServiceContent[] = [
       en: "Conferences, openings, parties, galas — professional photo & film.",
     },
     intro: {
-      vi: "Mỗi sự kiện là một câu chuyện đáng nhớ. Vieetjk nhận chụp ảnh và quay phim cho hội nghị, khai trương, gala, chương trình nghệ thuật... Giao file nhanh, hình ảnh sắc nét, sẵn sàng cho truyền thông ngay sau sự kiện.",
-      en: "Every event is a story worth remembering. Vieetjk photographs and films conferences, openings, galas and performances — fast delivery, crisp imagery ready for media right after the event.",
+      vi: "Mỗi sự kiện là một câu chuyện đáng nhớ. tjk media nhận chụp ảnh và quay phim cho hội nghị, khai trương, gala, chương trình nghệ thuật... Giao file nhanh, hình ảnh sắc nét, sẵn sàng cho truyền thông ngay sau sự kiện.",
+      en: "Every event is a story worth remembering. tjk media photographs and films conferences, openings, galas and performances — fast delivery, crisp imagery ready for media right after the event.",
     },
     categories: ["su-kien"],
     bookingListKey: "su-kien",
@@ -226,8 +252,8 @@ export const SERVICES: ServiceContent[] = [
       en: "Profiles, products, TVC — elevate your brand.",
     },
     intro: {
-      vi: "Hình ảnh chuyên nghiệp là bộ mặt của doanh nghiệp. Vieetjk cung cấp dịch vụ chụp ảnh chân dung nhân sự, ảnh sản phẩm, hình ảnh truyền thông và sản xuất video giới thiệu (TVC) — giúp thương hiệu của bạn nổi bật và đáng tin cậy.",
-      en: "Professional imagery is the face of your business. Vieetjk offers staff portraits, product photography, media visuals and promotional video (TVC) production — making your brand stand out and feel trustworthy.",
+      vi: "Hình ảnh chuyên nghiệp là bộ mặt của doanh nghiệp. tjk media cung cấp dịch vụ chụp ảnh chân dung nhân sự, ảnh sản phẩm, hình ảnh truyền thông và sản xuất video giới thiệu (TVC) — giúp thương hiệu của bạn nổi bật và đáng tin cậy.",
+      en: "Professional imagery is the face of your business. tjk media offers staff portraits, product photography, media visuals and promotional video (TVC) production — making your brand stand out and feel trustworthy.",
     },
     categories: ["doanh-nghiep"],
     bookingListKey: "doanh-nghiep",

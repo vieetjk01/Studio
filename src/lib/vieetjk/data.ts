@@ -22,12 +22,16 @@ export type VjkPriceItem = {
   list_key: string; // cuoi | dinh-hon | ...
 };
 
+export type VjkFeedback = { id: string; client_name: string | null; rating: number | null; content: string };
+
 export type VjkData = {
   /** Chủ studio (để lấy link đặt lịch, tên hiển thị). */
   ownerId: string | null;
   bookingToken: string | null;
   /** Logo studio đã upload trong dashboard (studio_logo_url → pl_logo_url). */
   logoUrl: string | null;
+  /** Đánh giá khách hàng (đã duyệt) để hiện ở trang chủ. */
+  feedback: VjkFeedback[];
   /** Album showcase công khai (đã lọc trạng thái published + is_showcase). */
   albums: VjkAlbum[];
   /** Bảng giá studio, gom theo list_key (cuoi / dinh-hon...). */
@@ -56,10 +60,15 @@ export function itemsForList(priceByList: Record<string, VjkPriceItem[]>, key: s
 
 /** Giá của gói khớp một trong các từ khoá (không phân biệt hoa thường). */
 export function priceForMatches(items: VjkPriceItem[], matches: string[]): number | null {
+  return itemForMatches(items, matches)?.price ?? null;
+}
+
+/** Gói (tên + giá + mô tả) khớp một trong các từ khoá — để hiện chi tiết & chọn khi đặt lịch. */
+export function itemForMatches(items: VjkPriceItem[], matches: string[]): VjkPriceItem | null {
   const low = matches.map((m) => m.toLowerCase());
   for (const it of items) {
     const n = (it.name || "").toLowerCase();
-    if (it.price > 0 && low.some((m) => n.includes(m))) return it.price;
+    if (it.price > 0 && low.some((m) => n.includes(m))) return it;
   }
   return null;
 }
@@ -140,7 +149,7 @@ export async function loadVieetjkData(): Promise<VjkData> {
   const db = createAdminClient();
   const { ownerId, bookingToken, logoUrl } = await resolveOwner(db);
 
-  const empty: VjkData = { ownerId, bookingToken, logoUrl, albums: [], priceByList: {} };
+  const empty: VjkData = { ownerId, bookingToken, logoUrl, feedback: [], albums: [], priceByList: {} };
   if (!ownerId) return empty;
 
   const [{ data: albums }, { data: pl }] = await Promise.all([
@@ -168,10 +177,30 @@ export async function loadVieetjkData(): Promise<VjkData> {
     (priceByList[row.list_key] ??= []).push(row);
   }
 
+  // Đánh giá khách hàng đã duyệt (trên các album của studio).
+  let feedback: VjkFeedback[] = [];
+  const { data: allAlbums } = await db
+    .from("albums")
+    .select("id")
+    .eq("owner_id", ownerId)
+    .eq("status", "published");
+  const albumIds = (allAlbums ?? []).map((a) => a.id as string);
+  if (albumIds.length) {
+    const { data: fb } = await db
+      .from("feedback")
+      .select("id, client_name, rating, content")
+      .in("album_id", albumIds)
+      .eq("approved", true)
+      .order("created_at", { ascending: false })
+      .limit(9);
+    feedback = (fb ?? []) as VjkFeedback[];
+  }
+
   return {
     ownerId,
     bookingToken,
     logoUrl,
+    feedback,
     albums: (albums ?? []) as VjkAlbum[],
     priceByList,
   };
