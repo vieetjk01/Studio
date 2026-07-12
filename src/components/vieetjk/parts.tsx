@@ -60,7 +60,20 @@ export function WeddingPricing({ groups, lang }: { groups: WeddingGroup[]; lang:
                 </div>
                 <a className="wp-book" href={c.bookHref}>{tr(lang, UI.book)}</a>
                 <div className="wp-sep" />
-                <div className="wp-detail">{c.detail || "—"}</div>
+                <div className="wp-detail">
+                  {c.detail ? (
+                    <>
+                      <div className="wp-dt">{tr(lang, UI.includes)}</div>
+                      <ul className="wp-dl">
+                        {c.detail.split("\n").map((s) => s.trim()).filter(Boolean).map((line, li) => (
+                          <li key={li}>{line}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <span style={{ color: "var(--ink3)", fontSize: 13 }}>—</span>
+                  )}
+                </div>
                 {c.fullHref && (
                   <div className="wp-more">
                     <a href={c.fullHref}>{tr(lang, UI.viewFullPrice)} <Arrow /></a>
