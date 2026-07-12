@@ -2,9 +2,9 @@
 // đụng tới theme của phần còn lại của app. Render 1 lần trong VieetjkChrome.
 export const VJK_CSS = `
 .vjk-root{
-  --red:#c1121f; --red-dark:#96101a;
-  --ink:#171717; --ink2:#575757; --ink3:#8a8a8a;
-  --line:#e9e6df; --paper:#ffffff; --paper2:#faf8f4; --paper3:#f3efe8;
+  --red:#e11d2b; --red-dark:#b3111d;
+  --ink:#f5f4f2; --ink2:rgba(245,244,242,.64); --ink3:rgba(245,244,242,.40);
+  --line:rgba(255,255,255,.10); --paper:#0a0a0c; --paper2:#101014; --paper3:#17171c;
   background:var(--paper); color:var(--ink);
   font-family:var(--font-manrope),var(--font-hanken),system-ui,-apple-system,sans-serif;
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
@@ -19,8 +19,8 @@ export const VJK_CSS = `
 .vjk-muted{color:var(--ink2);}
 
 /* ── Header ─────────────────────────────────────────── */
-.vjk-header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);
-  backdrop-filter:saturate(1.2) blur(12px);border-bottom:1px solid var(--line);}
+.vjk-header{position:sticky;top:0;z-index:50;background:rgba(10,10,12,.72);
+  backdrop-filter:saturate(1.2) blur(14px);border-bottom:1px solid var(--line);}
 .vjk-headin{display:flex;align-items:center;justify-content:space-between;height:70px;}
 .vjk-logo{display:inline-flex;align-items:center;gap:9px;}
 .vjk-logo-text{display:inline-flex;flex-direction:column;line-height:1;}
@@ -51,8 +51,9 @@ export const VJK_CSS = `
 .vjk-hero{position:relative;padding:clamp(80px,12vw,150px) 0 clamp(64px,9vw,120px);overflow:hidden;}
 .vjk-hero::before{content:"";position:absolute;inset:0;z-index:0;
   background:
-    radial-gradient(60% 55% at 82% 8%, rgba(193,18,31,.06), transparent 70%),
-    linear-gradient(180deg,var(--paper2),var(--paper));}
+    radial-gradient(55% 60% at 80% 0%, rgba(225,29,43,.16), transparent 68%),
+    radial-gradient(40% 50% at 12% 100%, rgba(225,29,43,.06), transparent 70%),
+    linear-gradient(180deg,#141418,var(--paper));}
 .vjk-hero-in{position:relative;z-index:1;max-width:820px;}
 .vjk-hero h1{font-family:var(--font-cormorant),serif;font-weight:500;
   font-size:clamp(40px,7vw,76px);line-height:1.03;letter-spacing:-.015em;margin:20px 0 0;white-space:pre-line;}
@@ -62,8 +63,8 @@ export const VJK_CSS = `
 /* ── Service cards (home) ──────────────────────────── */
 .vjk-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
 .vjk-scard{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;
-  overflow:hidden;background:var(--paper);transition:transform .22s,box-shadow .22s,border-color .22s;}
-.vjk-scard:hover{transform:translateY(-4px);box-shadow:0 18px 40px -24px rgba(0,0,0,.28);border-color:#ddd8cf;}
+  overflow:hidden;background:var(--paper3);transition:transform .22s,box-shadow .22s,border-color .22s;}
+.vjk-scard:hover{transform:translateY(-4px);box-shadow:0 22px 48px -24px rgba(0,0,0,.7);border-color:rgba(225,29,43,.5);}
 .vjk-scard-media{aspect-ratio:4/3;background:var(--paper3);position:relative;overflow:hidden;}
 .vjk-scard-media img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
 .vjk-scard:hover .vjk-scard-media img{transform:scale(1.05);}
@@ -106,9 +107,9 @@ export const VJK_CSS = `
 .vjk-note{margin-top:22px;font-size:14px;color:var(--ink2);background:var(--paper2);border-left:3px solid var(--red);padding:14px 18px;border-radius:0 10px 10px 0;}
 
 .vjk-tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
-.vjk-tier{border:1px solid var(--line);border-radius:16px;padding:30px 26px;background:var(--paper);display:flex;flex-direction:column;gap:16px;transition:transform .2s,box-shadow .2s;}
-.vjk-tier:hover{transform:translateY(-4px);box-shadow:0 18px 40px -26px rgba(0,0,0,.3);}
-.vjk-tier.feat{border-color:var(--red);box-shadow:0 20px 44px -28px rgba(193,18,31,.4);}
+.vjk-tier{border:1px solid var(--line);border-radius:16px;padding:30px 26px;background:var(--paper3);display:flex;flex-direction:column;gap:16px;transition:transform .2s,box-shadow .2s;}
+.vjk-tier:hover{transform:translateY(-4px);box-shadow:0 22px 48px -26px rgba(0,0,0,.7);}
+.vjk-tier.feat{border-color:var(--red);box-shadow:0 24px 50px -26px rgba(225,29,43,.45);}
 .vjk-tier .tn{font-family:var(--font-cormorant),serif;font-size:23px;font-weight:600;}
 .vjk-tier .tp{font-size:15px;color:var(--red);font-weight:600;}
 .vjk-tier ul{list-style:none;padding:0;margin:0;display:grid;gap:10px;}
@@ -117,7 +118,8 @@ export const VJK_CSS = `
 .vjk-tier.feat .badge{position:absolute;top:-11px;left:26px;background:var(--red);color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 12px;border-radius:999px;}
 
 /* ── CTA band + Footer ─────────────────────────────── */
-.vjk-band{background:var(--ink);color:#fff;border-radius:22px;padding:56px 48px;text-align:center;}
+.vjk-band{position:relative;overflow:hidden;border:1px solid var(--line);color:#fff;border-radius:22px;padding:56px 48px;text-align:center;
+  background:radial-gradient(80% 130% at 50% -20%, rgba(225,29,43,.28), transparent 60%), linear-gradient(150deg,#18181d,#0c0c0e);}
 .vjk-band h2{font-family:var(--font-cormorant),serif;font-size:clamp(28px,4vw,42px);font-weight:500;}
 .vjk-band p{color:rgba(255,255,255,.7);margin-top:12px;max-width:52ch;margin-inline:auto;}
 .vjk-band .vjk-btnrow{justify-content:center;margin-top:28px;}
@@ -135,7 +137,8 @@ export const VJK_CSS = `
 .vjk-foot-bottom{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;color:var(--ink3);font-size:13px;}
 
 /* ── Service page header ───────────────────────────── */
-.vjk-shead{padding:clamp(64px,9vw,110px) 0 clamp(40px,6vw,64px);background:linear-gradient(180deg,var(--paper2),var(--paper));border-bottom:1px solid var(--line);}
+.vjk-shead{padding:clamp(64px,9vw,110px) 0 clamp(40px,6vw,64px);position:relative;border-bottom:1px solid var(--line);
+  background:radial-gradient(50% 80% at 82% 0%, rgba(225,29,43,.14), transparent 65%), linear-gradient(180deg,#141418,var(--paper));}
 .vjk-shead .vjk-wrap{max-width:760px;}
 .vjk-shead h1{font-family:var(--font-cormorant),serif;font-weight:500;font-size:clamp(38px,6vw,64px);line-height:1.04;letter-spacing:-.015em;margin:14px 0 0;}
 .vjk-shead p{margin:20px 0 0;font-size:clamp(16px,1.7vw,19px);color:var(--ink2);}
@@ -153,7 +156,7 @@ export const VJK_CSS = `
   .vjk-nav{display:none;}
   .vjk-burger{display:inline-flex;}
   .vjk-header .vjk-cta.head{display:none;}
-  .vjk-mobnav{display:block;border-top:1px solid var(--line);background:#fff;padding:12px 24px 22px;}
+  .vjk-mobnav{display:block;border-top:1px solid var(--line);background:#0d0d10;padding:12px 24px 22px;}
   .vjk-mobnav a{display:block;padding:12px 0;font-size:16px;color:var(--ink);border-bottom:1px solid var(--line);}
   .vjk-mobnav .vjk-cta{margin-top:16px;width:100%;justify-content:center;}
   .vjk-grid3,.vjk-tiers{grid-template-columns:1fr;}
