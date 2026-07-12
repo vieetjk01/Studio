@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Logo from "./Logo";
 import LangSwitch from "./LangSwitch";
+import ThemeSwitch, { type VjkTheme } from "./ThemeSwitch";
 import BookingButton from "./BookingButton";
 import { VJK_CSS } from "./styles";
 import { BRAND, CONTACT, SERVICES, UI, tr, type Lang } from "@/lib/vieetjk/content";
@@ -35,12 +36,14 @@ export default function VieetjkChrome({
   logoUrl = null,
   active = "",
   lang,
+  theme = "dark",
 }: {
   children: React.ReactNode;
   bookingToken: string | null;
   logoUrl?: string | null;
   active?: string;
   lang: Lang;
+  theme?: VjkTheme;
 }) {
   const [open, setOpen] = useState(false);
   const book = bookingToken ? `/book/${bookingToken}` : CONTACT.phoneHref;
@@ -52,7 +55,7 @@ export default function VieetjkChrome({
   ];
 
   return (
-    <div className="vjk-root">
+    <div className={`vjk-root${theme === "light" ? " light" : ""}`}>
       <style dangerouslySetInnerHTML={{ __html: VJK_CSS }} />
 
       <header className="vjk-header">
@@ -67,7 +70,8 @@ export default function VieetjkChrome({
               </a>
             ))}
           </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ThemeSwitch theme={theme} />
             <LangSwitch lang={lang} />
             <span className="head"><BookingButton token={bookingToken} lang={lang} label={tr(lang, UI.book)} align="right" /></span>
             <button className="vjk-burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>

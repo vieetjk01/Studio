@@ -20,6 +20,11 @@ function currentLang(): Lang {
   return cookies().get("vjk_lang")?.value === "en" ? "en" : "vi";
 }
 
+/** Giao diện hiện tại từ cookie (mặc định tối). */
+function currentTheme(): "dark" | "light" {
+  return cookies().get("vjk_theme")?.value === "light" ? "light" : "dark";
+}
+
 /** Đây có phải trang vieetjk (theo domain/subdomain hoặc template)? */
 function isVieetjkKey(key: string): boolean {
   const k = key.toLowerCase();
@@ -84,11 +89,12 @@ export default async function SitePage({ params }: { params: Params }) {
   const vieetjk = isVieetjkKey(key) || (await siteHasVieetjkTemplate(key));
   if (vieetjk) {
     const lang = currentLang();
+    const theme = currentTheme();
     const data = await loadVieetjkData();
 
     if (path.length === 0) {
       return (
-        <VieetjkChrome bookingToken={data.bookingToken} logoUrl={data.logoUrl} active="" lang={lang}>
+        <VieetjkChrome bookingToken={data.bookingToken} logoUrl={data.logoUrl} active="" lang={lang} theme={theme}>
           <VieetjkHome data={data} lang={lang} />
         </VieetjkChrome>
       );
@@ -96,7 +102,7 @@ export default async function SitePage({ params }: { params: Params }) {
     const svc = getService(path[0]);
     if (svc && path.length === 1) {
       return (
-        <VieetjkChrome bookingToken={data.bookingToken} logoUrl={data.logoUrl} active={svc.slug} lang={lang}>
+        <VieetjkChrome bookingToken={data.bookingToken} logoUrl={data.logoUrl} active={svc.slug} lang={lang} theme={theme}>
           <VieetjkService service={svc} data={data} lang={lang} />
         </VieetjkChrome>
       );

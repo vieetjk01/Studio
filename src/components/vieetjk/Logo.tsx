@@ -38,7 +38,7 @@ export default function Logo({ src, height = 30 }: { src?: string | null; height
           fontWeight: 800,
           fontSize: Math.round(height * 0.72),
           letterSpacing: "-.02em",
-          color: "#fff",
+          color: "var(--ink)",
           lineHeight: 1,
         }}
       >
