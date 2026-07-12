@@ -2,16 +2,9 @@
 
 import { useState } from "react";
 import Logo from "./Logo";
+import LangSwitch from "./LangSwitch";
 import { VJK_CSS } from "./styles";
-import { BRAND, CONTACT } from "@/lib/vieetjk/content";
-
-const NAV = [
-  { href: "/", label: "Trang chủ", slug: "" },
-  { href: "/cuoi", label: "Cưới & Đính hôn", slug: "cuoi" },
-  { href: "/su-kien", label: "Sự kiện", slug: "su-kien" },
-  { href: "/doanh-nghiep", label: "Doanh nghiệp", slug: "doanh-nghiep" },
-  { href: "/#lien-he", label: "Liên hệ", slug: "lien-he" },
-];
+import { BRAND, CONTACT, SERVICES, UI, tr, type Lang } from "@/lib/vieetjk/content";
 
 function IconFacebook() {
   return (
@@ -40,14 +33,22 @@ export default function VieetjkChrome({
   bookingHref,
   logoUrl = null,
   active = "",
+  lang,
 }: {
   children: React.ReactNode;
   bookingHref: string | null;
   logoUrl?: string | null;
   active?: string;
+  lang: Lang;
 }) {
   const [open, setOpen] = useState(false);
   const book = bookingHref || CONTACT.phoneHref;
+
+  const nav = [
+    { href: "/", label: tr(lang, UI.navHome), slug: "" },
+    ...SERVICES.map((s) => ({ href: `/${s.slug}`, label: tr(lang, s.navLabel), slug: s.slug })),
+    { href: "/#lien-he", label: tr(lang, UI.navContact), slug: "lien-he" },
+  ];
 
   return (
     <div className="vjk-root">
@@ -59,14 +60,15 @@ export default function VieetjkChrome({
             <Logo src={logoUrl} />
           </a>
           <nav className="vjk-nav">
-            {NAV.map((n) => (
+            {nav.map((n) => (
               <a key={n.href} href={n.href} className={active && active === n.slug ? "active" : undefined}>
                 {n.label}
               </a>
             ))}
           </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <a href={book} className="vjk-cta head">Đặt lịch</a>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <LangSwitch lang={lang} />
+            <a href={book} className="vjk-cta head">{tr(lang, UI.book)}</a>
             <button className="vjk-burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 {open ? <path d="M6 6l12 12M18 6L6 18" /> : <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>}
@@ -76,10 +78,10 @@ export default function VieetjkChrome({
         </div>
         {open && (
           <div className="vjk-mobnav">
-            {NAV.map((n) => (
+            {nav.map((n) => (
               <a key={n.href} href={n.href} onClick={() => setOpen(false)}>{n.label}</a>
             ))}
-            <a href={book} className="vjk-cta" onClick={() => setOpen(false)}>Đặt lịch ngay</a>
+            <a href={book} className="vjk-cta" onClick={() => setOpen(false)}>{tr(lang, UI.bookNow)}</a>
           </div>
         )}
       </header>
@@ -91,7 +93,7 @@ export default function VieetjkChrome({
           <div className="vjk-foot-grid">
             <div>
               <a href="/" aria-label={BRAND.name}><Logo src={logoUrl} height={34} /></a>
-              <p style={{ marginTop: 16, maxWidth: "34ch" }}>{BRAND.tagline}. {BRAND.heroSub}</p>
+              <p style={{ marginTop: 16, maxWidth: "34ch" }}>{tr(lang, BRAND.tagline)}. {tr(lang, BRAND.heroSub)}</p>
               <div className="vjk-foot-social">
                 <a href={CONTACT.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><IconFacebook /></a>
                 <a href={CONTACT.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><IconTiktok /></a>
@@ -99,23 +101,23 @@ export default function VieetjkChrome({
               </div>
             </div>
             <div>
-              <h4>Dịch vụ</h4>
-              <a href="/cuoi">Cưới & Đính hôn</a>
-              <a href="/su-kien">Sự kiện</a>
-              <a href="/doanh-nghiep">Doanh nghiệp</a>
-              <a href={book}>Đặt lịch</a>
+              <h4>{tr(lang, UI.services)}</h4>
+              {SERVICES.map((s) => (
+                <a key={s.slug} href={`/${s.slug}`}>{tr(lang, s.navLabel)}</a>
+              ))}
+              <a href={book}>{tr(lang, UI.book)}</a>
             </div>
             <div>
-              <h4>Liên hệ</h4>
+              <h4>{tr(lang, UI.navContact)}</h4>
               <a href={CONTACT.phoneHref}>{CONTACT.phone}</a>
               <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
               <a href={CONTACT.facebook} target="_blank" rel="noopener noreferrer">facebook.com/vieetjk</a>
-              <p>{CONTACT.address}</p>
+              <p>{tr(lang, CONTACT.address)}</p>
             </div>
           </div>
           <div className="vjk-foot-bottom">
-            <span>© {BRAND.name} — {BRAND.tagline}</span>
-            <span>Được xây dựng với ♥ tại Quảng Ngãi</span>
+            <span>© {BRAND.name} — {tr(lang, BRAND.tagline)}</span>
+            <span>{tr(lang, UI.builtWith)}</span>
           </div>
         </div>
       </footer>

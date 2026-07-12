@@ -1,16 +1,12 @@
-import type { VjkAlbum, VjkPriceItem } from "@/lib/vieetjk/data";
-import type { PriceTier } from "@/lib/vieetjk/content";
+import type { VjkAlbum } from "@/lib/vieetjk/data";
+import { UI, tr, type Lang, type PriceTier, type InfoItem } from "@/lib/vieetjk/content";
 
 const fmt = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + "đ";
 
-/** Lưới ảnh (masonry) từ album showcase; click mở album công khai /showcase/<slug>. */
-export function Gallery({ albums, emptyHint }: { albums: VjkAlbum[]; emptyHint?: string }) {
+/** Lưới ảnh (masonry) từ album showcase; click mở album công khai /album/<slug>. */
+export function Gallery({ albums, lang, emptyHint }: { albums: VjkAlbum[]; lang: Lang; emptyHint?: string }) {
   if (!albums.length) {
-    return (
-      <div className="vjk-empty">
-        {emptyHint || "Bộ sưu tập đang được cập nhật. Vui lòng quay lại sau nhé!"}
-      </div>
-    );
+    return <div className="vjk-empty">{emptyHint || tr(lang, UI.galleryEmpty)}</div>;
   }
   return (
     <div className="vjk-gal">
@@ -29,28 +25,22 @@ export function Gallery({ albums, emptyHint }: { albums: VjkAlbum[]; emptyHint?:
   );
 }
 
-/** Bảng giá lấy từ studio_pricelist — gom theo "category" (nhóm gói). */
-export function PriceList({ items }: { items: VjkPriceItem[] }) {
-  // Gom theo category, giữ thứ tự xuất hiện.
-  const groups: { title: string; rows: VjkPriceItem[] }[] = [];
-  for (const it of items) {
-    const g = groups.find((x) => x.title === (it.category || ""));
-    if (g) g.rows.push(it);
-    else groups.push({ title: it.category || "Bảng giá", rows: [it] });
-  }
+export type WeddingCard = { label: string; note: string; price: number | null };
+export type WeddingRow = { title: string; cards: WeddingCard[] };
+
+/** Bảng giá cưới gọn: mỗi hàng (Cưới / Đính hôn) là 1 dải ô gói chính. */
+export function WeddingPackages({ rows, lang }: { rows: WeddingRow[]; lang: Lang }) {
   return (
     <div>
-      {groups.map((g) => (
-        <div className="vjk-pl-group" key={g.title}>
-          <div className="vjk-pl-gtitle">{g.title}</div>
-          <div className="vjk-pl-rows">
-            {g.rows.map((r, i) => (
-              <div className="vjk-pl-row" key={`${r.name}-${i}`}>
-                <div>
-                  <div className="nm">{r.name}</div>
-                  {r.description && <div className="ds">{r.description}</div>}
-                </div>
-                {r.price > 0 && <div className="pr">{fmt(r.price)}</div>}
+      {rows.map((row) => (
+        <div className="vjk-wrow" key={row.title}>
+          <div className="vjk-wrow-h">{row.title}</div>
+          <div className="vjk-wgrid">
+            {row.cards.map((c, i) => (
+              <div className="vjk-wcard" key={`${c.label}-${i}`}>
+                <div className="wl">{c.label}</div>
+                <div className="wn">{c.note}</div>
+                <div className="wp">{c.price != null ? fmt(c.price) : tr(lang, UI.contactPrice)}</div>
               </div>
             ))}
           </div>
@@ -61,21 +51,63 @@ export function PriceList({ items }: { items: VjkPriceItem[] }) {
 }
 
 /** Bảng giá "báo giá riêng" dạng thẻ (sự kiện / doanh nghiệp). */
-export function PriceTiers({ tiers }: { tiers: PriceTier[] }) {
+export function PriceTiers({ tiers, lang }: { tiers: PriceTier[]; lang: Lang }) {
   return (
     <div className="vjk-tiers">
       {tiers.map((t) => (
-        <div className={`vjk-tier${t.featured ? " feat" : ""}`} key={t.name}>
-          {t.featured && <span className="badge">Phổ biến</span>}
+        <div className={`vjk-tier${t.featured ? " feat" : ""}`} key={tr(lang, t.name)}>
+          {t.featured && <span className="badge">{lang === "vi" ? "Phổ biến" : "Popular"}</span>}
           <div>
-            <div className="tn">{t.name}</div>
-            <div className="tp">{t.price}</div>
+            <div className="tn">{tr(lang, t.name)}</div>
+            <div className="tp">{tr(lang, t.price)}</div>
           </div>
           <ul>
             {t.items.map((it) => (
-              <li key={it}>{it}</li>
+              <li key={tr(lang, it)}>{tr(lang, it)}</li>
             ))}
           </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Lưới thẻ giới thiệu (loại sự kiện / dịch vụ doanh nghiệp). */
+export function InfoGrid({ items, lang }: { items: InfoItem[]; lang: Lang }) {
+  return (
+    <div className="vjk-info">
+      {items.map((it) => (
+        <div className="vjk-infocard" key={tr(lang, it.label)}>
+          <h4>{tr(lang, it.label)}</h4>
+          <p>{tr(lang, it.desc)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Quy trình đánh số (đúng nghĩa là một trình tự). */
+export function ProcessSteps({ steps, lang }: { steps: InfoItem[]; lang: Lang }) {
+  return (
+    <div className="vjk-steps">
+      {steps.map((s) => (
+        <div className="vjk-step" key={tr(lang, s.label)}>
+          <h4>{tr(lang, s.label)}</h4>
+          <p>{tr(lang, s.desc)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Dải "vì sao chọn" (doanh nghiệp). */
+export function WhyUs({ items, lang }: { items: InfoItem[]; lang: Lang }) {
+  return (
+    <div className="vjk-why">
+      {items.map((it) => (
+        <div key={tr(lang, it.label)}>
+          <div className="n">{tr(lang, it.label)}</div>
+          <p>{tr(lang, it.desc)}</p>
         </div>
       ))}
     </div>

@@ -167,4 +167,68 @@ export const VJK_CSS = `
   .vjk-foot-grid{grid-template-columns:1fr;}
 }
 @media (max-width:440px){ .vjk-gal{columns:1;} }
+
+/* ── Language switch ───────────────────────────────── */
+.vjk-lang{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ink3);}
+.vjk-lang button{background:none;border:0;color:var(--ink3);cursor:pointer;font-weight:700;font-size:13px;padding:2px 1px;letter-spacing:.04em;}
+.vjk-lang button.on{color:var(--ink);}
+.vjk-lang button:hover{color:var(--red);}
+
+/* ── Booking picker (home) ─────────────────────────── */
+.vjk-bookpick{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.vjk-bookcard{border:1px solid var(--line);border-radius:14px;padding:26px 24px;background:var(--paper3);
+  display:flex;flex-direction:column;gap:8px;transition:transform .2s,border-color .2s,box-shadow .2s;}
+.vjk-bookcard:hover{transform:translateY(-3px);border-color:rgba(225,29,43,.5);box-shadow:0 20px 44px -26px rgba(0,0,0,.7);}
+.vjk-bookcard .bt{font-family:var(--font-cormorant),serif;font-size:22px;font-weight:600;}
+.vjk-bookcard .bd{color:var(--ink2);font-size:14px;flex:1;}
+.vjk-bookcard .bk{display:inline-flex;align-items:center;gap:7px;color:var(--red);font-weight:600;font-size:14px;margin-top:4px;}
+
+/* ── Wedding compact package grid ──────────────────── */
+.vjk-wrow{margin-top:36px;}
+.vjk-wrow:first-child{margin-top:0;}
+.vjk-wrow-h{font-family:var(--font-cormorant),serif;font-size:22px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+.vjk-wrow-h::before{content:"";width:26px;height:3px;background:var(--red);border-radius:2px;}
+.vjk-wgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.vjk-wcard{border:1px solid var(--line);border-radius:12px;padding:20px 14px;background:var(--paper3);text-align:center;
+  display:flex;flex-direction:column;gap:4px;transition:transform .18s,border-color .18s;}
+.vjk-wcard:hover{transform:translateY(-3px);border-color:rgba(225,29,43,.5);}
+.vjk-wcard .wl{font-weight:600;font-size:15px;}
+.vjk-wcard .wn{font-size:12px;color:var(--ink3);}
+.vjk-wcard .wp{font-family:var(--font-cormorant),serif;font-size:21px;font-weight:600;color:var(--red);margin-top:8px;line-height:1.1;}
+
+/* ── Info grid (event types / business services) ───── */
+.vjk-info{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.vjk-infocard{border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--paper3);transition:transform .2s,border-color .2s;}
+.vjk-infocard:hover{transform:translateY(-3px);border-color:rgba(225,29,43,.5);}
+.vjk-infocard h4{font-family:var(--font-cormorant),serif;font-size:19px;font-weight:600;margin:0 0 6px;}
+.vjk-infocard p{color:var(--ink2);font-size:14px;margin:0;}
+
+/* ── Process steps (numbered = a real sequence) ────── */
+.vjk-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:vstep;}
+.vjk-step{position:relative;padding-top:52px;}
+.vjk-step::before{counter-increment:vstep;content:counter(vstep);position:absolute;top:0;left:0;
+  width:38px;height:38px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:700;font-size:16px;}
+.vjk-step h4{font-family:var(--font-cormorant),serif;font-size:18px;font-weight:600;margin:0 0 5px;}
+.vjk-step p{color:var(--ink2);font-size:14px;margin:0;}
+
+/* ── Business "why us" strip ───────────────────────── */
+.vjk-why{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+.vjk-why .n{font-family:var(--font-cormorant),serif;font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px;}
+.vjk-why .n::before{content:"";width:9px;height:9px;background:var(--red);border-radius:50%;}
+.vjk-why p{color:var(--ink2);font-size:14px;margin:6px 0 0;}
+
+/* ── Service-header variants ───────────────────────── */
+.vjk-shead.event{background:radial-gradient(62% 95% at 82% 0%, rgba(225,29,43,.22), transparent 60%), linear-gradient(180deg,#17110f,var(--paper));}
+.vjk-shead.event .vjk-serif{text-transform:none;}
+.vjk-shead.business{background:linear-gradient(180deg,#0f1216,var(--paper));border-top:2px solid var(--red);}
+
+@media (max-width:960px){
+  .vjk-bookpick,.vjk-info,.vjk-why{grid-template-columns:1fr 1fr;}
+  .vjk-wgrid{grid-template-columns:repeat(3,1fr);}
+  .vjk-steps{grid-template-columns:1fr 1fr;}
+}
+@media (max-width:600px){
+  .vjk-bookpick,.vjk-info,.vjk-why,.vjk-steps{grid-template-columns:1fr;}
+  .vjk-wgrid{grid-template-columns:1fr 1fr;}
+}
 `;
