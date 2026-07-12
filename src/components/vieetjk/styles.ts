@@ -257,20 +257,14 @@ export const VJK_CSS = `
 .vjk-wpkg .wp-more{padding:0 16px 16px;}
 .vjk-wpkg .wp-more a{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink);}
 .vjk-wpkg .wp-more a:hover{color:var(--red);}
-@media (max-width:1024px){ .vjk-slide{grid-template-columns:repeat(3,1fr);} }
+/* Dưới PC: chuyển sang slide trượt ngang (1 hàng, vuốt qua). */
+@media (max-width:1024px){
+  .vjk-slide{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;
+    scroll-snap-type:x mandatory;padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+  .vjk-wpkg{flex:0 0 auto;width:44%;max-width:260px;scroll-snap-align:start;}
+}
 @media (max-width:600px){
-  .vjk-slide{grid-template-columns:repeat(3,1fr);gap:8px;}
-  .vjk-wpkg .wp-top{padding:12px 10px 0;}
-  .vjk-wpkg .wp-name{font-size:12.5px;}
-  .vjk-wpkg .wp-note{font-size:10px;}
-  .vjk-wpkg .wp-price{font-size:16px;margin-top:8px;}
-  .vjk-wpkg .wp-book{margin:10px;padding:7px 8px;font-size:11px;}
-  .vjk-wpkg .wp-detail{padding:10px;}
-  .vjk-wpkg .wp-dt{font-size:9px;margin-bottom:6px;}
-  .vjk-wpkg .wp-dl li{font-size:11px;padding-left:12px;}
-  .vjk-wpkg .wp-dl li::before{width:5px;height:5px;top:6px;}
-  .vjk-wpkg .wp-more{padding:0 10px 12px;}
-  .vjk-wpkg .wp-more a{font-size:11px;}
+  .vjk-wpkg{width:72%;max-width:300px;}
 }
 
 /* ── Đánh giá khách hàng ───────────────────────────── */
