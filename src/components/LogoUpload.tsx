@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-const MAX_BYTES = 150 * 1024; // 150 KB
+const MAX_BYTES = 3 * 1024 * 1024; // 3 MB
+const MAX_LABEL = "3 MB";
 
 interface Props {
   value: string;
@@ -26,7 +27,7 @@ export default function LogoUpload({ value, onChange, ownerId, bucket = "logos",
     setErr(null);
 
     if (file.size > MAX_BYTES) {
-      setErr(`Ảnh quá lớn (${Math.round(file.size / 1024)} KB). Giới hạn 150 KB.`);
+      setErr(`Ảnh quá lớn (${Math.round(file.size / 1024)} KB). Giới hạn ${MAX_LABEL}.`);
       return;
     }
     if (!file.type.startsWith("image/")) {
@@ -61,7 +62,7 @@ export default function LogoUpload({ value, onChange, ownerId, bucket = "logos",
 
   return (
     <div>
-      <label className="label">{label} <span style={{ color: "var(--text3)", fontWeight: 400 }}>(tối đa 150 KB)</span></label>
+      <label className="label">{label} <span style={{ color: "var(--text3)", fontWeight: 400 }}>(tối đa {MAX_LABEL})</span></label>
       <div className="flex items-center gap-2">
         {/* Preview */}
         {value ? (
