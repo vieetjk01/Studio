@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadToAdminDrive } from "@/lib/mstudo-drive";
 
 export const dynamic = "force-dynamic";
@@ -41,16 +40,15 @@ export async function POST(req: Request) {
     /* rơi xuống fallback Supabase */
   }
 
-  // 2) Fallback: Supabase Storage.
+  // 2) Fallback: Supabase Storage (dùng client của user + RLS, như luồng cũ).
   const path = `${user.id}/${Date.now()}.${ext}`;
-  const db = createAdminClient();
-  const { error } = await db.storage.from(bucket).upload(path, buf, { contentType: file.type, upsert: true });
+  const { error } = await supabase.storage.from(bucket).upload(path, buf, { contentType: file.type, upsert: true });
   if (error) {
     if (error.message.includes("not found") || error.message.includes("Bucket")) {
       return NextResponse.json({ error: "bucket_missing", bucket }, { status: 500 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  const { data } = db.storage.from(bucket).getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return NextResponse.json({ url: data.publicUrl, storage: "supabase" });
 }
