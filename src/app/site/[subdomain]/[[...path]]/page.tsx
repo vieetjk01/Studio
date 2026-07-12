@@ -81,7 +81,7 @@ export default async function SitePage({ params }: { params: Params }) {
 
     if (path.length === 0) {
       return (
-        <VieetjkChrome bookingHref={href} active="">
+        <VieetjkChrome bookingHref={href} logoUrl={data.logoUrl} active="">
           <VieetjkHome data={data} />
         </VieetjkChrome>
       );
@@ -89,7 +89,7 @@ export default async function SitePage({ params }: { params: Params }) {
     const svc = getService(path[0]);
     if (svc && path.length === 1) {
       return (
-        <VieetjkChrome bookingHref={href} active={svc.slug}>
+        <VieetjkChrome bookingHref={href} logoUrl={data.logoUrl} active={svc.slug}>
           <VieetjkService service={svc} data={data} />
         </VieetjkChrome>
       );
