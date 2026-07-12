@@ -4,6 +4,7 @@ import { fetchAllPhotos } from "@/lib/photos";
 import { getStudioHost } from "@/lib/studio-site";
 import { effectivePlan, planAllowsDelivery, planAllowsPublicGallery } from "@/lib/plans";
 import AlbumEditor from "./AlbumEditor";
+import { categoryLabel } from "@/lib/category";
 import type { Album, AlbumSource, Photo } from "@/lib/types";
 
 
@@ -39,6 +40,22 @@ export default async function AlbumEditPage({
   const studioName = (profile?.full_name ?? "").trim() || "Studio";
   const studioHost = user ? await getStudioHost(supabase, user.id) : null;
 
+  // Loại album do CHÍNH studio này đã dùng (mỗi studio có bộ phân loại riêng).
+  const { data: catRows } = await supabase
+    .from("albums")
+    .select("category, category_label")
+    .eq("owner_id", (album as Album).owner_id)
+    .not("category", "is", null);
+  const seenCat = new Set<string>();
+  const studioCats: { slug: string; label: string }[] = [];
+  for (const r of catRows ?? []) {
+    const slug = ((r.category as string | null) ?? "").trim();
+    if (slug && !seenCat.has(slug)) {
+      seenCat.add(slug);
+      studioCats.push({ slug, label: categoryLabel(slug, r.category_label as string | null) });
+    }
+  }
+
   return (
     <AlbumEditor
       album={album as Album}
@@ -48,6 +65,7 @@ export default async function AlbumEditPage({
       canPinHome={planAllowsPublicGallery(plan, isAdmin)}
       studioName={studioName}
       studioHost={studioHost}
+      studioCats={studioCats}
     />
   );
 }
