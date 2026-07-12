@@ -61,7 +61,7 @@ export default function VieetjkChrome({
       <header className="vjk-header">
         <div className="vjk-wrap vjk-headin">
           <a href="/" aria-label={BRAND.name}>
-            <Logo src={logoUrl} />
+            <Logo src={logoUrl} theme={theme} />
           </a>
           <nav className="vjk-nav">
             {nav.map((n) => (
@@ -99,7 +99,7 @@ export default function VieetjkChrome({
         <div className="vjk-wrap">
           <div className="vjk-foot-grid">
             <div>
-              <a href="/" aria-label={BRAND.name}><Logo src={logoUrl} height={34} /></a>
+              <a href="/" aria-label={BRAND.name}><Logo src={logoUrl} theme={theme} height={34} /></a>
               <p style={{ marginTop: 16, maxWidth: "34ch" }}>{tr(lang, BRAND.tagline)}. {tr(lang, BRAND.heroSub)}</p>
               <div className="vjk-foot-social">
                 <a href={CONTACT.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><IconFacebook /></a>
