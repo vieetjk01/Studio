@@ -168,8 +168,8 @@ export const SERVICES: ServiceContent[] = [
   {
     slug: "cuoi",
     variant: "wedding",
-    navLabel: { vi: "Wedding", en: "Wedding" },
-    title: { vi: "Cưới & Đính hôn", en: "Wedding & Engagement" },
+    navLabel: { vi: "Phóng sự cưới", en: "Wedding" },
+    title: { vi: "Phóng sự cưới", en: "Wedding Reportage" },
     tagline: { vi: "Trọn vẹn ngày chung đôi", en: "Your day, beautifully told" },
     cardDesc: {
       vi: "Phóng sự cưới, đính hôn — chụp ảnh và quay phim ghi trọn cảm xúc.",

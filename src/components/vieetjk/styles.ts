@@ -264,7 +264,13 @@ export const VJK_CSS = `
   .vjk-wpkg{flex:0 0 auto;width:44%;max-width:260px;scroll-snap-align:start;}
 }
 @media (max-width:600px){
-  .vjk-wpkg{width:72%;max-width:300px;}
+  .vjk-wpkg{width:44%;max-width:220px;}
+  .vjk-wpkg .wp-top{padding:14px 12px 0;}
+  .vjk-wpkg .wp-name{font-size:13.5px;}
+  .vjk-wpkg .wp-price{font-size:19px;}
+  .vjk-wpkg .wp-book{margin:12px;padding:8px 10px;font-size:12px;}
+  .vjk-wpkg .wp-detail{padding:12px;}
+  .vjk-wpkg .wp-dl li{font-size:12px;}
 }
 
 /* ── Đánh giá khách hàng ───────────────────────────── */
@@ -296,4 +302,34 @@ export const VJK_CSS = `
 .vjk-bkmenu .mh{font-size:12px;letter-spacing:.06em;color:var(--ink3);padding:8px 12px 6px;font-weight:600;}
 .vjk-bkmenu a{display:block;padding:11px 12px;border-radius:9px;font-size:14px;font-weight:600;color:var(--ink);transition:background .14s;}
 .vjk-bkmenu a:hover{background:var(--paper3);color:var(--red);}
+
+/* ── Nút chuyển sáng/tối ───────────────────────────── */
+.vjk-theme{background:none;border:0;cursor:pointer;color:var(--ink2);padding:4px;display:inline-flex;align-items:center;transition:color .16s;}
+.vjk-theme:hover{color:var(--red);}
+
+/* ── GIAO DIỆN SÁNG (light) ────────────────────────── */
+.vjk-root.light{
+  --red:#c1121f; --red-dark:#96101a;
+  --ink:#1a1a1d; --ink2:rgba(26,26,29,.66); --ink3:rgba(26,26,29,.42);
+  --line:rgba(0,0,0,.10); --paper:#ffffff; --paper2:#f6f3ee; --paper3:#ffffff;
+}
+.vjk-root.light .vjk-header{background:rgba(255,255,255,.82);}
+.vjk-root.light .vjk-hero::before{background:
+  radial-gradient(55% 60% at 80% 0%, rgba(193,18,31,.09), transparent 68%),
+  radial-gradient(40% 50% at 12% 100%, rgba(193,18,31,.04), transparent 70%),
+  linear-gradient(180deg,#faf6f0,var(--paper));}
+.vjk-root.light .vjk-scard-ph{background:linear-gradient(135deg,#efeae2,#f6f3ee);}
+.vjk-root.light .vjk-empty{background:#faf7f2;}
+.vjk-root.light .vjk-shead{background:radial-gradient(50% 80% at 82% 0%, rgba(193,18,31,.08), transparent 65%),linear-gradient(180deg,#faf6f0,var(--paper));}
+.vjk-root.light .vjk-shead.event{background:radial-gradient(62% 95% at 82% 0%, rgba(193,18,31,.1), transparent 60%),linear-gradient(180deg,#fdf3f0,var(--paper));}
+.vjk-root.light .vjk-shead.business{background:linear-gradient(180deg,#eef1f5,var(--paper));}
+.vjk-root.light .vjk-band{background:radial-gradient(80% 130% at 50% -20%, rgba(193,18,31,.12), transparent 60%),linear-gradient(150deg,#faf6f0,#f1ebe2);color:var(--ink);}
+.vjk-root.light .vjk-band h2{color:var(--ink);}
+.vjk-root.light .vjk-band p{color:var(--ink2);}
+.vjk-root.light .vjk-band .vjk-cta-ghost{color:var(--ink) !important;border-color:var(--line);}
+.vjk-root.light .vjk-band .vjk-cta-ghost:hover{background:rgba(0,0,0,.05);}
+.vjk-root.light .vjk-mobnav{background:#fff;}
+.vjk-root.light .vjk-bkmenu{background:#fff;box-shadow:0 24px 50px -18px rgba(0,0,0,.22);}
+.vjk-root.light .vjk-scard:hover,.vjk-root.light .vjk-wpkg:hover,.vjk-root.light .vjk-tier:hover,
+.vjk-root.light .vjk-infocard:hover,.vjk-root.light .vjk-bookcard:hover{box-shadow:0 20px 44px -26px rgba(0,0,0,.22);}
 `;
