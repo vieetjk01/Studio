@@ -39,6 +39,11 @@ export const UI = {
   ourWork: { vi: "Sản phẩm", en: "Our work" },
   pricing: { vi: "Bảng giá", en: "Pricing" },
   services: { vi: "Dịch vụ", en: "Services" },
+  servicesTitle: { vi: "Ba mảng dịch vụ chính", en: "Three core services" },
+  servicesLead: {
+    vi: "Chọn dịch vụ để xem chi tiết, sản phẩm và bảng giá riêng của từng mảng.",
+    en: "Choose a service to see its details, work and dedicated pricing.",
+  },
   bookPickTitle: { vi: "Đặt lịch chụp", en: "Book a session" },
   bookPickLead: {
     vi: "Chọn loại dịch vụ để đặt lịch — bảng giá tương ứng sẽ hiện ở bước đặt lịch.",
@@ -118,6 +123,7 @@ export type ServiceContent = {
   navLabel: T; // tên trên menu (Wedding cho gọn)
   title: T;
   tagline: T;
+  cardDesc: T; // mô tả ngắn cho thẻ dịch vụ ở trang chủ
   intro: T;
   categories: string[]; // loại album map vào gallery
   bookingListKey: string; // list_key dùng ở /book?list=
@@ -138,6 +144,10 @@ export const SERVICES: ServiceContent[] = [
     navLabel: { vi: "Wedding", en: "Wedding" },
     title: { vi: "Cưới & Đính hôn", en: "Wedding & Engagement" },
     tagline: { vi: "Trọn vẹn ngày chung đôi", en: "Your day, beautifully told" },
+    cardDesc: {
+      vi: "Phóng sự cưới, đính hôn — chụp ảnh và quay phim ghi trọn cảm xúc.",
+      en: "Wedding & engagement reportage — photo and film that capture the feeling.",
+    },
     intro: {
       vi: "Ngày cưới chỉ diễn ra một lần. Vieetjk theo sát từng khoảnh khắc — ánh mắt, nụ cười, giọt nước mắt hạnh phúc — bằng phong cách phóng sự chân thật, tự nhiên. Nhận chụp ảnh và quay phim cho lễ cưới, đính hôn, đám hỏi.",
       en: "Your wedding happens only once. Vieetjk follows every moment — a glance, a smile, a happy tear — in an honest, natural reportage style. Photo & film for weddings, engagements and betrothals.",
@@ -156,6 +166,10 @@ export const SERVICES: ServiceContent[] = [
     navLabel: { vi: "Sự kiện", en: "Events" },
     title: { vi: "Sự kiện", en: "Events" },
     tagline: { vi: "Ghi trọn từng khoảnh khắc", en: "Every moment, captured" },
+    cardDesc: {
+      vi: "Hội nghị, khai trương, tiệc, gala — chụp và quay chuyên nghiệp.",
+      en: "Conferences, openings, parties, galas — professional photo & film.",
+    },
     intro: {
       vi: "Mỗi sự kiện là một câu chuyện đáng nhớ. Vieetjk nhận chụp ảnh và quay phim cho hội nghị, khai trương, gala, chương trình nghệ thuật... Giao file nhanh, hình ảnh sắc nét, sẵn sàng cho truyền thông ngay sau sự kiện.",
       en: "Every event is a story worth remembering. Vieetjk photographs and films conferences, openings, galas and performances — fast delivery, crisp imagery ready for media right after the event.",
@@ -207,6 +221,10 @@ export const SERVICES: ServiceContent[] = [
     navLabel: { vi: "Doanh nghiệp", en: "Business" },
     title: { vi: "Doanh nghiệp", en: "Business" },
     tagline: { vi: "Hình ảnh chuyên nghiệp", en: "Imagery that means business" },
+    cardDesc: {
+      vi: "Ảnh profile, sản phẩm, TVC — nâng tầm thương hiệu của bạn.",
+      en: "Profiles, products, TVC — elevate your brand.",
+    },
     intro: {
       vi: "Hình ảnh chuyên nghiệp là bộ mặt của doanh nghiệp. Vieetjk cung cấp dịch vụ chụp ảnh chân dung nhân sự, ảnh sản phẩm, hình ảnh truyền thông và sản xuất video giới thiệu (TVC) — giúp thương hiệu của bạn nổi bật và đáng tin cậy.",
       en: "Professional imagery is the face of your business. Vieetjk offers staff portraits, product photography, media visuals and promotional video (TVC) production — making your brand stand out and feel trustworthy.",

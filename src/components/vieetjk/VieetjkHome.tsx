@@ -1,5 +1,5 @@
 import { ABOUT, BRAND, SERVICES, UI, tr, type Lang } from "@/lib/vieetjk/content";
-import { bookingHref, type VjkData } from "@/lib/vieetjk/data";
+import { albumsForCategories, bookingHref, type VjkData } from "@/lib/vieetjk/data";
 import { Gallery } from "./parts";
 
 function Arrow() {
@@ -28,8 +28,42 @@ export default function VieetjkHome({ data, lang }: { data: VjkData; lang: Lang 
         </div>
       </section>
 
+      {/* Khối 3 dịch vụ (có ảnh) — link sang trang từng dịch vụ */}
+      <section className="vjk-section" id="dich-vu">
+        <div className="vjk-wrap">
+          <div style={{ maxWidth: 620, marginBottom: 44 }}>
+            <span className="vjk-eyebrow">{tr(lang, UI.services)}</span>
+            <h2 className="vjk-h2" style={{ marginTop: 12 }}>{tr(lang, UI.servicesTitle)}</h2>
+            <p className="vjk-lead" style={{ marginTop: 14 }}>{tr(lang, UI.servicesLead)}</p>
+          </div>
+          <div className="vjk-grid3">
+            {SERVICES.map((s) => {
+              const cover = albumsForCategories(data.albums, s.categories)[0]?.cover_url ?? null;
+              return (
+                <a key={s.slug} href={`/${s.slug}`} className="vjk-scard">
+                  <div className="vjk-scard-media">
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cover} alt={tr(lang, s.title)} loading="lazy" />
+                    ) : (
+                      <div className="vjk-scard-ph">{lang === "vi" ? "Đang cập nhật" : "Coming soon"}</div>
+                    )}
+                  </div>
+                  <div className="vjk-scard-body">
+                    <span className="tag">{tr(lang, s.tagline)}</span>
+                    <h3 className="vjk-serif">{tr(lang, s.title)}</h3>
+                    <p>{tr(lang, s.cardDesc)}</p>
+                    <span className="vjk-scard-link">{tr(lang, UI.viewService)} <Arrow /></span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* Đặt lịch — chọn 1 trong 3 dịch vụ */}
-      <section className="vjk-section" id="dat-lich">
+      <section className="vjk-section alt" id="dat-lich">
         <div className="vjk-wrap">
           <div style={{ maxWidth: 620, marginBottom: 40 }}>
             <span className="vjk-eyebrow">{tr(lang, UI.book)}</span>
@@ -55,7 +89,7 @@ export default function VieetjkHome({ data, lang }: { data: VjkData; lang: Lang 
       </section>
 
       {/* Về Vieetjk */}
-      <section className="vjk-section alt">
+      <section className="vjk-section">
         <div className="vjk-wrap vjk-about">
           <div>
             <span className="vjk-eyebrow">{tr(lang, UI.aboutHeading)}</span>
@@ -74,7 +108,7 @@ export default function VieetjkHome({ data, lang }: { data: VjkData; lang: Lang 
       </section>
 
       {/* Portfolio nổi bật */}
-      <section className="vjk-section" id="tac-pham">
+      <section className="vjk-section alt" id="tac-pham">
         <div className="vjk-wrap">
           <div style={{ maxWidth: 620, marginBottom: 40 }}>
             <span className="vjk-eyebrow">{tr(lang, UI.ourWork)}</span>
