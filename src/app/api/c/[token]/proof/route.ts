@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { driveImageUrlOrNull } from "@/lib/mstudo-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -35,14 +36,21 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   // H-2: Derive extension from validated MIME type, not client-supplied filename
   const EXT_MAP: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/heic": "heic" };
   const ext = EXT_MAP[file.type] ?? "jpg";
-  const path = `client/${contract.id}/${Date.now()}.${ext}`;
 
-  const { error: upErr } = await db.storage
-    .from("payment-proofs")
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
-
-  const { data: { publicUrl } } = db.storage.from("payment-proofs").getPublicUrl(path);
+  // Lưu ưu tiên vào Drive admin; nếu chưa kết nối thì fallback Supabase.
+  let publicUrl: string;
+  const buf = Buffer.from(await file.arrayBuffer());
+  const driveUrl = await driveImageUrlOrNull(buf, `proof-${contract.id}-${Date.now()}.${ext}`, file.type, true);
+  if (driveUrl) {
+    publicUrl = driveUrl;
+  } else {
+    const path = `client/${contract.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await db.storage
+      .from("payment-proofs")
+      .upload(path, buf, { contentType: file.type, upsert: false });
+    if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+    publicUrl = db.storage.from("payment-proofs").getPublicUrl(path).data.publicUrl;
+  }
 
   const note = (form.get("note") as string | null) || null;
   let planId = (form.get("plan_id") as string | null) || null;

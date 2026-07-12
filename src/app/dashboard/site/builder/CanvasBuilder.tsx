@@ -21,6 +21,7 @@ import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-temp
 import HtmlEmbed from "@/components/HtmlEmbed";
 import CustomDomain from "@/components/CustomDomain";
 import { compressImage, checkImageFile, MAX_IMAGE_UPLOAD_MB } from "@/lib/image";
+import { uploadImage, dataUrlToBlob } from "@/lib/upload-client";
 import { useTheme } from "@/lib/theme";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -618,7 +619,9 @@ export default function CanvasBuilder({
                       if (!file) return;
                       const check = checkImageFile(file);
                       if (!check.ok) { flash(check.error); return; }
-                      const url = await compressImage(file, { maxDim: 400, quality: 0.9, mime: "image/png" });
+                      const dataUrl = await compressImage(file, { maxDim: 400, quality: 0.9, mime: "image/png" });
+                      let url = dataUrl;
+                      try { url = await uploadImage(await dataUrlToBlob(dataUrl), { filename: "logo.png", original: true }); } catch { /* fallback: nhúng data URL */ }
                       patchTheme({ logo: url });
                     }} />
                   </label>
@@ -1045,7 +1048,9 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
     const check = checkImageFile(f);
     if (!check.ok) { alert(check.error); return; }
     // Compress aggressively to keep published pages as light as possible.
-    const url = await compressImage(f, { maxDim: 1280, quality: 0.65, mime: "image/webp" });
+    const dataUrl = await compressImage(f, { maxDim: 1280, quality: 0.65, mime: "image/webp" });
+    let url = dataUrl;
+    try { url = await uploadImage(await dataUrlToBlob(dataUrl), { filename: "site.webp" }); } catch { /* fallback: nhúng data URL */ }
     onBeforeEdit();
     onEdit(uploadKey, url, true);
   }
