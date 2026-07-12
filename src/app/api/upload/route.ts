@@ -29,15 +29,22 @@ export async function POST(req: Request) {
   const buf = Buffer.from(await file.arrayBuffer());
   const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
 
-  // 1) Drive admin (nếu đã kết nối).
-  try {
-    const id = await uploadToAdminDrive(buf, `${user.id}-${Date.now()}.${ext}`, file.type);
-    if (id) {
-      const url = `/api/img?id=${id}${original ? "&orig=1" : "&w=800"}`;
-      return NextResponse.json({ url, id, storage: "drive" });
+  // Nội dung của tài khoản ADMIN (nội dung app) vẫn dùng Supabase; chỉ nội dung
+  // của studio/khách mới đẩy lên Drive admin.
+  const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const isAdmin = prof?.role === "admin";
+
+  // 1) Drive admin (nếu đã kết nối & không phải admin).
+  if (!isAdmin) {
+    try {
+      const id = await uploadToAdminDrive(buf, `${user.id}-${Date.now()}.${ext}`, file.type);
+      if (id) {
+        const url = `/api/img?id=${id}${original ? "&orig=1" : "&w=800"}`;
+        return NextResponse.json({ url, id, storage: "drive" });
+      }
+    } catch {
+      /* rơi xuống fallback Supabase */
     }
-  } catch {
-    /* rơi xuống fallback Supabase */
   }
 
   // 2) Fallback: Supabase Storage (dùng client của user + RLS, như luồng cũ).

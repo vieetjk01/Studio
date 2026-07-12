@@ -580,14 +580,17 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
       const blob = await (await fetch(dataUrl)).blob();
       if (blob.size > 0) upload = new File([blob], "proof.webp", { type: blob.type || "image/webp" });
     } catch { /* fall back to original */ }
-    const ext = upload.type === "image/webp" ? "webp" : (file.name.split(".").pop() || "jpg").toLowerCase();
-    const path = `${contract.owner_id}/${contract.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("payment-proofs").upload(path, upload, { upsert: false, contentType: upload.type });
-    if (error) {
+    // Ưu tiên lưu vào Drive admin (fallback Supabase) qua /api/upload.
+    const fd = new FormData();
+    fd.append("file", upload);
+    fd.append("bucket", "payment-proofs");
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) {
       toast("Tải ảnh thất bại — kiểm tra đã chạy schema.sql (bucket payment-proofs) chưa.");
       return null;
     }
-    return supabase.storage.from("payment-proofs").getPublicUrl(path).data.publicUrl;
+    return data.url as string;
   }
 
   // Delete a proof image from storage to reclaim space (best-effort).

@@ -94,3 +94,16 @@ export async function uploadToAdminDrive(buf: Buffer, name: string, mime: string
   await ctx.drive.permissions.create({ fileId: id, requestBody: { role: "reader", type: "anyone" } }).catch(() => {});
   return id;
 }
+
+/**
+ * Thử lưu ẢNH vào Drive admin → trả URL phục vụ qua /api/img, hoặc null nếu Drive
+ * chưa kết nối / lỗi (để caller fallback Supabase). Chỉ dùng cho ảnh (image/*).
+ */
+export async function driveImageUrlOrNull(buf: Buffer, name: string, mime: string, original = false): Promise<string | null> {
+  try {
+    const id = await uploadToAdminDrive(buf, name, mime);
+    return id ? `/api/img?id=${id}${original ? "&orig=1" : "&w=1600"}` : null;
+  } catch {
+    return null;
+  }
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { limitByIp } from "@/lib/rate-limit";
+import { driveImageUrlOrNull } from "@/lib/mstudo-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +39,19 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
 
   const ext = file.type === "image/webp" ? "webp" : (file.type.split("/")[1] || (isAudio ? "mp3" : "jpg"));
+
+  // Ảnh → ưu tiên Drive admin (fallback Supabase). Audio (nhạc nền) → Supabase
+  // (proxy ảnh /api/img không phục vụ audio).
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (isImage) {
+    const driveUrl = await driveImageUrlOrNull(buf, `thiep-${inv.id}-${Date.now()}.${ext}`, file.type, false);
+    if (driveUrl) return NextResponse.json({ url: driveUrl });
+  }
+
   const path = `${inv.owner_id}/${inv.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
   const { error } = await db.storage
     .from("wedding-photos")
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, buf, { upsert: false, contentType: file.type });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const url = db.storage.from("wedding-photos").getPublicUrl(path).data.publicUrl;
