@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 const MAX_BYTES = 500 * 1024; // 500 KB
 const MAX_LABEL = "500 KB";
@@ -10,12 +9,12 @@ const MAX_LABEL = "500 KB";
 interface Props {
   value: string;
   onChange: (url: string) => void;
-  ownerId: string;
+  ownerId?: string; // (giữ để tương thích lời gọi cũ; upload nay qua /api/upload)
   bucket?: string; // default: "logos"
   label?: string;
 }
 
-export default function LogoUpload({ value, onChange, ownerId, bucket = "logos", label = "Logo" }: Props) {
+export default function LogoUpload({ value, onChange, bucket = "logos", label = "Logo" }: Props) {
   const ref = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -37,23 +36,25 @@ export default function LogoUpload({ value, onChange, ownerId, bucket = "logos",
 
     setUploading(true);
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "png";
-      const path = `${ownerId}/${Date.now()}.${ext}`;
-
-      const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
-      if (upErr) {
-        // Bucket not found — give a helpful message
-        if (upErr.message.includes("not found") || upErr.message.includes("Bucket")) {
-          setErr(`Chưa tạo bucket "${bucket}" trong Supabase Storage. Vào Storage → New bucket → đặt tên "${bucket}" → Public.`);
+      // Lưu qua API: ưu tiên Drive của admin, tự fallback Supabase. original=1
+      // để giữ nguyên ảnh gốc (logo PNG trong suốt).
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("bucket", bucket);
+      fd.append("original", "1");
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        if (data.error === "bucket_missing") {
+          setErr(`Chưa tạo bucket "${bucket}" trong Supabase Storage (hoặc kết nối Drive admin trong Cài đặt hệ thống).`);
         } else {
-          setErr(upErr.message);
+          setErr(data.error === "too_large" ? "Ảnh quá lớn." : data.error || "Tải lên thất bại.");
         }
         return;
       }
-
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      onChange(data.publicUrl);
+      onChange(data.url as string);
+    } catch {
+      setErr("Tải lên thất bại, thử lại.");
     } finally {
       setUploading(false);
       if (ref.current) ref.current.value = "";
