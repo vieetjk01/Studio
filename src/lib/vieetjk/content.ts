@@ -100,6 +100,7 @@ export const UI = {
   bookChoose: { vi: "Bạn muốn đặt dịch vụ nào?", en: "Which service would you like?" },
   bookOther: { vi: "Dịch vụ khác", en: "Other service" },
   viewFullPrice: { vi: "Xem bảng giá đầy đủ", en: "Full price list" },
+  includes: { vi: "Bao gồm", en: "Includes" },
 };
 
 export const ABOUT = {

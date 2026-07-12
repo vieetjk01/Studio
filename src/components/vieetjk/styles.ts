@@ -48,7 +48,7 @@ export const VJK_CSS = `
 .vjk-center{text-align:center;margin-left:auto;margin-right:auto;}
 
 /* ── Hero ──────────────────────────────────────────── */
-.vjk-hero{position:relative;padding:clamp(80px,12vw,150px) 0 clamp(64px,9vw,120px);overflow:hidden;}
+.vjk-hero{position:relative;padding:clamp(80px,12vw,150px) 0 clamp(64px,9vw,120px);}
 .vjk-hero::before{content:"";position:absolute;inset:0;z-index:0;
   background:
     radial-gradient(55% 60% at 80% 0%, rgba(225,29,43,.16), transparent 68%),
@@ -118,7 +118,7 @@ export const VJK_CSS = `
 .vjk-tier.feat .badge{position:absolute;top:-11px;left:26px;background:var(--red);color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 12px;border-radius:999px;}
 
 /* ── CTA band + Footer ─────────────────────────────── */
-.vjk-band{position:relative;overflow:hidden;border:1px solid var(--line);color:#fff;border-radius:22px;padding:56px 48px;text-align:center;
+.vjk-band{position:relative;border:1px solid var(--line);color:#fff;border-radius:22px;padding:56px 48px;text-align:center;
   background:radial-gradient(80% 130% at 50% -20%, rgba(225,29,43,.28), transparent 60%), linear-gradient(150deg,#18181d,#0c0c0e);}
 .vjk-band h2{font-family:var(--font-manrope),var(--font-hanken),system-ui,sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;}
 .vjk-band p{color:rgba(255,255,255,.7);margin-top:12px;max-width:52ch;margin-inline:auto;}
@@ -237,28 +237,41 @@ export const VJK_CSS = `
 .vjk-wgroup:first-child{margin-top:0;}
 .vjk-wgroup-h{display:flex;align-items:center;gap:12px;font-size:20px;font-weight:700;margin-bottom:18px;}
 .vjk-wgroup-h::before{content:"";width:26px;height:3px;background:var(--red);border-radius:2px;}
-.vjk-slide{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px;
-  -webkit-overflow-scrolling:touch;scrollbar-width:thin;}
-.vjk-wpkg{flex:0 0 auto;width:calc((100% - 56px) / 5);min-width:236px;scroll-snap-align:start;
-  border:1px solid var(--line);border-radius:14px;background:var(--paper3);display:flex;flex-direction:column;overflow:hidden;
+.vjk-slide{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.vjk-wpkg{border:1px solid var(--line);border-radius:14px;background:var(--paper3);display:flex;flex-direction:column;overflow:hidden;
   transition:transform .18s,border-color .18s;}
 .vjk-wpkg:hover{transform:translateY(-3px);border-color:rgba(225,29,43,.5);}
-.vjk-wpkg .wp-top{padding:20px 18px 0;}
-.vjk-wpkg .wp-name{font-size:16px;font-weight:700;}
+.vjk-wpkg .wp-top{padding:18px 16px 0;}
+.vjk-wpkg .wp-name{font-size:15px;font-weight:700;line-height:1.25;}
 .vjk-wpkg .wp-note{font-size:12px;color:var(--ink3);margin-top:2px;}
-.vjk-wpkg .wp-price{font-size:24px;font-weight:700;color:var(--red);margin-top:12px;line-height:1;}
-.vjk-wpkg .wp-book{margin:16px 18px;display:inline-flex;justify-content:center;align-items:center;gap:7px;
-  background:var(--red);color:#fff;border-radius:999px;padding:9px 14px;font-size:13px;font-weight:700;transition:background .18s;}
+.vjk-wpkg .wp-price{font-size:22px;font-weight:700;color:var(--red);margin-top:10px;line-height:1;}
+.vjk-wpkg .wp-book{margin:14px 16px;display:inline-flex;justify-content:center;align-items:center;gap:7px;
+  background:var(--red);color:#fff;border-radius:999px;padding:9px 12px;font-size:13px;font-weight:700;transition:background .18s;}
 .vjk-wpkg .wp-book:hover{background:var(--red-dark);}
 .vjk-wpkg .wp-sep{height:1px;background:var(--line);}
-.vjk-wpkg .wp-detail{padding:14px 18px;font-size:13px;color:var(--ink2);white-space:pre-line;flex:1;line-height:1.5;}
-.vjk-wpkg .wp-more{padding:0 18px 18px;}
-.vjk-wpkg .wp-more a{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink);}
+.vjk-wpkg .wp-detail{padding:14px 16px;flex:1;}
+.vjk-wpkg .wp-dt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:9px;}
+.vjk-wpkg .wp-dl{list-style:none;margin:0;padding:0;display:grid;gap:6px;}
+.vjk-wpkg .wp-dl li{position:relative;padding-left:15px;font-size:12.5px;color:var(--ink2);line-height:1.45;}
+.vjk-wpkg .wp-dl li::before{content:"";position:absolute;left:0;top:6px;width:6px;height:6px;border-radius:50%;background:var(--red);}
+.vjk-wpkg .wp-more{padding:0 16px 16px;}
+.vjk-wpkg .wp-more a{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink);}
 .vjk-wpkg .wp-more a:hover{color:var(--red);}
-.vjk-price-actions{margin-top:26px;display:flex;flex-wrap:wrap;gap:12px;}
-@media (max-width:1024px){ .vjk-wpkg{width:calc((100% - 42px) / 4);} }
-@media (max-width:820px){ .vjk-wpkg{width:calc((100% - 28px) / 3);} }
-@media (max-width:600px){ .vjk-wpkg{width:78%;min-width:0;} }
+@media (max-width:1024px){ .vjk-slide{grid-template-columns:repeat(3,1fr);} }
+@media (max-width:600px){
+  .vjk-slide{grid-template-columns:repeat(3,1fr);gap:8px;}
+  .vjk-wpkg .wp-top{padding:12px 10px 0;}
+  .vjk-wpkg .wp-name{font-size:12.5px;}
+  .vjk-wpkg .wp-note{font-size:10px;}
+  .vjk-wpkg .wp-price{font-size:16px;margin-top:8px;}
+  .vjk-wpkg .wp-book{margin:10px;padding:7px 8px;font-size:11px;}
+  .vjk-wpkg .wp-detail{padding:10px;}
+  .vjk-wpkg .wp-dt{font-size:9px;margin-bottom:6px;}
+  .vjk-wpkg .wp-dl li{font-size:11px;padding-left:12px;}
+  .vjk-wpkg .wp-dl li::before{width:5px;height:5px;top:6px;}
+  .vjk-wpkg .wp-more{padding:0 10px 12px;}
+  .vjk-wpkg .wp-more a{font-size:11px;}
+}
 
 /* ── Đánh giá khách hàng ───────────────────────────── */
 .vjk-reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
