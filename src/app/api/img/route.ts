@@ -95,6 +95,18 @@ export async function GET(req: Request) {
   // 2560 keeps the "download original" path (w=2400) working.
   const width = Math.min(Math.max(Number(searchParams.get("w")) || 500, 16), 2560);
 
+  // ── CDN offload (opt-in: IMG_CDN_REDIRECT=1) ─────────────────────────────
+  // For <img> DISPLAY loads, 302-redirect straight to Google's CDN so Vercel
+  // serves ~0 image bytes (huge cut to Fast Origin Transfer + Active CPU).
+  // fetch()/ZIP/download (Sec-Fetch-Dest ≠ "image") keep the proxy path so
+  // same-origin byte reads still work. No caller changes needed.
+  if (process.env.IMG_CDN_REDIRECT === "1" && req.headers.get("sec-fetch-dest") === "image") {
+    const target = width <= 1024
+      ? `https://drive.google.com/thumbnail?id=${id}&sz=w${width}`
+      : `https://lh3.googleusercontent.com/d/${id}=w${width}`;
+    return NextResponse.redirect(target, { status: 302, headers: { "Cache-Control": CACHE_OK } });
+  }
+
   // ── Durable offload path ────────────────────────────────────────────────
   if (BUCKET && SUPA_URL) {
     const key = cacheKey(id, width);
