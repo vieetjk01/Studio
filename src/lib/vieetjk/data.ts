@@ -34,9 +34,34 @@ export type VjkData = {
   priceByList: Record<string, VjkPriceItem[]>;
 };
 
-/** Link đặt lịch cho khách. */
-export function bookingHref(token: string | null): string | null {
-  return token ? `/book/${token}` : null;
+/** Link đặt lịch cho khách. Có thể kèm list_key để lọc đúng bảng giá dịch vụ. */
+export function bookingHref(token: string | null, listKey?: string): string | null {
+  if (!token) return null;
+  return listKey ? `/book/${token}?list=${encodeURIComponent(listKey)}` : `/book/${token}`;
+}
+
+/** Danh sách gói của 1 list_key: ưu tiên dữ liệu studio, fallback bảng giá mẫu. */
+export function itemsForList(priceByList: Record<string, VjkPriceItem[]>, key: string): VjkPriceItem[] {
+  if (priceByList[key]?.length) return priceByList[key];
+  const seeds: SeedItem[] = key === "cuoi" ? WEDDING_SEED : key === "dinh-hon" ? ENGAGEMENT_SEED : [];
+  return seeds.map((s) => ({
+    name: s.name,
+    price: s.price,
+    unit: s.unit || null,
+    category: s.category,
+    description: s.description || null,
+    list_key: s.list_key,
+  }));
+}
+
+/** Giá của gói khớp một trong các từ khoá (không phân biệt hoa thường). */
+export function priceForMatches(items: VjkPriceItem[], matches: string[]): number | null {
+  const low = matches.map((m) => m.toLowerCase());
+  for (const it of items) {
+    const n = (it.name || "").toLowerCase();
+    if (it.price > 0 && low.some((m) => n.includes(m))) return it.price;
+  }
+  return null;
 }
 
 /** Album thuộc một dịch vụ (khớp theo danh sách category). */
