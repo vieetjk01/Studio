@@ -18,11 +18,10 @@ interface Prices {
   photographerPlusYear: number;
   studioMonth: number;
   studioYear: number;
-  basicDiscount: number;
-  photographerDiscount: number;
-  photographerPlusDiscount: number;
-  studioDiscount: number;
-  studioPromo: number;
+  basicDiscMonth: number; basicDiscYear: number;
+  photographerDiscMonth: number; photographerDiscYear: number;
+  photographerPlusDiscMonth: number; photographerPlusDiscYear: number;
+  studioDiscMonth: number; studioDiscYear: number;
 }
 
 type PaidPlan = "basic" | "photographer" | "photographer_plus" | "studio";
@@ -36,11 +35,10 @@ const DEFAULT_PRICES: Prices = {
   photographerPlusYear: PLAN_PRICING.photographer_plus.year,
   studioMonth: PLAN_PRICING.studio.month,
   studioYear: PLAN_PRICING.studio.year,
-  basicDiscount: 0,
-  photographerDiscount: 0,
-  photographerPlusDiscount: 0,
-  studioDiscount: 0,
-  studioPromo: 50,
+  basicDiscMonth: 0, basicDiscYear: 0,
+  photographerDiscMonth: 0, photographerDiscYear: 0,
+  photographerPlusDiscMonth: 0, photographerPlusDiscYear: 0,
+  studioDiscMonth: 0, studioDiscYear: 50,
 };
 
 // Feature comparison rows, plan labels/features, headline & coming-soon list are
@@ -129,7 +127,7 @@ export default function UpgradePage() {
       }
       const { data: s } = await supabase
         .from("site_settings")
-        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_photographer_plus_month, price_photographer_plus_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent, upgrade_content")
+        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_photographer_plus_month, price_photographer_plus_year, price_studio_month, price_studio_year, basic_discount_month_percent, basic_discount_year_percent, photographer_discount_month_percent, photographer_discount_year_percent, photographer_plus_discount_month_percent, photographer_plus_discount_year_percent, studio_discount_month_percent, studio_discount_year_percent, upgrade_content")
         .eq("id", 1)
         .maybeSingle();
       if (s) {
@@ -143,11 +141,14 @@ export default function UpgradePage() {
           photographerPlusYear: s.price_photographer_plus_year ?? DEFAULT_PRICES.photographerPlusYear,
           studioMonth: s.price_studio_month ?? DEFAULT_PRICES.studioMonth,
           studioYear: s.price_studio_year ?? DEFAULT_PRICES.studioYear,
-          basicDiscount: s.basic_discount_percent ?? 0,
-          photographerDiscount: s.photographer_discount_percent ?? 0,
-          photographerPlusDiscount: 0,
-          studioDiscount: s.studio_discount_percent ?? 0,
-          studioPromo: s.studio_promo_percent ?? 50,
+          basicDiscMonth: s.basic_discount_month_percent ?? 0,
+          basicDiscYear: s.basic_discount_year_percent ?? 0,
+          photographerDiscMonth: s.photographer_discount_month_percent ?? 0,
+          photographerDiscYear: s.photographer_discount_year_percent ?? 0,
+          photographerPlusDiscMonth: s.photographer_plus_discount_month_percent ?? 0,
+          photographerPlusDiscYear: s.photographer_plus_discount_year_percent ?? 0,
+          studioDiscMonth: s.studio_discount_month_percent ?? 0,
+          studioDiscYear: s.studio_discount_year_percent ?? 50,
         });
       }
     })();
@@ -184,11 +185,12 @@ export default function UpgradePage() {
 
   // Effective discount % for a plan, combining the base promo and any code.
   function discountFor(plan: Plan): number {
+    const m = cycle === "month";
     let base = 0;
-    if (plan === "basic") base = prices.basicDiscount;
-    if (plan === "photographer") base = prices.photographerDiscount;
-    if (plan === "photographer_plus") base = prices.photographerPlusDiscount;
-    if (plan === "studio") base = Math.max(prices.studioDiscount, cycle === "year" ? prices.studioPromo : 0);
+    if (plan === "basic") base = m ? prices.basicDiscMonth : prices.basicDiscYear;
+    else if (plan === "photographer") base = m ? prices.photographerDiscMonth : prices.photographerDiscYear;
+    else if (plan === "photographer_plus") base = m ? prices.photographerPlusDiscMonth : prices.photographerPlusDiscYear;
+    else if (plan === "studio") base = m ? prices.studioDiscMonth : prices.studioDiscYear;
     const codeApplies =
       appliedCode &&
       (!appliedCode.plan || appliedCode.plan === plan) &&
@@ -247,7 +249,7 @@ export default function UpgradePage() {
       <>
       <div className="flex items-baseline gap-2">
         {disc > 0 && <span className="text-[15px] line-through" style={{ color: "var(--text3)" }}>{formatVnd(full)}</span>}
-        <span className="font-serif text-3xl font-medium">{formatVnd(now)}</span>
+        <span className="font-serif text-2xl font-medium">{formatVnd(now)}</span>
         <span className="text-[13px]" style={{ color: "var(--text2)" }}>/{cycle === "month" ? "tháng" : "năm"}</span>
         {disc > 0 && <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "var(--gold)", color: "#1a1205" }}>-{disc}%</span>}
       </div>
@@ -336,20 +338,20 @@ export default function UpgradePage() {
         {trialMsg && <p className="mt-2 text-[13px]" style={{ color: trialOk ? "#5fd29a" : "#f87171" }}>{trialMsg}</p>}
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {cards.map(({ plan, icon: Icon, accent }) => (
-          <div key={plan} className="card flex flex-col p-7" style={accent ? { borderColor: "var(--gold)" } : undefined}>
+          <div key={plan} className="card flex flex-col p-4" style={accent ? { borderColor: "var(--gold)" } : undefined}>
             <div className="mb-4 flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: accent ? "var(--gold)" : "var(--surface2)", color: accent ? "#1a1205" : "var(--text2)" }}>
                 <Icon size={18} />
               </span>
               <div>
-                <h2 className="font-serif text-2xl font-medium">{planLabel(plan)}</h2>
+                <h2 className="font-serif text-lg font-medium leading-tight">{planLabel(plan)}</h2>
                 {currentPlan === plan && <p className="text-[12px]" style={{ color: "var(--gold)" }}>Gói hiện tại</p>}
               </div>
             </div>
 
-            <div className="mb-4">{plan === "free" ? <span className="font-serif text-3xl font-medium">Miễn phí</span> : priceBlock(plan)}</div>
+            <div className="mb-4">{plan === "free" ? <span className="font-serif text-2xl font-medium">Miễn phí</span> : priceBlock(plan)}</div>
 
             <ul className="mb-5 space-y-2.5">
               {content.plans[plan].features.map((f) => (

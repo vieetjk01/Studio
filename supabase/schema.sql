@@ -579,10 +579,20 @@ alter table public.site_settings add column if not exists price_photographer_yea
 -- Gói Photographer Plus (báo giá + hợp đồng + tên miền riêng).
 alter table public.site_settings add column if not exists price_photographer_plus_month integer not null default 129000;
 alter table public.site_settings add column if not exists price_photographer_plus_year  integer not null default 1249000;
--- Per-plan general discount (%) applied to both billing cycles.
+-- Per-plan general discount (%) applied to both billing cycles. (Cũ — giữ để tương thích.)
 alter table public.site_settings add column if not exists basic_discount_percent        integer not null default 0;
 alter table public.site_settings add column if not exists photographer_discount_percent  integer not null default 0;
 alter table public.site_settings add column if not exists studio_discount_percent        integer not null default 0;
+
+-- Giảm giá RIÊNG theo chu kỳ (tháng / năm) cho từng gói — dùng ở trang nâng cấp.
+alter table public.site_settings add column if not exists basic_discount_month_percent             integer not null default 0;
+alter table public.site_settings add column if not exists basic_discount_year_percent              integer not null default 0;
+alter table public.site_settings add column if not exists photographer_discount_month_percent      integer not null default 0;
+alter table public.site_settings add column if not exists photographer_discount_year_percent       integer not null default 0;
+alter table public.site_settings add column if not exists photographer_plus_discount_month_percent integer not null default 0;
+alter table public.site_settings add column if not exists photographer_plus_discount_year_percent  integer not null default 0;
+alter table public.site_settings add column if not exists studio_discount_month_percent            integer not null default 0;
+alter table public.site_settings add column if not exists studio_discount_year_percent             integer not null default 50;
 
 -- Desired plan / billing cycle / discount code / contact phone on an upgrade request.
 alter table public.upgrade_requests add column if not exists plan text;
