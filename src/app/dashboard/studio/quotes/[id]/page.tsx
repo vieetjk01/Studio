@@ -7,7 +7,7 @@ import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
 
 
 export default async function QuoteDetailPage({ params }: { params: { id: string } }) {
-  const profile = await requireStudio("booking");
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

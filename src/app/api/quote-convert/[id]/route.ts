@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * route when the client ticks "tự động tạo hợp đồng" on accept.
  */
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const profile = await requireStudio();
+  const profile = await requireStudio("plus");
   if (!profile) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const supabase = createClient();

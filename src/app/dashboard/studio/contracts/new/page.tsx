@@ -5,7 +5,7 @@ import NewContractForm, { type TemplateOption, type ServiceOption } from "./NewC
 
 
 export default async function NewContractPage() {
-  const profile = await requireStudio();
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

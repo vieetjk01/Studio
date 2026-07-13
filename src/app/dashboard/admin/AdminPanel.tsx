@@ -202,11 +202,14 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                     <option value="basic-year">Basic · {t("cycleYear")}</option>
                     <option value="photographer-month">Photographer · {t("cycleMonth")}</option>
                     <option value="photographer-year">Photographer · {t("cycleYear")}</option>
+                    <option value="photographer_plus-month">Photographer Plus · {t("cycleMonth")}</option>
+                    <option value="photographer_plus-year">Photographer Plus · {t("cycleYear")}</option>
                     <option value="studio-month">Studio · {t("cycleMonth")}</option>
                     <option value="studio-year">Studio · {t("cycleYear")}</option>
                     <optgroup label="Dùng thử (miễn phí)">
                       <option value="trial-basic">Basic · thử 30 ngày</option>
                       <option value="trial-photographer">Photographer · thử 30 ngày</option>
+                      <option value="trial-photographer_plus">Photographer Plus · thử 30 ngày</option>
                       <option value="trial-studio">Studio · thử 7 ngày</option>
                     </optgroup>
                   </select>

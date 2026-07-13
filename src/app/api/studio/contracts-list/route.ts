@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * Cùng truy vấn với bản SSR cũ trong contracts/page.tsx.
  */
 export async function GET() {
-  const profile = await requireStudio();
+  const profile = await requireStudio("plus");
   if (!profile) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const supabase = createClient();
   let q = supabase

@@ -13,7 +13,7 @@ export interface Profile {
   compress_daily_limit: number | null;
   compress_picker_limit: number | null;
   can_watermark_pro: boolean;
-  plan: "free" | "basic" | "photographer" | "studio";
+  plan: "free" | "basic" | "photographer" | "photographer_plus" | "studio";
   plan_cycle: string | null;
   plan_expires_at: string | null;
   trial_used_at: string | null;
@@ -106,6 +106,8 @@ export interface SiteSettings {
   price_studio_year: number;
   price_photographer_month: number;
   price_photographer_year: number;
+  price_photographer_plus_month: number;
+  price_photographer_plus_year: number;
   studio_promo_percent: number;
   studio_discount_percent: number;
   photographer_discount_percent: number;

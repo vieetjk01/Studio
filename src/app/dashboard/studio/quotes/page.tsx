@@ -5,7 +5,7 @@ import QuotesListView, { type QuoteRow } from "./QuotesListView";
 
 
 export default async function QuotesList() {
-  const profile = await requireStudio("booking");
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

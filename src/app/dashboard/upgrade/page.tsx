@@ -14,23 +14,31 @@ interface Prices {
   basicYear: number;
   photographerMonth: number;
   photographerYear: number;
+  photographerPlusMonth: number;
+  photographerPlusYear: number;
   studioMonth: number;
   studioYear: number;
   basicDiscount: number;
   photographerDiscount: number;
+  photographerPlusDiscount: number;
   studioDiscount: number;
   studioPromo: number;
 }
+
+type PaidPlan = "basic" | "photographer" | "photographer_plus" | "studio";
 
 const DEFAULT_PRICES: Prices = {
   basicMonth: PLAN_PRICING.basic.month,
   basicYear: PLAN_PRICING.basic.year,
   photographerMonth: PLAN_PRICING.photographer.month,
   photographerYear: PLAN_PRICING.photographer.year,
+  photographerPlusMonth: PLAN_PRICING.photographer_plus.month,
+  photographerPlusYear: PLAN_PRICING.photographer_plus.year,
   studioMonth: PLAN_PRICING.studio.month,
   studioYear: PLAN_PRICING.studio.year,
   basicDiscount: 0,
   photographerDiscount: 0,
+  photographerPlusDiscount: 0,
   studioDiscount: 0,
   studioPromo: 50,
 };
@@ -121,7 +129,7 @@ export default function UpgradePage() {
       }
       const { data: s } = await supabase
         .from("site_settings")
-        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent, upgrade_content")
+        .select("price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_photographer_plus_month, price_photographer_plus_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent, upgrade_content")
         .eq("id", 1)
         .maybeSingle();
       if (s) {
@@ -131,10 +139,13 @@ export default function UpgradePage() {
           basicYear: s.price_basic_year ?? DEFAULT_PRICES.basicYear,
           photographerMonth: s.price_photographer_month ?? DEFAULT_PRICES.photographerMonth,
           photographerYear: s.price_photographer_year ?? DEFAULT_PRICES.photographerYear,
+          photographerPlusMonth: s.price_photographer_plus_month ?? DEFAULT_PRICES.photographerPlusMonth,
+          photographerPlusYear: s.price_photographer_plus_year ?? DEFAULT_PRICES.photographerPlusYear,
           studioMonth: s.price_studio_month ?? DEFAULT_PRICES.studioMonth,
           studioYear: s.price_studio_year ?? DEFAULT_PRICES.studioYear,
           basicDiscount: s.basic_discount_percent ?? 0,
           photographerDiscount: s.photographer_discount_percent ?? 0,
+          photographerPlusDiscount: 0,
           studioDiscount: s.studio_discount_percent ?? 0,
           studioPromo: s.studio_promo_percent ?? 50,
         });
@@ -176,6 +187,7 @@ export default function UpgradePage() {
     let base = 0;
     if (plan === "basic") base = prices.basicDiscount;
     if (plan === "photographer") base = prices.photographerDiscount;
+    if (plan === "photographer_plus") base = prices.photographerPlusDiscount;
     if (plan === "studio") base = Math.max(prices.studioDiscount, cycle === "year" ? prices.studioPromo : 0);
     const codeApplies =
       appliedCode &&
@@ -184,12 +196,13 @@ export default function UpgradePage() {
     const codePct = codeApplies ? appliedCode!.percent : 0;
     return Math.max(base, codePct);
   }
-  function priceOf(plan: "basic" | "photographer" | "studio"): number {
+  function priceOf(plan: PaidPlan): number {
     if (plan === "basic") return cycle === "month" ? prices.basicMonth : prices.basicYear;
     if (plan === "photographer") return cycle === "month" ? prices.photographerMonth : prices.photographerYear;
+    if (plan === "photographer_plus") return cycle === "month" ? prices.photographerPlusMonth : prices.photographerPlusYear;
     return cycle === "month" ? prices.studioMonth : prices.studioYear;
   }
-  function finalPriceOf(plan: "basic" | "photographer" | "studio"): number {
+  function finalPriceOf(plan: PaidPlan): number {
     return Math.round(priceOf(plan) * (1 - discountFor(plan) / 100));
   }
 
@@ -225,17 +238,23 @@ export default function UpgradePage() {
     }
   }
 
-  function priceBlock(plan: "basic" | "photographer" | "studio") {
+  function priceBlock(plan: PaidPlan) {
     const full = priceOf(plan);
     const disc = discountFor(plan);
     const now = Math.round(full * (1 - disc / 100));
+    const perMonth = Math.round(now / 12);
     return (
+      <>
       <div className="flex items-baseline gap-2">
         {disc > 0 && <span className="text-[15px] line-through" style={{ color: "var(--text3)" }}>{formatVnd(full)}</span>}
         <span className="font-serif text-3xl font-medium">{formatVnd(now)}</span>
         <span className="text-[13px]" style={{ color: "var(--text2)" }}>/{cycle === "month" ? "tháng" : "năm"}</span>
         {disc > 0 && <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "var(--gold)", color: "#1a1205" }}>-{disc}%</span>}
       </div>
+      {cycle === "year" && (
+        <div className="mt-1 text-[12px]" style={{ color: "var(--text3)" }}>≈ {formatVnd(perMonth)}/tháng</div>
+      )}
+      </>
     );
   }
 
@@ -243,6 +262,7 @@ export default function UpgradePage() {
     { plan: "free", icon: Sparkles, accent: false },
     { plan: "basic", icon: Zap, accent: true },
     { plan: "photographer", icon: Camera, accent: true },
+    { plan: "photographer_plus", icon: Sparkles, accent: true },
     { plan: "studio", icon: Crown, accent: true },
   ];
 

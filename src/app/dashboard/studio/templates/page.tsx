@@ -4,7 +4,7 @@ import TemplatesManager, { type TemplateWithItems } from "./TemplatesManager";
 
 
 export default async function TemplatesPage() {
-  const profile = await requireStudio();
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

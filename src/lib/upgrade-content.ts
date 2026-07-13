@@ -31,6 +31,11 @@ export const UPGRADE_DEFAULTS: UpgradeContent = {
     free: { label: PLAN_LABEL.free, features: PLAN_FEATURES.free },
     basic: { label: PLAN_LABEL.basic, features: PLAN_FEATURES.basic },
     photographer: { label: PLAN_LABEL.photographer, features: PLAN_FEATURES.photographer },
+    photographer_plus: {
+      label: PLAN_LABEL.photographer_plus,
+      features: PLAN_FEATURES.photographer_plus,
+      promo: "Có tên miền riêng + quản lý hợp đồng — chỉ 129k/tháng.",
+    },
     studio: {
       label: PLAN_LABEL.studio,
       features: PLAN_FEATURES.studio,
@@ -84,7 +89,7 @@ export const UPGRADE_DEFAULTS: UpgradeContent = {
   ],
 };
 
-const PLAN_KEYS: Plan[] = ["free", "basic", "photographer", "studio"];
+const PLAN_KEYS: Plan[] = ["free", "basic", "photographer", "photographer_plus", "studio"];
 
 /** Merge stored (partial) content over the defaults so the page always renders. */
 export function mergeUpgradeContent(raw: unknown): UpgradeContent {
