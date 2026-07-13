@@ -1148,22 +1148,9 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>Nhân viên (vai trò Nhân viên) chỉ thấy hợp đồng được giao cho mình.</p>
                 </div>
               )}
+            
               <div>
-                <label className="label">Gallery ảnh giao khách (gắn vào cổng khách)</label>
-                <select className="input" value={f.gallery_album_id} onChange={(e) => set("gallery_album_id", e.target.value)}>
-                  <option value="">— Chưa gắn —</option>
-                  {galleries.map((g) => (
-                    <option key={g.id} value={g.id}>{g.title}</option>
-                  ))}
-                </select>
-                {galleries.length === 0 && (
-                  <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
-                    Chưa có gallery nào. Tạo ở mục “Gallery khách” rồi quay lại gắn.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="label">Album chọn ảnh (khách chọn ảnh trong cổng)</label>
+                <label className="label">Album khách hàng (Album chọn ảnh hoặc album hoàn thiện gửi khách hàng)</label>
                 <select className="input" value={f.selection_album_id} onChange={(e) => set("selection_album_id", e.target.value)}>
                   <option value="">— Chưa gắn —</option>
                   {selectionAlbums.map((a) => (
