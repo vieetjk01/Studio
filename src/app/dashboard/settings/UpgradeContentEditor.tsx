@@ -9,6 +9,7 @@ const PLANS: { key: Plan; label: string }[] = [
   { key: "free", label: "Miễn phí" },
   { key: "basic", label: "Basic" },
   { key: "photographer", label: "Photographer" },
+  { key: "photographer_plus", label: "Photographer Plus" },
   { key: "studio", label: "Studio" },
 ];
 

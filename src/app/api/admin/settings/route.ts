@@ -42,10 +42,21 @@ export async function POST(req: Request) {
       patch[f] = f === "stat_years" ? Number(body[f]) || 0 : body[f] || null;
     }
   }
-  for (const f of ["basic_discount_percent", "studio_promo_percent", "studio_discount_percent", "photographer_discount_percent"] as const) {
+  for (const f of [
+    "basic_discount_percent", "studio_promo_percent", "studio_discount_percent", "photographer_discount_percent",
+    // Giảm giá riêng theo chu kỳ (tháng/năm) cho từng gói.
+    "basic_discount_month_percent", "basic_discount_year_percent",
+    "photographer_discount_month_percent", "photographer_discount_year_percent",
+    "photographer_plus_discount_month_percent", "photographer_plus_discount_year_percent",
+    "studio_discount_month_percent", "studio_discount_year_percent",
+  ] as const) {
     if (body[f] !== undefined) patch[f] = Math.max(0, Math.min(100, Number(body[f]) || 0));
   }
-  for (const f of ["price_basic_month", "price_basic_year", "price_studio_month", "price_studio_year", "price_photographer_month", "price_photographer_year"] as const) {
+  for (const f of [
+    "price_basic_month", "price_basic_year", "price_studio_month", "price_studio_year",
+    "price_photographer_month", "price_photographer_year",
+    "price_photographer_plus_month", "price_photographer_plus_year",
+  ] as const) {
     if (body[f] !== undefined) patch[f] = Math.max(0, Math.round(Number(body[f]) || 0));
   }
   if (Array.isArray(body.featured_images)) {

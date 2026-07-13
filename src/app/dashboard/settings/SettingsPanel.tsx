@@ -283,30 +283,23 @@ export default function SettingsPanel({
 
       {/* ── 3. Gói & giá ────────────────────────────────────────────────── */}
       <Section title="Gói & giá (VND)" icon={BadgeDollarSign}>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          {([
-            ["price_basic_month", "Basic / tháng"],
-            ["price_basic_year", "Basic / năm"],
-            ["price_photographer_month", "Photographer / tháng"],
-            ["price_photographer_year", "Photographer / năm"],
-            ["price_studio_month", "Studio / tháng"],
-            ["price_studio_year", "Studio / năm"],
-          ] as [keyof SiteSettings, string][]).map(([k, label]) => (
-            <Field key={k} label={label}>
-              <Input type="number" value={(form[k] as number) ?? 0} onChange={(v) => set(k, Number(v) as never)} placeholder="0" />
-            </Field>
-          ))}
-        </div>
+        {/* Mỗi gói 1 cột: giá tháng, giá năm, giảm giá tháng, giảm giá năm. */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {([
-            ["basic_discount_percent", "Giảm Basic (%)"],
-            ["photographer_discount_percent", "Giảm Photographer (%)"],
-            ["studio_discount_percent", "Giảm Studio (%)"],
-            ["studio_promo_percent", "Ưu đãi Studio/năm (%)"],
-          ] as [keyof SiteSettings, string][]).map(([k, label]) => (
-            <Field key={k} label={label}>
-              <Input type="number" value={(form[k] as number) ?? 0} onChange={(v) => set(k, Math.max(0, Math.min(100, Number(v))) as never)} />
-            </Field>
+            { name: "Basic", m: "price_basic_month", y: "price_basic_year", dm: "basic_discount_month_percent", dy: "basic_discount_year_percent" },
+            { name: "Photographer", m: "price_photographer_month", y: "price_photographer_year", dm: "photographer_discount_month_percent", dy: "photographer_discount_year_percent" },
+            { name: "Photographer Plus", m: "price_photographer_plus_month", y: "price_photographer_plus_year", dm: "photographer_plus_discount_month_percent", dy: "photographer_plus_discount_year_percent" },
+            { name: "Studio", m: "price_studio_month", y: "price_studio_year", dm: "studio_discount_month_percent", dy: "studio_discount_year_percent" },
+          ] as { name: string; m: keyof SiteSettings; y: keyof SiteSettings; dm: keyof SiteSettings; dy: keyof SiteSettings }[]).map((p) => (
+            <div key={p.name} className="rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+              <div className="mb-2 text-[13px] font-semibold" style={{ color: "var(--text)" }}>{p.name}</div>
+              <div className="space-y-2">
+                <Field label="Giá / tháng"><Input type="number" value={(form[p.m] as number) ?? 0} onChange={(v) => set(p.m, Math.max(0, Math.round(Number(v) || 0)) as never)} placeholder="0" /></Field>
+                <Field label="Giá / năm"><Input type="number" value={(form[p.y] as number) ?? 0} onChange={(v) => set(p.y, Math.max(0, Math.round(Number(v) || 0)) as never)} placeholder="0" /></Field>
+                <Field label="Giảm / tháng (%)"><Input type="number" value={(form[p.dm] as number) ?? 0} onChange={(v) => set(p.dm, Math.max(0, Math.min(100, Number(v) || 0)) as never)} /></Field>
+                <Field label="Giảm / năm (%)"><Input type="number" value={(form[p.dy] as number) ?? 0} onChange={(v) => set(p.dy, Math.max(0, Math.min(100, Number(v) || 0)) as never)} /></Field>
+              </div>
+            </div>
           ))}
         </div>
         <SaveBtn label="Lưu gói & giá" />
@@ -335,6 +328,7 @@ export default function SettingsPanel({
               <option value="">Mọi gói</option>
               <option value="basic">Basic</option>
               <option value="photographer">Photographer</option>
+              <option value="photographer_plus">Photographer Plus</option>
               <option value="studio">Studio</option>
             </select>
           </Field>
