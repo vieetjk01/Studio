@@ -6,7 +6,7 @@
  * can_watermark_pro) are synced from here so existing enforcement keeps working.
  */
 
-export type Plan = "free" | "basic" | "photographer" | "studio";
+export type Plan = "free" | "basic" | "photographer" | "photographer_plus" | "studio";
 
 export interface PlanLimits {
   albumsPerMonth: number | null; // null = unlimited
@@ -54,6 +54,17 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     pickerLimit: 15,
     pickerWindow: "month",
   },
+  photographer_plus: {
+    albumsPerMonth: 100,
+    canZip: true,
+    canNotes: true,
+    canGalleries: true,
+    watermarkPro: true,
+    filterPerMonth: null,
+    compressPerMonth: null,
+    pickerLimit: 30,
+    pickerWindow: "month",
+  },
   studio: {
     albumsPerMonth: null,
     canZip: true,
@@ -76,14 +87,24 @@ export const ADMIN_LIMITS: PlanLimits = PLAN_LIMITS.studio;
  *   booking — đặt lịch, bảng giá, lịch chụp, khách hàng (gói Photographer)
  *   full    — booking + hợp đồng, tài chính, đội ngũ (gói Studio / admin)
  */
-export type StudioTier = "none" | "booking" | "full";
+// none    — no studio access
+// booking — đặt lịch, bảng giá, khách hàng (Photographer)
+// plus    — booking + báo giá & hợp đồng (Photographer Plus)
+// full    — plus + tài chính, đội ngũ, sản xuất... (Studio / admin)
+export type StudioTier = "none" | "booking" | "plus" | "full";
 
-export const STUDIO_TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, full: 2 };
+export const STUDIO_TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, plus: 2, full: 3 };
 
 export function studioTier(plan: Plan, isAdmin = false): StudioTier {
   if (isAdmin || plan === "studio") return "full";
+  if (plan === "photographer_plus") return "plus";
   if (plan === "photographer") return "booking";
   return "none";
+}
+
+/** Tên miền riêng (custom domain): Photographer Plus & Studio (không có ở Photographer). */
+export function planAllowsCustomDomain(plan: Plan, isAdmin = false): boolean {
+  return isAdmin || plan === "photographer_plus" || plan === "studio";
 }
 
 export function limitsFor(plan: Plan, isAdmin: boolean): PlanLimits {
@@ -114,7 +135,7 @@ export function effectivePlan(plan: Plan | null | undefined, expiresAt: string |
  */
 export function trialDaysFor(plan: Plan): number {
   if (plan === "studio") return 7;
-  if (plan === "basic" || plan === "photographer") return 30;
+  if (plan === "basic" || plan === "photographer" || plan === "photographer_plus") return 30;
   return 0;
 }
 
@@ -136,9 +157,10 @@ export interface PlanPricing {
   year: number; // VND
 }
 
-export const PLAN_PRICING: Record<"basic" | "photographer" | "studio", PlanPricing> = {
+export const PLAN_PRICING: Record<"basic" | "photographer" | "photographer_plus" | "studio", PlanPricing> = {
   basic: { month: 50_000, year: 500_000 },
   photographer: { month: 100_000, year: 999_000 },
+  photographer_plus: { month: 129_000, year: 1_249_000 },
   studio: { month: 300_000, year: 3_000_000 },
 };
 
@@ -146,6 +168,7 @@ export const PLAN_LABEL: Record<Plan, string> = {
   free: "Miễn phí",
   basic: "Basic",
   photographer: "Photographer",
+  photographer_plus: "Photographer Plus",
   studio: "Studio",
 };
 
@@ -188,9 +211,17 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
     "Nhận đặt lịch online — link + QR chia sẻ cho khách",
     "Bảng giá dịch vụ, danh bạ khách hàng",
     "Lịch chụp theo tuần + nhắc lịch Zalo",
-    "Website portfolio cá nhân (xuất bản & tùy chỉnh)",
+    "Website portfolio cá nhân (dùng domain mstudo)",
     "Trải nghiệm Studio miễn phí 1 ngày",
-    "Tên miền cá nhân .com (sắp ra mắt)",
+  ],
+  photographer_plus: [
+    "100 album / tháng · Picker Drive 30 lần / tháng",
+    "Tất cả tính năng gói Photographer",
+    "Báo giá hạng mục chi tiết cho khách",
+    "Quản lý hợp đồng: tạo, gửi khách ký online, yêu cầu chỉnh sửa",
+    "Mẫu hợp đồng tái sử dụng",
+    "Website riêng dùng TÊN MIỀN RIÊNG (vd studio.com)",
+    "Trải nghiệm Studio miễn phí 1 ngày",
   ],
   studio: [
     "Album không giới hạn · Picker Drive không giới hạn",

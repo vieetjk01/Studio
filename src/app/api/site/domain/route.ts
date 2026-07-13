@@ -33,7 +33,7 @@ const valid = (d: string) => /^([a-z0-9-]+\.)+[a-z]{2,}$/.test(d) && !d.endsWith
  *   POST { action: "set", domain } | { action: "verify" } | { action: "remove" }
  */
 export async function POST(req: Request) {
-  const profile = await requireStudio("full");
+  const profile = await requireStudio("plus");
   if (!profile) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as { action?: string; domain?: string };

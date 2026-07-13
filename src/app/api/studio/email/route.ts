@@ -8,7 +8,7 @@ const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;
 
 /** Send a reminder/notification email to a client. Studio-plan accounts only. */
 export async function POST(req: Request) {
-  const me = await requireStudio();
+  const me = await requireStudio("plus");
   if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const { to, subject, message } = (await req.json().catch(() => ({}))) as {

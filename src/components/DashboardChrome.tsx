@@ -6,7 +6,7 @@ import StudioFooterNav from "@/components/StudioFooterNav";
 import StudioShell from "@/components/StudioShell";
 import type { Profile } from "@/lib/types";
 
-type StudioTier = "none" | "booking" | "full";
+type StudioTier = "none" | "booking" | "plus" | "full";
 
 /**
  * Chooses the dashboard chrome per route:

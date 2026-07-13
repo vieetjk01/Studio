@@ -548,7 +548,7 @@ alter table public.profiles add column if not exists plan text not null default 
 -- Allow the Photographer tier (recreate the check constraint).
 alter table public.profiles drop constraint if exists profiles_plan_check;
 alter table public.profiles add constraint profiles_plan_check
-  check (plan in ('free', 'basic', 'photographer', 'studio'));
+  check (plan in ('free', 'basic', 'photographer', 'photographer_plus', 'studio'));
 -- Billing cycle + auto-expiry. When the plan expires it is treated as 'free'.
 alter table public.profiles add column if not exists plan_cycle text;            -- 'month' | 'year' | 'trial' | null
 alter table public.profiles add column if not exists plan_expires_at timestamptz; -- null = no expiry (free / lifetime)
@@ -576,6 +576,9 @@ alter table public.site_settings add column if not exists price_studio_year  int
 alter table public.site_settings add column if not exists studio_promo_percent integer not null default 50;
 alter table public.site_settings add column if not exists price_photographer_month integer not null default 100000;
 alter table public.site_settings add column if not exists price_photographer_year  integer not null default 999000;
+-- Gói Photographer Plus (báo giá + hợp đồng + tên miền riêng).
+alter table public.site_settings add column if not exists price_photographer_plus_month integer not null default 129000;
+alter table public.site_settings add column if not exists price_photographer_plus_year  integer not null default 1249000;
 -- Per-plan general discount (%) applied to both billing cycles.
 alter table public.site_settings add column if not exists basic_discount_percent        integer not null default 0;
 alter table public.site_settings add column if not exists photographer_discount_percent  integer not null default 0;

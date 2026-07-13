@@ -21,7 +21,7 @@ import ContractEditor from "./ContractEditor";
 
 
 export default async function ContractPage({ params }: { params: { id: string } }) {
-  const profile = await requireStudio();
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

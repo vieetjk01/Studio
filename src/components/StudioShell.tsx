@@ -21,8 +21,8 @@ import { useTheme } from "@/lib/theme";
 import { APP_VERSION } from "@/lib/version";
 import type { Profile } from "@/lib/types";
 
-type StudioTier = "none" | "booking" | "full";
-const TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, full: 2 };
+type StudioTier = "none" | "booking" | "plus" | "full";
+const TIER_RANK: Record<StudioTier, number> = { none: 0, booking: 1, plus: 2, full: 3 };
 
 // Zalo support group for studios using the app.
 const ZALO_SUPPORT_URL = "https://zalo.me/g/rycw0pqcgss14ib6u2xj";
@@ -57,10 +57,10 @@ const GROUPS: Group[] = [
     items: [
       { href: "/dashboard/studio/pricing", label: "Bảng giá", icon: Package, minTier: "booking" },
       { href: "/dashboard/studio/services", label: "Dịch vụ & điều khoản", icon: ClipboardList, minTier: "booking" },
-      { href: "/dashboard/studio/quotes", label: "Báo giá", icon: FileEdit, minTier: "full" },
-      { href: "/dashboard/studio/contracts/new", label: "Tạo hợp đồng", icon: Plus, minTier: "full" },
-      { href: "/dashboard/studio/contracts", label: "Quản lý HĐ", icon: FileText, minTier: "full" },
-      { href: "/dashboard/studio/templates", label: "Mẫu HĐ", icon: ClipboardList, minTier: "full" },
+      { href: "/dashboard/studio/quotes", label: "Báo giá", icon: FileEdit, minTier: "plus" },
+      { href: "/dashboard/studio/contracts/new", label: "Tạo hợp đồng", icon: Plus, minTier: "plus" },
+      { href: "/dashboard/studio/contracts", label: "Quản lý HĐ", icon: FileText, minTier: "plus" },
+      { href: "/dashboard/studio/templates", label: "Mẫu HĐ", icon: ClipboardList, minTier: "plus" },
       { href: "/dashboard/studio/production", label: "Xử lý hình ảnh", icon: Film, minTier: "full" },
     ],
   },

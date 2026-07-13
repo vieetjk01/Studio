@@ -47,7 +47,7 @@ export async function requireAdmin() {
  *   "booking" — đặt lịch / bảng giá / lịch chụp / khách hàng (Photographer + Studio)
  *   "full"    — hợp đồng / tài chính / đội ngũ (Studio only). Default.
  */
-export async function requireStudio(minTier: "booking" | "full" = "full") {
+export async function requireStudio(minTier: "booking" | "plus" | "full" = "full") {
   const user = await getSessionUser();
   if (!user) return null;
 

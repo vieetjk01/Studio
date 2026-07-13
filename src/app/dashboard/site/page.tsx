@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { effectivePlan } from "@/lib/plans";
+import { effectivePlan, planAllowsCustomDomain } from "@/lib/plans";
 import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import CanvasBuilder, { type PriceItem } from "./builder/CanvasBuilder";
 import type { Site, SiteBlock } from "@/lib/types";
@@ -18,9 +18,9 @@ export default async function SiteBuilderPage() {
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   const plan = profile ? effectivePlan(profile.plan, profile.plan_expires_at) : "free";
   const isAdmin = profile?.role === "admin";
-  const canPublish = isAdmin || plan === "photographer" || plan === "studio";
-  // Custom domain is a Studio-tier feature.
-  const canCustomDomain = isAdmin || plan === "studio";
+  const canPublish = isAdmin || plan === "photographer" || plan === "photographer_plus" || plan === "studio";
+  // Tên miền riêng: Photographer Plus & Studio.
+  const canCustomDomain = planAllowsCustomDomain(plan, isAdmin);
 
   let { data: site } = await supabase.from("sites").select("*").eq("owner_id", user.id).maybeSingle();
   if (!site) {

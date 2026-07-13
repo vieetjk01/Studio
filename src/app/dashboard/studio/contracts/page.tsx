@@ -5,7 +5,7 @@ import ContractsListView from "./ContractsListView";
 // (hiển thị tức thì, làm mới ngầm) qua /api/studio/contracts-list — bỏ độ trễ
 // chờ server render lại mỗi lần mở trang.
 export default async function ContractsList() {
-  const profile = await requireStudio();
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">
