@@ -33,6 +33,12 @@ export function slideComingSoon(flags: FeatureFlags): boolean {
   return flags?.slide !== "live";
 }
 
+/** Phòng váy (kho trang phục & đơn cho thuê) defaults to "Sắp ra mắt" until set live. */
+export function rentalComingSoon(flags: FeatureFlags): boolean {
+  return flags?.rental !== "live";
+}
+
+
 /**
  * MStudo Desktop: chưa xuất bản — ẩn HOÀN TOÀN với non-admin (không hiện cả
  * nhãn "Sắp ra mắt") cho tới khi admin bật live.
@@ -47,5 +53,7 @@ export function comingSoonNav(flags: FeatureFlags): string[] {
   if (storyComingSoon(flags)) out.push("/dashboard/studio/story");
   if (albumComingSoon(flags)) out.push("/dashboard/studio/album-designer");
   if (slideComingSoon(flags)) out.push("/dashboard/studio/slide");
+  if (rentalComingSoon(flags)) out.push("/dashboard/studio/rental");
   return out;
+
 }

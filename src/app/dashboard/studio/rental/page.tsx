@@ -1,5 +1,7 @@
+import { Shirt } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
+import { getFeatureFlags, rentalComingSoon } from "@/lib/feature-flags";
 import type { RentalItem, RentalOrder, RentalOrderItem, RentalOrderWithItems } from "@/lib/types";
 import RentalManager from "./RentalManager";
 
@@ -15,6 +17,20 @@ export default async function RentalPage() {
       </div>
     );
   }
+
+  // "Sắp ra mắt": khoá với studio, admin vẫn vào để hoàn thiện.
+  if (rentalComingSoon(await getFeatureFlags()) && profile.actingRole !== "admin") {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <div className="card p-8">
+          <Shirt size={28} className="mx-auto mb-3" style={{ color: "#d0687a" }} />
+          <h1 className="font-serif text-2xl font-medium">Phòng váy · Sắp ra mắt</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>Tính năng quản lý kho trang phục & đơn cho thuê đang được hoàn thiện. Bọn mình sẽ thông báo khi sẵn sàng — cảm ơn bạn đã chờ nhé!</p>
+        </div>
+      </div>
+    );
+  }
+
 
   const supabase = createClient();
 
