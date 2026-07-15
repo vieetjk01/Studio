@@ -419,6 +419,96 @@ export interface StudioBooking {
   created_at: string;
 }
 
+// ── Rental module (Thuê đồ: váy cưới, vest, áo dài, phụ kiện) ───────────────
+
+export type RentalCategory = "dress" | "vest" | "ao_dai" | "accessory" | "other";
+export type RentalItemStatus = "available" | "maintenance" | "retired";
+export type RentalOrderStatus =
+  | "booked"
+  | "picked_up"
+  | "returned"
+  | "overdue"
+  | "canceled";
+
+export const RENTAL_CATEGORY_LABEL: Record<RentalCategory, string> = {
+  dress: "Váy cưới",
+  vest: "Vest",
+  ao_dai: "Áo dài",
+  accessory: "Phụ kiện",
+  other: "Khác",
+};
+
+export const RENTAL_CATEGORIES: RentalCategory[] = [
+  "dress",
+  "vest",
+  "ao_dai",
+  "accessory",
+  "other",
+];
+
+export const RENTAL_ITEM_STATUS_LABEL: Record<RentalItemStatus, string> = {
+  available: "Sẵn sàng",
+  maintenance: "Bảo trì / giặt",
+  retired: "Ngừng dùng",
+};
+
+export const RENTAL_ORDER_STATUS_LABEL: Record<RentalOrderStatus, string> = {
+  booked: "Đã đặt",
+  picked_up: "Đã nhận đồ",
+  returned: "Đã trả",
+  overdue: "Quá hạn",
+  canceled: "Đã huỷ",
+};
+
+export interface RentalItem {
+  id: string;
+  owner_id: string;
+  name: string;
+  category: RentalCategory;
+  code: string | null;
+  size: string | null;
+  color: string | null;
+  rental_price: number;
+  deposit: number;
+  quantity: number;
+  cover_url: string | null;
+  status: RentalItemStatus;
+  note: string | null;
+  created_at: string;
+}
+
+export interface RentalOrder {
+  id: string;
+  owner_id: string;
+  contract_id: string | null;
+  client_name: string;
+  client_phone: string | null;
+  pickup_date: string | null;
+  return_date: string | null;
+  returned_at: string | null;
+  total_price: number;
+  deposit_paid: number;
+  status: RentalOrderStatus;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RentalOrderItem {
+  id: string;
+  order_id: string;
+  item_id: string | null;
+  name: string;
+  price: number;
+  qty: number;
+  created_at: string;
+}
+
+/** An order with its line items joined in (used by the rental manager UI). */
+export interface RentalOrderWithItems extends RentalOrder {
+  items: RentalOrderItem[];
+}
+
 export interface StudioEquipment {
   id: string;
   owner_id: string;

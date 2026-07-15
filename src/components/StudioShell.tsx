@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor, Server,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor, Server, Shirt,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -82,6 +82,7 @@ const GROUPS: Group[] = [
       { href: "/dashboard/studio/reports", label: "Thu chi", icon: Wallet, minTier: "full", roles: ["owner", "admin", "manager", "accountant"] },
       { href: "/dashboard/studio/payroll", label: "Bảng lương", icon: Receipt, minTier: "full", roles: ["owner", "admin", "manager", "accountant"] },
       { href: "/dashboard/studio/equipment", label: "Thiết bị", icon: Wrench, minTier: "full" },
+      { href: "/dashboard/studio/rental", label: "Thuê đồ", icon: Shirt, minTier: "full" },
     ],
   },
   {
@@ -124,6 +125,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/reports", "Thu chi", "Báo cáo tài chính"],
   ["/dashboard/studio/payroll", "Bảng lương", "Bảng lương nhân viên"],
   ["/dashboard/studio/equipment", "Thiết bị", "Quản lý thiết bị"],
+  ["/dashboard/studio/rental", "Thuê đồ", "Kho trang phục & đơn cho thuê"],
   ["/dashboard/studio/crew", "Sổ thợ", "Đội ngũ nhiếp ảnh"],
   ["/dashboard/studio/staff", "Nhân viên", "Danh sách nhân viên"],
   ["/dashboard/studio/ranking", "Xếp hạng", "Xếp hạng đội ngũ"],
