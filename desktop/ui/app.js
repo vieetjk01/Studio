@@ -14,7 +14,7 @@ const APP_VERSION = "0.2.0"; // giữ khớp với src-tauri/tauri.conf.json
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
 const saveCfg = () => localStorage.setItem("cfg", JSON.stringify(cfg));
 
-const SYNC_EVERY_MS = 3 * 60 * 1000;     // đồng bộ hợp đồng mỗi 3 phút
+const SYNC_EVERY_MS = 20 * 1000;         // đồng bộ hợp đồng mỗi 20 giây (gần như tức thì)
 const KEEP_DAYS = 30;                     // giữ file xuất 30 ngày
 const EXPORTS = [
   ["customers", "KhachHang"], ["quotes", "BaoGia"], ["expenses", "ChiTieu"],
@@ -280,7 +280,7 @@ async function saveContract(c) {
 // Khi hợp đồng đã ký: tạo cây thư mục trên máy (Photo/JPG Goc,Raw,File ChinhSua
 // + Video nếu có quay) khớp cây trên Drive studio, rồi tải file MỚI lên. Server
 // tự tạo "JPG Goc" → album chọn ảnh, "File ChinhSua" → gallery giao khách.
-const DRIVE_SYNC_EVERY_MS = 5 * 60 * 1000;
+const DRIVE_SYNC_EVERY_MS = 2 * 60 * 1000;
 let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
 let driveWarned = false;
@@ -527,8 +527,27 @@ async function runSelfUpdate(build, auto = false) {
   }
 }
 
+// ─── Tự đồng bộ khi mở/quay lại app (near-realtime, không cần bấm) ───────────
+let _lastFocusSync = 0;
+let _focusHooked = false;
+function focusSync() {
+  if (!cfg.token || !cfg.dir) return;
+  const now = Date.now();
+  if (now - _lastFocusSync < 8000) return; // tránh gọi dồn khi focus liên tục
+  _lastFocusSync = now;
+  runSync(false);      // runSync sẽ tự gọi runDriveSync nếu có hợp đồng mới
+  runDriveSync(false); // quét thêm file ảnh/video mới bỏ vào thư mục
+}
+function hookFocusSync() {
+  if (_focusHooked) return;
+  _focusHooked = true;
+  window.addEventListener("focus", focusSync);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) focusSync(); });
+}
+
 // ─── Lịch chạy ───────────────────────────────────────────────────────────────
 function bootSync(first = false) {
+  hookFocusSync();
   runSync(first);
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
   flushQueue(); // đẩy các thay đổi cục bộ còn tồn khi mở app

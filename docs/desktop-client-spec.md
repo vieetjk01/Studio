@@ -153,6 +153,11 @@ MStudo/                                  ← studio chọn vị trí gốc
 | Album tự tạo | **JPG Goc** → album chọn ảnh (`selection`); **File ChinhSua** → gallery giao khách (`delivery`). Gắn vào `studio_contracts.selection_album_id` / `gallery_album_id`. Hai thư mục này được đặt công khai *ai-có-link* để đọc qua `GOOGLE_API_KEY`. |
 | Upload | Máy chủ cấp **access token tạm** (`/api/desktop/drive/token`); client tải file **thẳng** lên Drive bằng resumable upload theo khối 8MB (video lớn không nạp hết vào RAM). |
 
+**Đồng bộ near-realtime**: app tự đồng bộ hợp đồng mỗi **20 giây** + **ngay khi
+mở/quay lại cửa sổ app** (focus/visibilitychange, có tiết lưu 8s) — không cần bấm.
+Phát hiện hợp đồng mới ký → tạo thư mục + upload ngay. Quét file ảnh/video mới
+mỗi 2 phút và khi focus.
+
 **Luồng client** (`ui/app.js` → `runDriveSync`): với mỗi hợp đồng đã ký, gọi
 `POST /api/desktop/drive/prepare` → nhận sơ đồ cây `[{path,id,role,excluded}]`,
 tạo thư mục local tương ứng, quét file mới (so khớp size+mtime trong
