@@ -483,23 +483,32 @@ async function checkUpdate(manual = false) {
       $("updateText").textContent = "Đã có bản cập nhật mới của MStudo Desktop.";
       $("updateBanner").classList.remove("hidden");
       $("btnUpdate").textContent = "Cập nhật ngay";
-      $("btnUpdate").onclick = () => runSelfUpdate(build);
-      if (manual) runSelfUpdate(build); // bấm tay → cập nhật luôn
+      $("btnUpdate").onclick = () => runSelfUpdate(build, false);
+      if (manual) { runSelfUpdate(build, false); return; } // bấm tay → cập nhật luôn
+      // TỰ CẬP NHẬT: chỉ cài tự động khi app đang RẢNH (không đồng bộ/tải/xuất/
+      // còn hàng đợi) để không cắt ngang việc đang chạy; nếu bận thì để banner.
+      if (!appBusy()) { log("Đang tự cập nhật MStudo Desktop…"); runSelfUpdate(build, true); }
+      else log("Đã có bản cập nhật — sẽ tự cài khi rảnh (hoặc bấm “Cập nhật ngay”).", "warn");
     } else if (manual) {
       alert("Bạn đang dùng bản mới nhất.");
     }
   } catch (e) { if (manual) alert("Không kiểm tra được cập nhật: " + (e.message || e)); }
 }
-async function runSelfUpdate(build) {
+// App có đang bận không (chặn tự cập nhật giữa chừng để không hỏng việc đang chạy).
+function appBusy() {
+  return syncing || exporting || driveSyncing || loadQueue().length > 0;
+}
+async function runSelfUpdate(build, auto = false) {
   if (!_updateUrl) return;
-  if (!confirm("Tải và cài bản cập nhật mới? Ứng dụng sẽ đóng lại để cài đặt, rồi mở lại.")) return;
+  if (!auto && !confirm("Tải và cài bản cập nhật mới? Ứng dụng sẽ đóng lại để cài đặt, rồi mở lại.")) return;
   $("btnUpdate").textContent = "Đang tải…"; $("btnUpdate").disabled = true;
   cfg.installedBuild = build; saveCfg();
   try {
     await invoke("download_and_run", { url: _updateUrl }); // app sẽ tự thoát
   } catch (e) {
     $("btnUpdate").disabled = false; $("btnUpdate").textContent = "Cập nhật ngay";
-    alert("Không tải được bản cập nhật: " + (e.message || e) + "\nBạn có thể tải thủ công từ trang phát hành.");
+    if (!auto) alert("Không tải được bản cập nhật: " + (e.message || e) + "\nBạn có thể tải thủ công từ trang phát hành.");
+    else log("Không tải được bản cập nhật: " + (e.message || e), "err");
   }
 }
 
@@ -514,7 +523,7 @@ function bootSync(first = false) {
   setInterval(flushQueue, 60 * 1000); // thử đồng bộ thay đổi cục bộ mỗi phút
   setInterval(() => { if (cfg.lastExportDate !== today()) runExports(); }, 10 * 60 * 1000);
   setInterval(() => runDriveSync(false), DRIVE_SYNC_EVERY_MS);
-  setInterval(checkUpdate, 24 * 3600 * 1000);
+  setInterval(checkUpdate, 2 * 3600 * 1000); // kiểm tra + tự cập nhật (khi rảnh) mỗi 2 giờ
 }
 
 // Nạp cache dữ liệu offline từ đĩa (để xem ngay khi mở app, kể cả chưa có mạng).

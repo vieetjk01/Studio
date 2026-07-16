@@ -11,7 +11,7 @@ import { HardDrive, Check, Loader2, AlertTriangle, Plus, Trash2, FolderTree } fr
 
 type Role = "selection" | "delivery" | null;
 type Node = { name: string; role?: Role; excluded?: boolean };
-type Template = { photo: Node[]; video: Node[] };
+type Template = { photo: Node[]; video: Node[]; product: Node[] };
 type Status = { configured: boolean; connected: boolean; template: Template };
 
 const ROLE_LABEL: Record<string, string> = { selection: "Album chọn ảnh", delivery: "Gallery giao khách", none: "Chỉ sao lưu" };
@@ -30,7 +30,7 @@ export default function StudioDriveCard() {
         setState(d);
         setTpl(d.template);
       })
-      .catch(() => setState({ configured: false, connected: false, template: { photo: [], video: [] } }));
+      .catch(() => setState({ configured: false, connected: false, template: { photo: [], video: [], product: [] } }));
     // Thông báo sau khi quay lại từ Google.
     const q = new URLSearchParams(window.location.search).get("drive");
     if (q === "connected") setFlash("Đã kết nối Google Drive!");
@@ -66,7 +66,7 @@ export default function StudioDriveCard() {
     setBusy(false);
   }
 
-  function editNode(group: "photo" | "video", i: number, patch: Partial<Node>) {
+  function editNode(group: "photo" | "video" | "product", i: number, patch: Partial<Node>) {
     setTpl((t) => {
       if (!t) return t;
       const arr = [...t[group]];
@@ -74,14 +74,14 @@ export default function StudioDriveCard() {
       return { ...t, [group]: arr };
     });
   }
-  function addNode(group: "photo" | "video") {
+  function addNode(group: "photo" | "video" | "product") {
     setTpl((t) => (t ? { ...t, [group]: [...t[group], { name: "", role: null, excluded: false }] } : t));
   }
-  function removeNode(group: "photo" | "video", i: number) {
+  function removeNode(group: "photo" | "video" | "product", i: number) {
     setTpl((t) => (t ? { ...t, [group]: t[group].filter((_, k) => k !== i) } : t));
   }
 
-  const renderGroup = (group: "photo" | "video", label: string) =>
+  const renderGroup = (group: "photo" | "video" | "product", label: string) =>
     tpl && (
       <div className="mt-4">
         <div className="mb-1.5 text-sm font-medium">{label}</div>
@@ -131,8 +131,9 @@ export default function StudioDriveCard() {
       </div>
       <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
         Kết nối Drive của studio một lần. Khi hợp đồng đã ký, MStudo Desktop tự tạo thư mục theo tên hợp đồng
-        (<code>Photo/JPG Goc · Raw · File ChinhSua</code>, và <code>Video</code> nếu có quay) rồi tải ảnh/video lên Drive.
-        <b> JPG Goc</b> tự thành album chọn ảnh, <b>File ChinhSua</b> tự thành gallery giao khách.
+        (<code>Photo/JPG Goc · Raw · File ChinhSua</code>, <code>SanPham</code>, và <code>Video</code> nếu studio chọn có quay)
+        rồi tải ảnh/video lên Drive. <b>JPG Goc</b> tự thành album chọn ảnh, <b>File ChinhSua</b> tự thành gallery giao khách.
+        Chọn tạo thư mục nào ngay khi <b>tạo hợp đồng</b>.
       </p>
 
       {flash && (
@@ -182,6 +183,7 @@ export default function StudioDriveCard() {
           </p>
           {renderGroup("photo", "📷 Photo/")}
           {renderGroup("video", "🎬 Video/ (khi hợp đồng có quay)")}
+          {renderGroup("product", "📦 SanPham/ (thư mục sản phẩm)")}
           <button onClick={saveTemplate} disabled={busy} className="btn-primary mt-4 inline-flex items-center gap-2 text-sm">
             {busy ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : null}
             {saved ? "Đã lưu" : "Lưu mẫu thư mục"}

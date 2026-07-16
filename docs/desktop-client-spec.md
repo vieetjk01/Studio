@@ -144,8 +144,9 @@ MStudo/                                  ← studio chọn vị trí gốc
 | --- | --- |
 | Kết nối Drive | **Trên web** (Dashboard → MStudo Desktop → *Kết nối Google Drive*). Per-studio OAuth, scope `drive.file`, refresh token để ở bảng riêng `studio_drive` (RLS, chỉ service-role đọc). App tự tạo thư mục gốc **`MStudo`** trong Drive studio. |
 | Thời điểm | Khi hợp đồng **đã ký / xác nhận** (`client_signed_at` hoặc `status='approved'`). |
+| Chọn tạo thư mục | Ngay khi **tạo hợp đồng**, studio chọn tạo **Photo** (mặc định bật), **Video** (mặc định tắt — chọn riêng khi có quay), **SanPham** (mặc định bật). Lưu ở `studio_contracts.drive_make_photo/video/product`. |
 | Chiều đồng bộ | **1 chiều**: máy → Drive (tải file mới lên; không kéo ngược). |
-| Cây thư mục | `{Tên hợp đồng}/Photo/{JPG Goc, Raw, File ChinhSua}` và `Video/{Video Goc, Video HoanThien}` (khi có quay). Studio đổi tên/thêm/bớt trong *Mẫu thư mục mặc định*. |
+| Cây thư mục | `{Tên hợp đồng}/Photo/{JPG Goc, Raw, File ChinhSua}` + `SanPham/` + `Video/{Video Goc, Video HoanThien}` (khi chọn có quay). Studio đổi tên/thêm/bớt trong *Mẫu thư mục mặc định* (nhóm photo/video/product). |
 | Loại trừ | Mỗi thư mục có cờ "Đồng bộ Drive"; mặc định **Raw** và **Video Goc** bị loại trừ (chỉ giữ ở máy). |
 | Album tự tạo | **JPG Goc** → album chọn ảnh (`selection`); **File ChinhSua** → gallery giao khách (`delivery`). Gắn vào `studio_contracts.selection_album_id` / `gallery_album_id`. Hai thư mục này được đặt công khai *ai-có-link* để đọc qua `GOOGLE_API_KEY`. |
 | Upload | Máy chủ cấp **access token tạm** (`/api/desktop/drive/token`); client tải file **thẳng** lên Drive bằng resumable upload theo khối 8MB (video lớn không nạp hết vào RAM). |

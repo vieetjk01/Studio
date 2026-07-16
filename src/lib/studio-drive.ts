@@ -36,7 +36,7 @@ function oauth() {
 
 export type FolderRole = "selection" | "delivery" | null;
 export type FolderNode = { name: string; role?: FolderRole; excluded?: boolean };
-export type FolderTemplate = { photo: FolderNode[]; video: FolderNode[] };
+export type FolderTemplate = { photo: FolderNode[]; video: FolderNode[]; product: FolderNode[] };
 /** 1 nút lá trong cây đã tạo (trả cho client để tạo thư mục local + biết đích upload). */
 export type DriveTreeNode = { path: string; id: string; role: FolderRole; excluded: boolean };
 
@@ -51,13 +51,8 @@ export const DEFAULT_FOLDER_TEMPLATE: FolderTemplate = {
     { name: "Video Goc", role: null, excluded: true },
     { name: "Video HoanThien", role: null, excluded: false },
   ],
+  product: [{ name: "SanPham", role: null, excluded: false }],
 };
-
-// Loại dịch vụ được xem là "có quay" → tạo thêm cây Video.
-const VIDEO_SHOOT_TYPES = new Set(["video", "both", "wedding", "psc"]);
-export function contractHasVideo(shootType?: string | null): boolean {
-  return VIDEO_SHOOT_TYPES.has((shootType || "").toLowerCase());
-}
 
 function cleanNodes(arr: any): FolderNode[] | null {
   if (!Array.isArray(arr)) return null;
@@ -71,11 +66,12 @@ function cleanNodes(arr: any): FolderNode[] | null {
   return out.length ? out : null;
 }
 
-/** Chuẩn hóa mẫu người dùng lưu → luôn có photo[]/video[] hợp lệ. */
+/** Chuẩn hóa mẫu người dùng lưu → luôn có photo[]/video[]/product[] hợp lệ. */
 export function normalizeTemplate(t: any): FolderTemplate {
   return {
     photo: cleanNodes(t?.photo) ?? DEFAULT_FOLDER_TEMPLATE.photo,
     video: cleanNodes(t?.video) ?? DEFAULT_FOLDER_TEMPLATE.video,
+    product: cleanNodes(t?.product) ?? DEFAULT_FOLDER_TEMPLATE.product,
   };
 }
 
@@ -200,6 +196,9 @@ export type ContractForDrive = {
   shoot_type?: string | null;
   drive_folder_id?: string | null;
   drive_tree?: any;
+  drive_make_photo?: boolean | null;
+  drive_make_video?: boolean | null;
+  drive_make_product?: boolean | null;
   selection_album_id?: string | null;
   gallery_album_id?: string | null;
 };
@@ -242,21 +241,37 @@ export async function ensureContractDriveTree(
   const template = normalizeTemplate(row.folder_template);
   const tree: DriveTreeNode[] = [];
 
+  // Studio chọn khi tạo hợp đồng: mặc định tạo Photo + SanPham, Video chọn riêng.
+  const makePhoto = contract.drive_make_photo !== false;
+  const makeVideo = contract.drive_make_video === true;
+  const makeProduct = contract.drive_make_product !== false;
+
   // 3) Photo/*
-  const photoId = await mkFolder(drive, "Photo", contractFolderId);
-  for (const node of template.photo) {
-    const id = await mkFolder(drive, node.name, photoId);
-    if (node.role === "selection" || node.role === "delivery") await makePublic(drive, id);
-    tree.push({ path: `Photo/${node.name}`, id, role: node.role ?? null, excluded: !!node.excluded });
+  if (makePhoto) {
+    const photoId = await mkFolder(drive, "Photo", contractFolderId);
+    for (const node of template.photo) {
+      const id = await mkFolder(drive, node.name, photoId);
+      if (node.role === "selection" || node.role === "delivery") await makePublic(drive, id);
+      tree.push({ path: `Photo/${node.name}`, id, role: node.role ?? null, excluded: !!node.excluded });
+    }
   }
 
-  // 4) Video/* — chỉ khi hợp đồng có quay.
-  if (contractHasVideo(contract.shoot_type)) {
+  // 4) Video/* — chỉ khi studio chọn có quay.
+  if (makeVideo) {
     const videoId = await mkFolder(drive, "Video", contractFolderId);
     for (const node of template.video) {
       const id = await mkFolder(drive, node.name, videoId);
       if (node.role === "selection" || node.role === "delivery") await makePublic(drive, id);
       tree.push({ path: `Video/${node.name}`, id, role: node.role ?? null, excluded: !!node.excluded });
+    }
+  }
+
+  // 5) SanPham/ — thư mục sản phẩm (top-level trong thư mục hợp đồng).
+  if (makeProduct) {
+    for (const node of template.product) {
+      const id = await mkFolder(drive, node.name, contractFolderId);
+      if (node.role === "selection" || node.role === "delivery") await makePublic(drive, id);
+      tree.push({ path: node.name, id, role: node.role ?? null, excluded: !!node.excluded });
     }
   }
 

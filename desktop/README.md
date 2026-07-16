@@ -50,8 +50,11 @@ trên trang MStudo Desktop sẽ tự trỏ vào đó.
 
 - **SmartScreen**: chưa mua chứng chỉ ký số nên lần cài đầu Windows sẽ cảnh báo —
   hướng dẫn người dùng bấm *More info → Run anyway* (đã ghi sẵn trên trang tải).
-- **Báo cập nhật**: app tự kiểm tra `/api/desktop/version` (khi mở + mỗi ngày)
-  và hiện nút tải bản mới. Phát hành bản mới = build, upload file cài, rồi đặt
+- **Tự cập nhật**: app kiểm tra bản phát hành mới (GitHub Releases, tag
+  `desktop-dev`) khi mở app và mỗi 2 giờ. Khi có bản mới, nếu app đang **rảnh**
+  (không đồng bộ/đang tải/đang xuất) sẽ **tự tải & cài** (đóng app → chạy trình
+  cài → mở lại); nếu đang bận thì hiện banner để bấm “Cập nhật ngay” khi tiện.
+  Phát hành bản mới = build, upload file cài, rồi đặt
   `DESKTOP_LATEST_VERSION` (vd `0.2.0`) trên Vercel. Nhớ tăng `version` ở
   `tauri.conf.json`, `Cargo.toml`, `package.json` và `APP_VERSION` trong
   `ui/app.js` cho khớp. (Cập nhật ngầm bằng tauri-plugin-updater để sau — cần
