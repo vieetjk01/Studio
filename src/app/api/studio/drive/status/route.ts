@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStudio } from "@/lib/auth-guards";
-import { studioDriveStatus, disconnectStudioDrive, setFolderTemplate } from "@/lib/studio-drive";
+import { studioDriveStatus, disconnectStudioDrive, setFolderTemplate, setRootFolderName } from "@/lib/studio-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,13 @@ export async function GET() {
   return NextResponse.json(await studioDriveStatus(p.id));
 }
 
-/** Lưu mẫu thư mục mặc định của studio. Body: { template: { photo:[], video:[] } }. */
+/** Lưu tên thư mục gốc và/hoặc mẫu thư mục. Body: { rootFolderName?, template? }. */
 export async function PUT(req: Request) {
   const p = await owner();
   if (!p) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const body = await req.json().catch(() => ({}));
-  await setFolderTemplate(p.id, body.template ?? body);
+  if (typeof body.rootFolderName === "string") await setRootFolderName(p.id, body.rootFolderName);
+  if (body.template) await setFolderTemplate(p.id, body.template);
   return NextResponse.json(await studioDriveStatus(p.id));
 }
 

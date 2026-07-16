@@ -87,6 +87,7 @@ function refreshStats() {
   $("stContracts").textContent = String(Object.keys(cfg.saved || {}).length);
   $("stExport").textContent = cfg.lastExportDate || "—";
   { const sd = $("stDrive"); if (sd) sd.textContent = fmtTime(cfg.lastDriveSync); }
+  { const dd = $("driveDir"); if (dd) dd.textContent = cfg.mediaDir || "chưa chọn"; }
   $("mainFolderPath").textContent = cfg.dir || "";
   $("deviceInfo").textContent = `${cfg.deviceName || "Máy tính Windows"} · máy chủ ${cfg.server || ""}`;
 }
@@ -176,6 +177,13 @@ $("btnRefreshData").onclick = () => runExports(true);
 $("btnSyncNow").onclick = () => runSync(true);
 $("btnExportNow").onclick = () => runExports(true);
 { const b = $("btnDriveSync"); if (b) b.onclick = () => runDriveSync(true); }
+{ const b = $("btnPickMediaDir"); if (b) b.onclick = async () => {
+  const p = await invoke("pick_folder");
+  if (!p) return;
+  cfg.mediaDir = p; saveCfg(); refreshStats();
+  log("Đã chọn thư mục gốc ảnh/video: " + p);
+  runDriveSync(true);
+}; }
 $("btnOpenFolder").onclick = () => invoke("open_folder", { path: cfg.dir }).catch(() => {});
 $("btnChangeFolder").onclick = async () => {
   const p = await invoke("pick_folder");
@@ -305,13 +313,17 @@ async function prepareContract(id, resync = false) {
 }
 
 async function runDriveSync(manual = false) {
-  if (driveSyncing || !cfg.token || !cfg.dir) return;
+  if (driveSyncing || !cfg.token) return;
+  if (!cfg.mediaDir) {
+    if (manual) log("Chưa chọn thư mục gốc ảnh/video — bấm “Chọn thư mục gốc” trước.", "warn");
+    return;
+  }
   driveSyncing = true;
   try {
     let token;
     try { token = await getDriveToken(); } catch { token = null; }
     if (!token) {
-      if (manual || !driveWarned) { log("Chưa kết nối Google Drive — vào mstudo (web) › MStudo Desktop để kết nối.", "warn"); driveWarned = true; }
+      if (manual || !driveWarned) { log("Chưa kết nối Google Drive — vào mstudo (web) › Khách hàng › Đồng bộ Drive để kết nối.", "warn"); driveWarned = true; }
       driveSyncing = false; return;
     }
     driveWarned = false;
@@ -333,7 +345,8 @@ async function runDriveSync(manual = false) {
 async function driveSyncContract(c) {
   const plan = await prepareContract(c.id, false);
   if (plan.skip) throw new Error(plan.skip);
-  const base = join(cfg.dir, "HopDong", plan.folderName);
+  // Thư mục gốc ảnh/video do studio chọn (KHÔNG còn nằm trong HopDong).
+  const base = join(cfg.mediaDir, plan.folderName);
   const manPath = join(base, "mstudo-drive.json");
   let man = { folderId: plan.folderId, uploaded: {} };
   try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }

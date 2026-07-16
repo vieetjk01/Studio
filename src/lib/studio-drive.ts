@@ -77,13 +77,18 @@ export function normalizeTemplate(t: any): FolderTemplate {
 
 // ─── Kết nối / trạng thái ─────────────────────────────────────────────────────
 
-type DriveRow = { refresh_token: string | null; root_folder_id: string | null; folder_template: any };
+type DriveRow = {
+  refresh_token: string | null;
+  root_folder_id: string | null;
+  root_folder_name: string | null;
+  folder_template: any;
+};
 
 async function loadStudioDrive(ownerId: string): Promise<DriveRow | null> {
   const db = createAdminClient();
   const { data } = await db
     .from("studio_drive")
-    .select("refresh_token, root_folder_id, folder_template")
+    .select("refresh_token, root_folder_id, root_folder_name, folder_template")
     .eq("owner_id", ownerId)
     .maybeSingle();
   return (data as DriveRow) ?? null;
@@ -134,13 +139,36 @@ export async function disconnectStudioDrive(ownerId: string): Promise<void> {
 
 export async function studioDriveStatus(
   ownerId: string
-): Promise<{ configured: boolean; connected: boolean; template: FolderTemplate }> {
+): Promise<{ configured: boolean; connected: boolean; rootFolderName: string; rootCreated: boolean; template: FolderTemplate }> {
   const row = await loadStudioDrive(ownerId);
   return {
     configured: studioDriveConfigured(),
     connected: !!row?.refresh_token,
+    rootFolderName: row?.root_folder_name || ROOT_FOLDER_NAME,
+    rootCreated: !!row?.root_folder_id,
     template: normalizeTemplate(row?.folder_template),
   };
+}
+
+/**
+ * Đặt/đổi tên thư mục gốc trên Drive. Nếu thư mục gốc đã được tạo và đang kết
+ * nối → đổi tên luôn trên Drive (studio vẫn có thể tự kéo nó đi nơi khác trong
+ * Drive, app nhận theo ID nên không ảnh hưởng đồng bộ).
+ */
+export async function setRootFolderName(ownerId: string, name: string): Promise<void> {
+  const clean = (name || "").trim().replace(/[\\/]/g, " ").slice(0, 100) || ROOT_FOLDER_NAME;
+  const db = createAdminClient();
+  await db.from("studio_drive").upsert(
+    { owner_id: ownerId, root_folder_name: clean, updated_at: new Date().toISOString() },
+    { onConflict: "owner_id" }
+  );
+  const row = await loadStudioDrive(ownerId);
+  if (row?.refresh_token && row.root_folder_id) {
+    const o = oauth();
+    o.setCredentials({ refresh_token: row.refresh_token });
+    const drive = google.drive({ version: "v3", auth: o });
+    await drive.files.update({ fileId: row.root_folder_id, requestBody: { name: clean } }).catch(() => {});
+  }
 }
 
 /** Lưu mẫu thư mục mặc định của studio (áp dụng cho hợp đồng tạo cây SAU đó). */
@@ -224,10 +252,11 @@ export async function ensureContractDriveTree(
   const drive = google.drive({ version: "v3", auth: o });
   const db = createAdminClient();
 
-  // 1) Thư mục gốc "MStudo".
+  // 1) Thư mục gốc (tên do studio đặt) — studio có thể tự kéo đi nơi khác trong
+  //    Drive sau khi tạo, app vẫn nhận đúng vì lưu theo ID.
   let rootId = row.root_folder_id;
   if (!rootId) {
-    rootId = await mkFolder(drive, ROOT_FOLDER_NAME, null);
+    rootId = await mkFolder(drive, row.root_folder_name || ROOT_FOLDER_NAME, null);
     await db
       .from("studio_drive")
       .update({ root_folder_id: rootId, updated_at: new Date().toISOString() })

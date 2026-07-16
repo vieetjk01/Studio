@@ -267,6 +267,21 @@ export default function SettingsPanel({
           <input
             type="checkbox"
             className="h-4 w-4 accent-[var(--brand,var(--gold))]"
+            checked={((form.feature_flags as Record<string, string> | null | undefined)?.drive_sync ?? "coming_soon") !== "live"}
+            onChange={(e) => {
+              const cur = { ...((form.feature_flags as Record<string, string>) ?? {}) };
+              cur.drive_sync = e.target.checked ? "coming_soon" : "live";
+              set("feature_flags" as keyof SiteSettings, cur as never);
+            }}
+          />
+          <span className="text-sm">
+            <b>Đồng bộ Drive</b> — hiển thị “Sắp ra mắt” &amp; tạm khoá với studio
+          </span>
+        </label>
+        <label className="flex items-center gap-3 rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-[var(--brand,var(--gold))]"
             checked={((form.feature_flags as Record<string, string> | null | undefined)?.desktop ?? "") !== "live"}
             onChange={(e) => {
               const cur = { ...((form.feature_flags as Record<string, string>) ?? {}) };

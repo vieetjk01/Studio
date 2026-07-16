@@ -12,13 +12,14 @@ import { HardDrive, Check, Loader2, AlertTriangle, Plus, Trash2, FolderTree } fr
 type Role = "selection" | "delivery" | null;
 type Node = { name: string; role?: Role; excluded?: boolean };
 type Template = { photo: Node[]; video: Node[]; product: Node[] };
-type Status = { configured: boolean; connected: boolean; template: Template };
+type Status = { configured: boolean; connected: boolean; rootFolderName: string; rootCreated: boolean; template: Template };
 
 const ROLE_LABEL: Record<string, string> = { selection: "Album chọn ảnh", delivery: "Gallery giao khách", none: "Chỉ sao lưu" };
 
 export default function StudioDriveCard() {
   const [state, setState] = useState<Status | null>(null);
   const [tpl, setTpl] = useState<Template | null>(null);
+  const [rootName, setRootName] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [flash, setFlash] = useState("");
@@ -29,8 +30,9 @@ export default function StudioDriveCard() {
       .then((d: Status) => {
         setState(d);
         setTpl(d.template);
+        setRootName(d.rootFolderName || "MStudo");
       })
-      .catch(() => setState({ configured: false, connected: false, template: { photo: [], video: [], product: [] } }));
+      .catch(() => setState({ configured: false, connected: false, rootFolderName: "MStudo", rootCreated: false, template: { photo: [], video: [], product: [] } }));
     // Thông báo sau khi quay lại từ Google.
     const q = new URLSearchParams(window.location.search).get("drive");
     if (q === "connected") setFlash("Đã kết nối Google Drive!");
@@ -53,11 +55,12 @@ export default function StudioDriveCard() {
       const r = await fetch("/api/studio/drive/status", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template: tpl }),
+        body: JSON.stringify({ template: tpl, rootFolderName: rootName }),
       });
       const d: Status = await r.json();
       setState(d);
       setTpl(d.template);
+      setRootName(d.rootFolderName || "MStudo");
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -174,6 +177,21 @@ export default function StudioDriveCard() {
 
       {state?.connected && tpl && (
         <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+          <div className="mb-5">
+            <label className="text-sm font-medium">Thư mục gốc trên Drive</label>
+            <input
+              value={rootName}
+              onChange={(e) => setRootName(e.target.value)}
+              placeholder="MStudo"
+              className="mt-1.5 w-full max-w-xs rounded-lg px-3 py-1.5 text-sm"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            />
+            <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>
+              App tạo thư mục này trong Drive của bạn (tất cả ảnh/video hợp đồng nằm trong đó).
+              Sau khi tạo, bạn có thể <b>tự kéo thư mục này vào bất kỳ đâu trong Drive</b> — app vẫn đồng bộ đúng.
+              {state.rootCreated ? " Đổi tên ở đây sẽ đổi luôn trên Drive." : ""}
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <FolderTree size={16} style={{ color: "var(--brand)" }} />
             <h3 className="text-base font-medium">Mẫu thư mục mặc định</h3>

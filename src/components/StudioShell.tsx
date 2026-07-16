@@ -8,7 +8,7 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor, Server, Shirt,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor, Server, Shirt, HardDrive,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
@@ -69,6 +69,7 @@ const GROUPS: Group[] = [
     label: "Khách hàng",
     items: [
       { href: "/dashboard/studio/clients", label: "Khách hàng", icon: Users, minTier: "booking" },
+      { href: "/dashboard/studio/drive-sync", label: "Đồng bộ Drive", icon: HardDrive, minTier: "full", roles: ["owner", "admin"] },
       { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/studio/thiep", label: "Thiệp cưới", icon: Heart, minTier: "full" },
       { href: "/dashboard/studio/story", label: "Love Story", icon: Clapperboard, minTier: "full" },
@@ -118,6 +119,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/templates", "Mẫu hợp đồng", "Mẫu hợp đồng & điều khoản"],
   ["/dashboard/studio/production", "Xử lý hình ảnh", "Tiến độ sản xuất"],
   ["/dashboard/studio/clients", "Khách hàng", "Danh bạ khách hàng"],
+  ["/dashboard/studio/drive-sync", "Đồng bộ Drive", "Kết nối Google Drive & tự đồng bộ ảnh/video hợp đồng"],
   ["/dashboard/studio/album-designer", "Thiết kế Album", "Chọn khổ → chọn mẫu → chỉnh sửa → xuất file"],
   ["/dashboard/studio/slide", "Slide cưới", "Tự tạo video slide ảnh cưới"],
   ["/dashboard/studio/desktop", "MStudo Desktop", "Ứng dụng máy tính: tự lưu hợp đồng & sao lưu dữ liệu"],

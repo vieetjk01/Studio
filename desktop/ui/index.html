@@ -120,9 +120,13 @@
             </div>
             <div class="card">
               <div class="row-between"><h2>Ảnh / Video lên Google Drive</h2>
-                <button id="btnDriveSync" class="btn small primary">Đồng bộ Drive ngay</button>
+                <div class="row-gap">
+                  <button id="btnPickMediaDir" class="btn small">Chọn thư mục gốc…</button>
+                  <button id="btnDriveSync" class="btn small primary">Đồng bộ Drive ngay</button>
+                </div>
               </div>
-              <p class="muted" id="driveStatus">Kết nối Google Drive trong mstudo (web) › MStudo Desktop để bật đồng bộ ảnh/video hợp đồng.</p>
+              <p class="muted">Kết nối Google Drive tại mstudo (web) › <b>Khách hàng › Đồng bộ Drive</b>. Chọn thư mục gốc trên máy để chứa ảnh/video các hợp đồng (mỗi hợp đồng 1 thư mục con, tự tải lên Drive).</p>
+              <p class="muted">Thư mục gốc ảnh/video: <code id="driveDir" class="folder-path">chưa chọn</code></p>
               <p class="muted">Đồng bộ Drive gần nhất: <span id="stDrive">—</span></p>
             </div>
             <div class="card">

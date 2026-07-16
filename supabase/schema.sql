@@ -1812,12 +1812,13 @@ create policy desktop_devices_owner on public.desktop_devices
 -- Refresh token của studio là BÍ MẬT → bảng riêng, RLS bật, KHÔNG cấp quyền cho
 -- anon/authenticated (chỉ service-role ở API server đọc/ghi).
 create table if not exists public.studio_drive (
-  owner_id        uuid primary key references public.profiles (id) on delete cascade,
-  refresh_token   text,        -- OAuth Google Drive của studio (scope drive.file) — CHỈ SERVER
-  root_folder_id  text,        -- thư mục gốc "MStudo" app tự tạo trong Drive studio
-  folder_template jsonb,       -- mẫu thư mục con mặc định (null → mặc định trong mã)
-  connected_at    timestamptz,
-  updated_at      timestamptz not null default now()
+  owner_id         uuid primary key references public.profiles (id) on delete cascade,
+  refresh_token    text,        -- OAuth Google Drive của studio (scope drive.file) — CHỈ SERVER
+  root_folder_id   text,        -- thư mục gốc app tạo trong Drive studio (studio có thể tự kéo đi nơi khác — vẫn nhận theo ID)
+  root_folder_name text,        -- tên thư mục gốc studio đặt (null → "MStudo")
+  folder_template  jsonb,       -- mẫu thư mục con mặc định (null → mặc định trong mã)
+  connected_at     timestamptz,
+  updated_at       timestamptz not null default now()
 );
 revoke all on public.studio_drive from anon, authenticated;
 alter table public.studio_drive enable row level security;

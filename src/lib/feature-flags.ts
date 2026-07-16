@@ -38,6 +38,11 @@ export function rentalComingSoon(flags: FeatureFlags): boolean {
   return flags?.rental !== "live";
 }
 
+/** Đồng bộ Google Drive (ảnh/video hợp đồng) defaults to "Sắp ra mắt" until set live. */
+export function driveSyncComingSoon(flags: FeatureFlags): boolean {
+  return flags?.drive_sync !== "live";
+}
+
 
 /**
  * MStudo Desktop: chưa xuất bản — ẩn HOÀN TOÀN với non-admin (không hiện cả
@@ -54,6 +59,7 @@ export function comingSoonNav(flags: FeatureFlags): string[] {
   if (albumComingSoon(flags)) out.push("/dashboard/studio/album-designer");
   if (slideComingSoon(flags)) out.push("/dashboard/studio/slide");
   if (rentalComingSoon(flags)) out.push("/dashboard/studio/rental");
+  if (driveSyncComingSoon(flags)) out.push("/dashboard/studio/drive-sync");
   return out;
 
 }
