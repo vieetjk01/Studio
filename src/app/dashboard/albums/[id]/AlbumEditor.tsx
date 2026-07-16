@@ -15,12 +15,15 @@ import {
   Images,
   PackageCheck,
   ArrowRight,
+  FolderOpen,
+  HardDriveDownload,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
+import { buildZip, triggerDownload } from "@/lib/download";
 import { fetchAllPhotos } from "@/lib/photos";
 import { CATEGORY_PRESETS, slugifyVi } from "@/lib/category";
 import type { Album, AlbumSource, Photo, SourceKind, AlbumPhase, SourceStage } from "@/lib/types";
@@ -92,6 +95,8 @@ export default function AlbumEditor({
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [zipping, setZipping] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
 
   function flash(m: string) {
     setMsg(m);
@@ -100,8 +105,32 @@ export default function AlbumEditor({
 
   // A photo's stage comes from the source it was synced from.
   const stageById = new Map(sources.map((s) => [s.id, s.stage]));
-  const deliveryCount = photos.filter((p) => stageById.get(p.source_id ?? "") === "delivery").length;
+  const deliveryPhotos = photos.filter((p) => stageById.get(p.source_id ?? "") === "delivery");
+  const deliveryCount = deliveryPhotos.length;
   const selectionCount = photos.length - deliveryCount;
+  // Delivery folder sources can be opened straight on Drive (0 Fast Origin Transfer,
+  // true originals — Google serves the download, not us).
+  const deliveryFolders = sources.filter((s) => s.stage === "delivery" && s.kind === "folder");
+
+  // Download the whole delivery album as a ZIP of ORIGINAL files pulled from Drive.
+  async function downloadDeliveryOriginals() {
+    const items = deliveryPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name }));
+    if (items.length === 0) return;
+    setZipping(true);
+    setZipProgress({ done: 0, total: items.length });
+    try {
+      const blob = await buildZip(items, {
+        original: true,
+        onProgress: (done, total) => setZipProgress({ done, total }),
+      });
+      triggerDownload(blob, `${album.slug}-album-goc.zip`);
+    } catch {
+      flash(t("error"));
+    } finally {
+      setZipping(false);
+      setZipProgress(null);
+    }
+  }
 
   async function saveSettings() {
     setSaving(true);
@@ -300,6 +329,52 @@ export default function AlbumEditor({
           </Link>
         )}
       </div>
+
+      {/* Delivery phase: download the finished album at ORIGINAL quality from Drive. */}
+      {phase === "delivery" && (deliveryCount > 0 || deliveryFolders.length > 0) && (
+        <div className="card mb-6 p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+              <HardDriveDownload size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-accent">Tải album gốc từ Drive</p>
+              <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
+                Tải toàn bộ ảnh giao khách ở chất lượng gốc (không nén, không watermark) lấy trực tiếp từ Google Drive.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {deliveryCount > 0 && (
+                  <button onClick={downloadDeliveryOriginals} disabled={zipping} className="btn-primary">
+                    <HardDriveDownload size={15} />
+                    {zipping
+                      ? zipProgress
+                        ? `Đang tải ${zipProgress.done}/${zipProgress.total}…`
+                        : "Đang tải…"
+                      : `Tải ZIP ảnh gốc (${deliveryCount})`}
+                  </button>
+                )}
+                {deliveryFolders.map((s) => (
+                  <a
+                    key={s.id}
+                    href={s.drive_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-ghost"
+                    title="Mở thư mục trên Google Drive để tải trực tiếp (không tốn băng thông máy chủ)"
+                  >
+                    <FolderOpen size={15} /> Mở thư mục Drive{deliveryFolders.length > 1 ? ` · ${s.name}` : ""}
+                  </a>
+                ))}
+              </div>
+              {deliveryFolders.length > 0 && (
+                <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
+                  Mẹo: “Mở thư mục Drive” cho phép tải cả album trực tiếp từ Google (nhanh & không tốn băng thông máy chủ).
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Settings */}
