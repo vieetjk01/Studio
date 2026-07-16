@@ -55,7 +55,13 @@ export interface ZipItem {
  */
 export async function buildZip(
   items: ZipItem[],
-  opts: { watermark?: string | null; width?: number; onProgress?: (d: number, t: number) => void }
+  opts: {
+    watermark?: string | null;
+    width?: number;
+    /** Fetch full-resolution originals from Drive (?orig=1) instead of a resized proxy. */
+    original?: boolean;
+    onProgress?: (d: number, t: number) => void;
+  }
 ): Promise<Blob> {
   const zip = new JSZip();
   const width = opts.width ?? 2000;
@@ -63,8 +69,11 @@ export async function buildZip(
 
   for (const item of items) {
     try {
-      const url = `/api/img?id=${encodeURIComponent(item.fileId)}&w=${width}`;
-      if (opts.watermark) {
+      // Originals: pull the untouched file from Drive (no resize, no watermark).
+      const url = opts.original
+        ? `/api/img?id=${encodeURIComponent(item.fileId)}&orig=1`
+        : `/api/img?id=${encodeURIComponent(item.fileId)}&w=${width}`;
+      if (opts.watermark && !opts.original) {
         const img = await loadImage(url);
         const blob = await watermarkImage(img, opts.watermark);
         zip.file(ensureExt(item.name, "jpg"), blob);
