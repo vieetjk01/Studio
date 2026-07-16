@@ -1,4 +1,6 @@
+import { HardDrive } from "lucide-react";
 import { requireStudio } from "@/lib/auth-guards";
+import { getFeatureFlags, driveSyncComingSoon } from "@/lib/feature-flags";
 import StudioDriveCard from "./StudioDriveCard";
 
 /**
@@ -19,6 +21,22 @@ export default async function DriveSyncPage() {
       </div>
     );
   }
+  // "Sắp ra mắt": khoá với studio; admin vẫn vào để hoàn thiện.
+  if (driveSyncComingSoon(await getFeatureFlags()) && profile.actingRole !== "admin") {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <div className="card p-8">
+          <HardDrive size={28} className="mx-auto mb-3" style={{ color: "var(--brand)" }} />
+          <h1 className="font-serif text-2xl font-medium">Đồng bộ Google Drive · Sắp ra mắt</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+            Tự đồng bộ ảnh/video hợp đồng lên Google Drive của studio: tạo thư mục theo tên hợp đồng, JPG Goc thành album chọn ảnh,
+            File ChinhSua thành gallery giao khách. Bọn mình đang hoàn thiện và sẽ báo khi sẵn sàng.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Chỉ CHỦ studio (không phải nhân viên) kết nối Drive & chỉnh cấu hình đồng bộ.
   if (profile.isStaff || (profile.actingRole !== "owner" && profile.actingRole !== "admin")) {
     return (
