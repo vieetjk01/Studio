@@ -5,6 +5,7 @@ import { getStudioBrand } from "@/lib/studio-brand";
 import { sendEmail } from "@/lib/email";
 import { sendPushToOwner } from "@/lib/push";
 import { rateLimit } from "@/lib/rate-limit";
+import { autoCreateContractDriveOnSign } from "@/lib/studio-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -196,6 +197,13 @@ export async function POST(req: Request, { params }: { params: { token: string }
       .eq("id", contract.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await notify("signed", `${name} đã ký hợp đồng “${contract.title}”`, true);
+    // Tự tạo thư mục Drive + album ngay khi ký (nếu studio đã kết nối Drive).
+    // Thư mục trên MÁY do app desktop tạo. Lỗi Drive không được chặn việc ký.
+    try {
+      await autoCreateContractDriveOnSign(contract.owner_id as string, contract.id as string);
+    } catch {
+      /* studio chưa nối Drive / lỗi tạm — app desktop sẽ tạo bù khi chạy */
+    }
     return NextResponse.json({ ok: true });
   }
 

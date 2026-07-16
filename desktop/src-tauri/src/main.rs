@@ -265,6 +265,8 @@ async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), Stri
         return Err("nguồn cập nhật không hợp lệ".to_string());
     }
     let client = reqwest::Client::builder()
+        // Asset GitHub 302 sang objects.githubusercontent.com → phải theo redirect.
+        .redirect(reqwest::redirect::Policy::limited(10))
         .timeout(Duration::from_secs(600))
         .build()
         .map_err(|e| e.to_string())?;
@@ -278,6 +280,10 @@ async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), Stri
         return Err(format!("tải lỗi HTTP {}", resp.status().as_u16()));
     }
     let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    // File cài thật luôn > 1MB — nhỏ hơn nghĩa là tải hụt / trang lỗi.
+    if bytes.len() < 1_000_000 {
+        return Err(format!("tải lỗi (file quá nhỏ: {} bytes)", bytes.len()));
+    }
     let mut path = std::env::temp_dir();
     path.push("MStudo-Desktop-setup.exe");
     std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
@@ -285,7 +291,7 @@ async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), Stri
         .spawn()
         .map_err(|e| e.to_string())?;
     // Cho trình cài đặt khởi động rồi thoát app (giải phóng file để ghi đè).
-    std::thread::sleep(Duration::from_millis(600));
+    std::thread::sleep(Duration::from_millis(1200));
     app.exit(0);
     Ok(())
 }

@@ -8,10 +8,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getBrandForHost } from "@/lib/host-brand";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
+// Font UI chính (mọi trang) → preload để tránh nháy chữ.
 const hanken = Hanken_Grotesk({
   subsets: ["latin", "vietnamese"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-hanken",
+  display: "swap",
 });
 
 const cormorant = Cormorant_Garamond({
@@ -19,13 +21,18 @@ const cormorant = Cormorant_Garamond({
   weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-cormorant",
+  display: "swap",
 });
 
-// Marketing landing page font (mstudo.com homepage).
+// Các font dưới đây CHỈ dùng ở một số trang (landing / thiệp cưới / love story)
+// → preload:false để KHÔNG tải phông trên mọi trang (nhanh hơn); vẫn tự nạp khi
+// trang tương ứng dùng tới biến CSS của font.
 const manrope = Manrope({
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-manrope",
+  display: "swap",
+  preload: false,
 });
 
 // Script font for wedding-invitation templates (cinematic/story couple names).
@@ -33,6 +40,8 @@ const dancing = Dancing_Script({
   subsets: ["latin", "vietnamese"],
   weight: ["500", "600", "700"],
   variable: "--font-script",
+  display: "swap",
+  preload: false,
 });
 
 // Handwriting font riêng cho TÊN KHÁCH MỜI (bì thư, phần lời mời, love story).
@@ -40,6 +49,8 @@ const greatVibes = Great_Vibes({
   subsets: ["latin", "vietnamese"],
   weight: ["400"],
   variable: "--font-hand",
+  display: "swap",
+  preload: false,
 });
 
 const DEFAULT_TITLE = "mstudo — Phần mềm quản lý studio ảnh";

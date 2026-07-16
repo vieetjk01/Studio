@@ -43,7 +43,6 @@ export default function NewContractForm({
   // Thư mục ảnh/video/sản phẩm cho MStudo Desktop (tạo khi hợp đồng đã ký).
   const [makePhoto, setMakePhoto] = useState(true);
   const [makeVideo, setMakeVideo] = useState(false);
-  const [makeProduct, setMakeProduct] = useState(true);
   const [templateId, setTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -92,7 +91,6 @@ export default function NewContractForm({
         client_token: token,
         drive_make_photo: makePhoto,
         drive_make_video: makeVideo,
-        drive_make_product: makeProduct,
         ...(assignTo ? { assigned_to: assignTo } : {}),
       })
       .select("id")
@@ -229,10 +227,6 @@ export default function NewContractForm({
             <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
               <input type="checkbox" checked={makeVideo} onChange={(e) => setMakeVideo(e.target.checked)} />
               Có quay phim — tạo thư mục Video (Video Goc · Video HoanThien)
-            </label>
-            <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
-              <input type="checkbox" checked={makeProduct} onChange={(e) => setMakeProduct(e.target.checked)} />
-              Tạo thư mục Sản phẩm (SanPham)
             </label>
           </div>
         </div>

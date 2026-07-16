@@ -8,13 +8,13 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.2.0"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.2.1"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
 const saveCfg = () => localStorage.setItem("cfg", JSON.stringify(cfg));
 
-const SYNC_EVERY_MS = 3 * 60 * 1000;     // đồng bộ hợp đồng mỗi 3 phút
+const SYNC_EVERY_MS = 20 * 1000;         // đồng bộ hợp đồng mỗi 20 giây (gần như tức thì)
 const KEEP_DAYS = 30;                     // giữ file xuất 30 ngày
 const EXPORTS = [
   ["customers", "KhachHang"], ["quotes", "BaoGia"], ["expenses", "ChiTieu"],
@@ -231,6 +231,8 @@ async function runSync(manual = false) {
     // Chỉ dời mốc khi mọi hợp đồng lưu xong — hợp đồng lỗi sẽ được thử lại lần sau.
     if (okAll) { cfg.lastSync = r.now; saveCfg(); }
     refreshStats();
+    // Có hợp đồng mới (đã ký) → tạo thư mục ảnh/video trên máy + Drive ngay.
+    if (r.contracts.length) runDriveSync(false);
   } catch (e) {
     if (manual) log("Không đồng bộ được: " + (e.message || e), "err");
   }
@@ -278,7 +280,7 @@ async function saveContract(c) {
 // Khi hợp đồng đã ký: tạo cây thư mục trên máy (Photo/JPG Goc,Raw,File ChinhSua
 // + Video nếu có quay) khớp cây trên Drive studio, rồi tải file MỚI lên. Server
 // tự tạo "JPG Goc" → album chọn ảnh, "File ChinhSua" → gallery giao khách.
-const DRIVE_SYNC_EVERY_MS = 5 * 60 * 1000;
+const DRIVE_SYNC_EVERY_MS = 2 * 60 * 1000;
 let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
 let driveWarned = false;
@@ -477,33 +479,37 @@ window.printContract = async function (id) {
 };
 
 // ─── Tự cập nhật: phát hiện bản mới trên GitHub Releases (nhãn desktop-dev) ──
-// So sánh thời điểm cập nhật của file cài mới nhất với bản đã lưu; nếu khác →
-// hiện banner, bấm "Cập nhật ngay" tải + chạy trình cài đặt (app tự thoát).
-const RELEASE_API = "https://api.github.com/repos/vieetjk01/Studio/releases/tags/desktop-dev";
+// So SỐ PHIÊN BẢN trong tên file cài (vd MStudo Desktop_0.2.1_x64-setup.exe) với
+// APP_VERSION đang chạy; khác nhau → có bản mới. (Cách này không bị "kẹt" như so
+// mốc thời gian: cài lỗi vẫn còn phát hiện, cài xong app mới có version khớp nên
+// không lặp.)
+const RELEASE_TAG = "desktop-dev";
+const RELEASE_API = `https://api.github.com/repos/vieetjk01/Studio/releases/tags/${RELEASE_TAG}`;
+const RELEASE_PAGE = `https://github.com/vieetjk01/Studio/releases/tags/${RELEASE_TAG}`;
 let _updateUrl = "";
+const parseVer = (name) => { const m = /(\d+\.\d+\.\d+)/.exec(name || ""); return m ? m[1] : ""; };
+
 async function checkUpdate(manual = false) {
   try {
     const r = await invoke("http_get", { url: RELEASE_API, token: null });
-    if (r.status !== 200) { if (manual) alert("Không kiểm tra được (máy chủ trả lỗi). Thử lại sau."); return; }
+    if (r.status !== 200) { if (manual) alert("Không kiểm tra được (máy chủ trả lỗi HTTP " + r.status + "). Thử lại sau."); return; }
     const rel = JSON.parse(b64ToText(r.body_b64));
     const asset = (rel.assets || []).find((a) => /-setup\.exe$/i.test(a.name));
-    if (!asset) { if (manual) alert("Chưa tìm thấy bản phát hành."); return; }
+    if (!asset) { if (manual) alert("Chưa tìm thấy file cài trong bản phát hành."); return; }
     _updateUrl = asset.browser_download_url;
-    const build = asset.updated_at || "";
-    // baseline lần đầu (chỉ khi tự kiểm tra, không phải bấm tay).
-    if (!cfg.installedBuild && !manual) { cfg.installedBuild = build; saveCfg(); return; }
-    if (build && build !== cfg.installedBuild) {
-      $("updateText").textContent = "Đã có bản cập nhật mới của MStudo Desktop.";
+    const ver = parseVer(asset.name);
+    if (ver && ver !== APP_VERSION) {
+      $("updateText").textContent = `Đã có bản mới ${ver} (đang dùng ${APP_VERSION}).`;
       $("updateBanner").classList.remove("hidden");
-      $("btnUpdate").textContent = "Cập nhật ngay";
-      $("btnUpdate").onclick = () => runSelfUpdate(build, false);
-      if (manual) { runSelfUpdate(build, false); return; } // bấm tay → cập nhật luôn
+      $("btnUpdate").textContent = "Cập nhật ngay"; $("btnUpdate").disabled = false;
+      $("btnUpdate").onclick = () => runSelfUpdate(false);
+      if (manual) { runSelfUpdate(false); return; } // bấm tay → cập nhật luôn
       // TỰ CẬP NHẬT: chỉ cài tự động khi app đang RẢNH (không đồng bộ/tải/xuất/
       // còn hàng đợi) để không cắt ngang việc đang chạy; nếu bận thì để banner.
-      if (!appBusy()) { log("Đang tự cập nhật MStudo Desktop…"); runSelfUpdate(build, true); }
+      if (!appBusy()) { log("Đang tự cập nhật MStudo Desktop…"); runSelfUpdate(true); }
       else log("Đã có bản cập nhật — sẽ tự cài khi rảnh (hoặc bấm “Cập nhật ngay”).", "warn");
     } else if (manual) {
-      alert("Bạn đang dùng bản mới nhất.");
+      alert("Bạn đang dùng bản mới nhất (" + APP_VERSION + ").");
     }
   } catch (e) { if (manual) alert("Không kiểm tra được cập nhật: " + (e.message || e)); }
 }
@@ -511,22 +517,44 @@ async function checkUpdate(manual = false) {
 function appBusy() {
   return syncing || exporting || driveSyncing || loadQueue().length > 0;
 }
-async function runSelfUpdate(build, auto = false) {
+async function runSelfUpdate(auto = false) {
   if (!_updateUrl) return;
   if (!auto && !confirm("Tải và cài bản cập nhật mới? Ứng dụng sẽ đóng lại để cài đặt, rồi mở lại.")) return;
   $("btnUpdate").textContent = "Đang tải…"; $("btnUpdate").disabled = true;
-  cfg.installedBuild = build; saveCfg();
   try {
-    await invoke("download_and_run", { url: _updateUrl }); // app sẽ tự thoát
+    await invoke("download_and_run", { url: _updateUrl }); // tải xong app tự thoát để cài
   } catch (e) {
     $("btnUpdate").disabled = false; $("btnUpdate").textContent = "Cập nhật ngay";
-    if (!auto) alert("Không tải được bản cập nhật: " + (e.message || e) + "\nBạn có thể tải thủ công từ trang phát hành.");
-    else log("Không tải được bản cập nhật: " + (e.message || e), "err");
+    const msg = "Không tự cài được: " + (e.message || e);
+    if (auto) { log(msg, "err"); return; }
+    // Dự phòng: mở trang phát hành để tải & cài tay (VD SmartScreen chặn chạy ngầm).
+    if (confirm(msg + "\n\nMở trang tải bản cài để cài thủ công?")) {
+      invoke("open_url", { url: RELEASE_PAGE }).catch(() => {});
+    }
   }
+}
+
+// ─── Tự đồng bộ khi mở/quay lại app (near-realtime, không cần bấm) ───────────
+let _lastFocusSync = 0;
+let _focusHooked = false;
+function focusSync() {
+  if (!cfg.token || !cfg.dir) return;
+  const now = Date.now();
+  if (now - _lastFocusSync < 8000) return; // tránh gọi dồn khi focus liên tục
+  _lastFocusSync = now;
+  runSync(false);      // runSync sẽ tự gọi runDriveSync nếu có hợp đồng mới
+  runDriveSync(false); // quét thêm file ảnh/video mới bỏ vào thư mục
+}
+function hookFocusSync() {
+  if (_focusHooked) return;
+  _focusHooked = true;
+  window.addEventListener("focus", focusSync);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) focusSync(); });
 }
 
 // ─── Lịch chạy ───────────────────────────────────────────────────────────────
 function bootSync(first = false) {
+  hookFocusSync();
   runSync(first);
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
   flushQueue(); // đẩy các thay đổi cục bộ còn tồn khi mở app

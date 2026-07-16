@@ -145,13 +145,18 @@ MStudo/                                  ← studio chọn vị trí gốc
 | Kết nối Drive | **Trên web**, tính năng riêng ở **Khách hàng → Đồng bộ Drive** (`/dashboard/studio/drive-sync`). Per-studio OAuth, scope `drive.file`, refresh token để ở bảng riêng `studio_drive` (RLS, chỉ service-role đọc). |
 | Thư mục gốc Drive | App tạo 1 thư mục gốc trong Drive studio, **tên do studio đặt** (`studio_drive.root_folder_name`, mặc định `MStudo`). Studio có thể **tự kéo thư mục này đi bất kỳ đâu** trong Drive — app vẫn đồng bộ đúng (lưu theo folder ID). |
 | Thư mục gốc trên máy | **Studio tự chọn** trong app desktop (`cfg.mediaDir`) — KHÔNG còn nằm trong `HopDong/`. Mỗi hợp đồng 1 thư mục con trong thư mục gốc này. |
-| Thời điểm | Khi hợp đồng **đã ký / xác nhận** (`client_signed_at` hoặc `status='approved'`). |
-| Chọn tạo thư mục | Ngay khi **tạo hợp đồng**, studio chọn tạo **Photo** (mặc định bật), **Video** (mặc định tắt — chọn riêng khi có quay), **SanPham** (mặc định bật). Lưu ở `studio_contracts.drive_make_photo/video/product`. |
+| Thời điểm | Khi hợp đồng **đã ký / xác nhận** (`client_signed_at` hoặc `status='approved'`). Ký xong: **máy chủ tạo ngay cây thư mục Drive + album** (không chờ app desktop); thư mục trên **máy** do app desktop tạo khi chạy. |
+| Chọn tạo thư mục | Ngay khi **tạo hợp đồng**, studio chọn tạo **Photo** (mặc định bật) và **Video** (mặc định tắt — chọn riêng khi có quay). Lưu ở `studio_contracts.drive_make_photo/video`. |
 | Chiều đồng bộ | **1 chiều**: máy → Drive (tải file mới lên; không kéo ngược). |
-| Cây thư mục | `{Tên hợp đồng}/Photo/{JPG Goc, Raw, File ChinhSua}` + `SanPham/` + `Video/{Video Goc, Video HoanThien}` (khi chọn có quay). Studio đổi tên/thêm/bớt trong *Mẫu thư mục mặc định* (nhóm photo/video/product). |
+| Cây thư mục | `{Tên hợp đồng}/Photo/{JPG Goc, Raw, File ChinhSua}` + `Video/{Video Goc, Video HoanThien}` (khi chọn có quay) — tất cả trong 1 thư mục gốc lấy tên hợp đồng. Studio đổi tên/thêm/bớt trong *Mẫu thư mục mặc định* (nhóm photo/video). |
 | Loại trừ | Mỗi thư mục có cờ "Đồng bộ Drive"; mặc định **Raw** và **Video Goc** bị loại trừ (chỉ giữ ở máy). |
 | Album tự tạo | **JPG Goc** → album chọn ảnh (`selection`); **File ChinhSua** → gallery giao khách (`delivery`). Gắn vào `studio_contracts.selection_album_id` / `gallery_album_id`. Hai thư mục này được đặt công khai *ai-có-link* để đọc qua `GOOGLE_API_KEY`. |
 | Upload | Máy chủ cấp **access token tạm** (`/api/desktop/drive/token`); client tải file **thẳng** lên Drive bằng resumable upload theo khối 8MB (video lớn không nạp hết vào RAM). |
+
+**Đồng bộ near-realtime**: app tự đồng bộ hợp đồng mỗi **20 giây** + **ngay khi
+mở/quay lại cửa sổ app** (focus/visibilitychange, có tiết lưu 8s) — không cần bấm.
+Phát hiện hợp đồng mới ký → tạo thư mục + upload ngay. Quét file ảnh/video mới
+mỗi 2 phút và khi focus.
 
 **Luồng client** (`ui/app.js` → `runDriveSync`): với mỗi hợp đồng đã ký, gọi
 `POST /api/desktop/drive/prepare` → nhận sơ đồ cây `[{path,id,role,excluded}]`,
@@ -160,7 +165,7 @@ tạo thư mục local tương ứng, quét file mới (so khớp size+mtime tro
 gọi lại prepare với `resync=true` để làm mới danh sách ảnh của album.
 
 **UI web**: trang riêng `/dashboard/studio/drive-sync` (nhóm *Khách hàng*) —
-kết nối Drive, đặt tên thư mục gốc, chỉnh mẫu thư mục (photo/video/product).
+kết nối Drive, đặt tên thư mục gốc, chỉnh mẫu thư mục (photo/video).
 
 **Env**: `GOOGLE_STUDIO_DRIVE_REDIRECT_URI` (…/api/studio/drive/callback), dùng
 chung `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Migration:
