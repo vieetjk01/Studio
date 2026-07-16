@@ -12,13 +12,15 @@
 -- ============================================================================
 
 create table if not exists public.studio_drive (
-  owner_id        uuid primary key references public.profiles (id) on delete cascade,
-  refresh_token   text,        -- OAuth Google Drive của studio (scope drive.file) — CHỈ SERVER
-  root_folder_id  text,        -- thư mục gốc "MStudo" do app tự tạo trong Drive studio
-  folder_template jsonb,       -- mẫu thư mục con mặc định (null → mặc định trong mã)
-  connected_at    timestamptz,
-  updated_at      timestamptz not null default now()
+  owner_id         uuid primary key references public.profiles (id) on delete cascade,
+  refresh_token    text,        -- OAuth Google Drive của studio (scope drive.file) — CHỈ SERVER
+  root_folder_id   text,        -- thư mục gốc do app tạo trong Drive studio (studio có thể tự kéo đi nơi khác — vẫn nhận theo ID)
+  root_folder_name text,        -- tên thư mục gốc studio đặt (null → "MStudo")
+  folder_template  jsonb,       -- mẫu thư mục con mặc định (null → mặc định trong mã)
+  connected_at     timestamptz,
+  updated_at       timestamptz not null default now()
 );
+alter table public.studio_drive add column if not exists root_folder_name text;
 
 -- Không để lộ refresh token ra trình duyệt: khóa mọi quyền của anon/authenticated,
 -- bật RLS mà KHÔNG tạo policy → chỉ service-role (bỏ qua RLS) mới truy cập được.

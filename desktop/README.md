@@ -78,9 +78,15 @@ SaoLuu/mstudo-backup-YYYY-MM-DD.json                      ← bản đầy đủ
 ## Đồng bộ ảnh/video lên Google Drive
 
 Khi hợp đồng đã ký, app tạo cây thư mục ảnh/video theo tên hợp đồng và **tự tải
-lên Google Drive của studio** (1 chiều). Chủ studio kết nối Drive một lần trên
-web (**mstudo → MStudo Desktop → Kết nối Google Drive**) và chỉnh *mẫu thư mục*
-(đổi tên, thêm/bớt, chọn thư mục nào loại trừ khỏi đồng bộ). Mặc định **JPG Goc**
-→ album chọn ảnh, **File ChinhSua** → gallery giao khách; **Raw** và **Video Goc**
-không đồng bộ. Cần đặt `GOOGLE_STUDIO_DRIVE_REDIRECT_URI` và chạy migration
-`supabase/migrations/studio_drive_sync.sql`.
+lên Google Drive của studio** (1 chiều). Chủ studio:
+
+- Kết nối Drive một lần trên web tại **mstudo → Khách hàng → Đồng bộ Drive**, đặt
+  **tên thư mục gốc** trên Drive (app tạo giúp; có thể tự kéo thư mục đó đi bất kỳ
+  đâu trong Drive — vẫn đồng bộ đúng), và chỉnh *mẫu thư mục* (photo/video/product:
+  đổi tên, thêm/bớt, chọn thư mục loại trừ).
+- Trong app desktop, bấm **“Chọn thư mục gốc…”** để chọn thư mục trên máy chứa
+  ảnh/video (mỗi hợp đồng 1 thư mục con) — KHÔNG còn nằm trong `HopDong/`.
+
+Mặc định **JPG Goc** → album chọn ảnh, **File ChinhSua** → gallery giao khách;
+**Raw** và **Video Goc** không đồng bộ. Cần đặt `GOOGLE_STUDIO_DRIVE_REDIRECT_URI`
+và chạy migration `supabase/migrations/studio_drive_sync.sql`.

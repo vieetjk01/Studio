@@ -142,7 +142,9 @@ MStudo/                                  ← studio chọn vị trí gốc
 
 | Hạng mục | Quyết định |
 | --- | --- |
-| Kết nối Drive | **Trên web** (Dashboard → MStudo Desktop → *Kết nối Google Drive*). Per-studio OAuth, scope `drive.file`, refresh token để ở bảng riêng `studio_drive` (RLS, chỉ service-role đọc). App tự tạo thư mục gốc **`MStudo`** trong Drive studio. |
+| Kết nối Drive | **Trên web**, tính năng riêng ở **Khách hàng → Đồng bộ Drive** (`/dashboard/studio/drive-sync`). Per-studio OAuth, scope `drive.file`, refresh token để ở bảng riêng `studio_drive` (RLS, chỉ service-role đọc). |
+| Thư mục gốc Drive | App tạo 1 thư mục gốc trong Drive studio, **tên do studio đặt** (`studio_drive.root_folder_name`, mặc định `MStudo`). Studio có thể **tự kéo thư mục này đi bất kỳ đâu** trong Drive — app vẫn đồng bộ đúng (lưu theo folder ID). |
+| Thư mục gốc trên máy | **Studio tự chọn** trong app desktop (`cfg.mediaDir`) — KHÔNG còn nằm trong `HopDong/`. Mỗi hợp đồng 1 thư mục con trong thư mục gốc này. |
 | Thời điểm | Khi hợp đồng **đã ký / xác nhận** (`client_signed_at` hoặc `status='approved'`). |
 | Chọn tạo thư mục | Ngay khi **tạo hợp đồng**, studio chọn tạo **Photo** (mặc định bật), **Video** (mặc định tắt — chọn riêng khi có quay), **SanPham** (mặc định bật). Lưu ở `studio_contracts.drive_make_photo/video/product`. |
 | Chiều đồng bộ | **1 chiều**: máy → Drive (tải file mới lên; không kéo ngược). |
@@ -156,6 +158,9 @@ MStudo/                                  ← studio chọn vị trí gốc
 tạo thư mục local tương ứng, quét file mới (so khớp size+mtime trong
 `mstudo-drive.json`) rồi tải lên Drive; khi có file mới vào JPG Goc/File ChinhSua
 gọi lại prepare với `resync=true` để làm mới danh sách ảnh của album.
+
+**UI web**: trang riêng `/dashboard/studio/drive-sync` (nhóm *Khách hàng*) —
+kết nối Drive, đặt tên thư mục gốc, chỉnh mẫu thư mục (photo/video/product).
 
 **Env**: `GOOGLE_STUDIO_DRIVE_REDIRECT_URI` (…/api/studio/drive/callback), dùng
 chung `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Migration:
