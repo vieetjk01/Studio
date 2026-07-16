@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, owner_id, code, title, client_name, client_phone, event_date, shoot_type, status, client_signed_at, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, drive_make_product, selection_album_id, gallery_album_id"
+      "id, owner_id, code, title, client_name, client_phone, event_date, shoot_type, status, client_signed_at, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
     )
     .eq("id", contractId)
     .maybeSingle();

@@ -82,7 +82,7 @@ lên Google Drive của studio** (1 chiều). Chủ studio:
 
 - Kết nối Drive một lần trên web tại **mstudo → Khách hàng → Đồng bộ Drive**, đặt
   **tên thư mục gốc** trên Drive (app tạo giúp; có thể tự kéo thư mục đó đi bất kỳ
-  đâu trong Drive — vẫn đồng bộ đúng), và chỉnh *mẫu thư mục* (photo/video/product:
+  đâu trong Drive — vẫn đồng bộ đúng), và chỉnh *mẫu thư mục* (photo/video:
   đổi tên, thêm/bớt, chọn thư mục loại trừ).
 - Trong app desktop, bấm **“Chọn thư mục gốc…”** để chọn thư mục trên máy chứa
   ảnh/video (mỗi hợp đồng 1 thư mục con) — KHÔNG còn nằm trong `HopDong/`.

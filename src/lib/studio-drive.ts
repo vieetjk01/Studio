@@ -36,7 +36,7 @@ function oauth() {
 
 export type FolderRole = "selection" | "delivery" | null;
 export type FolderNode = { name: string; role?: FolderRole; excluded?: boolean };
-export type FolderTemplate = { photo: FolderNode[]; video: FolderNode[]; product: FolderNode[] };
+export type FolderTemplate = { photo: FolderNode[]; video: FolderNode[] };
 /** 1 nút lá trong cây đã tạo (trả cho client để tạo thư mục local + biết đích upload). */
 export type DriveTreeNode = { path: string; id: string; role: FolderRole; excluded: boolean };
 
@@ -51,7 +51,6 @@ export const DEFAULT_FOLDER_TEMPLATE: FolderTemplate = {
     { name: "Video Goc", role: null, excluded: true },
     { name: "Video HoanThien", role: null, excluded: false },
   ],
-  product: [{ name: "SanPham", role: null, excluded: false }],
 };
 
 function cleanNodes(arr: any): FolderNode[] | null {
@@ -66,12 +65,11 @@ function cleanNodes(arr: any): FolderNode[] | null {
   return out.length ? out : null;
 }
 
-/** Chuẩn hóa mẫu người dùng lưu → luôn có photo[]/video[]/product[] hợp lệ. */
+/** Chuẩn hóa mẫu người dùng lưu → luôn có photo[]/video[] hợp lệ. */
 export function normalizeTemplate(t: any): FolderTemplate {
   return {
     photo: cleanNodes(t?.photo) ?? DEFAULT_FOLDER_TEMPLATE.photo,
     video: cleanNodes(t?.video) ?? DEFAULT_FOLDER_TEMPLATE.video,
-    product: cleanNodes(t?.product) ?? DEFAULT_FOLDER_TEMPLATE.product,
   };
 }
 
@@ -226,7 +224,6 @@ export type ContractForDrive = {
   drive_tree?: any;
   drive_make_photo?: boolean | null;
   drive_make_video?: boolean | null;
-  drive_make_product?: boolean | null;
   selection_album_id?: string | null;
   gallery_album_id?: string | null;
 };
@@ -270,10 +267,9 @@ export async function ensureContractDriveTree(
   const template = normalizeTemplate(row.folder_template);
   const tree: DriveTreeNode[] = [];
 
-  // Studio chọn khi tạo hợp đồng: mặc định tạo Photo + SanPham, Video chọn riêng.
+  // Studio chọn khi tạo hợp đồng: mặc định tạo Photo, Video chọn riêng.
   const makePhoto = contract.drive_make_photo !== false;
   const makeVideo = contract.drive_make_video === true;
-  const makeProduct = contract.drive_make_product !== false;
 
   // 3) Photo/*
   if (makePhoto) {
@@ -292,15 +288,6 @@ export async function ensureContractDriveTree(
       const id = await mkFolder(drive, node.name, videoId);
       if (node.role === "selection" || node.role === "delivery") await makePublic(drive, id);
       tree.push({ path: `Video/${node.name}`, id, role: node.role ?? null, excluded: !!node.excluded });
-    }
-  }
-
-  // 5) SanPham/ — thư mục sản phẩm (top-level trong thư mục hợp đồng).
-  if (makeProduct) {
-    for (const node of template.product) {
-      const id = await mkFolder(drive, node.name, contractFolderId);
-      if (node.role === "selection" || node.role === "delivery") await makePublic(drive, id);
-      tree.push({ path: node.name, id, role: node.role ?? null, excluded: !!node.excluded });
     }
   }
 
@@ -429,4 +416,24 @@ export async function wireContractAlbums(
 
   if (Object.keys(patch).length) await db.from("studio_contracts").update(patch).eq("id", contract.id);
   return { selectionAlbumId, galleryAlbumId };
+}
+
+/**
+ * Tự tạo cây thư mục Drive + album NGAY khi khách ký (chạy phía máy chủ, không
+ * phụ thuộc app desktop). Nếu studio chưa kết nối Drive → bỏ qua im lặng.
+ * Thư mục trên MÁY do app desktop tạo (server không ghi được ổ đĩa của studio).
+ */
+export async function autoCreateContractDriveOnSign(ownerId: string, contractId: string): Promise<void> {
+  const db = createAdminClient();
+  const { data: c } = await db
+    .from("studio_contracts")
+    .select(
+      "id, code, title, client_name, client_phone, event_date, shoot_type, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
+    )
+    .eq("id", contractId)
+    .maybeSingle();
+  if (!c) return;
+  const tree = await ensureContractDriveTree(ownerId, c as ContractForDrive);
+  if ("error" in tree) return; // not_connected → studio chưa nối Drive
+  await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree);
 }

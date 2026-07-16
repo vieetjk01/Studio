@@ -35,6 +35,5 @@ alter table public.studio_contracts add column if not exists drive_tree      jso
 alter table public.studio_contracts add column if not exists drive_synced_at timestamptz;
 
 -- Studio chọn ngay khi TẠO hợp đồng có tạo thư mục nào không (video chọn riêng).
-alter table public.studio_contracts add column if not exists drive_make_photo   boolean not null default true;
-alter table public.studio_contracts add column if not exists drive_make_video   boolean not null default false;
-alter table public.studio_contracts add column if not exists drive_make_product boolean not null default true;
+alter table public.studio_contracts add column if not exists drive_make_photo boolean not null default true;
+alter table public.studio_contracts add column if not exists drive_make_video boolean not null default false;

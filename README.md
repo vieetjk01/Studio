@@ -61,9 +61,10 @@ panel.
   review booking leads at `/dashboard/settings`.
 - **Contract → Drive sync** — tính năng riêng ở **Khách hàng → Đồng bộ Drive**.
   Studio kết nối Drive của mình, đặt tên thư mục gốc (tự kéo đi đâu trong Drive
-  cũng được), và chọn thư mục gốc trên máy. Khi hợp đồng đã ký, MStudo Desktop
-  tạo cây thư mục theo tên hợp đồng (`Photo/JPG Goc · Raw · File ChinhSua`,
-  `SanPham`, `Video/…` nếu chọn có quay) và **tự tải lên Drive** (1 chiều).
+  cũng được), và chọn thư mục gốc trên máy. Khi hợp đồng đã ký, máy chủ tạo ngay
+  cây thư mục Drive + album, còn MStudo Desktop tạo thư mục trên máy — tất cả trong
+  1 thư mục gốc lấy tên hợp đồng (`Photo/JPG Goc · Raw · File ChinhSua`, và
+  `Video/…` nếu chọn có quay), rồi **tự tải lên Drive** (1 chiều).
   *JPG Goc* → album chọn ảnh, *File ChinhSua* → gallery giao khách; loại trừ được
   thư mục không cần đồng bộ. Env `GOOGLE_STUDIO_DRIVE_REDIRECT_URI`, migration
   `supabase/migrations/studio_drive_sync.sql`.

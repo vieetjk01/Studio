@@ -231,6 +231,8 @@ async function runSync(manual = false) {
     // Chỉ dời mốc khi mọi hợp đồng lưu xong — hợp đồng lỗi sẽ được thử lại lần sau.
     if (okAll) { cfg.lastSync = r.now; saveCfg(); }
     refreshStats();
+    // Có hợp đồng mới (đã ký) → tạo thư mục ảnh/video trên máy + Drive ngay.
+    if (r.contracts.length) runDriveSync(false);
   } catch (e) {
     if (manual) log("Không đồng bộ được: " + (e.message || e), "err");
   }
