@@ -1805,3 +1805,29 @@ drop policy if exists desktop_devices_owner on public.desktop_devices;
 create policy desktop_devices_owner on public.desktop_devices
   for all using (owner_id = auth.uid() or public.is_admin())
   with check (owner_id = auth.uid() or public.is_admin());
+
+-- ─── MStudo Desktop · Đồng bộ ảnh/video hợp đồng lên Google Drive ─────────────
+-- Khi hợp đồng ĐÃ KÝ, client tạo cây thư mục trên máy + trên Drive studio rồi tải
+-- lên (1 chiều). "JPG Goc" → album chọn ảnh; "File ChinhSua" → gallery giao khách.
+-- Refresh token của studio là BÍ MẬT → bảng riêng, RLS bật, KHÔNG cấp quyền cho
+-- anon/authenticated (chỉ service-role ở API server đọc/ghi).
+create table if not exists public.studio_drive (
+  owner_id        uuid primary key references public.profiles (id) on delete cascade,
+  refresh_token   text,        -- OAuth Google Drive của studio (scope drive.file) — CHỈ SERVER
+  root_folder_id  text,        -- thư mục gốc "MStudo" app tự tạo trong Drive studio
+  folder_template jsonb,       -- mẫu thư mục con mặc định (null → mặc định trong mã)
+  connected_at    timestamptz,
+  updated_at      timestamptz not null default now()
+);
+revoke all on public.studio_drive from anon, authenticated;
+alter table public.studio_drive enable row level security;
+
+-- Mỗi hợp đồng: thư mục Drive đã tạo + sơ đồ cây (local ↔ Drive) + mốc đồng bộ.
+-- drive_tree = [{ path, id, role: 'selection'|'delivery'|null, excluded }]
+alter table public.studio_contracts add column if not exists drive_folder_id text;
+alter table public.studio_contracts add column if not exists drive_tree      jsonb;
+alter table public.studio_contracts add column if not exists drive_synced_at timestamptz;
+-- Studio chọn khi TẠO hợp đồng: tạo thư mục ảnh / video (chọn riêng) / sản phẩm.
+alter table public.studio_contracts add column if not exists drive_make_photo   boolean not null default true;
+alter table public.studio_contracts add column if not exists drive_make_video   boolean not null default false;
+alter table public.studio_contracts add column if not exists drive_make_product boolean not null default true;

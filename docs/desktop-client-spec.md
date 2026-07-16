@@ -135,6 +135,38 @@ MStudo/                                  ← studio chọn vị trí gốc
 2. ✅ Quản lý thiết bị (danh sách + thu hồi) ngay trên trang MStudo Desktop.
 3. (Làm sau) Sao lưu Google Drive từ server; cache offline.
 
+## 9. Đồng bộ ảnh/video hợp đồng lên Google Drive (đã triển khai)
+
+> Khác đề xuất "chạy từ server" ban đầu: đồng bộ do **client** thực hiện (tải
+> thẳng lên Drive, không qua máy chủ) nên video lớn vẫn được. Quyết định đã chốt.
+
+| Hạng mục | Quyết định |
+| --- | --- |
+| Kết nối Drive | **Trên web** (Dashboard → MStudo Desktop → *Kết nối Google Drive*). Per-studio OAuth, scope `drive.file`, refresh token để ở bảng riêng `studio_drive` (RLS, chỉ service-role đọc). App tự tạo thư mục gốc **`MStudo`** trong Drive studio. |
+| Thời điểm | Khi hợp đồng **đã ký / xác nhận** (`client_signed_at` hoặc `status='approved'`). |
+| Chọn tạo thư mục | Ngay khi **tạo hợp đồng**, studio chọn tạo **Photo** (mặc định bật), **Video** (mặc định tắt — chọn riêng khi có quay), **SanPham** (mặc định bật). Lưu ở `studio_contracts.drive_make_photo/video/product`. |
+| Chiều đồng bộ | **1 chiều**: máy → Drive (tải file mới lên; không kéo ngược). |
+| Cây thư mục | `{Tên hợp đồng}/Photo/{JPG Goc, Raw, File ChinhSua}` + `SanPham/` + `Video/{Video Goc, Video HoanThien}` (khi chọn có quay). Studio đổi tên/thêm/bớt trong *Mẫu thư mục mặc định* (nhóm photo/video/product). |
+| Loại trừ | Mỗi thư mục có cờ "Đồng bộ Drive"; mặc định **Raw** và **Video Goc** bị loại trừ (chỉ giữ ở máy). |
+| Album tự tạo | **JPG Goc** → album chọn ảnh (`selection`); **File ChinhSua** → gallery giao khách (`delivery`). Gắn vào `studio_contracts.selection_album_id` / `gallery_album_id`. Hai thư mục này được đặt công khai *ai-có-link* để đọc qua `GOOGLE_API_KEY`. |
+| Upload | Máy chủ cấp **access token tạm** (`/api/desktop/drive/token`); client tải file **thẳng** lên Drive bằng resumable upload theo khối 8MB (video lớn không nạp hết vào RAM). |
+
+**Luồng client** (`ui/app.js` → `runDriveSync`): với mỗi hợp đồng đã ký, gọi
+`POST /api/desktop/drive/prepare` → nhận sơ đồ cây `[{path,id,role,excluded}]`,
+tạo thư mục local tương ứng, quét file mới (so khớp size+mtime trong
+`mstudo-drive.json`) rồi tải lên Drive; khi có file mới vào JPG Goc/File ChinhSua
+gọi lại prepare với `resync=true` để làm mới danh sách ảnh của album.
+
+**Env**: `GOOGLE_STUDIO_DRIVE_REDIRECT_URI` (…/api/studio/drive/callback), dùng
+chung `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Migration:
+`supabase/migrations/studio_drive_sync.sql`.
+
+**Lệnh Rust mới** (`src-tauri/src/main.rs`): `create_dir`, `list_dir`,
+`drive_upload` (resumable).
+
+**Còn để sau**: dọn file trùng khi ảnh bị sửa/tải lại (hiện tạo bản mới trên
+Drive), đồng bộ ngược Drive → máy, theo dõi thư mục theo thời gian thực.
+
 ## 8. Việc còn mở (chốt khi làm)
 
 - Mẫu file Word hợp đồng (dùng đúng mẫu hợp đồng hiện tại, có logo studio?).

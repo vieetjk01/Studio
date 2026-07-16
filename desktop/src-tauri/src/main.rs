@@ -364,6 +364,168 @@ fn open_folder(path: String) -> Result<(), String> {
     }
 }
 
+/// Tạo cây thư mục (create_dir_all) cho một hợp đồng trên máy.
+#[tauri::command]
+fn create_dir(path: String) -> Result<(), String> {
+    if has_control_chars(&path) {
+        return Err("bad_path".to_string());
+    }
+    fs::create_dir_all(&path).map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+struct DirEntryInfo {
+    name: String,
+    is_dir: bool,
+    size: u64,
+    mtime_ms: u64,
+}
+
+/// Liệt kê nội dung một thư mục (không đệ quy) — dùng để quét file cần tải lên
+/// Drive (kèm size + thời điểm sửa để bỏ qua file đã tải, không đổi).
+#[tauri::command]
+fn list_dir(path: String) -> Result<Vec<DirEntryInfo>, String> {
+    let mut out = Vec::new();
+    let rd = match fs::read_dir(&path) {
+        Ok(r) => r,
+        Err(_) => return Ok(out), // thư mục chưa tồn tại → rỗng
+    };
+    for entry in rd.flatten() {
+        let md = match entry.metadata() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        let mtime_ms = md
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        out.push(DirEntryInfo {
+            name: entry.file_name().to_string_lossy().to_string(),
+            is_dir: md.is_dir(),
+            size: if md.is_file() { md.len() } else { 0 },
+            mtime_ms,
+        });
+    }
+    Ok(out)
+}
+
+#[derive(Serialize)]
+struct UploadResult {
+    id: String,
+}
+
+async fn parse_upload_final(resp: reqwest::Response) -> Result<UploadResult, String> {
+    let status = resp.status().as_u16();
+    let txt = resp.text().await.map_err(|e| e.to_string())?;
+    if status != 200 && status != 201 {
+        return Err(format!("final {status}"));
+    }
+    let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+    let id = v.get("id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+    if id.is_empty() {
+        return Err("no_id".to_string());
+    }
+    Ok(UploadResult { id })
+}
+
+/// Tải MỘT file lên Google Drive bằng resumable upload theo khối 8MB — file lớn
+/// (video) KHÔNG bị nạp trọn vào RAM. `access_token` do máy chủ mstudo cấp
+/// (scope drive.file); `folder_id` là thư mục đích trên Drive của studio.
+#[tauri::command]
+async fn drive_upload(
+    access_token: String,
+    folder_id: String,
+    file_path: String,
+    name: String,
+    mime: String,
+) -> Result<UploadResult, String> {
+    use std::io::{Read, Seek, SeekFrom};
+    if has_control_chars(&file_path) || has_control_chars(&folder_id) {
+        return Err("bad_path".to_string());
+    }
+    let meta = fs::metadata(&file_path).map_err(|e| e.to_string())?;
+    let total: u64 = meta.len();
+    let mime = if mime.is_empty() {
+        "application/octet-stream".to_string()
+    } else {
+        mime
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(1800))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // 1) Khởi tạo phiên resumable — gửi metadata, nhận URL tải lên ở header Location.
+    let body = serde_json::json!({ "name": name, "parents": [folder_id] });
+    let init = client
+        .post("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id")
+        .header("Authorization", format!("Bearer {access_token}"))
+        .header("Content-Type", "application/json; charset=UTF-8")
+        .header("X-Upload-Content-Type", &mime)
+        .header("X-Upload-Content-Length", total.to_string())
+        .body(serde_json::to_string(&body).map_err(|e| e.to_string())?)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !init.status().is_success() {
+        return Err(format!("init {}", init.status().as_u16()));
+    }
+    let upload_url = init
+        .headers()
+        .get("location")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "no_upload_url".to_string())?;
+
+    // File rỗng → PUT một lần thân rỗng.
+    if total == 0 {
+        let resp = client
+            .put(&upload_url)
+            .header("Content-Length", "0")
+            .body(Vec::<u8>::new())
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        return parse_upload_final(resp).await;
+    }
+
+    let mut f = fs::File::open(&file_path).map_err(|e| e.to_string())?;
+    const CHUNK: u64 = 8 * 1024 * 1024; // bội số 256KB theo yêu cầu của Google
+    let mut offset: u64 = 0;
+
+    loop {
+        let end = std::cmp::min(offset + CHUNK, total);
+        let len = (end - offset) as usize;
+        let mut buf = vec![0u8; len];
+        f.seek(SeekFrom::Start(offset)).map_err(|e| e.to_string())?;
+        f.read_exact(&mut buf).map_err(|e| e.to_string())?;
+        let range = format!("bytes {}-{}/{}", offset, end - 1, total);
+        let resp = client
+            .put(&upload_url)
+            .header("Content-Length", len.to_string())
+            .header("Content-Range", range)
+            .body(buf)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        let status = resp.status().as_u16();
+        if status == 200 || status == 201 {
+            return parse_upload_final(resp).await;
+        } else if status == 308 {
+            offset = end; // Google đã nhận khối này → gửi khối kế
+            if offset >= total {
+                return Err("incomplete".to_string());
+            }
+        } else {
+            let t = resp.text().await.unwrap_or_default();
+            return Err(format!("upload {status} {}", t.chars().take(200).collect::<String>()));
+        }
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -382,7 +544,10 @@ fn main() {
             open_file,
             open_url,
             open_app,
-            download_and_run
+            download_and_run,
+            create_dir,
+            list_dir,
+            drive_upload
         ])
         .run(tauri::generate_context!())
         .expect("Không khởi động được MStudo Desktop");

@@ -40,6 +40,10 @@ export default function NewContractForm({
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [eventDate, setEventDate] = useState("");
   const [addChecklist, setAddChecklist] = useState(true);
+  // Thư mục ảnh/video/sản phẩm cho MStudo Desktop (tạo khi hợp đồng đã ký).
+  const [makePhoto, setMakePhoto] = useState(true);
+  const [makeVideo, setMakeVideo] = useState(false);
+  const [makeProduct, setMakeProduct] = useState(true);
   const [templateId, setTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -86,6 +90,9 @@ export default function NewContractForm({
         event_date: eventDate || null,
         note,
         client_token: token,
+        drive_make_photo: makePhoto,
+        drive_make_video: makeVideo,
+        drive_make_product: makeProduct,
         ...(assignTo ? { assigned_to: assignTo } : {}),
       })
       .select("id")
@@ -207,6 +214,27 @@ export default function NewContractForm({
             <input type="checkbox" checked={addChecklist} onChange={(e) => setAddChecklist(e.target.checked)} />
             Thêm checklist hậu kỳ mặc định ({DEFAULT_TASKS.join(" → ")})
           </label>
+        </div>
+
+        <div className="rounded-xl p-4" style={{ background: "var(--surface2)" }}>
+          <div className="text-sm font-medium">Thư mục ảnh/video (MStudo Desktop)</div>
+          <p className="mt-0.5 text-[11px]" style={{ color: "var(--text3)" }}>
+            Khi hợp đồng đã ký, MStudo Desktop tạo thư mục theo tên hợp đồng và tự đồng bộ lên Google Drive.
+          </p>
+          <div className="mt-2 space-y-2">
+            <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+              <input type="checkbox" checked={makePhoto} onChange={(e) => setMakePhoto(e.target.checked)} />
+              Tạo thư mục ảnh (Photo → JPG Goc · Raw · File ChinhSua)
+            </label>
+            <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+              <input type="checkbox" checked={makeVideo} onChange={(e) => setMakeVideo(e.target.checked)} />
+              Có quay phim — tạo thư mục Video (Video Goc · Video HoanThien)
+            </label>
+            <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text2)" }}>
+              <input type="checkbox" checked={makeProduct} onChange={(e) => setMakeProduct(e.target.checked)} />
+              Tạo thư mục Sản phẩm (SanPham)
+            </label>
+          </div>
         </div>
 
         {err && <p className="text-sm text-red-400">{err}</p>}

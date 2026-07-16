@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Monitor, Download, ShieldAlert, FileSpreadsheet, FileJson, Laptop, Trash2, RefreshCw, Plus, Copy, Check } from "lucide-react";
 import RestorePanel from "./RestorePanel";
+import StudioDriveCard from "./StudioDriveCard";
 
 /**
  * Trang MStudo Desktop: tải bản cài Windows, quản lý thiết bị (tối đa 2 máy),
@@ -112,6 +113,9 @@ export default function DesktopPanel() {
           </div>
         </div>
       </div>
+
+      {/* Đồng bộ ảnh/video lên Google Drive */}
+      <StudioDriveCard />
 
       {/* Thiết bị */}
       <div className="card p-6">
