@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.1.9"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.2.0"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -86,6 +86,7 @@ function refreshStats() {
   $("stSync").textContent = fmtTime(cfg.lastSync);
   $("stContracts").textContent = String(Object.keys(cfg.saved || {}).length);
   $("stExport").textContent = cfg.lastExportDate || "—";
+  { const sd = $("stDrive"); if (sd) sd.textContent = fmtTime(cfg.lastDriveSync); }
   $("mainFolderPath").textContent = cfg.dir || "";
   $("deviceInfo").textContent = `${cfg.deviceName || "Máy tính Windows"} · máy chủ ${cfg.server || ""}`;
 }
@@ -174,6 +175,7 @@ $("btnRefreshData").onclick = () => runExports(true);
 // ─── Màn 3: hành động ────────────────────────────────────────────────────────
 $("btnSyncNow").onclick = () => runSync(true);
 $("btnExportNow").onclick = () => runExports(true);
+{ const b = $("btnDriveSync"); if (b) b.onclick = () => runDriveSync(true); }
 $("btnOpenFolder").onclick = () => invoke("open_folder", { path: cfg.dir }).catch(() => {});
 $("btnChangeFolder").onclick = async () => {
   const p = await invoke("pick_folder");
@@ -262,6 +264,109 @@ async function saveContract(c) {
   await invoke("write_file_b64", { path: manifestPath, contentsB64: textToB64(JSON.stringify(man, null, 2)) });
   cfg.saved = cfg.saved || {}; cfg.saved[c.id] = c.updated_at; saveCfg();
   log(`Đã lưu hợp đồng: ${meta.file_base}${suffix}`);
+}
+
+// ─── Đồng bộ ảnh/video hợp đồng lên Google Drive (1 chiều: máy → Drive) ───────
+// Khi hợp đồng đã ký: tạo cây thư mục trên máy (Photo/JPG Goc,Raw,File ChinhSua
+// + Video nếu có quay) khớp cây trên Drive studio, rồi tải file MỚI lên. Server
+// tự tạo "JPG Goc" → album chọn ảnh, "File ChinhSua" → gallery giao khách.
+const DRIVE_SYNC_EVERY_MS = 5 * 60 * 1000;
+let driveSyncing = false;
+let driveTok = { v: null, exp: 0 };
+let driveWarned = false;
+
+const MIME_BY_EXT = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+  gif: "image/gif", heic: "image/heic", tif: "image/tiff", tiff: "image/tiff",
+  mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
+  mkv: "video/x-matroska", m4v: "video/x-m4v", webm: "video/webm",
+};
+const guessMime = (name) => MIME_BY_EXT[(name.split(".").pop() || "").toLowerCase()] || "application/octet-stream";
+const safeJson = (b64) => { try { return JSON.parse(b64ToText(b64)); } catch { return {}; } };
+
+// Access token tạm (server cấp) để tải file thẳng lên Drive; cache tới gần hết hạn.
+async function getDriveToken() {
+  const now = Date.now();
+  if (driveTok.v && now < driveTok.exp - 60000) return driveTok.v;
+  const r = await invoke("http_get", { url: cfg.server + "/api/desktop/drive/token", token: cfg.token });
+  if (r.status === 409) return null;            // chưa kết nối Drive
+  if (r.status >= 400) throw new Error("token HTTP " + r.status);
+  const j = safeJson(r.body_b64);
+  driveTok = { v: j.access_token, exp: j.expiry || now + 50 * 60 * 1000 };
+  return driveTok.v;
+}
+
+// Tạo cây thư mục Drive + album cho 1 hợp đồng; resync=true → đồng bộ lại ảnh album.
+async function prepareContract(id, resync = false) {
+  const r = await invoke("http_post", { url: cfg.server + "/api/desktop/drive/prepare", token: cfg.token, bodyJson: JSON.stringify({ contractId: id, resync }) });
+  if (r.status === 409) return { skip: safeJson(r.body_b64).error || "not_connected" };
+  if (r.status >= 400) throw new Error("prepare HTTP " + r.status);
+  return safeJson(r.body_b64);
+}
+
+async function runDriveSync(manual = false) {
+  if (driveSyncing || !cfg.token || !cfg.dir) return;
+  driveSyncing = true;
+  try {
+    let token;
+    try { token = await getDriveToken(); } catch { token = null; }
+    if (!token) {
+      if (manual || !driveWarned) { log("Chưa kết nối Google Drive — vào mstudo (web) › MStudo Desktop để kết nối.", "warn"); driveWarned = true; }
+      driveSyncing = false; return;
+    }
+    driveWarned = false;
+    const list = await apiJson("/api/desktop/contracts"); // mặc định: hợp đồng đã ký
+    let uploaded = 0;
+    for (const c of list.contracts || []) {
+      try { uploaded += await driveSyncContract(c); }
+      catch (e) { if (manual) log(`Lỗi đồng bộ ảnh HĐ ${c.code || c.id}: ${e.message || e}`, "err"); }
+    }
+    cfg.lastDriveSync = new Date().toISOString(); saveCfg();
+    if (manual) log(uploaded ? `Đã tải ${uploaded} file lên Drive.` : "Không có file mới để tải lên Drive.");
+    refreshStats();
+  } catch (e) {
+    if (manual) log("Không đồng bộ được Drive: " + (e.message || e), "err");
+  }
+  driveSyncing = false;
+}
+
+async function driveSyncContract(c) {
+  const plan = await prepareContract(c.id, false);
+  if (plan.skip) throw new Error(plan.skip);
+  const base = join(cfg.dir, "HopDong", plan.folderName);
+  const manPath = join(base, "mstudo-drive.json");
+  let man = { folderId: plan.folderId, uploaded: {} };
+  try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }
+  man.uploaded = man.uploaded || {};
+
+  // Tạo thư mục local cho MỌI nút (kể cả loại trừ — để studio bỏ ảnh/raw vào).
+  for (const node of plan.tree) {
+    await invoke("create_dir", { path: join(base, node.path.replace(/\//g, "\\")) }).catch(() => {});
+  }
+
+  let uploaded = 0, needResync = false;
+  for (const node of plan.tree) {
+    if (node.excluded) continue; // thư mục loại trừ (VD Raw, Video gốc) → chỉ giữ ở máy
+    const localDir = join(base, node.path.replace(/\//g, "\\"));
+    let entries = [];
+    try { entries = await invoke("list_dir", { path: localDir }); } catch { entries = []; }
+    for (const e of entries) {
+      if (e.is_dir || e.name.startsWith("~") || e.name.startsWith(".")) continue;
+      const key = node.path + "/" + e.name;
+      const prev = man.uploaded[key];
+      if (prev && prev.size === e.size && prev.mtime === e.mtime_ms) continue; // đã tải, không đổi
+      const token = await getDriveToken();
+      if (!token) throw new Error("not_connected");
+      const res = await invoke("drive_upload", { accessToken: token, folderId: node.id, filePath: join(localDir, e.name), name: e.name, mime: guessMime(e.name) });
+      man.uploaded[key] = { size: e.size, mtime: e.mtime_ms, id: res.id };
+      uploaded++;
+      if (node.role === "selection" || node.role === "delivery") needResync = true;
+    }
+  }
+  await invoke("write_file_b64", { path: manPath, contentsB64: textToB64(JSON.stringify(man, null, 2)) }).catch(() => {});
+  // Có file mới vào JPG Goc / File ChinhSua → đồng bộ lại danh sách ảnh của album.
+  if (needResync) { try { await prepareContract(c.id, true); } catch { /* thử lại lần sau */ } }
+  return uploaded;
 }
 
 // ─── Xuất Excel + sao lưu JSON ───────────────────────────────────────────────
@@ -404,9 +509,11 @@ function bootSync(first = false) {
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
   flushQueue(); // đẩy các thay đổi cục bộ còn tồn khi mở app
   checkUpdate();
+  runDriveSync(false); // tải ảnh/video hợp đồng lên Drive (nếu đã kết nối)
   setInterval(() => runSync(false), SYNC_EVERY_MS);
   setInterval(flushQueue, 60 * 1000); // thử đồng bộ thay đổi cục bộ mỗi phút
   setInterval(() => { if (cfg.lastExportDate !== today()) runExports(); }, 10 * 60 * 1000);
+  setInterval(() => runDriveSync(false), DRIVE_SYNC_EVERY_MS);
   setInterval(checkUpdate, 24 * 3600 * 1000);
 }
 

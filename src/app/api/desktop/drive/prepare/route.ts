@@ -1,0 +1,72 @@
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireDesktopOwner } from "@/lib/desktop/auth";
+import {
+  ensureContractDriveTree,
+  wireContractAlbums,
+  contractHasVideo,
+  type ContractForDrive,
+} from "@/lib/studio-drive";
+import { syncAlbumPhotos } from "@/lib/album-sync";
+import { contractBaseName } from "@/lib/desktop/contract-doc";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Chuẩn bị đồng bộ Drive cho 1 hợp đồng ĐÃ KÝ:
+ *  - Tạo cây thư mục trên Drive studio (idempotent) + đặt JPG Goc/File ChinhSua công khai.
+ *  - Tạo album chọn ảnh + gallery giao khách và gắn vào hợp đồng.
+ *  - Trả sơ đồ cây { path, id, role, excluded } để client tạo thư mục local + upload.
+ * Body: { contractId, resync?: boolean }. resync=true → đồng bộ lại ảnh 2 album
+ * (gọi sau khi client tải xong ảnh vào JPG Goc / File ChinhSua).
+ */
+export async function POST(req: Request) {
+  const auth = await requireDesktopOwner(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const body = await req.json().catch(() => ({}));
+  const contractId = body?.contractId;
+  if (!contractId) return NextResponse.json({ error: "missing_contract" }, { status: 400 });
+
+  const db = createAdminClient();
+  const { data: contract } = await db
+    .from("studio_contracts")
+    .select(
+      "id, owner_id, code, title, client_name, client_phone, event_date, shoot_type, status, client_signed_at, drive_folder_id, drive_tree, selection_album_id, gallery_album_id"
+    )
+    .eq("id", contractId)
+    .maybeSingle();
+  if (!contract || contract.owner_id !== auth.ownerId) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  // Chỉ hợp đồng đã ký/xác nhận mới tạo thư mục (theo lựa chọn của studio).
+  if (!contract.client_signed_at && contract.status !== "approved") {
+    return NextResponse.json({ error: "not_signed" }, { status: 409 });
+  }
+
+  const tree = await ensureContractDriveTree(auth.ownerId, contract as ContractForDrive);
+  if ("error" in tree) return NextResponse.json({ error: tree.error }, { status: 409 });
+
+  const albums = await wireContractAlbums(auth.ownerId, contract as ContractForDrive, tree.tree);
+
+  if (body?.resync) {
+    const ids = [albums.selectionAlbumId, albums.galleryAlbumId].filter(Boolean) as string[];
+    for (const id of ids) {
+      try {
+        await syncAlbumPhotos(db, id);
+      } catch {
+        /* bỏ qua — lần sau thử lại */
+      }
+    }
+    await db.from("studio_contracts").update({ drive_synced_at: new Date().toISOString() }).eq("id", contract.id);
+  }
+
+  return NextResponse.json({
+    folderId: tree.folderId,
+    folderName: contractBaseName(contract as any),
+    tree: tree.tree,
+    hasVideo: contractHasVideo(contract.shoot_type),
+    selectionAlbumId: albums.selectionAlbumId,
+    galleryAlbumId: albums.galleryAlbumId,
+  });
+}

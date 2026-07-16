@@ -59,6 +59,13 @@ panel.
   then get a shareable client link **with a real QR code**.
 - **Studio settings & bookings** — admins edit the homepage profile/contact and
   review booking leads at `/dashboard/settings`.
+- **Contract → Drive sync (MStudo Desktop)** — khi hợp đồng đã ký, client Windows
+  tạo cây thư mục ảnh/video theo tên hợp đồng (`Photo/JPG Goc · Raw · File
+  ChinhSua`, `Video/…` nếu có quay) và **tự tải lên Google Drive của studio** (1
+  chiều). *JPG Goc* tự thành album chọn ảnh, *File ChinhSua* tự thành gallery giao
+  khách; loại trừ được thư mục không cần đồng bộ. Studio kết nối Drive một lần ở
+  **Dashboard → MStudo Desktop** (env `GOOGLE_STUDIO_DRIVE_REDIRECT_URI`, migration
+  `supabase/migrations/studio_drive_sync.sql`).
 - **Bilingual UI** — Vietnamese / English toggle.
 
 ---
