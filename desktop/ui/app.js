@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.2.3"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.3.0"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -285,10 +285,22 @@ async function saveContract(c) {
 // Khi hợp đồng đã ký: tạo cây thư mục trên máy (Photo/JPG Goc,Raw,File ChinhSua
 // + Video nếu có quay) khớp cây trên Drive studio, rồi tải file MỚI lên. Server
 // tự tạo "JPG Goc" → album chọn ảnh, "File ChinhSua" → gallery giao khách.
-const DRIVE_SYNC_EVERY_MS = 2 * 60 * 1000;
+//
+// PHƯƠNG ÁN TỐI ƯU (thay vì quét TẤT CẢ hợp đồng mỗi 10s):
+//  - Vòng CHẬM (2 phút): quét toàn bộ hợp đồng đã ký — bắt file bỏ vào muộn.
+//  - Vòng NHANH (10s): CHỈ quét hợp đồng "đang thực hiện" — thợ đang đổ ảnh vào
+//    máy là tải lên gần như tức thì, không phải chờ. Nhẹ vì chỉ đụng vài hợp đồng
+//    đang chạy + danh sách hợp đồng được cache 30s (không gọi server mỗi vòng).
+//  - Cây thư mục Drive (plan) cache 5 phút → vòng nhanh không gọi lại server.
+const DRIVE_FULL_SYNC_MS = 2 * 60 * 1000;   // quét toàn bộ hợp đồng đã ký
+const DRIVE_WATCH_MS = 10 * 1000;           // theo dõi nhanh hợp đồng đang thực hiện
+const INPROGRESS_TTL_MS = 30 * 1000;        // cache danh sách hợp đồng đang thực hiện
+const PLAN_TTL_MS = 5 * 60 * 1000;          // cache cây thư mục Drive mỗi hợp đồng
+const THUMB_MAX_BYTES = 16 * 1024 * 1024;   // ảnh lớn hơn → không tạo xem trước
 let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
 let driveWarned = false;
+const planCache = new Map();                 // contractId → { tree, folderId, folderName, at }
 
 const MIME_BY_EXT = {
   jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
@@ -296,8 +308,75 @@ const MIME_BY_EXT = {
   mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
   mkv: "video/x-matroska", m4v: "video/x-m4v", webm: "video/webm",
 };
-const guessMime = (name) => MIME_BY_EXT[(name.split(".").pop() || "").toLowerCase()] || "application/octet-stream";
+const THUMB_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+const extOf = (name) => (name.split(".").pop() || "").toLowerCase();
+const guessMime = (name) => MIME_BY_EXT[extOf(name)] || "application/octet-stream";
 const safeJson = (b64) => { try { return JSON.parse(b64ToText(b64)); } catch { return {}; } };
+
+// ─── Trạng thái tiến trình (hiển thị như app Google Drive) ───────────────────
+const dsync = {
+  active: false, total: 0, done: 0,
+  totalBytes: 0, doneBytes: 0, curBytes: 0,
+  curName: "", curPath: "", curThumb: "", startedAt: 0,
+};
+let _lastSyncRender = 0;
+const fmtBytes = (n) => {
+  if (!n || n < 0) n = 0;
+  const u = ["B", "KB", "MB", "GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + " " + u[i];
+};
+const fmtSpeed = (bps) => fmtBytes(bps) + "/s";
+const fmtDuration = (s) => {
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return s + " giây";
+  const m = Math.floor(s / 60), ss = s % 60;
+  if (m < 60) return m + " phút" + (ss ? ` ${ss} giây` : "");
+  const h = Math.floor(m / 60);
+  return h + " giờ" + (m % 60 ? ` ${m % 60} phút` : "");
+};
+function renderSyncStatus(force = false) {
+  const box = $("syncStatus"); if (!box) return;
+  const now = Date.now();
+  if (!force && now - _lastSyncRender < 350) return;
+  _lastSyncRender = now;
+  if (!dsync.active) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const sent = dsync.doneBytes + dsync.curBytes;
+  const pct = dsync.totalBytes ? Math.min(100, Math.round((sent / dsync.totalBytes) * 100)) : 0;
+  const elapsed = (now - dsync.startedAt) / 1000;
+  const speed = elapsed > 0.6 ? sent / elapsed : 0;
+  const remain = Math.max(0, dsync.totalBytes - sent);
+  const eta = speed > 0 ? remain / speed : 0;
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set("syncTitle", `Đang đồng bộ ${Math.min(dsync.done + 1, dsync.total)}/${dsync.total} ảnh lên Drive`);
+  const fill = $("syncBarFill"); if (fill) fill.style.width = pct + "%";
+  set("syncPct", pct + "%");
+  set("syncFile", dsync.curName || "");
+  set("syncMeta", [speed ? fmtSpeed(speed) : "", eta ? "còn khoảng " + fmtDuration(eta) : ""].filter(Boolean).join(" · "));
+  const img = $("syncThumb");
+  if (img) {
+    if (dsync.curThumb) { img.src = dsync.curThumb; img.classList.remove("hidden"); }
+    else { img.removeAttribute("src"); img.classList.add("hidden"); }
+  }
+}
+// Xem trước ảnh đang tải (bỏ qua ảnh quá lớn / không phải ảnh → hiện tên file).
+async function makeThumb(file) {
+  if (!THUMB_EXTS.has(extOf(file.name)) || file.size > THUMB_MAX_BYTES) return "";
+  try { return "data:" + guessMime(file.name) + ";base64," + await invoke("read_image_b64", { path: file.path }); }
+  catch { return ""; }
+}
+// Nghe tiến trình từng khối từ Rust → thanh % + thời gian dự kiến chạy mượt
+// (quan trọng với video lớn tải nhiều phút).
+if (window.__TAURI__ && window.__TAURI__.event) {
+  window.__TAURI__.event.listen("drive-progress", (ev) => {
+    const p = ev.payload || {};
+    if (dsync.active && p.path === dsync.curPath) {
+      dsync.curBytes = Math.min(p.uploaded || 0, p.total || 0);
+      renderSyncStatus();
+    }
+  }).catch(() => {});
+}
 
 // Access token tạm (server cấp) để tải file thẳng lên Drive; cache tới gần hết hạn.
 async function getDriveToken() {
@@ -318,7 +397,93 @@ async function prepareContract(id, resync = false) {
   if (r.status >= 400) throw new Error("prepare HTTP " + r.status);
   return safeJson(r.body_b64);
 }
+// Lấy cây thư mục hợp đồng — cache để vòng theo dõi nhanh không gọi server mỗi lần.
+async function getPlan(id) {
+  const c = planCache.get(id);
+  if (c && Date.now() - c.at < PLAN_TTL_MS) return c;
+  const plan = await prepareContract(id, false);
+  if (plan.skip) return { skip: plan.skip };
+  const entry = { tree: plan.tree, folderId: plan.folderId, folderName: plan.folderName, at: Date.now() };
+  planCache.set(id, entry);
+  return entry;
+}
 
+// Quét 1 hợp đồng: trả DANH SÁCH file cần tải (chưa tải) + tham chiếu manifest,
+// để lõi đồng bộ gom tổng số ảnh/tổng dung lượng trước khi tải (tính % + ETA).
+async function scanContract(c) {
+  const plan = await getPlan(c.id);
+  if (plan.skip) throw new Error(plan.skip);
+  const base = join(cfg.mediaDir, plan.folderName);
+  const manPath = join(base, "mstudo-drive.json");
+  let man = { folderId: plan.folderId, uploaded: {} };
+  try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }
+  man.uploaded = man.uploaded || {};
+  // Tạo thư mục local cho MỌI nút (kể cả loại trừ — để studio bỏ ảnh/raw vào).
+  for (const node of plan.tree) {
+    await invoke("create_dir", { path: join(base, node.path.replace(/\//g, "\\")) }).catch(() => {});
+  }
+  const pending = [];
+  for (const node of plan.tree) {
+    if (node.excluded) continue; // thư mục loại trừ (VD Raw, Video gốc) → chỉ giữ ở máy
+    const localDir = join(base, node.path.replace(/\//g, "\\"));
+    let entries = [];
+    try { entries = await invoke("list_dir", { path: localDir }); } catch { entries = []; }
+    for (const e of entries) {
+      if (e.is_dir || e.name.startsWith("~") || e.name.startsWith(".")) continue;
+      const key = node.path + "/" + e.name;
+      const prev = man.uploaded[key];
+      if (prev && prev.size === e.size && prev.mtime === e.mtime_ms) continue; // đã tải, không đổi
+      pending.push({ node, key, name: e.name, size: e.size, mtime: e.mtime_ms, path: join(localDir, e.name) });
+    }
+  }
+  return { c, base, manPath, man, pending };
+}
+
+// Lõi đồng bộ: quét danh sách hợp đồng → gom việc → tải lần lượt kèm tiến trình.
+async function driveSyncRun(contracts, manual = false) {
+  const jobs = [];
+  for (const c of contracts) {
+    try { jobs.push(await scanContract(c)); }
+    catch (e) { if (manual) log(`Lỗi quét ảnh HĐ ${c.code || c.id}: ${e.message || e}`, "err"); }
+  }
+  const files = [];
+  for (const j of jobs) for (const p of j.pending) files.push({ job: j, ...p });
+  if (!files.length) return 0;
+
+  dsync.active = true; dsync.total = files.length; dsync.done = 0;
+  dsync.totalBytes = files.reduce((s, f) => s + (f.size || 0), 0);
+  dsync.doneBytes = 0; dsync.curBytes = 0; dsync.startedAt = Date.now();
+  const resyncNeeded = new Set();
+  let uploaded = 0;
+  try {
+    for (const f of files) {
+      dsync.curName = f.name; dsync.curPath = f.path; dsync.curBytes = 0;
+      dsync.curThumb = await makeThumb(f);
+      renderSyncStatus(true);
+      try {
+        const token = await getDriveToken();
+        if (!token) throw new Error("not_connected");
+        const res = await invoke("drive_upload", { accessToken: token, folderId: f.node.id, filePath: f.path, name: f.name, mime: guessMime(f.name) });
+        f.job.man.uploaded[f.key] = { size: f.size, mtime: f.mtime, id: res.id };
+        uploaded++;
+        if (f.node.role === "selection" || f.node.role === "delivery") resyncNeeded.add(f.job.c.id);
+        // Ghi manifest sau mỗi file → ngắt giữa chừng cũng không tải lại từ đầu.
+        await invoke("write_file_b64", { path: f.job.manPath, contentsB64: textToB64(JSON.stringify(f.job.man, null, 2)) }).catch(() => {});
+      } catch (e) {
+        if (manual) log(`Lỗi tải ${f.name}: ${e.message || e}`, "err");
+      }
+      dsync.done++; dsync.doneBytes += (f.size || 0); dsync.curBytes = 0;
+      renderSyncStatus(true);
+    }
+  } finally {
+    dsync.active = false; dsync.curThumb = ""; renderSyncStatus(true);
+  }
+  // Có file mới vào JPG Goc / File ChinhSua → đồng bộ lại danh sách ảnh của album.
+  for (const id of resyncNeeded) { try { await prepareContract(id, true); } catch { /* thử lại lần sau */ } }
+  return uploaded;
+}
+
+// Vòng CHẬM + nút bấm tay: quét toàn bộ hợp đồng đã ký.
 async function runDriveSync(manual = false) {
   if (driveSyncing || !cfg.token) return;
   if (!cfg.mediaDir) {
@@ -331,62 +496,48 @@ async function runDriveSync(manual = false) {
     try { token = await getDriveToken(); } catch { token = null; }
     if (!token) {
       if (manual || !driveWarned) { log("Chưa kết nối Google Drive — vào mstudo (web) › Khách hàng › Đồng bộ Drive để kết nối.", "warn"); driveWarned = true; }
-      driveSyncing = false; return;
+      return;
     }
     driveWarned = false;
     const list = await apiJson("/api/desktop/contracts"); // mặc định: hợp đồng đã ký
-    let uploaded = 0;
-    for (const c of list.contracts || []) {
-      try { uploaded += await driveSyncContract(c); }
-      catch (e) { if (manual) log(`Lỗi đồng bộ ảnh HĐ ${c.code || c.id}: ${e.message || e}`, "err"); }
-    }
+    const uploaded = await driveSyncRun(list.contracts || [], manual);
     cfg.lastDriveSync = new Date().toISOString(); saveCfg();
     if (manual) log(uploaded ? `Đã tải ${uploaded} file lên Drive.` : "Không có file mới để tải lên Drive.");
     refreshStats();
   } catch (e) {
     if (manual) log("Không đồng bộ được Drive: " + (e.message || e), "err");
+  } finally {
+    driveSyncing = false;
   }
-  driveSyncing = false;
 }
 
-async function driveSyncContract(c) {
-  const plan = await prepareContract(c.id, false);
-  if (plan.skip) throw new Error(plan.skip);
-  // Thư mục gốc ảnh/video do studio chọn (KHÔNG còn nằm trong HopDong).
-  const base = join(cfg.mediaDir, plan.folderName);
-  const manPath = join(base, "mstudo-drive.json");
-  let man = { folderId: plan.folderId, uploaded: {} };
-  try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }
-  man.uploaded = man.uploaded || {};
-
-  // Tạo thư mục local cho MỌI nút (kể cả loại trừ — để studio bỏ ảnh/raw vào).
-  for (const node of plan.tree) {
-    await invoke("create_dir", { path: join(base, node.path.replace(/\//g, "\\")) }).catch(() => {});
-  }
-
-  let uploaded = 0, needResync = false;
-  for (const node of plan.tree) {
-    if (node.excluded) continue; // thư mục loại trừ (VD Raw, Video gốc) → chỉ giữ ở máy
-    const localDir = join(base, node.path.replace(/\//g, "\\"));
-    let entries = [];
-    try { entries = await invoke("list_dir", { path: localDir }); } catch { entries = []; }
-    for (const e of entries) {
-      if (e.is_dir || e.name.startsWith("~") || e.name.startsWith(".")) continue;
-      const key = node.path + "/" + e.name;
-      const prev = man.uploaded[key];
-      if (prev && prev.size === e.size && prev.mtime === e.mtime_ms) continue; // đã tải, không đổi
-      const token = await getDriveToken();
-      if (!token) throw new Error("not_connected");
-      const res = await invoke("drive_upload", { accessToken: token, folderId: node.id, filePath: join(localDir, e.name), name: e.name, mime: guessMime(e.name) });
-      man.uploaded[key] = { size: e.size, mtime: e.mtime_ms, id: res.id };
-      uploaded++;
-      if (node.role === "selection" || node.role === "delivery") needResync = true;
+// Vòng NHANH (10s): CHỈ hợp đồng "đang thực hiện" → tải ảnh mới gần như tức thì.
+let _ipCache = { at: 0, list: [] };
+async function getInProgress() {
+  if (Date.now() - _ipCache.at < INPROGRESS_TTL_MS) return _ipCache.list;
+  try {
+    const r = await apiJson("/api/desktop/contracts?status=in_progress");
+    _ipCache = { at: Date.now(), list: r.contracts || [] };
+  } catch { /* giữ cache cũ */ }
+  return _ipCache.list;
+}
+async function runDriveWatch() {
+  if (driveSyncing || !cfg.token || !cfg.mediaDir) return;
+  let token;
+  try { token = await getDriveToken(); } catch { token = null; }
+  if (!token) return;                       // chưa nối Drive → im lặng (vòng chậm đã cảnh báo)
+  const list = await getInProgress();
+  if (!list.length) return;                 // không có hợp đồng đang thực hiện → khỏi quét
+  driveSyncing = true;
+  try {
+    const uploaded = await driveSyncRun(list, false);
+    if (uploaded) {
+      cfg.lastDriveSync = new Date().toISOString(); saveCfg(); refreshStats();
+      log(`Tự tải ${uploaded} ảnh mới (hợp đồng đang thực hiện) lên Drive.`);
     }
+  } catch { /* thử lại vòng sau */ } finally {
+    driveSyncing = false;
   }
-  await invoke("write_file_b64", { path: manPath, contentsB64: textToB64(JSON.stringify(man, null, 2)) }).catch(() => {});
-  // Có file mới vào JPG Goc / File ChinhSua → đồng bộ lại danh sách ảnh của album.
-  if (needResync) { try { await prepareContract(c.id, true); } catch { /* thử lại lần sau */ } }
-  return uploaded;
 }
 
 // ─── Xuất Excel + sao lưu JSON ───────────────────────────────────────────────
@@ -569,7 +720,8 @@ function bootSync(first = false) {
   setInterval(() => runSync(false), SYNC_EVERY_MS);
   setInterval(flushQueue, 60 * 1000); // thử đồng bộ thay đổi cục bộ mỗi phút
   setInterval(() => { if (cfg.lastExportDate !== today()) runExports(); }, 10 * 60 * 1000);
-  setInterval(() => runDriveSync(false), DRIVE_SYNC_EVERY_MS);
+  setInterval(() => runDriveSync(false), DRIVE_FULL_SYNC_MS); // vòng chậm: toàn bộ HĐ đã ký
+  setInterval(runDriveWatch, DRIVE_WATCH_MS);                 // vòng nhanh: HĐ đang thực hiện
   setInterval(checkUpdate, 2 * 3600 * 1000); // kiểm tra + tự cập nhật (khi rảnh) mỗi 2 giờ
 }
 

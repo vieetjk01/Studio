@@ -8,11 +8,21 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime};
+use tauri::Emitter;
 
 #[derive(Serialize)]
 struct HttpResp {
     status: u16,
     body_b64: String,
+}
+
+/// Tiến trình tải lên (phát cho frontend qua sự kiện `drive-progress`) để hiển
+/// thị thanh tiến trình + thời gian dự kiến giống app Google Drive.
+#[derive(Serialize, Clone)]
+struct UploadProgress {
+    path: String,
+    uploaded: u64,
+    total: u64,
 }
 
 /// Các thư mục GỐC được phép thao tác (client đặt qua `set_roots`: thư mục dữ
@@ -160,6 +170,31 @@ fn read_text(path: String) -> Result<String, String> {
         return Err("bad_path".to_string());
     }
     fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+/// Đuôi ảnh được phép ĐỌC để tạo xem trước (thumbnail) trong lúc đồng bộ. Chỉ
+/// ảnh phổ biến, nằm trong thư mục gốc; chặn đọc file lạ để lộ dữ liệu.
+const PREVIEW_EXTS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif"];
+/// Ảnh lớn hơn mức này → không tạo xem trước (tránh nạp cả file RAW vào RAM chỉ
+/// để hiện thumbnail). Frontend sẽ hiện tên file thay cho ảnh.
+const PREVIEW_MAX_BYTES: u64 = 16 * 1024 * 1024;
+
+/// Đọc một file ảnh (đang đồng bộ) trả về base64 để frontend hiện xem trước —
+/// giống app Google Drive hiển thị ảnh đang tải lên.
+#[tauri::command]
+fn read_image_b64(path: String) -> Result<String, String> {
+    if has_control_chars(&path)
+        || !PREVIEW_EXTS.contains(&ext_lower(&path).as_str())
+        || !path_allowed(&path)
+    {
+        return Err("bad_path".to_string());
+    }
+    let meta = fs::metadata(&path).map_err(|e| e.to_string())?;
+    if meta.len() > PREVIEW_MAX_BYTES {
+        return Err("too_large".to_string());
+    }
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
 
 #[tauri::command]
@@ -512,6 +547,7 @@ async fn parse_upload_final(resp: reqwest::Response) -> Result<UploadResult, Str
 /// (scope drive.file); `folder_id` là thư mục đích trên Drive của studio.
 #[tauri::command]
 async fn drive_upload(
+    app: tauri::AppHandle,
     access_token: String,
     folder_id: String,
     file_path: String,
@@ -524,6 +560,17 @@ async fn drive_upload(
     }
     let meta = fs::metadata(&file_path).map_err(|e| e.to_string())?;
     let total: u64 = meta.len();
+    // Phát tiến trình cho frontend (thanh %, tốc độ, thời gian dự kiến).
+    let emit = |uploaded: u64| {
+        let _ = app.emit(
+            "drive-progress",
+            UploadProgress {
+                path: file_path.clone(),
+                uploaded,
+                total,
+            },
+        );
+    };
     let mime = if mime.is_empty() {
         "application/octet-stream".to_string()
     } else {
@@ -566,7 +613,9 @@ async fn drive_upload(
             .send()
             .await
             .map_err(|e| e.to_string())?;
-        return parse_upload_final(resp).await;
+        let r = parse_upload_final(resp).await;
+        emit(0);
+        return r;
     }
 
     let mut f = fs::File::open(&file_path).map_err(|e| e.to_string())?;
@@ -590,9 +639,11 @@ async fn drive_upload(
             .map_err(|e| e.to_string())?;
         let status = resp.status().as_u16();
         if status == 200 || status == 201 {
+            emit(total);
             return parse_upload_final(resp).await;
         } else if status == 308 {
             offset = end; // Google đã nhận khối này → gửi khối kế
+            emit(offset); // báo tiến trình sau mỗi khối 8MB
             if offset >= total {
                 return Err("incomplete".to_string());
             }
@@ -603,14 +654,84 @@ async fn drive_upload(
     }
 }
 
+/// Đưa cửa sổ chính hiện lên (từ khay hệ thống) và focus.
+fn show_main(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+/// Tạo biểu tượng khay hệ thống + menu (Mở / Đồng bộ ngay / Thoát). Để app chạy
+/// ngầm dưới khay: đóng cửa sổ chỉ ẩn đi, engine đồng bộ vẫn tiếp tục.
+fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+    let show_i = MenuItem::with_id(app, "show", "Mở MStudo", true, None::<&str>)?;
+    let sync_i = MenuItem::with_id(app, "sync", "Đồng bộ ngay", true, None::<&str>)?;
+    let quit_i = MenuItem::with_id(app, "quit", "Thoát", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show_i, &sync_i, &quit_i])?;
+
+    let mut builder = TrayIconBuilder::with_id("main-tray")
+        .tooltip("MStudo Desktop — đang chạy ngầm")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => show_main(app),
+            "sync" => {
+                show_main(app);
+                if let Some(w) = tauri::Manager::get_webview_window(app, "main") {
+                    // Gọi engine đồng bộ ở frontend (hàm toàn cục trong app.js).
+                    let _ = w.eval("window.runDriveSync && window.runDriveSync(true)");
+                }
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            // Bấm trái vào biểu tượng khay → mở lại cửa sổ.
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            setup_tray(app.handle())?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Bấm dấu × ở cửa sổ chính → ẩn xuống khay thay vì thoát (engine đồng
+            // bộ ảnh/hợp đồng vẫn chạy ngầm). Thoát hẳn bằng menu khay "Thoát".
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             http_get,
             http_post,
             pick_folder,
             write_file_b64,
             read_text,
+            read_image_b64,
             path_exists,
             delete_file,
             cleanup_old,
