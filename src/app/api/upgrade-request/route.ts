@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     amount?: number;
   };
 
-  const validPlan = plan === "basic" || plan === "photographer" || plan === "studio" ? (plan as Plan) : null;
+  const validPlan = plan === "basic" || plan === "photographer" || plan === "photographer_plus" || plan === "studio" ? (plan as Plan) : null;
   const validCycle = cycle === "year" ? "year" : "month";
   const code = discount_code?.trim().toUpperCase() || null;
   const db = createAdminClient();

@@ -349,14 +349,25 @@ export default function ContractEditor({
   async function changeStatus(status: ContractStatus) {
     if (status === f.status) return;
     set("status", status);
-    // Stamp completion time (drives the 1-month client-proof auto-cleanup);
-    // clear it if the contract moves back out of "completed".
-    const patch: { status: ContractStatus; completed_at?: string | null } = { status };
-    if (status === "completed") patch.completed_at = new Date().toISOString();
-    else patch.completed_at = null;
-    const { error } = await supabase.from("studio_contracts").update(patch).eq("id", contract.id);
-    toast(error ? `Lỗi: ${error.message}` : `Trạng thái: ${CONTRACT_STATUS_LABEL[status]}`);
-    if (!error) router.refresh();
+    // Đổi qua route server tập trung: nó đóng dấu completed_at và khi "completed"
+    // sẽ tự tạo album giao khách (album chọn ảnh đã tạo lúc khách ký).
+    try {
+      const res = await fetch("/api/studio/contract-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId: contract.id, status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast(`Lỗi: ${data?.error || res.status}`); return; }
+      toast(
+        status === "completed" && data?.deliveryAlbum
+          ? "Đã hoàn thành · đã tạo album giao khách"
+          : `Trạng thái: ${CONTRACT_STATUS_LABEL[status]}`
+      );
+      router.refresh();
+    } catch {
+      toast("Lỗi mạng, thử lại nhé.");
+    }
   }
 
   // ── Save contract fields ───────────────────────────────────────

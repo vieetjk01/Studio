@@ -586,9 +586,10 @@ alter table public.site_settings add column if not exists price_photographer_yea
 alter table public.site_settings add column if not exists price_photographer_plus_month integer not null default 129000;
 alter table public.site_settings add column if not exists price_photographer_plus_year  integer not null default 1249000;
 -- Per-plan general discount (%) applied to both billing cycles. (Cũ — giữ để tương thích.)
-alter table public.site_settings add column if not exists basic_discount_percent        integer not null default 0;
-alter table public.site_settings add column if not exists photographer_discount_percent  integer not null default 0;
-alter table public.site_settings add column if not exists studio_discount_percent        integer not null default 0;
+alter table public.site_settings add column if not exists basic_discount_percent             integer not null default 0;
+alter table public.site_settings add column if not exists photographer_discount_percent      integer not null default 0;
+alter table public.site_settings add column if not exists photographer_plus_discount_percent integer not null default 0;
+alter table public.site_settings add column if not exists studio_discount_percent            integer not null default 0;
 
 -- Giảm giá RIÊNG theo chu kỳ (tháng / năm) cho từng gói — dùng ở trang nâng cấp.
 alter table public.site_settings add column if not exists basic_discount_month_percent             integer not null default 0;
@@ -1627,9 +1628,10 @@ create policy affiliate_commissions_admin on public.affiliate_commissions
 alter table public.profiles add column if not exists referred_by text; -- affiliate code
 
 -- Commission % per plan (stored in site_settings).
-alter table public.site_settings add column if not exists affiliate_commission_basic        int not null default 10;
-alter table public.site_settings add column if not exists affiliate_commission_photographer  int not null default 10;
-alter table public.site_settings add column if not exists affiliate_commission_studio        int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_basic             int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_photographer      int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_photographer_plus int not null default 10;
+alter table public.site_settings add column if not exists affiliate_commission_studio            int not null default 10;
 
 -- ============================================================================
 -- Google Calendar integration

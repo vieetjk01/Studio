@@ -45,6 +45,7 @@ export async function POST(req: Request) {
   }
   for (const f of [
     "basic_discount_percent", "studio_promo_percent", "studio_discount_percent", "photographer_discount_percent",
+    "photographer_plus_discount_percent",
     // Giảm giá riêng theo chu kỳ (tháng/năm) cho từng gói.
     "basic_discount_month_percent", "basic_discount_year_percent",
     "photographer_discount_month_percent", "photographer_discount_year_percent",

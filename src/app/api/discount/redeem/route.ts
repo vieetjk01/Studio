@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   if (!data.trial_days || data.trial_days <= 0) return NextResponse.json({ error: "not_trial" }, { status: 400 });
   if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) return NextResponse.json({ error: "expired" }, { status: 400 });
 
-  const plan = data.plan === "basic" || data.plan === "photographer" || data.plan === "studio" ? data.plan : "studio";
+  const plan = data.plan === "basic" || data.plan === "photographer" || data.plan === "photographer_plus" || data.plan === "studio" ? data.plan : "studio";
   const expires = new Date(Date.now() + data.trial_days * 86400000).toISOString();
   const patch = planProfilePatch(plan);
 

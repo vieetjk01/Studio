@@ -26,7 +26,7 @@ const STATUS_COLOR: Record<string, string> = { pending: "#c7a76b", paid: "#7bb38
 export default function AdminAffiliatePage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rates, setRates] = useState({ basic: 10, photographer: 10, studio: 10 });
+  const [rates, setRates] = useState({ basic: 10, photographer: 10, photographer_plus: 10, studio: 10 });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -39,6 +39,7 @@ export default function AdminAffiliatePage() {
           setRates({
             basic: d.settings.affiliate_commission_basic ?? 10,
             photographer: d.settings.affiliate_commission_photographer ?? 10,
+            photographer_plus: d.settings.affiliate_commission_photographer_plus ?? 10,
             studio: d.settings.affiliate_commission_studio ?? 10,
           });
         }
@@ -101,8 +102,8 @@ export default function AdminAffiliatePage() {
           <TrendingUp size={16} style={{ color: "var(--gold, #3fb98a)" }} />
           Tỉ lệ hoa hồng
         </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {(["basic", "photographer", "studio"] as const).map((plan) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(["basic", "photographer", "photographer_plus", "studio"] as const).map((plan) => (
             <div key={plan}>
               <label className="mb-1.5 block text-[13px]" style={{ color: "var(--text2)" }}>
                 Gói {PLAN_LABEL[plan]} (%)

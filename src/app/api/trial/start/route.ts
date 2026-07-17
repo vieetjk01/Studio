@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { plan } = (await req.json().catch(() => ({}))) as { plan?: string };
-  if (plan !== "basic" && plan !== "photographer" && plan !== "studio") {
+  if (plan !== "basic" && plan !== "photographer" && plan !== "photographer_plus" && plan !== "studio") {
     return NextResponse.json({ error: "bad_plan" }, { status: 400 });
   }
   const days = trialDaysFor(plan as Plan);

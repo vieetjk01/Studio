@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Download } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { useCachedJson } from "@/lib/client-cache";
 import {
   contractTotal,
@@ -42,7 +41,6 @@ export default function ContractsListView() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | ContractStatus>("all");
   const [updating, setUpdating] = useState<string | null>(null);
-  const supabase = createClient();
 
   // Tải danh sách + cache trên máy: hiện tức thì bản đã lưu, làm mới ngầm.
   const { data, loading, fromCache, setData } = useCachedJson<{ list: ContractRow[] }>(
@@ -69,9 +67,20 @@ export default function ContractsListView() {
   async function changeStatus(id: string, next: ContractStatus, e: React.ChangeEvent<HTMLSelectElement>) {
     e.stopPropagation();
     setUpdating(id);
+    const prev = rows.find((r) => r.id === id)?.status;
     // Cập nhật lạc quan ngay (ghi cả cache) → phản hồi tức thì, rồi lưu lên server.
-    setRows((prev) => prev.map((r) => r.id === id ? { ...r, status: next } : r));
-    await supabase.from("studio_contracts").update({ status: next }).eq("id", id);
+    setRows((p) => p.map((r) => r.id === id ? { ...r, status: next } : r));
+    // Route server tập trung: đóng dấu completed_at + tạo album giao khi hoàn thành.
+    try {
+      const res = await fetch("/api/studio/contract-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId: id, status: next }),
+      });
+      if (!res.ok && prev) setRows((p) => p.map((r) => r.id === id ? { ...r, status: prev } : r));
+    } catch {
+      if (prev) setRows((p) => p.map((r) => r.id === id ? { ...r, status: prev } : r));
+    }
     setUpdating(null);
   }
 
