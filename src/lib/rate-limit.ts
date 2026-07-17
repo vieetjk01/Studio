@@ -50,3 +50,43 @@ export function limitByIp(req: Request, bucket: string, limit: number, windowMs:
   if (rateLimit(`${bucket}:${clientIp(req)}`, limit, windowMs)) return null;
   return NextResponse.json({ error: "rate_limited" }, { status: 429 });
 }
+
+/**
+ * Bản BỀN (chia sẻ giữa các instance serverless) qua Upstash Redis REST — dùng
+ * cho endpoint nhạy cảm (dò mật khẩu). Nếu chưa cấu hình Upstash → tự lùi về bộ
+ * đếm in-memory (như limitByIp). Lỗi kho → fail-open (không khóa oan người dùng).
+ * Cần env: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.
+ */
+async function durableAllowed(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const tok = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !tok) return rateLimit(key, limit, windowMs); // fallback in-memory
+  const ttl = Math.max(1, Math.ceil(windowMs / 1000));
+  try {
+    const res = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
+      body: JSON.stringify([
+        ["INCR", key],
+        ["EXPIRE", key, String(ttl), "NX"],
+      ]),
+      cache: "no-store",
+    });
+    if (!res.ok) return true; // kho lỗi → không chặn
+    const data = (await res.json()) as Array<{ result?: number }>;
+    const count = Number(data?.[0]?.result ?? 0);
+    return count <= limit;
+  } catch {
+    return true;
+  }
+}
+
+export async function limitByIpDurable(
+  req: Request,
+  bucket: string,
+  limit: number,
+  windowMs: number
+): Promise<NextResponse | null> {
+  const ok = await durableAllowed(`${bucket}:${clientIp(req)}`, limit, windowMs);
+  return ok ? null : NextResponse.json({ error: "rate_limited" }, { status: 429 });
+}
