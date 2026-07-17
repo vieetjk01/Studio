@@ -10,10 +10,14 @@ import crypto from "crypto";
  * bộ sự kiện lịch (thông tin khách, booking) của nạn nhân bị đẩy sang lịch của
  * kẻ tấn công. Ký HMAC + hạn dùng ngắn khiến state không thể giả mạo.
  */
+// Bí mật ký state. Ở production PHẢI có secret thật; không được rơi về mặc định
+// công khai (kẻ tấn công đoán được → giả mạo state → account-linking CSRF).
 const SECRET =
   process.env.OAUTH_STATE_SECRET ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  "dev-insecure-oauth-state-secret";
+  (process.env.NODE_ENV === "production"
+    ? (() => { throw new Error("OAUTH_STATE_SECRET (hoặc SUPABASE_SERVICE_ROLE_KEY) là bắt buộc ở production"); })()
+    : "dev-insecure-oauth-state-secret");
 const TTL_MS = 10 * 60 * 1000; // state chỉ hợp lệ trong 10 phút
 
 function b64url(buf: Buffer): string {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { limitByIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,10 @@ export async function POST(
   req: Request,
   { params }: { params: { slug: string } }
 ) {
+  // Chặn spam/flood ghi bảng selections từ 1 IP.
+  const limited = limitByIp(req, `album-select:${params.slug}`, 20, 60_000);
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => ({}))) as {
     sessionId?: string;
     clientName?: string;
@@ -19,8 +24,9 @@ export async function POST(
     notes?: Record<string, string>;
   };
 
-  const sessionId = body.sessionId?.trim();
-  const photoIds = Array.isArray(body.photoIds) ? body.photoIds : [];
+  const sessionId = body.sessionId?.trim().slice(0, 100);
+  // Giới hạn số ảnh mỗi lần ghi (chống payload khổng lồ khi album không đặt hạn mức).
+  const photoIds = (Array.isArray(body.photoIds) ? body.photoIds : []).slice(0, 5000);
   const notes = body.notes && typeof body.notes === "object" ? body.notes : {};
 
   if (!sessionId) {
@@ -66,8 +72,8 @@ export async function POST(
       photo_id: id,
       photo_name: valid.get(id) ?? "",
       session_id: sessionId,
-      client_name: body.clientName?.trim() || null,
-      client_note: notes[id]?.trim() || null,
+      client_name: body.clientName?.trim().slice(0, 200) || null,
+      client_note: notes[id]?.trim().slice(0, 2000) || null,
     }));
 
   if (rows.length > 0) {

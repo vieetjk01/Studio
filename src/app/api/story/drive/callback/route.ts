@@ -1,14 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { connectStoryDrive } from "@/lib/story-drive";
+import { connectStoryDrive, editTokenFromState } from "@/lib/story-drive";
 
 export const dynamic = "force-dynamic";
 
-/** Google OAuth callback for the story-Drive connect flow. state = edit_token. */
+/** Google OAuth callback for the story-Drive connect flow. state = ký(story:edit_token). */
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
-  const token = searchParams.get("state");
   const error = searchParams.get("error");
+  const token = editTokenFromState(searchParams.get("state")); // xác minh chữ ký + hạn dùng
   const back = (q: string) => NextResponse.redirect(new URL(`/story/sua/${token ?? ""}?${q}`, req.url));
 
   if (error || !code || !token) return back(`drive=error`);

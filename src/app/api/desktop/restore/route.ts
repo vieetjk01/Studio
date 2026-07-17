@@ -57,12 +57,31 @@ export async function POST(req: Request) {
   if (rows.length > 1000) return NextResponse.json({ error: "batch_too_large" }, { status: 413 });
 
   const ids = rows.map((r) => S(r.id)).filter(Boolean);
+  const isChild = !!CHILD_TABLES[table];
 
-  // Những id đã tồn tại trên hệ thống.
+  // Xác định các bản ghi cha thuộc SỞ HỮU của tài khoản gọi (cho bảng con).
+  const ownedParents = new Set<string>();
+  if (isChild) {
+    const { parentCol, parentTable } = CHILD_TABLES[table];
+    const parentIds = [...new Set(rows.map((r) => S(r[parentCol])).filter(Boolean))];
+    for (const part of chunk(parentIds, 200)) {
+      const { data } = await db.from(parentTable).select("id").eq("owner_id", owner).in("id", part).range(0, 999);
+      (data ?? []).forEach((r: { id: string }) => ownedParents.add(r.id));
+    }
+  }
+
+  // existsSet = id ĐÃ CÓ *và THUỘC tài khoản này*. Không lọc theo owner sẽ cho phép
+  // ghi đè (overwrite) / chiếm bản ghi của studio khác theo id (IDOR).
   const existsSet = new Set<string>();
   for (const part of chunk(ids, 200)) {
-    const { data } = await db.from(table).select("id").in("id", part).range(0, 999);
-    (data ?? []).forEach((r: { id: string }) => existsSet.add(r.id));
+    if (isChild) {
+      const { parentCol } = CHILD_TABLES[table];
+      const { data } = await db.from(table).select(`id, ${parentCol}`).in("id", part).range(0, 999);
+      ((data ?? []) as unknown as Row[]).forEach((r) => { if (ownedParents.has(S(r[parentCol]))) existsSet.add(S(r.id)); });
+    } else {
+      const { data } = await db.from(table).select("id").eq("owner_id", owner).in("id", part).range(0, 999);
+      (data ?? []).forEach((r: { id: string }) => existsSet.add(r.id));
+    }
   }
 
   if (body.mode === "preview") {
@@ -77,14 +96,8 @@ export async function POST(req: Request) {
     valid = rows.filter((r) => S(r.id)).map((r) => ({ ...r, owner_id: owner }));
     skippedInvalid = rows.length - valid.length;
   } else {
-    const { parentCol, parentTable } = CHILD_TABLES[table];
-    const parentIds = [...new Set(rows.map((r) => S(r[parentCol])).filter(Boolean))];
-    const owned = new Set<string>();
-    for (const part of chunk(parentIds, 200)) {
-      const { data } = await db.from(parentTable).select("id").eq("owner_id", owner).in("id", part).range(0, 999);
-      (data ?? []).forEach((r: { id: string }) => owned.add(r.id));
-    }
-    valid = rows.filter((r) => S(r.id) && owned.has(S(r[parentCol])));
+    const { parentCol } = CHILD_TABLES[table];
+    valid = rows.filter((r) => S(r.id) && ownedParents.has(S(r[parentCol])));
     skippedInvalid = rows.length - valid.length;
   }
 

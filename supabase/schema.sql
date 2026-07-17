@@ -131,8 +131,11 @@ create table if not exists public.album_shares (
 );
 create index if not exists album_shares_album_idx on public.album_shares (album_id);
 alter table public.album_shares enable row level security;
+-- Đọc qua service-role (trang share dùng createAdminClient). KHÔNG mở đọc công khai:
+-- policy using(true) trước đây cho phép anon (bằng anon key) DUYỆT toàn bộ token
+-- share của mọi studio. Thu hồi quyền đọc của anon/authenticated.
 drop policy if exists album_shares_public_read on public.album_shares;
-create policy album_shares_public_read on public.album_shares for select using (true);
+revoke select on public.album_shares from anon, authenticated;
 
 -- ============================================================================
 -- updated_at trigger for albums
@@ -397,8 +400,11 @@ alter table public.site_settings add column if not exists feature_flags jsonb no
 -- Google Drive của ADMIN để lưu nội dung người dùng (logo, ảnh) thay cho dung
 -- lượng Supabase. Kết nối 1 lần trong Cài đặt hệ thống → app lưu refresh_token
 -- và id thư mục đã tạo. Xem src/lib/mstudo-drive.ts.
-alter table public.site_settings add column if not exists drive_refresh_token text;
-alter table public.site_settings add column if not exists drive_folder_id     text;
+-- BẢO MẬT: refresh_token Drive admin ĐÃ CHUYỂN sang bảng riêng public.admin_drive
+-- (chỉ service-role). site_settings có policy đọc công khai nên KHÔNG chứa bí mật.
+-- (Migration admin_drive.sql copy giá trị cũ rồi drop 2 cột này.)
+alter table public.site_settings drop column if exists drive_refresh_token;
+alter table public.site_settings drop column if exists drive_folder_id;
 
 alter table public.site_settings enable row level security;
 drop policy if exists site_settings_public_read on public.site_settings;
@@ -1831,3 +1837,16 @@ alter table public.studio_contracts add column if not exists drive_synced_at tim
 -- Studio chọn khi TẠO hợp đồng: tạo thư mục ảnh / video (chọn riêng).
 alter table public.studio_contracts add column if not exists drive_make_photo boolean not null default true;
 alter table public.studio_contracts add column if not exists drive_make_video boolean not null default false;
+
+-- ─── Google Drive của ADMIN (lưu nội dung người dùng) — refresh token BÍ MẬT ───
+-- Tách khỏi site_settings (bảng có policy đọc công khai). RLS bật + revoke → chỉ
+-- service-role (API server) đọc/ghi được. Xem src/lib/mstudo-drive.ts.
+create table if not exists public.admin_drive (
+  id            int primary key default 1 check (id = 1),
+  refresh_token text,
+  folder_id     text,
+  updated_at    timestamptz not null default now()
+);
+insert into public.admin_drive (id) values (1) on conflict (id) do nothing;
+revoke all on public.admin_drive from anon, authenticated;
+alter table public.admin_drive enable row level security;
