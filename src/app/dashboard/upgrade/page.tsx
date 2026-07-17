@@ -319,6 +319,9 @@ export default function UpgradePage() {
             </button>
           ))}
         </div>
+        <span className="rounded-full px-2.5 py-1 text-[12px] font-semibold" style={{ background: "color-mix(in srgb, var(--gold) 18%, transparent)", color: "var(--gold)" }}>
+          🎁 Mua theo năm tặng thêm 30 ngày
+        </span>
         {/* Discount code */}
         <div className="flex items-end gap-2">
           <input value={codeInput} onChange={(e) => setCodeInput(e.target.value.toUpperCase())} placeholder="Mã giảm giá" className="input w-40" />

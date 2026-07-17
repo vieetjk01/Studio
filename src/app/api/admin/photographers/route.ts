@@ -1,26 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planProfilePatch, trialDaysFor, type Plan } from "@/lib/plans";
+import { planExpiry, planProfilePatch, trialDaysFor, type Plan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
-
-/** Expiry timestamp for a plan/cycle (null = free / no expiry). */
-function expiryFor(plan: Plan, cycle: "month" | "year"): string | null {
-  if (plan === "free") return null;
-  const d = new Date();
-  if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
-  else {
-    // setMonth(+1) tràn cuối tháng (31/1 → 2-3/3, "nhảy" qua tháng 2 ngắn).
-    // Kẹp về ngày cuối tháng kế tiếp khi ngày gốc không tồn tại ở tháng đó.
-    const day = d.getDate();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + 1);
-    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(day, last));
-  }
-  return d.toISOString();
-}
 
 /** Update a photographer's role / activation / plan. Admin only. */
 export async function POST(req: Request) {
@@ -63,7 +46,7 @@ export async function POST(req: Request) {
     const cycle = body.cycle === "year" ? "year" : "month";
     Object.assign(patch, planProfilePatch(body.plan), {
       plan_cycle: body.plan === "free" ? null : cycle,
-      plan_expires_at: expiryFor(body.plan, cycle),
+      plan_expires_at: body.plan === "free" ? null : planExpiry(cycle),
     });
   }
 

@@ -128,6 +128,21 @@
               <p class="muted">Kết nối Google Drive tại mstudo (web) › <b>Khách hàng › Đồng bộ Drive</b>. Chọn thư mục gốc trên máy để chứa ảnh/video các hợp đồng (mỗi hợp đồng 1 thư mục con, tự tải lên Drive).</p>
               <p class="muted">Thư mục gốc ảnh/video: <code id="driveDir" class="folder-path">chưa chọn</code></p>
               <p class="muted">Đồng bộ Drive gần nhất: <span id="stDrive">—</span></p>
+              <p class="muted">Hợp đồng <b>đang thực hiện</b> được quét mỗi ~10 giây — bỏ ảnh vào thư mục là tự tải lên Drive ngay, khỏi chờ.</p>
+
+              <!-- Tiến trình đồng bộ (giống app Google Drive: ảnh đang tải, số ảnh, %, thời gian dự kiến) -->
+              <div id="syncStatus" class="sync-status hidden">
+                <img id="syncThumb" class="sync-thumb hidden" alt="" />
+                <div class="sync-info">
+                  <div class="sync-head">
+                    <span id="syncTitle">Đang đồng bộ…</span>
+                    <span id="syncPct" class="sync-pct">0%</span>
+                  </div>
+                  <div class="sync-bar"><div id="syncBarFill" class="sync-bar-fill"></div></div>
+                  <div id="syncFile" class="sync-file"></div>
+                  <div id="syncMeta" class="muted"></div>
+                </div>
+              </div>
             </div>
             <div class="card">
               <div class="row-between">
@@ -135,6 +150,7 @@
                 <button id="btnCheckUpdate" class="btn small">↻ Kiểm tra cập nhật</button>
               </div>
               <p class="muted" id="appVer"></p>
+              <p class="muted">Bấm dấu <b>×</b> để thu nhỏ xuống <b>khay hệ thống</b> — app vẫn chạy ngầm và tiếp tục đồng bộ. Chuột phải vào biểu tượng khay để <b>Mở</b>, <b>Đồng bộ ngay</b> hoặc <b>Thoát</b> hẳn.</p>
             </div>
             <div class="card">
               <h2>Thiết bị</h2>

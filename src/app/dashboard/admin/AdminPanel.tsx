@@ -4,7 +4,7 @@ import { useState } from "react";
 import { fmtDate } from "@/lib/date";
 import { UserPlus, Trash2 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
-import { planProfilePatch, type Plan } from "@/lib/plans";
+import { planExpiry, planProfilePatch, type Plan } from "@/lib/plans";
 import type { Profile } from "@/lib/types";
 
 export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
@@ -31,14 +31,9 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
   }
 
   // Assign a plan with a billing cycle (sets auto-expiry server-side).
+  // Xem trước cùng công thức server: mua theo năm được tặng thêm 30 ngày.
   async function setPlan(p: Profile, plan: Plan, cycle: "month" | "year") {
-    let expires: string | null = null;
-    if (plan !== "free") {
-      const d = new Date();
-      if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
-      else d.setMonth(d.getMonth() + 1);
-      expires = d.toISOString();
-    }
+    const expires: string | null = plan === "free" ? null : planExpiry(cycle);
     const patch: Partial<Profile> = {
       ...planProfilePatch(plan),
       plan_cycle: plan === "free" ? null : cycle,

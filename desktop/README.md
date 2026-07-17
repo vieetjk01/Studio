@@ -90,3 +90,21 @@ lên Google Drive của studio** (1 chiều). Chủ studio:
 Mặc định **JPG Goc** → album chọn ảnh, **File ChinhSua** → gallery giao khách;
 **Raw** và **Video Goc** không đồng bộ. Cần đặt `GOOGLE_STUDIO_DRIVE_REDIRECT_URI`
 và chạy migration `supabase/migrations/studio_drive_sync.sql`.
+
+### Đồng bộ gần như tức thì + thanh tiến trình (như app Google Drive)
+
+- **Hợp đồng “đang thực hiện”** được quét mỗi **~10 giây** (vòng nhanh) — thợ đổ
+  ảnh vào thư mục là tự tải lên Drive ngay, khỏi chờ. Các hợp đồng đã ký khác vẫn
+  quét ở vòng chậm (2 phút) để bắt file bỏ vào muộn. Đây là phương án tối ưu: vòng
+  nhanh chỉ đụng vài hợp đồng đang chạy (danh sách cache 30s, cây thư mục Drive
+  cache 5 phút) nên không “đập” server mỗi 10 giây.
+- Khi tải, app hiện **ảnh đang đồng bộ (xem trước), số ảnh (x/y), phần trăm, tốc
+  độ và thời gian dự kiến còn lại** — cập nhật mượt theo từng khối 8MB (quan trọng
+  với video lớn). Manifest ghi sau mỗi file nên ngắt giữa chừng không tải lại từ đầu.
+
+### Chạy ngầm dưới khay hệ thống
+
+Bấm dấu **×** ở cửa sổ chính sẽ **thu nhỏ xuống khay hệ thống** thay vì thoát —
+engine đồng bộ hợp đồng/ảnh vẫn chạy ngầm. Biểu tượng khay: **bấm trái** để mở
+lại cửa sổ; **chuột phải** có menu **Mở / Đồng bộ ngay / Thoát** (Thoát mới đóng
+hẳn app).
