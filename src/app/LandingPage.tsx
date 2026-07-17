@@ -264,14 +264,13 @@ function PriceRow({ dyn, fallbackPrice, fallbackPeriod, className }: {
   fallbackPeriod: string;
   className?: string;
 }) {
-  // Dòng giá GIẢM: giá + chu kỳ + nhãn -x% (giá gốc gạch ngang nằm ở dòng tên).
-  // nowrap + chiều cao cố định: giá dài ("300.000₫") không xuống 2 dòng làm lệch
-  // nút "Dùng thử" giữa các gói.
+  // Dòng giá GIẢM: chỉ giá + chu kỳ (giá gốc gạch ngang & nhãn -x% nằm ở dòng
+  // tên) — giữ dòng này ngắn để giá năm lớn ("2.000.000₫") không tràn khung.
+  // nowrap + chiều cao cố định để nút "Dùng thử" các gói thẳng hàng.
   return (
     <div className={className} style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "10px 0 4px", flexWrap: "nowrap", height: 40, whiteSpace: "nowrap" }}>
       <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-.03em" }}>{dyn?.price ?? fallbackPrice}</span>
       <span style={{ color: "var(--muted)", fontSize: 14 }}>{dyn?.period ?? fallbackPeriod}</span>
-      {dyn?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{`-${dyn.off}%`}</span>}
     </div>
   );
 }
@@ -381,9 +380,17 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
             monthLabel={lang === "en" ? "Monthly" : "Theo tháng"}
             yearLabel={lang === "en" ? "Yearly" : "Theo năm"}
           >
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18, alignItems: "stretch" }}>
-              {L.pricing.plans.map((p) => {
+            <div className="ms-pricing-grid">
+              {(() => {
                 const lng = lang === "en" ? "en" : "vi";
+                // Có gói nào đang giảm giá không? Nếu có, mọi thẻ dành riêng 1 dòng
+                // (giá gốc + -x%) để nút "Dùng thử" vẫn thẳng hàng.
+                const hasAnyDiscount = !!pricing && L.pricing.plans.some((pp) => {
+                  const m = planPricing(pricing, pp.name, "month", lng);
+                  const y = planPricing(pricing, pp.name, "year", lng);
+                  return m?.off || y?.off;
+                });
+                return L.pricing.plans.map((p) => {
                 const dynMonth = planPricing(pricing, p.name, "month", lng);
                 const dynYear = planPricing(pricing, p.name, "year", lng);
                 // Gộp gói Plus vào thẻ Photographer (bớt 1 cột).
@@ -393,13 +400,27 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                 return (
                   <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
                     {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
-                    {/* Dòng 1: tên gói + giá gốc gạch ngang (theo chu kỳ). */}
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", minHeight: 22 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
-                      {dynMonth?.full && <span className="ms-cy-month" style={{ color: "var(--muted)", fontSize: 15, textDecoration: "line-through" }}>{dynMonth.full}</span>}
-                      {dynYear?.full && <span className="ms-cy-year" style={{ color: "var(--muted)", fontSize: 15, textDecoration: "line-through" }}>{dynYear.full}</span>}
-                    </div>
-                    {/* Dòng 2: giá (đã giảm) + chu kỳ + nhãn -x%. */}
+                    {/* Dòng tên gói. */}
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
+                    {/* Dòng giá gốc (gạch ngang) + nhãn -x% — dòng ngắn riêng nên giá
+                        năm lớn không tràn khung; chiều cao cố định để nút thẳng hàng. */}
+                    {hasAnyDiscount && (
+                      <div style={{ height: 18, marginTop: 8, display: "flex", alignItems: "baseline", gap: 6, whiteSpace: "nowrap" }}>
+                        {dynMonth && (dynMonth.full || dynMonth.off) && (
+                          <span className="ms-cy-month" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                            {dynMonth.full && <span style={{ color: "var(--muted)", fontSize: 14, textDecoration: "line-through" }}>{dynMonth.full}</span>}
+                            {dynMonth.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${dynMonth.off}%`}</span>}
+                          </span>
+                        )}
+                        {dynYear && (dynYear.full || dynYear.off) && (
+                          <span className="ms-cy-year" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                            {dynYear.full && <span style={{ color: "var(--muted)", fontSize: 14, textDecoration: "line-through" }}>{dynYear.full}</span>}
+                            {dynYear.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${dynYear.off}%`}</span>}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {/* Dòng giá đã giảm + chu kỳ. */}
                     <PriceRow className="ms-cy-month" dyn={dynMonth} fallbackPrice={p.price} fallbackPeriod={p.period} />
                     <PriceRow className="ms-cy-year" dyn={dynYear} fallbackPrice={p.price} fallbackPeriod={p.period} />
                     {/* Cố định chiều cao mô tả (2 dòng) để nút "Dùng thử" của mọi
@@ -441,7 +462,8 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                     )}
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           </CyclePricing>
         </section>
