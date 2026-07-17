@@ -477,10 +477,12 @@ body {
 :root[data-theme="dark"] .mstudo-landing .ms-logo-dark {
   display: block;
 }
-/* Toggle giá tháng/năm: hiện đúng một biến thể theo data-cycle của island. */
+/* Toggle giá tháng/năm: hiện đúng một biến thể theo data-cycle của island.
+   Dùng !important vì các dòng giá có inline style display:flex (inline thắng
+   CSS thường) — không có !important thì cả tháng lẫn năm cùng hiện. */
 .mstudo-landing [data-cycle="month"] .ms-cy-year,
 .mstudo-landing [data-cycle="year"] .ms-cy-month {
-  display: none;
+  display: none !important;
 }
 /* FAQ dùng <details> gốc — ẩn mũi tên mặc định, tự vẽ +/– theo trạng thái. */
 .mstudo-landing .ms-faq > summary {

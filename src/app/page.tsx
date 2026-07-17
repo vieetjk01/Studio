@@ -15,12 +15,11 @@ export default async function HomePage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("site_settings")
-      // Không select `photographer_plus_discount_percent` ở đây: cột này mới,
-      // nếu DB chưa chạy migration thì cả câu SELECT sẽ lỗi và MỌI gói rơi về
-      // giá tĩnh. Giảm giá landing cho Photographer Plus mặc định 0 (giá đầy đủ);
-      // các cột giá price_photographer_plus_* đã tồn tại sẵn nên an toàn.
+      // Giảm giá Photographer Plus đọc từ cột theo chu kỳ
+      // (photographer_plus_discount_month/year_percent) — các cột này đã tồn tại
+      // sẵn trong DB nên select an toàn (không cần migration mới).
       .select(
-        "price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_photographer_plus_month, price_photographer_plus_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent"
+        "price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_photographer_plus_month, price_photographer_plus_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, photographer_plus_discount_month_percent, photographer_plus_discount_year_percent, studio_discount_percent, studio_promo_percent"
       )
       .eq("id", 1)
       .maybeSingle();
@@ -36,7 +35,8 @@ export default async function HomePage() {
         studioYear: data.price_studio_year,
         basicDiscount: data.basic_discount_percent ?? 0,
         photographerDiscount: data.photographer_discount_percent ?? 0,
-        photographerPlusDiscount: 0,
+        photographerPlusDiscountMonth: data.photographer_plus_discount_month_percent ?? 0,
+        photographerPlusDiscountYear: data.photographer_plus_discount_year_percent ?? 0,
         studioDiscount: data.studio_discount_percent ?? 0,
         studioPromo: data.studio_promo_percent ?? 0,
       };
