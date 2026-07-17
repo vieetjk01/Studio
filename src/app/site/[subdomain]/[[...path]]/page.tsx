@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
@@ -31,15 +32,17 @@ function isVieetjkKey(key: string): boolean {
   return k === BRAND.domain || k === "vieetjk" || k === `www.${BRAND.domain}`;
 }
 
-async function siteHasVieetjkTemplate(key: string): Promise<boolean> {
+// cache(): generateMetadata VÀ SitePage cùng gọi các hàm này trong một request —
+// dedupe để mỗi trang chỉ query bảng `sites` một lần thay vì 3-4 lần.
+const siteHasVieetjkTemplate = cache(async (key: string): Promise<boolean> => {
   const db = createAdminClient();
   const k = key.toLowerCase();
   const col = k.includes(".") ? "custom_domain" : "subdomain";
   const { data } = await db.from("sites").select("template").eq(col, k).maybeSingle();
   return (data?.template as string | undefined) === "vieetjk";
-}
+});
 
-async function loadTenant(key: string): Promise<SiteData | null> {
+const loadTenant = cache(async (key: string): Promise<SiteData | null> => {
   const db = createAdminClient();
   const k = key.toLowerCase();
   let site: Site | null = null;
@@ -58,7 +61,7 @@ async function loadTenant(key: string): Promise<SiteData | null> {
   }
   if (!site || !site.published) return null;
   return loadSiteBundle(db, site, true);
-}
+});
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const key = params.subdomain;

@@ -142,8 +142,13 @@ export default function StoryFeed({
       attach();
     } catch { setCamErr(true); }
   }, [facing, stopStream]);
-  async function openCamera() { if (!guestUploadEnabled) return; setCam("live"); setCaptured(null); setCapturedFile(null); setCaption(""); setCamErr(false); await startStream(); }
-  function closeCamera() { stopStream(); setCam("closed"); setCaptured(null); setCapturedFile(null); setCaption(""); setCamErr(false); }
+  // Thu hồi blob URL cũ khi thay/đóng để không rò rỉ bộ nhớ (mỗi lần "Chụp lại"
+  // là một blob ảnh/video nhiều MB nếu không revoke).
+  const replaceCaptured = useCallback((url: string | null) => {
+    setCaptured((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
+  }, []);
+  async function openCamera() { if (!guestUploadEnabled) return; setCam("live"); replaceCaptured(null); setCapturedFile(null); setCaption(""); setCamErr(false); await startStream(); }
+  function closeCamera() { stopStream(); setCam("closed"); replaceCaptured(null); setCapturedFile(null); setCaption(""); setCamErr(false); }
   function capture() {
     const vd = videoRef.current;
     if (!vd || !vd.videoWidth) { setCamErr(true); return; }
@@ -152,12 +157,12 @@ export default function StoryFeed({
     const ctx = cvs.getContext("2d")!; const sx = (w - side) / 2, sy = (h - side) / 2;
     if (facing === "user") { ctx.translate(side, 0); ctx.scale(-1, 1); }
     ctx.drawImage(vd, sx, sy, side, side, 0, 0, side, side);
-    cvs.toBlob((b) => { if (b) { setCapturedFile(b); setCaptured(URL.createObjectURL(b)); } }, "image/jpeg", 0.9);
+    cvs.toBlob((b) => { if (b) { setCapturedFile(b); replaceCaptured(URL.createObjectURL(b)); } }, "image/jpeg", 0.9);
     setFlashing(true); setTimeout(() => setFlashing(false), 500); stopStream();
   }
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
-    setCapturedFile(f); setCaptured(URL.createObjectURL(f)); setCamErr(false); setCam("live"); stopStream();
+    setCapturedFile(f); replaceCaptured(URL.createObjectURL(f)); setCamErr(false); setCam("live"); stopStream();
     e.target.value = "";
   }
   async function share() {
@@ -165,24 +170,35 @@ export default function StoryFeed({
     const gn = ensureName();
     if (!gn) return; // name gate opened; tap Share again after entering name
     setSending(true);
-    const fd = new FormData();
-    const ext = capturedFile.type.startsWith("video/") ? "mp4" : "jpg";
-    fd.append("file", capturedFile, `story.${ext}`);
-    fd.append("guest_name", gn);
-    const res = await fetch(`/api/story/contribute/${slug}`, { method: "POST", body: fd });
-    setSending(false);
-    closeCamera();
-    if (res.ok) { setSentMsg("Đã gửi! Ảnh của bạn sẽ hiện trên trang 💕"); setTimeout(() => { setSentMsg(null); location.reload(); }, 1400); }
-    else setSentMsg("Gửi chưa được, thử lại nhé.");
+    try {
+      const fd = new FormData();
+      const ext = capturedFile.type.startsWith("video/") ? "mp4" : "jpg";
+      fd.append("file", capturedFile, `story.${ext}`);
+      fd.append("guest_name", gn);
+      const res = await fetch(`/api/story/contribute/${slug}`, { method: "POST", body: fd });
+      closeCamera();
+      if (res.ok) { setSentMsg("Đã gửi! Ảnh của bạn sẽ hiện trên trang 💕"); setTimeout(() => { setSentMsg(null); location.reload(); }, 1400); }
+      else setSentMsg("Gửi chưa được, thử lại nhé.");
+    } catch {
+      // Mạng chập chờn (wifi tiệc cưới…): không được khoá nút Share vĩnh viễn.
+      setSentMsg("Gửi chưa được, kiểm tra mạng rồi thử lại nhé.");
+    } finally {
+      setSending(false);
+    }
   }
 
   async function submitWish() {
     const n = wishName.trim(), t = wishText.trim();
     if (!n || !t || wishBusy) return;
     setWishBusy(true);
-    const res = await fetch("/api/story/wish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, guest_name: n, wish: t }) });
-    setWishBusy(false);
-    if (res.ok) { setWishes((w) => [{ name: n, text: t }, ...w]); setWishName(""); setWishText(""); }
+    try {
+      const res = await fetch("/api/story/wish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, guest_name: n, wish: t }) });
+      if (res.ok) { setWishes((w) => [{ name: n, text: t }, ...w]); setWishName(""); setWishText(""); }
+    } catch {
+      /* offline: giữ nội dung đã nhập, chỉ mở khoá nút để thử lại */
+    } finally {
+      setWishBusy(false);
+    }
   }
 
   const camSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L8 6H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-4l-1.5-2Z" /><circle cx="12" cy="13" r="3.6" /></svg>;

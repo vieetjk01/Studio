@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as { table?: string; op?: string; row?: Row } | null;
   const cfg = body?.table ? TABLES[body.table] : undefined;
-  const table = body!.table as string;
+  const table = (body?.table ?? "") as string;
   const op = body?.op;
   const row = (body?.row || {}) as Row;
   if (!cfg || !["insert", "update", "delete"].includes(op || "")) {

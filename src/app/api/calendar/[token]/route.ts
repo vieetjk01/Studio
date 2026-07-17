@@ -14,9 +14,15 @@ function vevent(uid: string, date: string, time: string | null, summary: string,
   const mt = (time || "").match(/(\d{1,2}):(\d{2})/);
   if (mt) {
     const start = `${ymd(date)}T${pad(+mt[1])}${pad(+mt[2])}00`;
-    // +2h end (floating local time)
+    // +2h end (floating local time). Ca bắt đầu ≥22h phải lăn DTEND sang NGÀY
+    // HÔM SAU, nếu không end < start và Google/Apple Calendar bỏ sự kiện.
     const endH = (+mt[1] + 2) % 24;
-    lines.push(`DTSTART:${start}`, `DTEND:${ymd(date)}T${pad(endH)}${pad(+mt[2])}00`);
+    let endDate = date;
+    if (+mt[1] + 2 >= 24) {
+      const d = new Date(date + "T00:00:00Z");
+      endDate = new Date(d.getTime() + 86400000).toISOString().slice(0, 10);
+    }
+    lines.push(`DTSTART:${start}`, `DTEND:${ymd(endDate)}T${pad(endH)}${pad(+mt[2])}00`);
   } else {
     const d = new Date(date + "T00:00:00");
     const next = new Date(d.getTime() + 86400000).toISOString().slice(0, 10);

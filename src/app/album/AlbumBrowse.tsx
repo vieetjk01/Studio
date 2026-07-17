@@ -105,10 +105,15 @@ export default function AlbumBrowse({ galleries }: { galleries: GalleryCard[] })
     const q = query.trim();
     if (!q) return setResults(null);
     setSearching(true);
-    const res = await fetch(`/api/album/search?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    setResults(data.galleries ?? []);
-    setSearching(false);
+    try {
+      const res = await fetch(`/api/album/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setResults(data.galleries ?? []);
+    } catch {
+      setResults([]); // lỗi mạng: đừng treo spinner vô hạn
+    } finally {
+      setSearching(false);
+    }
   }
 
   const base = results ?? galleries;

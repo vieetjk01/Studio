@@ -10,11 +10,15 @@ export default function ServiceWorkerRegistrar() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    // When a new service worker takes control, reload once so the user always
-    // ends up on the freshest build instead of a stale cached shell.
+    // When a NEW service worker replaces an old one, reload once so the user
+    // ends up on the freshest build instead of a stale cached shell. On the very
+    // first visit sw.js calls clients.claim() → controllerchange cũng bắn dù
+    // chưa từng có SW nào — không được reload lúc đó (khách mới sẽ thấy trang
+    // tự tải lại vô cớ). Chỉ reload khi TRƯỚC ĐÓ đã có controller.
+    const hadController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     const onControllerChange = () => {
-      if (refreshing) return;
+      if (refreshing || !hadController) return;
       refreshing = true;
       window.location.reload();
     };

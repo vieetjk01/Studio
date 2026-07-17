@@ -310,12 +310,17 @@ export default function CustomerAlbum({
   async function downloadZip() {
     if (selectedPhotos.length === 0) return;
     setZipProgress(0);
-    const blob = await buildZip(
-      selectedPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
-      { watermark: wm, onProgress: (d, tot) => setZipProgress(Math.round((d / tot) * 100)) }
-    );
-    triggerDownload(blob, `${album.slug}-photos.zip`);
-    setZipProgress(null);
+    try {
+      const blob = await buildZip(
+        selectedPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
+        { watermark: wm, onProgress: (d, tot) => setZipProgress(Math.round((d / tot) * 100)) }
+      );
+      triggerDownload(blob, `${album.slug}-photos.zip`);
+    } catch {
+      /* lỗi mạng giữa chừng: không được khoá nút tải vĩnh viễn */
+    } finally {
+      setZipProgress(null);
+    }
   }
 
   useEffect(() => {

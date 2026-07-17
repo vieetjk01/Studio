@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const { email, password, full_name } = (await req.json()) as {
+  const { email, password, full_name } = (await req.json().catch(() => ({}))) as {
     email?: string;
     password?: string;
     full_name?: string;

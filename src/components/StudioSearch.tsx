@@ -21,6 +21,8 @@ export default function StudioSearch() {
       return;
     }
     const safe = term.replace(/[%,()]/g, " ");
+    // `stale` chặn query cũ (chậm) đè kết quả của query mới khi gõ nhanh.
+    let stale = false;
     const handle = setTimeout(async () => {
       const supabase = createClient();
       const { data } = await supabase
@@ -29,10 +31,11 @@ export default function StudioSearch() {
         .or(`title.ilike.%${safe}%,client_name.ilike.%${safe}%,client_phone.ilike.%${safe}%,code.ilike.%${safe}%`)
         .order("created_at", { ascending: false })
         .limit(8);
+      if (stale) return;
       setHits((data ?? []) as Hit[]);
       setOpen(true);
     }, 250);
-    return () => clearTimeout(handle);
+    return () => { stale = true; clearTimeout(handle); };
   }, [q]);
 
   useEffect(() => {

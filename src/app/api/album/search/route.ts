@@ -22,13 +22,19 @@ export async function GET(req: Request) {
   // Phone-based lookup is done server-side to find matching slugs, then results
   // only return safe fields (slug, title, cover_url, category).
   // A client may find their own (possibly private) gallery by exact phone.
-  const { data: byPhone } = await db
-    .from("albums")
-    .select("slug")
-    .or("is_gallery.eq.true,phase.eq.delivery")
-    .eq("status", "published")
-    .ilike("client_phone", like);
-  const phoneMatchSlugs = (byPhone ?? []).map((r) => r.slug);
+  // Chống liệt kê gallery riêng tư: chỉ tra theo SĐT khi khách nhập gần đủ số
+  // (≥8 chữ số). Chuỗi ngắn kiểu "090" khớp hàng loạt album private của mọi studio.
+  const digits = q.replace(/\D/g, "");
+  let phoneMatchSlugs: string[] = [];
+  if (digits.length >= 8) {
+    const { data: byPhone } = await db
+      .from("albums")
+      .select("slug")
+      .or("is_gallery.eq.true,phase.eq.delivery")
+      .eq("status", "published")
+      .ilike("client_phone", like);
+    phoneMatchSlugs = (byPhone ?? []).map((r) => r.slug);
+  }
 
   // Title search only surfaces albums pinned to the homepage; phone matches are
   // allowed through so a client can reach their private gallery.
