@@ -8,11 +8,14 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.2.2"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.2.3"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
 const saveCfg = () => localStorage.setItem("cfg", JSON.stringify(cfg));
+// Khai báo cho Rust các thư mục gốc được phép thao tác (bảo mật: mọi lệnh file
+// bị giới hạn trong đây). Gọi lúc khởi động + mỗi khi đổi thư mục.
+const syncRoots = () => invoke("set_roots", { paths: [cfg.dir, cfg.mediaDir].filter(Boolean) }).catch(() => {});
 
 const SYNC_EVERY_MS = 20 * 1000;         // đồng bộ hợp đồng mỗi 20 giây (gần như tức thì)
 const KEEP_DAYS = 30;                     // giữ file xuất 30 ngày
@@ -180,7 +183,7 @@ $("btnExportNow").onclick = () => runExports(true);
 { const b = $("btnPickMediaDir"); if (b) b.onclick = async () => {
   const p = await invoke("pick_folder");
   if (!p) return;
-  cfg.mediaDir = p; saveCfg(); refreshStats();
+  cfg.mediaDir = p; saveCfg(); syncRoots(); refreshStats();
   log("Đã chọn thư mục gốc ảnh/video: " + p);
   runDriveSync(true);
 }; }
@@ -189,6 +192,8 @@ $("btnChangeFolder").onclick = async () => {
   const p = await invoke("pick_folder");
   if (!p || p === cfg.dir) return;
   const move = confirm("Di chuyển toàn bộ dữ liệu đã lưu sang thư mục mới?\n\nOK = di chuyển · Cancel = giữ nguyên dữ liệu cũ, chỉ lưu mới vào vị trí mới");
+  // Cho phép thao tác ở cả thư mục cũ + mới trong lúc di chuyển.
+  await invoke("set_roots", { paths: [cfg.dir, p, cfg.mediaDir].filter(Boolean) }).catch(() => {});
   if (move) {
     try {
       for (const sub of ["HopDong", "SaoLuu", ...EXPORTS.map(([, f]) => f)]) {
@@ -199,7 +204,7 @@ $("btnChangeFolder").onclick = async () => {
       log("Đã di chuyển dữ liệu sang " + p);
     } catch (e) { log("Lỗi di chuyển dữ liệu: " + e, "err"); }
   }
-  cfg.dir = p; saveCfg(); refreshStats();
+  cfg.dir = p; saveCfg(); syncRoots(); refreshStats();
   log("Đổi thư mục lưu thành " + p);
 };
 $("btnDisconnect").onclick = () => {
@@ -554,6 +559,7 @@ function hookFocusSync() {
 
 // ─── Lịch chạy ───────────────────────────────────────────────────────────────
 function bootSync(first = false) {
+  syncRoots(); // đặt thư mục gốc được phép cho Rust trước khi thao tác file
   hookFocusSync();
   runSync(first);
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app

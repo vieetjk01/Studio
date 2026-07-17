@@ -4,7 +4,7 @@ import { effectivePlan, studioTier } from "@/lib/plans";
 import { getStudioBrand } from "@/lib/studio-brand";
 import { sendEmail } from "@/lib/email";
 import { sendPushToOwner } from "@/lib/push";
-import { rateLimit } from "@/lib/rate-limit";
+import { limitByIpDurable } from "@/lib/rate-limit";
 import { autoCreateContractDriveOnSign } from "@/lib/studio-drive";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +19,8 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   // F5: làm chậm dò SĐT theo từng token (SĐT là "mật khẩu" entropy thấp).
-  if (!rateLimit(`c-portal:${params.token}`, 20, 60_000)) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-  }
+  const rl = await limitByIpDurable(req, `c-portal:${params.token}`, 20, 60_000);
+  if (rl) return rl;
   const body = (await req.json().catch(() => ({}))) as {
     phone?: string;
     message?: string;

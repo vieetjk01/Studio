@@ -6,12 +6,51 @@ use base64::Engine as _;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime};
 
 #[derive(Serialize)]
 struct HttpResp {
     status: u16,
     body_b64: String,
+}
+
+/// Các thư mục GỐC được phép thao tác (client đặt qua `set_roots`: thư mục dữ
+/// liệu + thư mục ảnh/video). Mọi lệnh đọc/ghi/xóa file phải nằm trong đây — chốt
+/// chặn để dù webview bị lợi dụng cũng không đọc/ghi/xóa file ngoài vùng dữ liệu.
+static ROOTS: LazyLock<Mutex<Vec<String>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+
+fn norm_path(p: &str) -> String {
+    p.replace('/', "\\").to_lowercase()
+}
+
+/// Đường dẫn có được phép không: không chứa "..", và nằm trong một thư mục gốc.
+/// Khi CHƯA đặt gốc (mới mở app) → cho phép (tránh vỡ luồng khởi động).
+fn path_allowed(path: &str) -> bool {
+    if has_control_chars(path) {
+        return false;
+    }
+    if path.split(|c| c == '\\' || c == '/').any(|seg| seg == "..") {
+        return false;
+    }
+    let roots = ROOTS.lock().unwrap();
+    if roots.is_empty() {
+        return true;
+    }
+    let np = norm_path(path);
+    roots.iter().any(|r| np.starts_with(&norm_path(r)))
+}
+
+/// Client khai báo các thư mục gốc được phép (thư mục lưu + thư mục ảnh/video).
+#[tauri::command]
+fn set_roots(paths: Vec<String>) {
+    let mut roots = ROOTS.lock().unwrap();
+    roots.clear();
+    for p in paths {
+        if !p.is_empty() && !has_control_chars(&p) {
+            roots.push(p);
+        }
+    }
 }
 
 /// Gọi API mstudo từ phía Rust (tránh CORS của webview). Trả body dạng base64
@@ -93,6 +132,9 @@ fn write_file_b64(path: String, contents_b64: String) -> Result<(), String> {
     if has_control_chars(&path) || !WRITABLE_EXTS.contains(&ext_lower(&path).as_str()) {
         return Err("ext_not_allowed".to_string());
     }
+    if !path_allowed(&path) {
+        return Err("path_not_allowed".to_string());
+    }
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(contents_b64.as_bytes())
         .map_err(|e| e.to_string())?;
@@ -113,8 +155,8 @@ fn write_file_b64(path: String, contents_b64: String) -> Result<(), String> {
 
 #[tauri::command]
 fn read_text(path: String) -> Result<String, String> {
-    // Chỉ đọc file dữ liệu app tạo (manifest/cache JSON…), không đọc file lạ.
-    if has_control_chars(&path) || !READABLE_EXTS.contains(&ext_lower(&path).as_str()) {
+    // Chỉ đọc file dữ liệu app tạo (manifest/cache JSON…) trong thư mục gốc.
+    if has_control_chars(&path) || !READABLE_EXTS.contains(&ext_lower(&path).as_str()) || !path_allowed(&path) {
         return Err("bad_path".to_string());
     }
     fs::read_to_string(&path).map_err(|e| e.to_string())
@@ -127,7 +169,7 @@ fn path_exists(path: String) -> bool {
 
 #[tauri::command]
 fn delete_file(path: String) -> Result<(), String> {
-    if has_control_chars(&path) {
+    if !path_allowed(&path) {
         return Err("bad_path".to_string());
     }
     fs::remove_file(&path).map_err(|e| e.to_string())
@@ -137,6 +179,9 @@ fn delete_file(path: String) -> Result<(), String> {
 /// thư mục hợp đồng không bao giờ tự xóa).
 #[tauri::command]
 fn cleanup_old(dir: String, days: u64) -> Result<u32, String> {
+    if !path_allowed(&dir) {
+        return Err("bad_path".to_string());
+    }
     let cutoff = SystemTime::now() - Duration::from_secs(days * 24 * 3600);
     let mut removed = 0u32;
     let entries = match fs::read_dir(&dir) {
@@ -163,8 +208,8 @@ fn cleanup_old(dir: String, days: u64) -> Result<u32, String> {
 /// Windows 10/11). Trả lỗi nếu không tìm thấy Edge — frontend sẽ giữ bản HTML.
 #[tauri::command]
 fn edge_pdf(html_path: String, pdf_path: String) -> Result<(), String> {
-    // Chỉ nhận nguồn HTML và đích PDF hợp lệ (tránh bị dùng để ghi file lạ).
-    if has_control_chars(&html_path) || has_control_chars(&pdf_path) {
+    // Chỉ nhận nguồn HTML và đích PDF hợp lệ, trong thư mục gốc (tránh ghi/đọc file lạ).
+    if !path_allowed(&html_path) || !path_allowed(&pdf_path) {
         return Err("bad_path".to_string());
     }
     let src_ext = ext_lower(&html_path);
@@ -221,7 +266,7 @@ fn copy_dir_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
 /// Di chuyển toàn bộ dữ liệu đã lưu sang thư mục mới (khi studio đổi vị trí lưu).
 #[tauri::command]
 fn move_dir(from: String, to: String) -> Result<(), String> {
-    if has_control_chars(&from) || has_control_chars(&to) {
+    if !path_allowed(&from) || !path_allowed(&to) {
         return Err("bad_path".to_string());
     }
     let from_p = PathBuf::from(&from);
@@ -396,7 +441,7 @@ fn open_folder(path: String) -> Result<(), String> {
 /// Tạo cây thư mục (create_dir_all) cho một hợp đồng trên máy.
 #[tauri::command]
 fn create_dir(path: String) -> Result<(), String> {
-    if has_control_chars(&path) {
+    if !path_allowed(&path) {
         return Err("bad_path".to_string());
     }
     fs::create_dir_all(&path).map_err(|e| e.to_string())
@@ -414,6 +459,9 @@ struct DirEntryInfo {
 /// Drive (kèm size + thời điểm sửa để bỏ qua file đã tải, không đổi).
 #[tauri::command]
 fn list_dir(path: String) -> Result<Vec<DirEntryInfo>, String> {
+    if !path_allowed(&path) {
+        return Err("bad_path".to_string());
+    }
     let mut out = Vec::new();
     let rd = match fs::read_dir(&path) {
         Ok(r) => r,
@@ -471,7 +519,7 @@ async fn drive_upload(
     mime: String,
 ) -> Result<UploadResult, String> {
     use std::io::{Read, Seek, SeekFrom};
-    if has_control_chars(&file_path) || has_control_chars(&folder_id) {
+    if !path_allowed(&file_path) || has_control_chars(&folder_id) {
         return Err("bad_path".to_string());
     }
     let meta = fs::metadata(&file_path).map_err(|e| e.to_string())?;
@@ -576,7 +624,8 @@ fn main() {
             download_and_run,
             create_dir,
             list_dir,
-            drive_upload
+            drive_upload,
+            set_roots
         ])
         .run(tauri::generate_context!())
         .expect("Không khởi động được MStudo Desktop");
