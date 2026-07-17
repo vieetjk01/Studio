@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { unstable_cache } from "next/cache";
 import { headers } from "next/headers";
 import { Hanken_Grotesk, Cormorant_Garamond, Manrope, Dancing_Script, Great_Vibes } from "next/font/google";
 import "./globals.css";
@@ -16,12 +17,16 @@ const hanken = Hanken_Grotesk({
   display: "swap",
 });
 
+// Serif nhấn nhá — chỉ dùng ở các trang khách (album, thiệp, story, báo giá…),
+// KHÔNG dùng trong dashboard/landing → preload:false để mọi trang khác khỏi tải
+// ~6 file woff2 (3 weight × 2 style); trang nào dùng vẫn tự nạp qua CSS.
 const cormorant = Cormorant_Garamond({
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-cormorant",
   display: "swap",
+  preload: false,
 });
 
 // Các font dưới đây CHỈ dùng ở một số trang (landing / thiệp cưới / love story)
@@ -57,6 +62,32 @@ const DEFAULT_TITLE = "mstudo — Phần mềm quản lý studio ảnh";
 const DEFAULT_DESCRIPTION =
   "mstudo · Phần mềm quản lý studio ảnh: hợp đồng, báo giá, đặt lịch, lịch chụp, đội ngũ & tài chính trong một nơi.";
 
+// Tiêu đề/favicon do admin chỉnh rất hiếm khi đổi → cache 5 phút giữa các
+// request thay vì query Supabase trên MỌI page-load (giảm TTFB toàn trang).
+const getSiteMeta = unstable_cache(
+  async () => {
+    let title = DEFAULT_TITLE;
+    let description = DEFAULT_DESCRIPTION;
+    let favicon: string | null = null;
+    try {
+      const db = createAdminClient();
+      const { data } = await db
+        .from("site_settings")
+        .select("site_title, site_description, favicon_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data?.site_title) title = data.site_title;
+      if (data?.site_description) description = data.site_description;
+      if (data?.favicon_url) favicon = data.favicon_url;
+    } catch {
+      /* keep defaults */
+    }
+    return { title, description, favicon };
+  },
+  ["site-meta"],
+  { revalidate: 300 }
+);
+
 // Browser-tab title / description / favicon are admin-editable (Cài đặt → Trình
 // duyệt). Falls back to the defaults if Supabase isn't reachable or unset.
 export async function generateMetadata(): Promise<Metadata> {
@@ -73,22 +104,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   }
 
-  let title = DEFAULT_TITLE;
-  let description = DEFAULT_DESCRIPTION;
-  let favicon: string | null = null;
-  try {
-    const db = createAdminClient();
-    const { data } = await db
-      .from("site_settings")
-      .select("site_title, site_description, favicon_url")
-      .eq("id", 1)
-      .maybeSingle();
-    if (data?.site_title) title = data.site_title;
-    if (data?.site_description) description = data.site_description;
-    if (data?.favicon_url) favicon = data.favicon_url;
-  } catch {
-    /* keep defaults */
-  }
+  const { title, description, favicon } = await getSiteMeta();
   return {
     title,
     description,

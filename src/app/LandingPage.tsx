@@ -1,11 +1,22 @@
-"use client";
-
-import { useState, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
-import { useLang } from "@/lib/i18n";
-import { useTheme } from "@/lib/theme";
+import type { Lang } from "@/lib/i18n";
 import { mainUrl } from "@/lib/hosts";
 import MstudoVideo from "@/components/MstudoVideo";
+import LandingControls from "./landing/LandingControls";
+import CyclePricing from "./landing/CyclePricing";
+import ContactSection from "./landing/ContactSection";
+
+/**
+ * Trang chủ marketing — SERVER COMPONENT. Ngôn ngữ đến từ cookie `vk_lang`
+ * (đọc ở page.tsx), nên toàn bộ nội dung tĩnh (hero, tính năng, bảng giá,
+ * FAQ, giới thiệu…) render sẵn trên server và KHÔNG ship thành JS. Tương tác
+ * được cô lập vào các island nhỏ: LandingControls (đổi ngôn ngữ / giao diện),
+ * CyclePricing (toggle giá tháng/năm), ContactSection (form), MstudoVideo.
+ * FAQ dùng <details name> gốc của trình duyệt — accordion không cần JS.
+ * Giao diện sáng/tối theo html[data-theme] toàn cục (boot script đặt trước
+ * khi paint), logo đổi theo theme bằng CSS thay vì state.
+ */
 
 /* ── Bilingual content (ported from the mstudo design) ─────────────────── */
 type Dict = {
@@ -28,8 +39,10 @@ type Dict = {
 export type LandingPricing = {
   basicMonth: number; basicYear: number;
   photographerMonth: number; photographerYear: number;
+  photographerPlusMonth: number; photographerPlusYear: number;
   studioMonth: number; studioYear: number;
   basicDiscount: number; photographerDiscount: number;
+  photographerPlusDiscount: number;
   studioDiscount: number; studioPromo: number;
 };
 
@@ -71,7 +84,8 @@ const D: Record<"vi" | "en", Dict> = {
       plans: [
         { name: "Free", price: "0₫", period: "/tháng", desc: "Cho nhiếp ảnh gia mới bắt đầu", cta: "Bắt đầu miễn phí", f: ["5 album mỗi tháng", "Khách chọn ảnh & gửi lại studio (QR + link)", "Tải ảnh cho khách: tắt", "Ghi chú trên ảnh: tắt", "Lọc ảnh: 10 lần / tháng", "Nén ảnh: 5 lần / tháng", "Nén qua Drive: dùng thử 1 lần", "Watermark: chỉ chữ"] },
         { name: "Basic", price: "50.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia cá nhân", cta: "Dùng thử Basic", f: ["15 album mỗi tháng", "Cho khách tải ảnh (ZIP / từng ảnh)", "Cho khách ghi chú trên ảnh", "Watermark đầy đủ (logo + nén kèm)", "Lọc ảnh: không giới hạn", "Nén ảnh: không giới hạn", "Nén qua Drive: 5 lần / tháng"] },
-        { name: "Photographer", price: "100.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia chuyên nghiệp", cta: "Dùng thử Photographer", f: ["50 album mỗi tháng", "Đầy đủ tính năng Basic + full quyền khách hàng", "Nén qua Drive: 15 lần / tháng", "Trang quản lý lịch chụp riêng", "Nhận đặt lịch online (link + QR)", "Bảng giá dịch vụ & danh bạ khách hàng", "Lịch chụp + nhắc lịch", "Website cá nhân riêng + đổi logo", "Tên miền cá nhân (đang xây dựng)"] },
+        { name: "Photographer", price: "100.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia chuyên nghiệp", cta: "Dùng thử Photographer", f: ["50 album mỗi tháng", "Đầy đủ tính năng Basic + full quyền khách hàng", "Nén qua Drive: 15 lần / tháng", "Trang quản lý lịch chụp riêng", "Nhận đặt lịch online (link + QR)", "Bảng giá dịch vụ & danh bạ khách hàng", "Lịch chụp + nhắc lịch", "Website cá nhân riêng + đổi logo"] },
+        { name: "Photographer Plus", price: "129.000₫", period: "/tháng", desc: "Photographer + hợp đồng & tên miền riêng", cta: "Dùng thử Photographer Plus", f: ["100 album / tháng · nén Drive 30 lần / tháng", "Tất cả tính năng gói Photographer", "Báo giá hạng mục chi tiết cho khách", "Quản lý hợp đồng: gửi khách ký online, yêu cầu chỉnh sửa", "Mẫu hợp đồng tái sử dụng", "Website riêng dùng TÊN MIỀN RIÊNG (vd studio.com)"] },
         { name: "Studio", price: "300.000₫", period: "/tháng", desc: "Cho studio & đội nhóm chuyên nghiệp", cta: "Dùng thử Studio", accent: true, f: ["Tất cả tính năng Photographer — không giới hạn", "Album & nén qua Drive không giới hạn", "Trang quản lý studio riêng", "Quản lý hợp đồng & báo giá hạng mục", "Quản lý lịch chụp + nhắc lịch", "Quản lý photographer / cameramen & lương", "Khách xem hợp đồng online & yêu cầu chỉnh sửa", "Hỗ trợ riêng · nhận mọi tính năng nâng cấp"] },
       ],
     },
@@ -136,7 +150,8 @@ const D: Record<"vi" | "en", Dict> = {
       plans: [
         { name: "Free", price: "0₫", period: "/mo", desc: "For new photographers", cta: "Start free", f: ["5 albums / month", "Client photo selection via QR + link", "Client download: disabled", "Photo notes: disabled", "Filter photos: 10×/mo", "Compress photos: 5×/mo", "Drive compress: 1 trial", "Watermark: text only"] },
         { name: "Basic", price: "50,000₫", period: "/mo", desc: "For individual photographers", cta: "Try Basic", f: ["15 albums / month", "Client photo download (ZIP / single)", "Client photo notes", "Full watermark (logo + compress)", "Filter photos: unlimited", "Compress photos: unlimited", "Drive compress: 5×/mo"] },
-        { name: "Photographer", price: "100,000₫", period: "/mo", desc: "For professional photographers", cta: "Try Photographer", f: ["50 albums / month", "All Basic features + full client access", "Drive compress: 15×/mo", "Dedicated shoot schedule page", "Online booking (link + QR)", "Service pricing & client directory", "Shoot calendar + reminders", "Personal website + custom logo", "Custom domain (coming soon)"] },
+        { name: "Photographer", price: "100,000₫", period: "/mo", desc: "For professional photographers", cta: "Try Photographer", f: ["50 albums / month", "All Basic features + full client access", "Drive compress: 15×/mo", "Dedicated shoot schedule page", "Online booking (link + QR)", "Service pricing & client directory", "Shoot calendar + reminders", "Personal website + custom logo"] },
+        { name: "Photographer Plus", price: "129,000₫", period: "/mo", desc: "Photographer + contracts & custom domain", cta: "Try Photographer Plus", f: ["100 albums / month · Drive compress 30×/mo", "All Photographer features", "Detailed line-item quotes", "Contracts: clients sign online, request edits", "Reusable contract templates", "Personal website on your OWN DOMAIN (e.g. studio.com)"] },
         { name: "Studio", price: "300,000₫", period: "/mo", desc: "For studios & professional teams", cta: "Try Studio", accent: true, f: ["All Photographer features — unlimited", "Unlimited albums & Drive compress", "Dedicated studio management page", "Contract & quote management", "Shoot schedule + reminders", "Manage photographers & pay by contract", "Clients view contracts online", "Priority support · all future features"] },
       ],
     },
@@ -162,7 +177,7 @@ const D: Record<"vi" | "en", Dict> = {
     about: {
       title: "About mstudo",
       text: "mstudo is an all-in-one studio management solution built for photography studios in Vietnam. We help studios digitize their entire workflow — from bookings and orders to finances and staff.",
-     company: "A product of Vieetjk", addrLabel: "Address", address: "Quang Ngai", email: "vieetjk@gmail.com", phone: "0974.374.744",
+      company: "A product of Vieetjk", addrLabel: "Address", address: "Quang Ngai", email: "vieetjk@gmail.com", phone: "0974.374.744",
     },
     footer: { copy: "© 2026 mstudo. A product of Vieetjk" },
   },
@@ -190,135 +205,71 @@ const sectionSub: CSSProperties = { color: "var(--muted)", fontSize: 17, lineHei
 const cardBase: CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 16, padding: 26 };
 const navLink: CSSProperties = { color: "var(--muted)", textDecoration: "none", fontSize: 14.5, fontWeight: 500 };
 
-/* ── Contact / Feedback section ───────────────────────────────────────────── */
-const CONTACT_TR = {
-  vi: {
-    eyebrow: "Liên hệ & góp ý", title: "Bạn có câu hỏi hoặc góp ý?",
-    sub: "Chúng tôi luôn lắng nghe — hãy nhắn tin và chúng tôi sẽ phản hồi sớm nhất có thể.",
-    done: "✓ Cảm ơn bạn! Chúng tôi sẽ phản hồi sớm.",
-    name: "Tên *", namePh: "Nguyễn Văn A",
-    email: "Email (tuỳ chọn)",
-    message: "Nội dung *", messagePh: "Câu hỏi, góp ý, hoặc phản hồi của bạn…",
-    error: "Gửi thất bại, vui lòng thử lại.",
-    sending: "Đang gửi…", send: "Gửi góp ý",
-  },
-  en: {
-    eyebrow: "Contact & feedback", title: "Have a question or feedback?",
-    sub: "We're always listening — send us a message and we'll get back to you as soon as possible.",
-    done: "✓ Thank you! We'll reply shortly.",
-    name: "Name *", namePh: "Jane Smith",
-    email: "Email (optional)",
-    message: "Message *", messagePh: "Your question, suggestion or feedback…",
-    error: "Failed to send, please try again.",
-    sending: "Sending…", send: "Send message",
-  },
-} as const;
-
-function ContactSection() {
-  const { lang } = useLang();
-  const ct = CONTACT_TR[lang === "en" ? "en" : "vi"];
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
-  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name.trim() || !form.message.trim()) return;
-    setState("sending");
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      setState(res.ok ? "done" : "error");
-    } catch {
-      setState("error");
-    }
-  }
-
-  const wrap = { maxWidth: 1120, margin: "0 auto", padding: "0 24px" };
-  const inp: CSSProperties = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--fg)", fontFamily: "inherit", fontSize: 14.5, outline: "none", boxSizing: "border-box" as const };
-
+/** Logo đổi theo giao diện bằng CSS (html[data-theme]) — không cần JS/state. */
+function ThemedWordmark({ height }: { height: number }) {
   return (
-    <section id="contact" style={{ padding: "80px 0", background: "var(--surface)" }}>
-      <div style={{ ...wrap }}>
-        <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>{ct.eyebrow}</p>
-          <h2 style={{ fontSize: "clamp(26px,3.5vw,38px)", fontWeight: 800, lineHeight: 1.15, marginBottom: 12 }}>{ct.title}</h2>
-          <p style={{ color: "var(--muted)", fontSize: 16, marginBottom: 36 }}>{ct.sub}</p>
-
-          {state === "done" ? (
-            <div style={{ padding: "28px 24px", borderRadius: 14, background: "color-mix(in srgb, var(--accent) 10%, transparent)", color: "var(--accent)", fontWeight: 600, fontSize: 15 }}>
-              {ct.done}
-            </div>
-          ) : (
-            <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.name}</label>
-                  <input required style={inp} value={form.name} placeholder={ct.namePh} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.email}</label>
-                  <input type="email" style={inp} value={form.email} placeholder="email@example.com" onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-                </div>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.message}</label>
-                <textarea required rows={4} style={{ ...inp, resize: "vertical", minHeight: 110 }} value={form.message} placeholder={ct.messagePh} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
-              </div>
-              {state === "error" && <p style={{ color: "#e0746f", fontSize: 13 }}>{ct.error}</p>}
-              <button type="submit" disabled={state === "sending"} style={{ height: 46, border: "none", background: "var(--accent)", color: "var(--accentFg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                {state === "sending" ? ct.sending : ct.send}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </section>
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-wordmark.svg" alt="mstudo" className="ms-logo-light" style={{ height, width: "auto" }} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-wordmark-dark.svg" alt="mstudo" className="ms-logo-dark" style={{ height, width: "auto" }} />
+    </>
   );
 }
 
-export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
-  const { lang, setLang } = useLang();
+/** Giá hiển thị của một gói cho một chu kỳ (đã áp giảm giá admin cấu hình). */
+function planPricing(
+  pricing: LandingPricing | undefined,
+  name: string,
+  cycle: "month" | "year",
+  lang: "vi" | "en"
+): { price: string; period: string; full?: string; off?: number } | null {
+  if (!pricing) return null;
+  const per = (m: number, y: number) => (cycle === "month" ? m : y);
+  let base: number, disc: number;
+  if (name === "Basic") { base = per(pricing.basicMonth, pricing.basicYear); disc = pricing.basicDiscount; }
+  else if (name === "Photographer") { base = per(pricing.photographerMonth, pricing.photographerYear); disc = pricing.photographerDiscount; }
+  else if (name === "Photographer Plus") { base = per(pricing.photographerPlusMonth, pricing.photographerPlusYear); disc = pricing.photographerPlusDiscount; }
+  else if (name === "Studio") {
+    base = per(pricing.studioMonth, pricing.studioYear);
+    disc = Math.max(pricing.studioDiscount, cycle === "year" ? pricing.studioPromo : 0);
+  } else return null; // Free (and anything else) keeps its static price
+  const off = Math.max(0, Math.min(100, disc));
+  const now = Math.round(base * (1 - off / 100));
+  const period = cycle === "month" ? (lang === "en" ? "/mo" : "/tháng") : (lang === "en" ? "/yr" : "/năm");
+  return { price: fmtVnd(now), period, full: off > 0 ? fmtVnd(base) : undefined, off: off > 0 ? off : undefined };
+}
+
+function PriceRow({ dyn, fallbackPrice, fallbackPeriod, className }: {
+  dyn: { price: string; period: string; full?: string; off?: number } | null;
+  fallbackPrice: string;
+  fallbackPeriod: string;
+  className?: string;
+}) {
+  return (
+    <div className={className} style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "14px 0 4px", flexWrap: "wrap" }}>
+      {dyn?.full && <span style={{ color: "var(--muted)", fontSize: 16, textDecoration: "line-through" }}>{dyn.full}</span>}
+      <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-.03em" }}>{dyn?.price ?? fallbackPrice}</span>
+      <span style={{ color: "var(--muted)", fontSize: 15 }}>{dyn?.period ?? fallbackPeriod}</span>
+      {dyn?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{`-${dyn.off}%`}</span>}
+    </div>
+  );
+}
+
+export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: LandingPricing }) {
   const L = D[lang === "en" ? "en" : "vi"];
   const loginUrl = mainUrl("/login");
-
-  const { theme, toggle: toggleTheme } = useTheme();
-  const isDark = theme === "dark";
-
-  const [openFaq, setOpenFaq] = useState<number>(0);
-  const [cycle, setCycle] = useState<"month" | "year">("month");
-
-  // Map a plan card (by name) to its admin-configured price + discount and
-  // produce the display strings for the selected billing cycle.
-  function planPricing(name: string): { price: string; period: string; full?: string; off?: number } | null {
-    if (!pricing) return null;
-    const per = (m: number, y: number) => (cycle === "month" ? m : y);
-    let base: number, disc: number;
-    if (name === "Basic") { base = per(pricing.basicMonth, pricing.basicYear); disc = pricing.basicDiscount; }
-    else if (name === "Photographer") { base = per(pricing.photographerMonth, pricing.photographerYear); disc = pricing.photographerDiscount; }
-    else if (name === "Studio") {
-      base = per(pricing.studioMonth, pricing.studioYear);
-      disc = Math.max(pricing.studioDiscount, cycle === "year" ? pricing.studioPromo : 0);
-    } else return null; // Free (and anything else) keeps its static price
-    const off = Math.max(0, Math.min(100, disc));
-    const now = Math.round(base * (1 - off / 100));
-    const period = cycle === "month" ? (lang === "en" ? "/mo" : "/tháng") : (lang === "en" ? "/yr" : "/năm");
-    return { price: fmtVnd(now), period, full: off > 0 ? fmtVnd(base) : undefined, off: off > 0 ? off : undefined };
-  }
 
   const primaryBtn: CSSProperties = { height: 36, padding: "0 16px", border: "none", background: "var(--accent)", color: "var(--accentFg)", borderRadius: 9, fontFamily: "inherit", fontWeight: 700, fontSize: 14, cursor: "pointer", display: "inline-flex", alignItems: "center", textDecoration: "none" };
   const ghostBtn: CSSProperties = { height: 36, padding: "0 14px", border: "1px solid var(--border)", background: "transparent", color: "var(--fg)", borderRadius: 9, fontFamily: "inherit", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "inline-flex", alignItems: "center", textDecoration: "none" };
 
   return (
-    <div className="mstudo-landing" data-theme={theme} style={{ minHeight: "100vh" }}>
+    <div className="mstudo-landing" style={{ minHeight: "100vh" }}>
       {/* NAV */}
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "color-mix(in srgb,var(--bg) 86%,transparent)", backdropFilter: "saturate(180%) blur(12px)", borderBottom: "1px solid var(--border)" }}>
         <div style={{ ...wrap, height: 68, display: "flex", alignItems: "center", gap: 28 }}>
           <a href="#top" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"} alt="mstudo" style={{ height: 38, width: "auto" }} />
+            <ThemedWordmark height={38} />
           </a>
           <nav style={{ display: "flex", gap: 26, marginLeft: 8 }} className="ms-nav">
             <a href="#features" style={navLink}>{L.nav.features}</a>
@@ -329,16 +280,7 @@ export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
             <a href="#contact" style={navLink}>Liên hệ</a>
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => setLang(lang === "vi" ? "en" : "vi")} style={{ ...ghostBtn, gap: 6, padding: "0 12px", fontSize: 13, letterSpacing: ".02em" }}>
-              {lang === "vi" ? "EN" : "VI"}
-            </button>
-            <button onClick={toggleTheme} aria-label="theme" style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", background: "transparent", color: "var(--fg)", borderRadius: 9, cursor: "pointer" }}>
-              {isDark ? (
-                <svg width="17" height="17" viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8Z" fill="var(--fg)" /></svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" /></svg>
-              )}
-            </button>
+            <LandingControls lang={lang} />
             <Link href={`${loginUrl}?next=/dashboard/site`} style={{ ...ghostBtn, gap: 6 }} className="ms-website-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z" /></svg>
               {L.nav.website}
@@ -408,53 +350,39 @@ export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
           </div>
         </section>
 
-        {/* PRICING */}
+        {/* PRICING — thẻ giá render trên server với CẢ HAI biến thể tháng/năm;
+            island CyclePricing chỉ giữ state toggle và CSS ẩn/hiện theo data-cycle. */}
         <section id="pricing" style={{ ...wrap, padding: "72px 24px" }}>
           <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 28px" }}>
             <h2 style={h2}>{L.pricing.title}</h2>
             <p style={sectionSub}>{L.pricing.sub}</p>
           </div>
-          {/* Month / Year toggle */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
-            <div style={{ display: "inline-flex", gap: 4, padding: 4, border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 999 }}>
-              {(["month", "year"] as const).map((c) => (
-                <button key={c} onClick={() => setCycle(c)} style={{
-                  border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5,
-                  padding: "8px 20px", borderRadius: 999,
-                  background: cycle === c ? "var(--accent)" : "transparent",
-                  color: cycle === c ? "var(--accentFg)" : "var(--muted)",
-                }}>
-                  {c === "month" ? (lang === "en" ? "Monthly" : "Theo tháng") : (lang === "en" ? "Yearly" : "Theo năm")}
-                </button>
-              ))}
+          <CyclePricing
+            monthLabel={lang === "en" ? "Monthly" : "Theo tháng"}
+            yearLabel={lang === "en" ? "Yearly" : "Theo năm"}
+          >
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18, alignItems: "stretch" }}>
+              {L.pricing.plans.map((p) => {
+                const dynMonth = planPricing(pricing, p.name, "month", lang === "en" ? "en" : "vi");
+                const dynYear = planPricing(pricing, p.name, "year", lang === "en" ? "en" : "vi");
+                return (
+                  <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
+                    {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
+                    <PriceRow className="ms-cy-month" dyn={dynMonth} fallbackPrice={p.price} fallbackPeriod={p.period} />
+                    <PriceRow className="ms-cy-year" dyn={dynYear} fallbackPrice={p.price} fallbackPeriod={p.period} />
+                    <p style={{ color: "var(--muted)", fontSize: 14, margin: "0 0 20px", minHeight: 40 }}>{p.desc}</p>
+                    <Link href={loginUrl} style={{ width: "100%", height: 44, border: p.accent ? "none" : "1px solid var(--border)", background: p.accent ? "var(--accent)" : "var(--bg)", color: p.accent ? "var(--accentFg)" : "var(--fg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, cursor: "pointer", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{p.cta}</Link>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {p.f.map((line) => (
+                        <div key={line} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--fg)", padding: "6px 0" }}><Check />{line}</div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18, alignItems: "stretch" }}>
-            {L.pricing.plans.map((p) => {
-              const dyn = planPricing(p.name);
-              const price = dyn?.price ?? p.price;
-              const period = dyn?.period ?? p.period;
-              return (
-              <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
-                {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "14px 0 4px", flexWrap: "wrap" }}>
-                  {dyn?.full && <span style={{ color: "var(--muted)", fontSize: 16, textDecoration: "line-through" }}>{dyn.full}</span>}
-                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-.03em" }}>{price}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 15 }}>{period}</span>
-                  {dyn?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{`-${dyn.off}%`}</span>}
-                </div>
-                <p style={{ color: "var(--muted)", fontSize: 14, margin: "0 0 20px", minHeight: 40 }}>{p.desc}</p>
-                <Link href={loginUrl} style={{ width: "100%", height: 44, border: p.accent ? "none" : "1px solid var(--border)", background: p.accent ? "var(--accent)" : "var(--bg)", color: p.accent ? "var(--accentFg)" : "var(--fg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, cursor: "pointer", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{p.cta}</Link>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {p.f.map((line) => (
-                    <div key={line} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--fg)", padding: "6px 0" }}><Check />{line}</div>
-                  ))}
-                </div>
-              </div>
-              );
-            })}
-          </div>
+          </CyclePricing>
         </section>
 
         {/* REVIEWS */}
@@ -475,27 +403,32 @@ export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
           </div>
         </section>
 
-        {/* FAQ */}
+        {/* FAQ — <details name> gốc của trình duyệt: accordion không cần JS
+            (name giữ tối đa một mục mở trên trình duyệt mới; trình duyệt cũ
+            degrade thành cho phép mở nhiều mục — vẫn dùng tốt). */}
         <section id="faq" style={{ maxWidth: 760, margin: "0 auto", padding: "72px 24px" }}>
           <h2 style={{ ...h2, margin: "0 0 36px", textAlign: "center" }}>{L.faq.title}</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {L.faq.items.map((f, i) => {
-              const open = openFaq === i;
-              return (
-                <div key={f.q} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 13, overflow: "hidden" }}>
-                  <button onClick={() => setOpenFaq(open ? -1 : i)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "18px 20px", background: "transparent", border: "none", color: "var(--fg)", fontFamily: "inherit", fontSize: 15.5, fontWeight: 600, textAlign: "left", cursor: "pointer" }}>
-                    {f.q}
-                    <span style={{ flex: "none", fontSize: 22, lineHeight: 1, color: "var(--accent)", fontWeight: 400 }}>{open ? "–" : "+"}</span>
-                  </button>
-                  {open && <p style={{ margin: 0, padding: "0 20px 20px", color: "var(--muted)", fontSize: 14.5, lineHeight: 1.65 }}>{f.a}</p>}
-                </div>
-              );
-            })}
+            {L.faq.items.map((f, i) => (
+              <details
+                key={f.q}
+                className="ms-faq"
+                open={i === 0}
+                {...({ name: "landing-faq" } as Record<string, string>)}
+                style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 13, overflow: "hidden" }}
+              >
+                <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "18px 20px", color: "var(--fg)", fontFamily: "inherit", fontSize: 15.5, fontWeight: 600, textAlign: "left", cursor: "pointer" }}>
+                  {f.q}
+                  <span className="ms-faq-icon" aria-hidden style={{ flex: "none", fontSize: 22, lineHeight: 1, color: "var(--accent)", fontWeight: 400 }} />
+                </summary>
+                <p style={{ margin: 0, padding: "0 20px 20px", color: "var(--muted)", fontSize: 14.5, lineHeight: 1.65 }}>{f.a}</p>
+              </details>
+            ))}
           </div>
         </section>
 
         {/* CONTACT / FEEDBACK */}
-        <ContactSection />
+        <ContactSection lang={lang} />
 
         {/* ABOUT */}
         <section id="about" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
@@ -519,8 +452,7 @@ export default function LandingPage({ pricing }: { pricing?: LandingPricing }) {
         <footer style={{ background: "var(--bg)" }}>
           <div style={{ ...wrap, padding: "48px 24px", display: "flex", flexWrap: "wrap", gap: 24, alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={theme === "dark" ? "/logo-wordmark-dark.svg" : "/logo-wordmark.svg"} alt="mstudo" style={{ height: 32, width: "auto" }} />
+              <ThemedWordmark height={32} />
               <span style={{ color: "var(--muted)", fontSize: 13.5 }}>{L.hero.badge}</span>
             </div>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>{L.footer.copy}</span>

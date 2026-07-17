@@ -1,17 +1,26 @@
+import { cookies } from "next/headers";
 import LandingPage, { type LandingPricing } from "./LandingPage";
 import { createClient } from "@/lib/supabase/server";
+import type { Lang } from "@/lib/i18n";
 
 // Read pricing/discounts fresh so admin changes show on the homepage immediately.
 export const revalidate = 0;
 
 export default async function HomePage() {
+  // Ngôn ngữ landing đến từ cookie để server render đúng bản VI/EN (island
+  // LandingControls ghi cookie này và đồng bộ với localStorage của app).
+  const lang: Lang = cookies().get("vk_lang")?.value === "en" ? "en" : "vi";
   let pricing: LandingPricing | undefined;
   try {
     const supabase = createClient();
     const { data } = await supabase
       .from("site_settings")
+      // Không select `photographer_plus_discount_percent` ở đây: cột này mới,
+      // nếu DB chưa chạy migration thì cả câu SELECT sẽ lỗi và MỌI gói rơi về
+      // giá tĩnh. Giảm giá landing cho Photographer Plus mặc định 0 (giá đầy đủ);
+      // các cột giá price_photographer_plus_* đã tồn tại sẵn nên an toàn.
       .select(
-        "price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent"
+        "price_basic_month, price_basic_year, price_photographer_month, price_photographer_year, price_photographer_plus_month, price_photographer_plus_year, price_studio_month, price_studio_year, basic_discount_percent, photographer_discount_percent, studio_discount_percent, studio_promo_percent"
       )
       .eq("id", 1)
       .maybeSingle();
@@ -21,10 +30,13 @@ export default async function HomePage() {
         basicYear: data.price_basic_year,
         photographerMonth: data.price_photographer_month,
         photographerYear: data.price_photographer_year,
+        photographerPlusMonth: data.price_photographer_plus_month,
+        photographerPlusYear: data.price_photographer_plus_year,
         studioMonth: data.price_studio_month,
         studioYear: data.price_studio_year,
         basicDiscount: data.basic_discount_percent ?? 0,
         photographerDiscount: data.photographer_discount_percent ?? 0,
+        photographerPlusDiscount: 0,
         studioDiscount: data.studio_discount_percent ?? 0,
         studioPromo: data.studio_promo_percent ?? 0,
       };
@@ -33,5 +45,5 @@ export default async function HomePage() {
     // Fall back to the static prices baked into LandingPage.
   }
 
-  return <LandingPage pricing={pricing} />;
+  return <LandingPage lang={lang} pricing={pricing} />;
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireDesktopOwner } from "@/lib/desktop/auth";
+import { autoCreateContractDeliveryOnComplete } from "@/lib/studio-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as { table?: string; op?: string; row?: Row } | null;
   const cfg = body?.table ? TABLES[body.table] : undefined;
-  const table = body!.table as string;
+  const table = (body?.table ?? "") as string;
   const op = body?.op;
   const row = (body?.row || {}) as Row;
   if (!cfg || !["insert", "update", "delete"].includes(op || "")) {
@@ -111,6 +112,14 @@ export async function POST(req: Request) {
       const { data, error } = await db.from(table).update(payload).eq("id", id).eq("owner_id", owner).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return NextResponse.json({ error: "not_found" }, { status: 404 });
+      // Hợp đồng chuyển sang "hoàn thành" từ desktop → tạo album giao khách.
+      if (table === "studio_contracts" && payload.status === "completed") {
+        try {
+          await autoCreateContractDeliveryOnComplete(owner, id);
+        } catch {
+          /* studio chưa nối Drive / lỗi tạm — lần đồng bộ sau tạo bù */
+        }
+      }
       return NextResponse.json({ ok: true, row: data });
     } else {
       if (!(await ownsExisting())) return NextResponse.json({ error: "forbidden" }, { status: 403 });

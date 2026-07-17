@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const code = (body.code ?? "").trim().toUpperCase();
   if (!code) return NextResponse.json({ error: "missing_code" }, { status: 400 });
   const percent = Math.max(0, Math.min(100, Math.round(Number(body.percent) || 0)));
-  const plan = body.plan === "basic" || body.plan === "photographer" || body.plan === "studio" ? body.plan : null;
+  const plan = body.plan === "basic" || body.plan === "photographer" || body.plan === "photographer_plus" || body.plan === "studio" ? body.plan : null;
   const cycle = body.cycle === "month" || body.cycle === "year" ? body.cycle : null;
   const max_uses = body.max_uses == null ? null : Math.max(1, Math.round(Number(body.max_uses)));
   const expires_at = body.expires_at ? new Date(body.expires_at).toISOString() : null;

@@ -93,14 +93,17 @@ export default async function PublicAlbumPage({
   // Owner permissions gate customer download (ZIP) and notes.
   // Keep the core owner query to SAFE columns only, so an un-migrated brand
   // column can never break download/notes permissions or photo loading.
-  const { data: owner } = await admin
-    .from("profiles")
-    .select("role, can_zip, can_notes, full_name")
-    .eq("id", album.owner_id)
-    .maybeSingle();
   // Brand (logo/name) fetched separately, best-effort — missing columns just
-  // fall back to defaults without affecting anything else.
-  const brand = await getStudioBrand(admin, album.owner_id);
+  // fall back to defaults without affecting anything else. Chạy song song với
+  // query owner (độc lập nhau) để bớt một round-trip tuần tự.
+  const [{ data: owner }, brand] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("role, can_zip, can_notes, full_name")
+      .eq("id", album.owner_id)
+      .maybeSingle(),
+    getStudioBrand(admin, album.owner_id),
+  ]);
   const studioName = brand.name;
   const isAdminOwner = owner?.role === "admin";
   const allowZip = (isAdminOwner || !!owner?.can_zip) && album.download_enabled !== false;

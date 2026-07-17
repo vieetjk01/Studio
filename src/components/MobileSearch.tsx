@@ -27,6 +27,8 @@ export default function MobileSearch() {
     if (term.length < 2) { setHits([]); setSearching(false); return; }
     setSearching(true);
     const safe = term.replace(/[%,()]/g, " ");
+    // `stale` chặn query cũ (chậm) đè kết quả của query mới khi gõ nhanh.
+    let stale = false;
     const t = setTimeout(async () => {
       const supabase = createClient();
       const { data } = await supabase
@@ -35,10 +37,11 @@ export default function MobileSearch() {
         .or(`title.ilike.%${safe}%,client_name.ilike.%${safe}%,client_phone.ilike.%${safe}%,code.ilike.%${safe}%`)
         .order("created_at", { ascending: false })
         .limit(10);
+      if (stale) return;
       setHits((data ?? []) as Hit[]);
       setSearching(false);
     }, 250);
-    return () => clearTimeout(t);
+    return () => { stale = true; clearTimeout(t); };
   }, [q]);
 
   // Close on Escape

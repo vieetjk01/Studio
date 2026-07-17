@@ -174,6 +174,28 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Perf: nếu request KHÔNG mang cookie phiên Supabase nào thì không có gì để
+  // refresh — bỏ qua round-trip auth (tiết kiệm 1 network call tới Supabase trên
+  // mọi trang public: landing, album, story, thiệp…). Dashboard vẫn an toàn:
+  // không cookie → chắc chắn chưa đăng nhập → redirect /login ngay.
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
+  if (!hasAuthCookie) {
+    const response = NextResponse.next({ request });
+    const refAnon = request.nextUrl.searchParams.get("ref");
+    if (refAnon && /^[A-Z0-9]{4,16}$/.test(refAnon) && !request.cookies.get("aff_ref")) {
+      response.cookies.set("aff_ref", refAnon, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", httpOnly: true });
+    }
+    if (pathname.startsWith("/dashboard")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+    return response;
+  }
+
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

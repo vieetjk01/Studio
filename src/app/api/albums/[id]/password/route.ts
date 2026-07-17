@@ -15,7 +15,7 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { password } = (await req.json()) as { password?: string };
+  const { password } = (await req.json().catch(() => ({}))) as { password?: string };
 
   const password_hash =
     password && password.trim().length > 0

@@ -220,6 +220,7 @@ export type ContractForDrive = {
   client_phone?: string | null;
   event_date?: string | null;
   shoot_type?: string | null;
+  status?: string | null;
   drive_folder_id?: string | null;
   drive_tree?: any;
   drive_make_photo?: boolean | null;
@@ -369,17 +370,26 @@ async function createAlbumFromFolder(
 }
 
 /**
- * Tạo (nếu chưa có) album chọn ảnh từ thư mục "JPG Goc" và gallery giao khách từ
- * "File ChinhSua", rồi gắn vào hợp đồng. Trả về id các album.
+ * Tạo (nếu chưa có) album chọn ảnh từ thư mục "JPG Goc" và/hoặc gallery giao
+ * khách từ "File ChinhSua", rồi gắn vào hợp đồng. Trả về id các album.
+ *
+ * `opts.phases` quyết định giai đoạn nào được tạo. Mặc định theo trạng thái hợp
+ * đồng: LUÔN tạo album chọn ảnh (selection) khi có thư mục; chỉ tạo album giao
+ * (delivery) khi hợp đồng đã "completed" — theo đúng quy trình: ký → chọn ảnh,
+ * hoàn thành → giao khách. Hàm idempotent (đã có album thì không tạo lại).
  */
 export async function wireContractAlbums(
   ownerId: string,
   contract: ContractForDrive,
-  tree: DriveTreeNode[]
+  tree: DriveTreeNode[],
+  opts?: { phases?: ("selection" | "delivery")[] }
 ): Promise<{ selectionAlbumId: string | null; galleryAlbumId: string | null }> {
   const db = createAdminClient();
-  const sel = tree.find((n) => n.role === "selection");
-  const del = tree.find((n) => n.role === "delivery");
+  const phases = opts?.phases ?? (contract.status === "completed" ? ["selection", "delivery"] : ["selection"]);
+  const wantSel = phases.includes("selection");
+  const wantDel = phases.includes("delivery");
+  const sel = wantSel ? tree.find((n) => n.role === "selection") : undefined;
+  const del = wantDel ? tree.find((n) => n.role === "delivery") : undefined;
   const who = contract.client_name || contract.code || "Hợp đồng";
 
   let selectionAlbumId = contract.selection_album_id ?? null;
@@ -428,12 +438,37 @@ export async function autoCreateContractDriveOnSign(ownerId: string, contractId:
   const { data: c } = await db
     .from("studio_contracts")
     .select(
-      "id, code, title, client_name, client_phone, event_date, shoot_type, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
+      "id, code, title, client_name, client_phone, event_date, shoot_type, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
     )
     .eq("id", contractId)
     .maybeSingle();
   if (!c) return;
   const tree = await ensureContractDriveTree(ownerId, c as ContractForDrive);
   if ("error" in tree) return; // not_connected → studio chưa nối Drive
-  await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree);
+  // Khi ký: CHỈ tạo album chọn ảnh. Album giao khách để dành tới khi hợp đồng
+  // được đánh dấu "hoàn thành" (autoCreateContractDeliveryOnComplete).
+  await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree, { phases: ["selection"] });
+}
+
+/**
+ * Tự tạo album GIAO KHÁCH (phase "delivery") khi hợp đồng chuyển sang trạng thái
+ * "hoàn thành". Idempotent (đã có gallery_album_id thì bỏ qua). Studio chưa nối
+ * Drive → bỏ qua im lặng (desktop sẽ tạo bù khi đồng bộ). Trả về true nếu vừa
+ * tạo hoặc đã có album giao.
+ */
+export async function autoCreateContractDeliveryOnComplete(ownerId: string, contractId: string): Promise<boolean> {
+  const db = createAdminClient();
+  const { data: c } = await db
+    .from("studio_contracts")
+    .select(
+      "id, code, title, client_name, client_phone, event_date, shoot_type, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
+    )
+    .eq("id", contractId)
+    .maybeSingle();
+  if (!c) return false;
+  if ((c as ContractForDrive).gallery_album_id) return true; // đã có album giao
+  const tree = await ensureContractDriveTree(ownerId, c as ContractForDrive);
+  if ("error" in tree) return false; // not_connected → studio chưa nối Drive
+  const { galleryAlbumId } = await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree, { phases: ["delivery"] });
+  return !!galleryAlbumId;
 }

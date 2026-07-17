@@ -10,7 +10,15 @@ function expiryFor(plan: Plan, cycle: "month" | "year"): string | null {
   if (plan === "free") return null;
   const d = new Date();
   if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
-  else d.setMonth(d.getMonth() + 1);
+  else {
+    // setMonth(+1) tràn cuối tháng (31/1 → 2-3/3, "nhảy" qua tháng 2 ngắn).
+    // Kẹp về ngày cuối tháng kế tiếp khi ngày gốc không tồn tại ở tháng đó.
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+  }
   return d.toISOString();
 }
 
@@ -19,7 +27,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await req.json()) as {
+  const body = (await req.json().catch(() => ({}))) as {
     id: string;
     role?: "admin" | "photographer";
     is_active?: boolean;

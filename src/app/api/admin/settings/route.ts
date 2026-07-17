@@ -35,7 +35,8 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await req.json()) as Record<string, unknown>;
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) return NextResponse.json({ error: "bad_request" }, { status: 400 });
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const f of FIELDS) {
     if (body[f] !== undefined) {
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
   }
   for (const f of [
     "basic_discount_percent", "studio_promo_percent", "studio_discount_percent", "photographer_discount_percent",
+    "photographer_plus_discount_percent",
     // Giảm giá riêng theo chu kỳ (tháng/năm) cho từng gói.
     "basic_discount_month_percent", "basic_discount_year_percent",
     "photographer_discount_month_percent", "photographer_discount_year_percent",

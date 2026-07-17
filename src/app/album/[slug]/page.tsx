@@ -63,15 +63,28 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
 
   const hasPassword = !album.gallery_pinned && !!album.password_hash;
 
-  // Studio's own name for the watermark fallback (instead of a fixed brand).
-  const brand = await getStudioBrand(admin, album.owner_id);
+  // Chạy song song: brand, ảnh, sources và feedback chỉ phụ thuộc album.id /
+  // owner_id — gộp Promise.all thay vì 4 round-trip tuần tự (giảm TTFB trang khách).
+  const [brand, allPhotos, { data: s }, { data: feedback }] = await Promise.all([
+    getStudioBrand(admin, album.owner_id),
+    hasPassword
+      ? Promise.resolve(null)
+      : fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video"),
+    hasPassword
+      ? Promise.resolve({ data: null })
+      : admin.from("album_sources").select("id, name, position, stage").eq("album_id", album.id).order("position"),
+    admin
+      .from("feedback")
+      .select("*")
+      .eq("album_id", album.id)
+      .eq("approved", true)
+      .order("created_at", { ascending: false }),
+  ]);
   const studioName = brand.name;
 
   let photos = null;
   let sources = null;
   if (!hasPassword) {
-    const allPhotos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
-    const { data: s } = await admin.from("album_sources").select("id, name, position, stage").eq("album_id", album.id).order("position");
     // Delivery view prefers delivery-stage photos. But if the studio hasn't
     // tagged any source as 'delivery' yet (e.g. they just flipped the phase),
     // fall back to showing all the album's photos so the page is never empty.
@@ -81,13 +94,6 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
     photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
     sources = (useStages ? delSources : (s ?? [])).map(({ id, name, position }) => ({ id, name, position }));
   }
-
-  const { data: feedback } = await admin
-    .from("feedback")
-    .select("*")
-    .eq("album_id", album.id)
-    .eq("approved", true)
-    .order("created_at", { ascending: false });
 
   return (
     <GalleryView

@@ -61,7 +61,7 @@ export default function DashboardHeader({
   // Personal site builder: photographer + studio plans (and admins).
   const hasSite =
     profile.role === "admin" ||
-    ["photographer", "studio"].includes(effectivePlan(profile.plan, profile.plan_expires_at));
+    ["photographer", "photographer_plus", "studio"].includes(effectivePlan(profile.plan, profile.plan_expires_at));
 
   // Effective studio role of the logged-in user (for menu gating).
   const studioRole = profile.studio_owner_id

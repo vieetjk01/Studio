@@ -1,7 +1,5 @@
 "use client";
 
-import JSZip from "jszip";
-
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -63,6 +61,9 @@ export async function buildZip(
     onProgress?: (d: number, t: number) => void;
   }
 ): Promise<Blob> {
+  // Nạp JSZip (~95KB gzip) lười — chỉ khi người dùng thật sự bấm tải ZIP,
+  // để nó không nằm trong first-load JS của các trang album công khai.
+  const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   const width = opts.width ?? 2000;
   let done = 0;

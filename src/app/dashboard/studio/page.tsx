@@ -130,20 +130,25 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
   const supabase = createClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  // Đã dùng thử chưa (một lần / tài khoản).
-  const { data: trialProf } = await supabase
-    .from("profiles")
-    .select("trial_used_at")
-    .eq("id", ownerId)
-    .maybeSingle();
+  // 3 query độc lập → chạy song song thay vì tuần tự (giảm TTFB dashboard).
+  const [{ data: trialProf }, { data }, { count: selectingAlbums }] = await Promise.all([
+    // Đã dùng thử chưa (một lần / tài khoản).
+    supabase.from("profiles").select("trial_used_at").eq("id", ownerId).maybeSingle(),
+    supabase
+      .from("studio_bookings")
+      .select("id, name, phone, service, preferred_date, package_name, package_price, status, created_at")
+      .eq("owner_id", ownerId)
+      .neq("status", "archived")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("albums")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", ownerId)
+      .eq("phase", "selection")
+      .eq("status", "published")
+      .eq("is_gallery", false),
+  ]);
   const trialUsed = !!(trialProf as { trial_used_at?: string | null } | null)?.trial_used_at;
-
-  const { data } = await supabase
-    .from("studio_bookings")
-    .select("id, name, phone, service, preferred_date, package_name, package_price, status, created_at")
-    .eq("owner_id", ownerId)
-    .neq("status", "archived")
-    .order("created_at", { ascending: false });
   const bookings = (data ?? []) as Array<{
     id: string; name: string; phone: string; service: string | null;
     preferred_date: string | null; package_name: string | null; package_price: number | null;
@@ -155,14 +160,6 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
     .filter((b) => b.preferred_date && b.preferred_date >= today)
     .sort((a, b) => (a.preferred_date || "").localeCompare(b.preferred_date || ""))
     .slice(0, 8);
-
-  const { count: selectingAlbums } = await supabase
-    .from("albums")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", ownerId)
-    .eq("phase", "selection")
-    .eq("status", "published")
-    .eq("is_gallery", false);
 
   const stats: { icon: typeof FileText; label: string; value: string; delta?: string; deltaTone?: ToneKey }[] = [
     { icon: AlertCircle, label: "Đặt lịch mới", value: String(newCount), delta: newCount > 0 ? "cần xử lý" : undefined, deltaTone: "amber" },

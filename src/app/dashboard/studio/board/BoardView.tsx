@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { contractTotal, vnd, CONTRACT_STATUS_LABEL, type ContractStatus } from "@/lib/types";
 import { fmtDate } from "@/lib/date";
 
@@ -28,7 +27,6 @@ const TONE: Record<ContractStatus, string> = {
 };
 
 export default function BoardView({ initial }: { initial: BoardCard[] }) {
-  const supabase = createClient();
   const [cards, setCards] = useState<BoardCard[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<ContractStatus | null>(null);
@@ -37,8 +35,19 @@ export default function BoardView({ initial }: { initial: BoardCard[] }) {
   async function moveTo(id: string, status: ContractStatus) {
     const card = cards.find((c) => c.id === id);
     if (!card || card.status === status) return;
+    const prev = card.status;
     setCards((p) => p.map((c) => (c.id === id ? { ...c, status } : c)));
-    await supabase.from("studio_contracts").update({ status }).eq("id", id);
+    // Route server tập trung: đóng dấu completed_at + tạo album giao khi hoàn thành.
+    try {
+      const res = await fetch("/api/studio/contract-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId: id, status }),
+      });
+      if (!res.ok) setCards((p) => p.map((c) => (c.id === id ? { ...c, status: prev } : c)));
+    } catch {
+      setCards((p) => p.map((c) => (c.id === id ? { ...c, status: prev } : c)));
+    }
   }
 
   return (

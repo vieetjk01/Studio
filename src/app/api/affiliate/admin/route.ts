@@ -26,7 +26,7 @@ export async function GET() {
 
   const { data: settings } = await db
     .from("site_settings")
-    .select("affiliate_commission_basic, affiliate_commission_photographer, affiliate_commission_studio")
+    .select("affiliate_commission_basic, affiliate_commission_photographer, affiliate_commission_photographer_plus, affiliate_commission_studio")
     .eq("id", 1)
     .maybeSingle();
 
@@ -56,10 +56,11 @@ export async function PUT(req: Request) {
   const db = await assertAdmin();
   if (!db) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { basic, photographer, studio } = await req.json().catch(() => ({}));
+  const { basic, photographer, photographer_plus, studio } = await req.json().catch(() => ({}));
   await db.from("site_settings").update({
     affiliate_commission_basic: Math.min(100, Math.max(0, Number(basic) || 0)),
     affiliate_commission_photographer: Math.min(100, Math.max(0, Number(photographer) || 0)),
+    affiliate_commission_photographer_plus: Math.min(100, Math.max(0, Number(photographer_plus) || 0)),
     affiliate_commission_studio: Math.min(100, Math.max(0, Number(studio) || 0)),
   }).eq("id", 1);
 
