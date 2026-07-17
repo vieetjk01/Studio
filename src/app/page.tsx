@@ -1,10 +1,15 @@
+import { cookies } from "next/headers";
 import LandingPage, { type LandingPricing } from "./LandingPage";
 import { createClient } from "@/lib/supabase/server";
+import type { Lang } from "@/lib/i18n";
 
 // Read pricing/discounts fresh so admin changes show on the homepage immediately.
 export const revalidate = 0;
 
 export default async function HomePage() {
+  // Ngôn ngữ landing đến từ cookie để server render đúng bản VI/EN (island
+  // LandingControls ghi cookie này và đồng bộ với localStorage của app).
+  const lang: Lang = cookies().get("vk_lang")?.value === "en" ? "en" : "vi";
   let pricing: LandingPricing | undefined;
   try {
     const supabase = createClient();
@@ -33,5 +38,5 @@ export default async function HomePage() {
     // Fall back to the static prices baked into LandingPage.
   }
 
-  return <LandingPage pricing={pricing} />;
+  return <LandingPage lang={lang} pricing={pricing} />;
 }

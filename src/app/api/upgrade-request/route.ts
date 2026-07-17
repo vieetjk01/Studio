@@ -82,46 +82,54 @@ export async function POST(req: Request) {
   const code = discount_code?.trim().toUpperCase() || null;
   const db = createAdminClient();
 
-  // Has this account already redeemed this code?
+  // Đọc trạng thái mã (thông tin) + đã đổi theo tài khoản chưa. Việc chốt lượt
+  // thật sự làm ATOMIC bên dưới nên các đọc này chỉ để quyết định luồng.
+  type CodeRow = { percent: number; plan: string | null; cycle: string | null; active: boolean; max_uses: number | null; used_count: number | null; expires_at: string | null };
   let alreadyRedeemed = false;
+  let dc: CodeRow | null = null;
   if (code) {
-    const { data: red } = await db
-      .from("discount_redemptions")
-      .select("id")
-      .eq("code", code)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: red } = await db.from("discount_redemptions").select("id").eq("code", code).eq("user_id", user.id).maybeSingle();
+    const { data: codeRow } = await db.from("discount_codes").select("percent, plan, cycle, active, max_uses, used_count, expires_at").eq("code", code).maybeSingle();
     alreadyRedeemed = !!red;
+    dc = (codeRow as CodeRow | null) ?? null;
   }
 
-  // Server-side: is the code a valid 100% code applicable to this plan? -> auto-activate.
-  let activated = false;
-  if (code && validPlan && !alreadyRedeemed) {
-    const { data: dc } = await db
-      .from("discount_codes")
-      .select("percent, plan, cycle, active, max_uses, used_count, expires_at")
-      .eq("code", code)
-      .maybeSingle();
-    const usable =
-      dc &&
-      dc.active &&
-      (!dc.expires_at || new Date(dc.expires_at).getTime() >= Date.now()) &&
-      (dc.max_uses == null || (dc.used_count ?? 0) < dc.max_uses) &&
-      (!dc.plan || dc.plan === validPlan) &&
-      (!dc.cycle || dc.cycle === validCycle);
-    if (usable && dc.percent >= 100) {
-      await db
-        .from("profiles")
-        .update({ ...planProfilePatch(validPlan), plan_cycle: validCycle, plan_expires_at: expiryFor(validCycle) })
-        .eq("id", user.id);
-      activated = true;
+  // Mã có áp dụng cho gói/chu kỳ này không? (max_uses được kiểm tra atomic khi chốt).
+  const applicable = !!(
+    dc && dc.active &&
+    (!dc.expires_at || new Date(dc.expires_at).getTime() >= Date.now()) &&
+    (!dc.plan || dc.plan === validPlan) &&
+    (!dc.cycle || dc.cycle === validCycle)
+  );
 
-      // M-5: Look up canonical plan price server-side — never trust client-submitted amount
-      const planPriceKey = `price_${validPlan}_${validCycle}` as const;
-      const { data: priceSettings } = await db.from("site_settings").select(planPriceKey).eq("id", 1).maybeSingle();
-      const canonicalAmount: number = (priceSettings as Record<string, unknown>)?.[planPriceKey] as number ?? amount ?? 0;
-      await creditAffiliateCommission(db, user.id, user.email ?? "", validPlan, validCycle, canonicalAmount);
+  // Chốt lượt dùng mã ATOMIC: ghi redemption (unique theo tài khoản) rồi trừ
+  // used_count qua RPC (UPDATE … WHERE max_uses … RETURNING). Không còn cảnh hai
+  // request cùng vượt max_uses hay mất lượt đếm.
+  let claimed = false;
+  if (code && applicable && !alreadyRedeemed) {
+    const { error: redErr } = await db.from("discount_redemptions").insert({ code, user_id: user.id });
+    if (!redErr) {
+      const { data: ok } = await db.rpc("consume_discount_code", { p_code: code });
+      claimed = ok === true;
+      // Hết lượt ngay trước ta → gỡ redemption để không khoá nhầm tài khoản.
+      if (!claimed) await db.from("discount_redemptions").delete().eq("code", code).eq("user_id", user.id);
     }
+  }
+
+  // Mã 100% đã chốt được lượt → tự kích hoạt gói ngay.
+  let activated = false;
+  if (claimed && validPlan && dc && dc.percent >= 100) {
+    await db
+      .from("profiles")
+      .update({ ...planProfilePatch(validPlan), plan_cycle: validCycle, plan_expires_at: expiryFor(validCycle) })
+      .eq("id", user.id);
+    activated = true;
+
+    // M-5: Look up canonical plan price server-side — never trust client-submitted amount
+    const planPriceKey = `price_${validPlan}_${validCycle}` as const;
+    const { data: priceSettings } = await db.from("site_settings").select(planPriceKey).eq("id", 1).maybeSingle();
+    const canonicalAmount: number = (priceSettings as Record<string, unknown>)?.[planPriceKey] as number ?? amount ?? 0;
+    await creditAffiliateCommission(db, user.id, user.email ?? "", validPlan, validCycle, canonicalAmount);
   }
 
   const { error } = await db.from("upgrade_requests").insert({
@@ -136,15 +144,6 @@ export async function POST(req: Request) {
     handled: activated, // auto-activated requests are already done
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Record the per-account redemption + bump the global used count (once per account).
-  if (code && !alreadyRedeemed) {
-    const { error: redErr } = await db.from("discount_redemptions").insert({ code, user_id: user.id });
-    if (!redErr) {
-      const { data: dc } = await db.from("discount_codes").select("id, used_count").eq("code", code).maybeSingle();
-      if (dc) await db.from("discount_codes").update({ used_count: (dc.used_count ?? 0) + 1 }).eq("id", dc.id);
-    }
-  }
 
   // Báo cho quản trị viên có yêu cầu nâng cấp mới.
   const planLabel = validPlan ? ` gói ${validPlan}/${validCycle}` : "";

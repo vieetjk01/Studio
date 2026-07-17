@@ -21,6 +21,9 @@ export async function POST(req: Request) {
   if (!c) return NextResponse.json({ error: "missing_code" }, { status: 400 });
 
   const db = createAdminClient();
+  // Đọc trước để có thông báo lỗi thân thiện + xác định gói/số ngày. Việc chốt
+  // (kiểm tra cap + trừ lượt + đánh dấu dùng thử) được làm ATOMIC trong RPC bên
+  // dưới, nên đọc ở đây chỉ mang tính thông tin — không còn race.
   const { data } = await db
     .from("discount_codes")
     .select("code, plan, active, max_uses, used_count, expires_at, trial_days")
@@ -30,26 +33,29 @@ export async function POST(req: Request) {
   if (!data || !data.active) return NextResponse.json({ error: "invalid" }, { status: 400 });
   if (!data.trial_days || data.trial_days <= 0) return NextResponse.json({ error: "not_trial" }, { status: 400 });
   if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) return NextResponse.json({ error: "expired" }, { status: 400 });
-  if (data.max_uses != null && (data.used_count ?? 0) >= data.max_uses) return NextResponse.json({ error: "used_up" }, { status: 400 });
-
-  const { data: red } = await db.from("discount_redemptions").select("id").eq("code", c).eq("user_id", user.id).maybeSingle();
-  if (red) return NextResponse.json({ error: "already_used" }, { status: 400 });
-
-  // Mỗi tài khoản chỉ dùng thử MỘT lần — kể cả khi có nhiều mã dùng thử cùng loại.
-  const { data: prof } = await db.from("profiles").select("trial_used_at").eq("id", user.id).maybeSingle();
-  if (prof?.trial_used_at) return NextResponse.json({ error: "already_used" }, { status: 400 });
 
   const plan = data.plan === "basic" || data.plan === "photographer" || data.plan === "studio" ? data.plan : "studio";
   const expires = new Date(Date.now() + data.trial_days * 86400000).toISOString();
+  const patch = planProfilePatch(plan);
 
-  const { error: upErr } = await db
-    .from("profiles")
-    .update({ ...planProfilePatch(plan), plan_cycle: "trial", plan_expires_at: expires, trial_used_at: new Date().toISOString() })
-    .eq("id", user.id);
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
-
-  await db.from("discount_redemptions").insert({ code: c, user_id: user.id });
-  await db.from("discount_codes").update({ used_count: (data.used_count ?? 0) + 1 }).eq("code", c);
+  // Atomic: khoá hàng profile + code, kiểm tra max_uses / trial_used_at / đã đổi
+  // rồi cập nhật gói + trừ lượt trong một transaction.
+  const { data: status, error: rpcErr } = await db.rpc("redeem_discount_trial", {
+    p_code: c,
+    p_user_id: user.id,
+    p_expires: expires,
+    p_plan: patch.plan,
+    p_album_limit: patch.monthly_album_limit,
+    p_can_zip: patch.can_zip,
+    p_can_notes: patch.can_notes,
+    p_can_galleries: patch.can_galleries,
+    p_watermark_pro: patch.can_watermark_pro,
+  });
+  if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+  if (status !== "ok") {
+    // 'invalid' | 'expired' | 'used_up' | 'already_used'
+    return NextResponse.json({ error: status }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true, plan, trial_days: data.trial_days, expires_at: expires });
 }

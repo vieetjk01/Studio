@@ -22,23 +22,27 @@ export async function POST(req: Request) {
   const days = trialDaysFor(plan as Plan);
 
   const db = createAdminClient();
-  const { data: profile } = await db.from("profiles").select("plan, plan_cycle, plan_expires_at, trial_used_at").eq("id", user.id).maybeSingle();
-
-  // Một lần / tài khoản.
-  if (profile?.trial_used_at) return NextResponse.json({ error: "already_used" }, { status: 400 });
-  // Đang có gói trả phí còn hạn thì không cần dùng thử.
-  if (profile && profile.plan !== "free" && profile.plan_cycle !== "trial" && profile.plan_expires_at && new Date(profile.plan_expires_at).getTime() > Date.now()) {
-    return NextResponse.json({ error: "already_paid" }, { status: 400 });
-  }
-
   const now = new Date();
   const expires = new Date(now.getTime() + days * 86400000).toISOString();
-  const { error } = await db
-    .from("profiles")
-    .update({ ...planProfilePatch(plan as Plan), plan_cycle: "trial", plan_expires_at: expires, trial_used_at: now.toISOString() })
-    .eq("id", user.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const patch = planProfilePatch(plan as Plan);
 
-  await db.from("discount_redemptions").insert({ code: `TRIAL_${(plan as string).toUpperCase()}`, user_id: user.id }).then(() => {}, () => {});
+  // Atomic: khoá hàng profile, kiểm tra "1 trial/account" + "đang trả phí" rồi
+  // cập nhật gói trong một transaction (chống race hai request song song).
+  const { data: status, error } = await db.rpc("start_free_trial", {
+    p_user_id: user.id,
+    p_expires: expires,
+    p_plan: patch.plan,
+    p_album_limit: patch.monthly_album_limit,
+    p_can_zip: patch.can_zip,
+    p_can_notes: patch.can_notes,
+    p_can_galleries: patch.can_galleries,
+    p_watermark_pro: patch.can_watermark_pro,
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (status !== "ok") {
+    // 'already_used' | 'already_paid'
+    return NextResponse.json({ error: status }, { status: 400 });
+  }
+
   return NextResponse.json({ ok: true, plan, trial_days: days, expires_at: expires });
 }

@@ -433,6 +433,11 @@ body {
   color: var(--fg);
   transition: background 0.25s ease, color 0.25s ease;
 }
+/* Giao diện tối theo html[data-theme] toàn cục (boot script đặt trước khi paint)
+   thay vì data-theme trên chính div — nhờ vậy landing render trên server không
+   cần state client mà vẫn không nháy sáng→tối. Giữ cả biến thể cũ (self-scoped)
+   để tương thích ngược nếu còn nơi nào set data-theme trực tiếp. */
+:root[data-theme="dark"] .mstudo-landing,
 .mstudo-landing[data-theme="dark"] {
   --bg: #0c0e12;
   --surface: #14171d;
@@ -461,6 +466,34 @@ body {
   .mstudo-landing .ms-website-btn {
     display: none !important;
   }
+}
+/* Logo đổi theo giao diện bằng CSS (không cần state React). Mặc định sáng. */
+.mstudo-landing .ms-logo-dark {
+  display: none;
+}
+:root[data-theme="dark"] .mstudo-landing .ms-logo-light {
+  display: none;
+}
+:root[data-theme="dark"] .mstudo-landing .ms-logo-dark {
+  display: block;
+}
+/* Toggle giá tháng/năm: hiện đúng một biến thể theo data-cycle của island. */
+.mstudo-landing [data-cycle="month"] .ms-cy-year,
+.mstudo-landing [data-cycle="year"] .ms-cy-month {
+  display: none;
+}
+/* FAQ dùng <details> gốc — ẩn mũi tên mặc định, tự vẽ +/– theo trạng thái. */
+.mstudo-landing .ms-faq > summary {
+  list-style: none;
+}
+.mstudo-landing .ms-faq > summary::-webkit-details-marker {
+  display: none;
+}
+.mstudo-landing .ms-faq .ms-faq-icon::before {
+  content: "+";
+}
+.mstudo-landing .ms-faq[open] .ms-faq-icon::before {
+  content: "–";
 }
 
 /* ── Studio app shell — mstudo green theme (ported from mstudo-app mockup) ──
