@@ -48,6 +48,22 @@ jobs:
             desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
           if-no-files-found: error
 
+      # Dọn các file .exe CŨ trên bản phát hành desktop-dev trước khi tải bản mới,
+      # để release chỉ giữ ĐÚNG 1 file cài mới nhất. Cơ chế tự cập nhật ở client
+      # đọc release này; nếu còn nhiều asset cũ, bản cũ có thể được chọn nhầm gây
+      # "kẹt" hoặc hạ cấp. Chỉ áp dụng cho kênh dev (bỏ qua khi đẩy tag desktop-v*).
+      - name: Dọn asset .exe cũ trên desktop-dev
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          names=$(gh release view desktop-dev --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null | grep -iE -- '-setup\.exe$' || true)
+          for a in $names; do
+            echo "Xóa asset cũ: $a"
+            gh release delete-asset desktop-dev "$a" -y --repo "$GITHUB_REPOSITORY" || true
+          done
+
       # Tạo Release công khai kèm file .exe. Khi đẩy tag desktop-v* thì dùng đúng
       # tag đó; khi bấm chạy tay (workflow_dispatch) thì tự tạo/ghi đè tag
       # desktop-dev — cách này không cần đẩy tag qua git.
