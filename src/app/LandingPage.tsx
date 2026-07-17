@@ -27,6 +27,9 @@ type Dict = {
   pricing: {
     title: string; sub: string; popular: string;
     plans: { name: string; price: string; period: string; desc: string; cta: string; f: string[]; accent?: boolean }[];
+    // Gói "Plus" được gộp làm phần nâng cấp NGAY TRONG thẻ Photographer (để bớt
+    // 1 cột). name/price hiển thị trong thẻ đó; f = các tính năng thêm so với Photographer.
+    plus: { name: string; price: string; tagline: string; cta: string; f: string[] };
   };
   reviews: { title: string; items: { q: string; n: string; role: string; i: string }[] };
   faq: { title: string; items: { q: string; a: string }[] };
@@ -42,7 +45,7 @@ export type LandingPricing = {
   photographerPlusMonth: number; photographerPlusYear: number;
   studioMonth: number; studioYear: number;
   basicDiscount: number; photographerDiscount: number;
-  photographerPlusDiscount: number;
+  photographerPlusDiscountMonth: number; photographerPlusDiscountYear: number;
   studioDiscount: number; studioPromo: number;
 };
 
@@ -85,9 +88,9 @@ const D: Record<"vi" | "en", Dict> = {
         { name: "Free", price: "0₫", period: "/tháng", desc: "Cho nhiếp ảnh gia mới bắt đầu", cta: "Bắt đầu miễn phí", f: ["5 album mỗi tháng", "Khách chọn ảnh & gửi lại studio (QR + link)", "Tải ảnh cho khách: tắt", "Ghi chú trên ảnh: tắt", "Lọc ảnh: 10 lần / tháng", "Nén ảnh: 5 lần / tháng", "Nén qua Drive: dùng thử 1 lần", "Watermark: chỉ chữ"] },
         { name: "Basic", price: "50.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia cá nhân", cta: "Dùng thử Basic", f: ["15 album mỗi tháng", "Cho khách tải ảnh (ZIP / từng ảnh)", "Cho khách ghi chú trên ảnh", "Watermark đầy đủ (logo + nén kèm)", "Lọc ảnh: không giới hạn", "Nén ảnh: không giới hạn", "Nén qua Drive: 5 lần / tháng"] },
         { name: "Photographer", price: "100.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia chuyên nghiệp", cta: "Dùng thử Photographer", f: ["50 album mỗi tháng", "Đầy đủ tính năng Basic + full quyền khách hàng", "Nén qua Drive: 15 lần / tháng", "Trang quản lý lịch chụp riêng", "Nhận đặt lịch online (link + QR)", "Bảng giá dịch vụ & danh bạ khách hàng", "Lịch chụp + nhắc lịch", "Website cá nhân riêng + đổi logo"] },
-        { name: "Photographer Plus", price: "129.000₫", period: "/tháng", desc: "Photographer + hợp đồng & tên miền riêng", cta: "Dùng thử Photographer Plus", f: ["100 album / tháng · nén Drive 30 lần / tháng", "Tất cả tính năng gói Photographer", "Báo giá hạng mục chi tiết cho khách", "Quản lý hợp đồng: gửi khách ký online, yêu cầu chỉnh sửa", "Mẫu hợp đồng tái sử dụng", "Website riêng dùng TÊN MIỀN RIÊNG (vd studio.com)"] },
         { name: "Studio", price: "300.000₫", period: "/tháng", desc: "Cho studio & đội nhóm chuyên nghiệp", cta: "Dùng thử Studio", accent: true, f: ["Tất cả tính năng Photographer — không giới hạn", "Album & nén qua Drive không giới hạn", "Trang quản lý studio riêng", "Quản lý hợp đồng & báo giá hạng mục", "Quản lý lịch chụp + nhắc lịch", "Quản lý photographer / cameramen & lương", "Khách xem hợp đồng online & yêu cầu chỉnh sửa", "Hỗ trợ riêng · nhận mọi tính năng nâng cấp"] },
       ],
+      plus: { name: "Photographer Plus", price: "129.000₫", tagline: "Nâng cấp Plus — thêm hợp đồng & tên miền riêng", cta: "Dùng thử Plus", f: ["100 album / tháng · nén Drive 30 lần", "Quản lý hợp đồng: khách ký online, yêu cầu chỉnh sửa", "Báo giá hạng mục + mẫu hợp đồng tái sử dụng", "Website riêng dùng TÊN MIỀN RIÊNG (vd studio.com)"] },
     },
     reviews: {
       title: "Được tin dùng bởi các studio",
@@ -151,9 +154,9 @@ const D: Record<"vi" | "en", Dict> = {
         { name: "Free", price: "0₫", period: "/mo", desc: "For new photographers", cta: "Start free", f: ["5 albums / month", "Client photo selection via QR + link", "Client download: disabled", "Photo notes: disabled", "Filter photos: 10×/mo", "Compress photos: 5×/mo", "Drive compress: 1 trial", "Watermark: text only"] },
         { name: "Basic", price: "50,000₫", period: "/mo", desc: "For individual photographers", cta: "Try Basic", f: ["15 albums / month", "Client photo download (ZIP / single)", "Client photo notes", "Full watermark (logo + compress)", "Filter photos: unlimited", "Compress photos: unlimited", "Drive compress: 5×/mo"] },
         { name: "Photographer", price: "100,000₫", period: "/mo", desc: "For professional photographers", cta: "Try Photographer", f: ["50 albums / month", "All Basic features + full client access", "Drive compress: 15×/mo", "Dedicated shoot schedule page", "Online booking (link + QR)", "Service pricing & client directory", "Shoot calendar + reminders", "Personal website + custom logo"] },
-        { name: "Photographer Plus", price: "129,000₫", period: "/mo", desc: "Photographer + contracts & custom domain", cta: "Try Photographer Plus", f: ["100 albums / month · Drive compress 30×/mo", "All Photographer features", "Detailed line-item quotes", "Contracts: clients sign online, request edits", "Reusable contract templates", "Personal website on your OWN DOMAIN (e.g. studio.com)"] },
         { name: "Studio", price: "300,000₫", period: "/mo", desc: "For studios & professional teams", cta: "Try Studio", accent: true, f: ["All Photographer features — unlimited", "Unlimited albums & Drive compress", "Dedicated studio management page", "Contract & quote management", "Shoot schedule + reminders", "Manage photographers & pay by contract", "Clients view contracts online", "Priority support · all future features"] },
       ],
+      plus: { name: "Photographer Plus", price: "129,000₫", tagline: "Plus upgrade — adds contracts & custom domain", cta: "Try Plus", f: ["100 albums / month · Drive compress 30×", "Contracts: clients sign online, request edits", "Line-item quotes + reusable templates", "Website on your OWN DOMAIN (e.g. studio.com)"] },
     },
     reviews: {
       title: "Trusted by studios",
@@ -229,11 +232,26 @@ function planPricing(
   let base: number, disc: number;
   if (name === "Basic") { base = per(pricing.basicMonth, pricing.basicYear); disc = pricing.basicDiscount; }
   else if (name === "Photographer") { base = per(pricing.photographerMonth, pricing.photographerYear); disc = pricing.photographerDiscount; }
-  else if (name === "Photographer Plus") { base = per(pricing.photographerPlusMonth, pricing.photographerPlusYear); disc = pricing.photographerPlusDiscount; }
   else if (name === "Studio") {
     base = per(pricing.studioMonth, pricing.studioYear);
     disc = Math.max(pricing.studioDiscount, cycle === "year" ? pricing.studioPromo : 0);
   } else return null; // Free (and anything else) keeps its static price
+  return fmtPrice(base, disc, cycle, lang);
+}
+
+/** Giá gói Photographer Plus (gộp trong thẻ Photographer) theo chu kỳ. */
+function plusPricing(
+  pricing: LandingPricing | undefined,
+  cycle: "month" | "year",
+  lang: "vi" | "en"
+): { price: string; period: string; full?: string; off?: number } | null {
+  if (!pricing) return null;
+  const base = cycle === "month" ? pricing.photographerPlusMonth : pricing.photographerPlusYear;
+  const disc = cycle === "month" ? pricing.photographerPlusDiscountMonth : pricing.photographerPlusDiscountYear;
+  return fmtPrice(base, disc, cycle, lang);
+}
+
+function fmtPrice(base: number, disc: number, cycle: "month" | "year", lang: "vi" | "en") {
   const off = Math.max(0, Math.min(100, disc));
   const now = Math.round(base * (1 - off / 100));
   const period = cycle === "month" ? (lang === "en" ? "/mo" : "/tháng") : (lang === "en" ? "/yr" : "/năm");
@@ -363,8 +381,13 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
           >
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 18, alignItems: "stretch" }}>
               {L.pricing.plans.map((p) => {
-                const dynMonth = planPricing(pricing, p.name, "month", lang === "en" ? "en" : "vi");
-                const dynYear = planPricing(pricing, p.name, "year", lang === "en" ? "en" : "vi");
+                const lng = lang === "en" ? "en" : "vi";
+                const dynMonth = planPricing(pricing, p.name, "month", lng);
+                const dynYear = planPricing(pricing, p.name, "year", lng);
+                // Gộp gói Plus vào thẻ Photographer (bớt 1 cột).
+                const showPlus = p.name === "Photographer";
+                const plusMonth = showPlus ? plusPricing(pricing, "month", lng) : null;
+                const plusYear = showPlus ? plusPricing(pricing, "year", lng) : null;
                 return (
                   <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
                     {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
@@ -378,6 +401,34 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                         <div key={line} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--fg)", padding: "6px 0" }}><Check />{line}</div>
                       ))}
                     </div>
+
+                    {/* Nâng cấp Plus — gộp trong thẻ Photographer để bớt 1 cột. */}
+                    {showPlus && (
+                      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px dashed var(--border)" }}>
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 15, fontWeight: 800 }}>{L.pricing.plus.name}</span>
+                          <span className="ms-cy-month" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                            {plusMonth?.full && <span style={{ color: "var(--muted)", fontSize: 13, textDecoration: "line-through" }}>{plusMonth.full}</span>}
+                            <span style={{ fontSize: 20, fontWeight: 800 }}>{plusMonth?.price ?? L.pricing.plus.price}</span>
+                            <span style={{ color: "var(--muted)", fontSize: 13 }}>{plusMonth?.period ?? (lng === "en" ? "/mo" : "/tháng")}</span>
+                            {plusMonth?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${plusMonth.off}%`}</span>}
+                          </span>
+                          <span className="ms-cy-year" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                            {plusYear?.full && <span style={{ color: "var(--muted)", fontSize: 13, textDecoration: "line-through" }}>{plusYear.full}</span>}
+                            <span style={{ fontSize: 20, fontWeight: 800 }}>{plusYear?.price ?? L.pricing.plus.price}</span>
+                            <span style={{ color: "var(--muted)", fontSize: 13 }}>{plusYear?.period ?? (lng === "en" ? "/yr" : "/năm")}</span>
+                            {plusYear?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${plusYear.off}%`}</span>}
+                          </span>
+                        </div>
+                        <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 12px", lineHeight: 1.5 }}>{L.pricing.plus.tagline}</p>
+                        <div style={{ display: "flex", flexDirection: "column", marginBottom: 14 }}>
+                          {L.pricing.plus.f.map((line) => (
+                            <div key={line} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 13.5, color: "var(--fg)", padding: "5px 0" }}><Check />{line}</div>
+                          ))}
+                        </div>
+                        <Link href={loginUrl} style={{ width: "100%", height: 40, border: "1px solid var(--accent)", background: "transparent", color: "var(--accent)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{L.pricing.plus.cta}</Link>
+                      </div>
+                    )}
                   </div>
                 );
               })}
