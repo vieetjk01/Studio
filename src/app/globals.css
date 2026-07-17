@@ -477,6 +477,20 @@ body {
 :root[data-theme="dark"] .mstudo-landing .ms-logo-dark {
   display: block;
 }
+/* Bảng giá: mobile 1 cột, tablet 2 cột (2+2, không lẻ 1 hàng), desktop 4 cột. */
+.mstudo-landing .ms-pricing-grid {
+  display: grid;
+  gap: 18px;
+  align-items: stretch;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .mstudo-landing .ms-pricing-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .mstudo-landing .ms-pricing-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
 /* Toggle giá tháng/năm: hiện đúng một biến thể theo data-cycle của island.
    Dùng !important vì các dòng giá có inline style display:flex (inline thắng
    CSS thường) — không có !important thì cả tháng lẫn năm cùng hiện. */
