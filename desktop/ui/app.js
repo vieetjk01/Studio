@@ -644,17 +644,27 @@ const RELEASE_API = `https://api.github.com/repos/vieetjk01/Studio/releases/tags
 const RELEASE_PAGE = `https://github.com/vieetjk01/Studio/releases/tags/${RELEASE_TAG}`;
 let _updateUrl = "";
 const parseVer = (name) => { const m = /(\d+\.\d+\.\d+)/.exec(name || ""); return m ? m[1] : ""; };
+// So sánh phiên bản kiểu semver: >0 nếu a mới hơn b.
+const cmpVer = (a, b) => {
+  const pa = (a || "0").split(".").map(Number), pb = (b || "0").split(".").map(Number);
+  for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+  return 0;
+};
 
 async function checkUpdate(manual = false) {
   try {
     const r = await invoke("http_get", { url: RELEASE_API, token: null });
     if (r.status !== 200) { if (manual) alert("Không kiểm tra được (máy chủ trả lỗi HTTP " + r.status + "). Thử lại sau."); return; }
     const rel = JSON.parse(b64ToText(r.body_b64));
-    const asset = (rel.assets || []).find((a) => /-setup\.exe$/i.test(a.name));
-    if (!asset) { if (manual) alert("Chưa tìm thấy file cài trong bản phát hành."); return; }
+    // Bản phát hành desktop-dev có thể còn nhiều file cài cũ → CHỌN file có SỐ
+    // PHIÊN BẢN CAO NHẤT (không lấy đại file đầu tiên, tránh "kẹt"/hạ cấp).
+    const setups = (rel.assets || []).filter((a) => /-setup\.exe$/i.test(a.name));
+    if (!setups.length) { if (manual) alert("Chưa tìm thấy file cài trong bản phát hành."); return; }
+    const asset = setups.reduce((best, a) => (cmpVer(parseVer(a.name), parseVer(best.name)) > 0 ? a : best), setups[0]);
     _updateUrl = asset.browser_download_url;
     const ver = parseVer(asset.name);
-    if (ver && ver !== APP_VERSION) {
+    // Chỉ cập nhật khi bản trên mạng THỰC SỰ mới hơn (không bao giờ hạ cấp).
+    if (ver && cmpVer(ver, APP_VERSION) > 0) {
       $("updateText").textContent = `Đã có bản mới ${ver} (đang dùng ${APP_VERSION}).`;
       $("updateBanner").classList.remove("hidden");
       $("btnUpdate").textContent = "Cập nhật ngay"; $("btnUpdate").disabled = false;
