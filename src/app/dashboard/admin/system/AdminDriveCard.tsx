@@ -43,7 +43,7 @@ export default function AdminDriveCard() {
             <span>
               Chưa cấu hình OAuth. Cần đặt biến môi trường <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>,{" "}
               <code>GOOGLE_CLIENT_SECRET</code>, <code>GOOGLE_ADMIN_DRIVE_REDIRECT_URI</code> (…/api/admin/drive/callback)
-              và chạy migration (thêm cột <code>drive_refresh_token</code>).
+              và chạy migration <code>admin_drive.sql</code> (bảng <code>admin_drive</code>).
             </span>
           </div>
         ) : state.connected ? (

@@ -186,11 +186,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (signature && signature.length > 200_000) {
       return NextResponse.json({ error: "too_large" }, { status: 413 });
     }
+    // Chữ ký PHẢI là data-URL ảnh base64 hợp lệ — chặn nhồi HTML/JS (XSS vào bản
+    // in hợp đồng mà chủ studio mở). Không hợp lệ → bỏ chữ ký (vẫn ký được).
+    const validSig = !!signature && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/.test(signature);
     const { error } = await db
       .from("studio_contracts")
       .update({
         client_signed_name: name,
-        client_signature: signature || null,
+        client_signature: validSig ? signature : null,
         client_signed_at: new Date().toISOString(),
         status: contract.status === "draft" || contract.status === "sent" ? "approved" : contract.status,
       })

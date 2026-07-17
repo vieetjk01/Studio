@@ -15,6 +15,17 @@ export async function POST(request: NextRequest) {
   if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
     return NextResponse.json({ error: "invalid subscription" }, { status: 400 });
   }
+  // Chỉ nhận endpoint của các dịch vụ push chính thống — chặn lưu URL nội bộ để
+  // biến máy chủ thành công cụ gửi request tùy ý (SSRF) khi web-push POST tới đó.
+  const PUSH_HOSTS = /(^|\.)(googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com|push\.apple\.com|web\.push\.apple\.com)$/i;
+  try {
+    const u = new URL(sub.endpoint);
+    if (u.protocol !== "https:" || !PUSH_HOSTS.test(u.hostname)) {
+      return NextResponse.json({ error: "invalid endpoint" }, { status: 400 });
+    }
+  } catch {
+    return NextResponse.json({ error: "invalid endpoint" }, { status: 400 });
+  }
 
   // Notifications belong to the studio owner. Staff sub-accounts subscribe under
   // the owner so they receive the studio's notifications too.

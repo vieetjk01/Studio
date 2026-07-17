@@ -102,7 +102,7 @@ export function buildContractHtml(d: ContractDocData): string {
   const sig = (img?: string | null, name?: string | null, at?: string | null, label = "") => `
     <div class="sig">
       <div class="sig-label">${esc(label)}</div>
-      ${img && img.startsWith("data:image") ? `<img src="${img}" alt="chữ ký" />` : `<div class="sig-space"></div>`}
+      ${img && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/.test(img) ? `<img src="${esc(img)}" alt="chữ ký" />` : `<div class="sig-space"></div>`}
       <div class="sig-name">${esc(name || "")}</div>
       ${at ? `<div class="sig-at">Đã ký ngày ${dmy(at)}</div>` : ""}
     </div>`;

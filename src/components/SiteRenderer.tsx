@@ -49,7 +49,9 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
   } as React.CSSProperties;
 
   // Advanced: user-authored CSS applied site-wide (scoped under the site root).
-  const customCssTag = t.customCss ? <style dangerouslySetInnerHTML={{ __html: t.customCss }} /> : null;
+  // Bỏ '<'/'>' để chặn thoát khỏi <style> (vd "</style><img onerror=...>") → XSS.
+  const safeCss = t.customCss ? String(t.customCss).replace(/[<>]/g, "") : "";
+  const customCssTag = safeCss ? <style dangerouslySetInnerHTML={{ __html: safeCss }} /> : null;
 
   const navPos = t.navPosition || "top";
   const navItems = blocks

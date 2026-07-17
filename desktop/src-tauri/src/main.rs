@@ -80,6 +80,9 @@ fn ext_lower(path: &str) -> String {
 /// Nếu webview bị lợi dụng (XSS vượt CSP), đây là chốt chặn cuối để kẻ tấn công
 /// không thể ghi .exe/.bat/.ps1… (vd thả vào thư mục Startup) chiếm quyền máy.
 const WRITABLE_EXTS: &[&str] = &["docx", "xlsx", "json", "html", "htm", "txt", "csv", "pdf", "mstmp"];
+/// Đuôi file mà app được phép ĐỌC (chỉ manifest/cache dữ liệu do app tạo) — chặn
+/// đọc file lạ để lộ token/bí mật của app khác.
+const READABLE_EXTS: &[&str] = &["json", "txt", "csv"];
 /// Đuôi file mà app được phép MỞ bằng ứng dụng mặc định (không mở file thực thi).
 const OPENABLE_EXTS: &[&str] = &["pdf", "html", "htm", "docx", "xlsx", "txt", "csv", "png", "jpg", "jpeg"];
 
@@ -110,6 +113,10 @@ fn write_file_b64(path: String, contents_b64: String) -> Result<(), String> {
 
 #[tauri::command]
 fn read_text(path: String) -> Result<String, String> {
+    // Chỉ đọc file dữ liệu app tạo (manifest/cache JSON…), không đọc file lạ.
+    if has_control_chars(&path) || !READABLE_EXTS.contains(&ext_lower(&path).as_str()) {
+        return Err("bad_path".to_string());
+    }
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
@@ -120,6 +127,9 @@ fn path_exists(path: String) -> bool {
 
 #[tauri::command]
 fn delete_file(path: String) -> Result<(), String> {
+    if has_control_chars(&path) {
+        return Err("bad_path".to_string());
+    }
     fs::remove_file(&path).map_err(|e| e.to_string())
 }
 
@@ -211,6 +221,9 @@ fn copy_dir_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
 /// Di chuyển toàn bộ dữ liệu đã lưu sang thư mục mới (khi studio đổi vị trí lưu).
 #[tauri::command]
 fn move_dir(from: String, to: String) -> Result<(), String> {
+    if has_control_chars(&from) || has_control_chars(&to) {
+        return Err("bad_path".to_string());
+    }
     let from_p = PathBuf::from(&from);
     let to_p = PathBuf::from(&to);
     if !from_p.exists() {
@@ -260,8 +273,14 @@ async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
 async fn download_and_run(app: tauri::AppHandle, url: String) -> Result<(), String> {
     // Chỉ cho phép tải bản cài từ đúng repo phát hành chính thức. Nếu không,
     // lệnh này trở thành công cụ chạy .exe tùy ý (RCE) khi JS bị lợi dụng.
-    const ALLOWED_PREFIX: &str = "https://github.com/vieetjk01/";
-    if !url.starts_with(ALLOWED_PREFIX) {
+    // PHẢI parse URL trước rồi mới so host/path — kiểm tra chuỗi thô có thể bị
+    // qua mặt bằng "../" (vd https://github.com/vieetjk01/../attacker/... sẽ
+    // chuẩn hoá thành host github.com nhưng path /attacker/...).
+    let parsed = reqwest::Url::parse(&url).map_err(|_| "url không hợp lệ".to_string())?;
+    if parsed.scheme() != "https"
+        || parsed.host_str() != Some("github.com")
+        || !parsed.path().starts_with("/vieetjk01/")
+    {
         return Err("nguồn cập nhật không hợp lệ".to_string());
     }
     let client = reqwest::Client::builder()
@@ -355,6 +374,10 @@ fn open_file(path: String) -> Result<(), String> {
 /// Mở thư mục trong Windows Explorer.
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
+    // explorer <arg> sẽ CHẠY file nếu path trỏ tới .exe/UNC — chỉ cho mở THƯ MỤC.
+    if has_control_chars(&path) || !Path::new(&path).is_dir() {
+        return Err("bad_path".to_string());
+    }
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")

@@ -27,43 +27,45 @@ export function adminDriveAuthUrl(): string {
   return oauth().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [SCOPE], state: "admin" });
 }
 
-type Row = { drive_refresh_token: string | null; drive_folder_id: string | null };
+// refresh_token là BÍ MẬT → ở bảng riêng admin_drive (chỉ service-role), KHÔNG ở
+// site_settings (bảng có policy đọc công khai).
+type Row = { refresh_token: string | null; folder_id: string | null };
 
 async function loadSettings(): Promise<Row | null> {
   const db = createAdminClient();
-  const { data } = await db.from("site_settings").select("drive_refresh_token, drive_folder_id").eq("id", 1).maybeSingle();
+  const { data } = await db.from("admin_drive").select("refresh_token, folder_id").eq("id", 1).maybeSingle();
   return (data as Row) ?? null;
 }
 
-/** Đổi code lấy refresh_token và lưu vào site_settings (id=1). */
+/** Đổi code lấy refresh_token và lưu vào admin_drive (id=1). */
 export async function connectAdminDrive(code: string): Promise<void> {
   const o = oauth();
   const { tokens } = await o.getToken(code);
   if (!tokens.refresh_token) throw new Error("no_refresh_token");
   const db = createAdminClient();
-  await db.from("site_settings").update({ drive_refresh_token: tokens.refresh_token, drive_folder_id: null }).eq("id", 1);
+  await db.from("admin_drive").upsert({ id: 1, refresh_token: tokens.refresh_token, folder_id: null, updated_at: new Date().toISOString() }, { onConflict: "id" });
 }
 
 /** Đã kết nối Drive admin chưa? */
 export async function adminDriveConnected(): Promise<boolean> {
   const s = await loadSettings();
-  return !!s?.drive_refresh_token;
+  return !!s?.refresh_token;
 }
 
 /** Ngắt kết nối (xoá token). */
 export async function disconnectAdminDrive(): Promise<void> {
   const db = createAdminClient();
-  await db.from("site_settings").update({ drive_refresh_token: null, drive_folder_id: null }).eq("id", 1);
+  await db.from("admin_drive").upsert({ id: 1, refresh_token: null, folder_id: null, updated_at: new Date().toISOString() }, { onConflict: "id" });
 }
 
 /** Client Drive đã xác thực + thư mục lưu (tạo 1 lần). */
 async function driveCtx() {
   const s = await loadSettings();
-  if (!s?.drive_refresh_token) return null;
+  if (!s?.refresh_token) return null;
   const o = oauth();
-  o.setCredentials({ refresh_token: s.drive_refresh_token });
+  o.setCredentials({ refresh_token: s.refresh_token });
   const drive = google.drive({ version: "v3", auth: o });
-  let folderId = s.drive_folder_id;
+  let folderId = s.folder_id;
   if (!folderId) {
     const res = await drive.files.create({
       requestBody: { name: FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" },
@@ -71,7 +73,7 @@ async function driveCtx() {
     });
     folderId = res.data.id || null;
     if (folderId) {
-      await createAdminClient().from("site_settings").update({ drive_folder_id: folderId }).eq("id", 1);
+      await createAdminClient().from("admin_drive").upsert({ id: 1, folder_id: folderId, updated_at: new Date().toISOString() }, { onConflict: "id" });
     }
   }
   return folderId ? { drive, folderId } : null;

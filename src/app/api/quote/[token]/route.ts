@@ -136,10 +136,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (owner?.email) {
       const host = process.env.NEXT_PUBLIC_STUDIO_HOST;
       const link = host ? `https://${host}/dashboard/studio/quotes` : "";
+      // Escape nội dung khách nhập (clientName/quoteTitle) trước khi nhồi vào HTML email.
+      const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       await sendEmail({
         to: owner.email,
         subject: `Studio: ${msg}`,
-        html: `<div style="font-family:Arial,sans-serif;color:#222"><p>${msg}</p>${link ? `<p><a href="${link}">Xem báo giá →</a></p>` : ""}<p style="color:#888;font-size:12px">Thông báo tự động từ cổng khách.</p></div>`,
+        html: `<div style="font-family:Arial,sans-serif;color:#222"><p>${escHtml(msg)}</p>${link ? `<p><a href="${link}">Xem báo giá →</a></p>` : ""}<p style="color:#888;font-size:12px">Thông báo tự động từ cổng khách.</p></div>`,
       }).catch(() => {});
     }
 

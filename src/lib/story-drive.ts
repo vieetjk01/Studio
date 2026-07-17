@@ -2,6 +2,7 @@ import "server-only";
 import { Readable } from "stream";
 import { google } from "googleapis";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signOAuthState, verifyOAuthState } from "@/lib/oauth-state";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -20,7 +21,13 @@ function oauth() {
 
 /** Auth URL — state carries the story's edit_token so the callback can bind it. */
 export function storyDriveAuthUrl(editToken: string): string {
-  return oauth().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [SCOPE], state: editToken });
+  return oauth().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [SCOPE], state: signOAuthState(`story:${editToken}`) });
+}
+
+/** Lấy edit_token từ state đã ký ở callback (chống gắn Drive lạ vào story nạn nhân). */
+export function editTokenFromState(state: string | null | undefined): string | null {
+  const p = verifyOAuthState(state);
+  return p && p.startsWith("story:") ? p.slice("story:".length) || null : null;
 }
 
 /** Exchange the code and persist the couple's Drive refresh token on the story. */
