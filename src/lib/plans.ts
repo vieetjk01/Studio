@@ -130,6 +130,36 @@ export function effectivePlan(plan: Plan | null | undefined, expiresAt: string |
 }
 
 /**
+ * Số ngày TẶNG THÊM khi mua theo NĂM — khuyến mãi "mua gói 1 năm tặng 30 ngày",
+ * áp dụng cho MỌI gói trả phí (basic → studio).
+ */
+export const ANNUAL_BONUS_DAYS = 30;
+
+/**
+ * Mốc hết hạn khi kích hoạt một gói trả phí theo chu kỳ, tính từ `from` (mặc
+ * định là hiện tại):
+ *   - "year"  → +1 năm và TẶNG THÊM 30 ngày (mọi gói).
+ *   - "month" → +1 tháng, kẹp về ngày cuối tháng kế khi ngày gốc không tồn tại
+ *     ở tháng đó (31/1 → 28/2), tránh "nhảy" qua tháng ngắn.
+ * Điểm TẬP TRUNG cho mọi nơi đặt `plan_expires_at` (admin cấp gói, tự kích hoạt
+ * bằng mã, panel quản trị) để luật khuyến mãi luôn nhất quán.
+ */
+export function planExpiry(cycle: "month" | "year", from: Date = new Date()): string {
+  const d = new Date(from.getTime());
+  if (cycle === "year") {
+    d.setFullYear(d.getFullYear() + 1);
+    d.setDate(d.getDate() + ANNUAL_BONUS_DAYS);
+  } else {
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+  }
+  return d.toISOString();
+}
+
+/**
  * Số ngày dùng thử miễn phí theo gói: Basic & Photographer 30 ngày (1 tháng),
  * Studio 7 ngày. Free không có dùng thử.
  */

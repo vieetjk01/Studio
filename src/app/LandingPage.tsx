@@ -375,6 +375,9 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
           <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 28px" }}>
             <h2 style={h2}>{L.pricing.title}</h2>
             <p style={sectionSub}>{L.pricing.sub}</p>
+            <p style={{ marginTop: 10, display: "inline-block", background: "var(--accentSoft)", color: "var(--accent)", fontSize: 13, fontWeight: 700, padding: "6px 14px", borderRadius: 999 }}>
+              {lang === "en" ? "🎁 Buy yearly, get 30 bonus days — all plans" : "🎁 Mua gói theo năm — tặng thêm 30 ngày cho tất cả các gói"}
+            </p>
           </div>
           <CyclePricing
             monthLabel={lang === "en" ? "Monthly" : "Theo tháng"}

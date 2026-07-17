@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planProfilePatch, type Plan } from "@/lib/plans";
+import { planExpiry, planProfilePatch, type Plan } from "@/lib/plans";
 import { notifyAdmins } from "@/lib/notify-admin";
 
 export const dynamic = "force-dynamic";
@@ -44,20 +44,6 @@ async function creditAffiliateCommission(
     commission_amount: commissionAmount,
     status: "pending",
   });
-}
-
-function expiryFor(cycle: "month" | "year"): string {
-  const d = new Date();
-  if (cycle === "year") d.setFullYear(d.getFullYear() + 1);
-  else {
-    // setMonth(+1) tràn cuối tháng (31/1 → 2-3/3). Kẹp về ngày cuối tháng kế tiếp.
-    const day = d.getDate();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + 1);
-    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(day, last));
-  }
-  return d.toISOString();
 }
 
 /** A logged-in photographer requests an account upgrade. */
@@ -121,7 +107,7 @@ export async function POST(req: Request) {
   if (claimed && validPlan && dc && dc.percent >= 100) {
     await db
       .from("profiles")
-      .update({ ...planProfilePatch(validPlan), plan_cycle: validCycle, plan_expires_at: expiryFor(validCycle) })
+      .update({ ...planProfilePatch(validPlan), plan_cycle: validCycle, plan_expires_at: planExpiry(validCycle) })
       .eq("id", user.id);
     activated = true;
 
