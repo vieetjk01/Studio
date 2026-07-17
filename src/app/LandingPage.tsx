@@ -87,10 +87,10 @@ const D: Record<"vi" | "en", Dict> = {
       plans: [
         { name: "Free", price: "0₫", period: "/tháng", desc: "Cho nhiếp ảnh gia mới bắt đầu", cta: "Bắt đầu miễn phí", f: ["5 album mỗi tháng", "Khách chọn ảnh & gửi lại studio (QR + link)", "Tải ảnh cho khách: tắt", "Ghi chú trên ảnh: tắt", "Lọc ảnh: 10 lần / tháng", "Nén ảnh: 5 lần / tháng", "Nén qua Drive: dùng thử 1 lần", "Watermark: chỉ chữ"] },
         { name: "Basic", price: "50.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia cá nhân", cta: "Dùng thử Basic", f: ["15 album mỗi tháng", "Cho khách tải ảnh (ZIP / từng ảnh)", "Cho khách ghi chú trên ảnh", "Watermark đầy đủ (logo + nén kèm)", "Lọc ảnh: không giới hạn", "Nén ảnh: không giới hạn", "Nén qua Drive: 5 lần / tháng"] },
-        { name: "Photographer", price: "100.000₫", period: "/tháng", desc: "Cho nhiếp ảnh gia chuyên nghiệp", cta: "Dùng thử Photographer", f: ["50 album / tháng · nén Drive 15 lần", "Đầy đủ tính năng Basic + full quyền khách", "Trang lịch chụp + nhận đặt lịch online (link/QR)", "Bảng giá dịch vụ, danh bạ khách, nhắc lịch", "Website cá nhân riêng + đổi logo"] },
-        { name: "Studio", price: "300.000₫", period: "/tháng", desc: "Cho studio & đội nhóm chuyên nghiệp", cta: "Dùng thử Studio", accent: true, f: ["Tất cả tính năng Photographer — không giới hạn", "Album & nén qua Drive không giới hạn", "Trang quản lý studio riêng", "Quản lý hợp đồng & báo giá hạng mục", "Quản lý lịch chụp + nhắc lịch", "Quản lý photographer / cameramen & lương", "Khách xem hợp đồng online & yêu cầu chỉnh sửa", "Hỗ trợ riêng · nhận mọi tính năng nâng cấp"] },
+        { name: "Photographer", price: "100.000₫", period: "/tháng", desc: "Nhiếp ảnh gia chuyên nghiệp", cta: "Dùng thử Photographer", f: ["50 album / tháng", "Đầy đủ tính năng Basic", "Lịch chụp & đặt lịch online", "Bảng giá dịch vụ", "Website cá nhân riêng"] },
+        { name: "Studio", price: "300.000₫", period: "/tháng", desc: "Studio & đội nhóm chuyên nghiệp", cta: "Dùng thử Studio", accent: true, f: ["Tất cả tính năng Photographer — không giới hạn", "Album & nén qua Drive không giới hạn", "Trang quản lý studio riêng", "Quản lý hợp đồng & báo giá hạng mục", "Quản lý lịch chụp + nhắc lịch", "Quản lý photographer / cameramen & lương", "Khách xem hợp đồng online & yêu cầu chỉnh sửa", "Hỗ trợ riêng · nhận mọi tính năng nâng cấp"] },
       ],
-      plus: { name: "Photographer Plus", price: "129.000₫", tagline: "Nâng cấp Plus — thêm quản lý hợp đồng & tên miền riêng", cta: "Dùng thử Plus", f: ["100 album/tháng · nén Drive 30 lần", "Hợp đồng: khách ký online + báo giá hạng mục", "Website dùng tên miền riêng (studio.com)"] },
+      plus: { name: "Photographer Plus", price: "129.000₫", tagline: "Nâng cấp Plus — thêm quản lý hợp đồng & tên miền riêng", cta: "Dùng thử Plus", f: ["100 album / tháng", "Hợp đồng: khách ký online + báo giá hạng mục", "Website dùng tên miền riêng (studio.com)"] },
     },
     reviews: {
       title: "Được tin dùng bởi các studio",
@@ -153,10 +153,10 @@ const D: Record<"vi" | "en", Dict> = {
       plans: [
         { name: "Free", price: "0₫", period: "/mo", desc: "For new photographers", cta: "Start free", f: ["5 albums / month", "Client photo selection via QR + link", "Client download: disabled", "Photo notes: disabled", "Filter photos: 10×/mo", "Compress photos: 5×/mo", "Drive compress: 1 trial", "Watermark: text only"] },
         { name: "Basic", price: "50,000₫", period: "/mo", desc: "For individual photographers", cta: "Try Basic", f: ["15 albums / month", "Client photo download (ZIP / single)", "Client photo notes", "Full watermark (logo + compress)", "Filter photos: unlimited", "Compress photos: unlimited", "Drive compress: 5×/mo"] },
-        { name: "Photographer", price: "100,000₫", period: "/mo", desc: "For professional photographers", cta: "Try Photographer", f: ["50 albums / month · Drive compress 15×", "All Basic features + full client access", "Shoot schedule + online booking (link/QR)", "Service pricing, client directory, reminders", "Personal website + custom logo"] },
+        { name: "Photographer", price: "100,000₫", period: "/mo", desc: "For professional photographers", cta: "Try Photographer", f: ["50 albums / month", "All Basic features", "Shoot schedule & online booking", "Service pricing", "Personal website"] },
         { name: "Studio", price: "300,000₫", period: "/mo", desc: "For studios & professional teams", cta: "Try Studio", accent: true, f: ["All Photographer features — unlimited", "Unlimited albums & Drive compress", "Dedicated studio management page", "Contract & quote management", "Shoot schedule + reminders", "Manage photographers & pay by contract", "Clients view contracts online", "Priority support · all future features"] },
       ],
-      plus: { name: "Photographer Plus", price: "129,000₫", tagline: "Plus upgrade — adds contract management & custom domain", cta: "Try Plus", f: ["100 albums/month · Drive compress 30×", "Contracts: online signing + line-item quotes", "Website on your own domain (studio.com)"] },
+      plus: { name: "Photographer Plus", price: "129,000₫", tagline: "Plus upgrade — adds contract management & custom domain", cta: "Try Plus", f: ["100 albums / month", "Contracts: online signing + line-item quotes", "Website on your own domain (studio.com)"] },
     },
     reviews: {
       title: "Trusted by studios",
@@ -264,11 +264,13 @@ function PriceRow({ dyn, fallbackPrice, fallbackPeriod, className }: {
   fallbackPeriod: string;
   className?: string;
 }) {
+  // Dòng giá GIẢM: giá + chu kỳ + nhãn -x% (giá gốc gạch ngang nằm ở dòng tên).
+  // nowrap + chiều cao cố định: giá dài ("300.000₫") không xuống 2 dòng làm lệch
+  // nút "Dùng thử" giữa các gói.
   return (
-    <div className={className} style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "14px 0 4px", flexWrap: "wrap" }}>
-      {dyn?.full && <span style={{ color: "var(--muted)", fontSize: 16, textDecoration: "line-through" }}>{dyn.full}</span>}
-      <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-.03em" }}>{dyn?.price ?? fallbackPrice}</span>
-      <span style={{ color: "var(--muted)", fontSize: 15 }}>{dyn?.period ?? fallbackPeriod}</span>
+    <div className={className} style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "10px 0 4px", flexWrap: "nowrap", height: 40, whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-.03em" }}>{dyn?.price ?? fallbackPrice}</span>
+      <span style={{ color: "var(--muted)", fontSize: 14 }}>{dyn?.period ?? fallbackPeriod}</span>
       {dyn?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{`-${dyn.off}%`}</span>}
     </div>
   );
@@ -391,10 +393,18 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                 return (
                   <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
                     {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
-                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
+                    {/* Dòng 1: tên gói + giá gốc gạch ngang (theo chu kỳ). */}
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", minHeight: 22 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
+                      {dynMonth?.full && <span className="ms-cy-month" style={{ color: "var(--muted)", fontSize: 15, textDecoration: "line-through" }}>{dynMonth.full}</span>}
+                      {dynYear?.full && <span className="ms-cy-year" style={{ color: "var(--muted)", fontSize: 15, textDecoration: "line-through" }}>{dynYear.full}</span>}
+                    </div>
+                    {/* Dòng 2: giá (đã giảm) + chu kỳ + nhãn -x%. */}
                     <PriceRow className="ms-cy-month" dyn={dynMonth} fallbackPrice={p.price} fallbackPeriod={p.period} />
                     <PriceRow className="ms-cy-year" dyn={dynYear} fallbackPrice={p.price} fallbackPeriod={p.period} />
-                    <p style={{ color: "var(--muted)", fontSize: 14, margin: "0 0 20px", minHeight: 40 }}>{p.desc}</p>
+                    {/* Cố định chiều cao mô tả (2 dòng) để nút "Dùng thử" của mọi
+                        gói thẳng hàng nhau. */}
+                    <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: "20px", margin: "0 0 20px", height: 40, overflow: "hidden" }}>{p.desc}</p>
                     <Link href={loginUrl} style={{ width: "100%", height: 44, border: p.accent ? "none" : "1px solid var(--border)", background: p.accent ? "var(--accent)" : "var(--bg)", color: p.accent ? "var(--accentFg)" : "var(--fg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, cursor: "pointer", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>{p.cta}</Link>
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       {p.f.map((line) => (
