@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const allPhotos = await fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video");
   const { data: allSources } = await admin
     .from("album_sources")
-    .select("id, name, position, stage")
+    .select("id, name, position, stage, drive_url, kind")
     .eq("album_id", album.id)
     .order("position");
 
@@ -45,7 +45,13 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const useStages = delSources.length > 0;
   const delSourceIds = new Set(delSources.map((x) => x.id));
   const photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
-  const sources = (useStages ? delSources : (allSources ?? [])).map(({ id, name, position }) => ({ id, name, position }));
+  const shown = useStages ? delSources : (allSources ?? []);
+  const sources = shown.map(({ id, name, position }) => ({ id, name, position }));
+  // Folder Drive links of the shown sources → "Tải album" gives the customer a
+  // Drive link (gated behind the password like the photos themselves).
+  const driveFolders = shown
+    .filter((x) => x.kind === "folder" && x.drive_url)
+    .map(({ name, drive_url }) => ({ name, url: drive_url as string }));
 
-  return NextResponse.json({ photos, sources });
+  return NextResponse.json({ photos, sources, driveFolders });
 }

@@ -30,11 +30,11 @@ export type ContractRow = {
 
 const STATUS_TONE: Record<ContractStatus, string> = {
   draft: "var(--text3)",
-  sent: "#c7a76b",
-  approved: "#7bb38a",
-  in_progress: "#6ba3c7",
-  completed: "#7bb38a",
-  cancelled: "#c77b7b",
+  sent: "var(--s-amber)",
+  approved: "var(--s-green)",
+  in_progress: "var(--s-blue)",
+  completed: "var(--s-green)",
+  cancelled: "var(--s-red)",
 };
 
 export default function ContractsListView() {
@@ -115,11 +115,12 @@ export default function ContractsListView() {
               <input
                 className="input pl-9"
                 placeholder="Tìm theo tên, khách, mã, SĐT…"
+                aria-label="Tìm hợp đồng"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
-            <select className="input w-auto shrink-0" value={status} onChange={(e) => setStatus(e.target.value as "all" | ContractStatus)}>
+            <select className="input w-auto shrink-0" aria-label="Lọc theo trạng thái" value={status} onChange={(e) => setStatus(e.target.value as "all" | ContractStatus)}>
               <option value="all">Tất cả</option>
               {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((k) => (
                 <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
@@ -170,7 +171,8 @@ export default function ContractsListView() {
                       </p>
                     </div>
                     <select
-                      className="input py-1 text-xs"
+                      className="input py-1.5 text-xs"
+                      aria-label="Đổi trạng thái hợp đồng"
                       style={{
                         width: "auto",
                         color: STATUS_TONE[c.status],

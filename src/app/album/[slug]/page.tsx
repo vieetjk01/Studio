@@ -6,6 +6,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import GalleryView from "./GalleryView";
 import { buildAlbumMetadata } from "@/lib/album-meta";
 import { MAIN_HOST } from "@/lib/hosts";
+import { effectivePlan, type Plan } from "@/lib/plans";
 import type { Feedback } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -63,36 +64,47 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
 
   const hasPassword = !album.gallery_pinned && !!album.password_hash;
 
-  // Chạy song song: brand, ảnh, sources và feedback chỉ phụ thuộc album.id /
-  // owner_id — gộp Promise.all thay vì 4 round-trip tuần tự (giảm TTFB trang khách).
-  const [brand, allPhotos, { data: s }, { data: feedback }] = await Promise.all([
+  // Chạy song song: brand, ảnh, sources, feedback và gói của chủ studio — gộp
+  // Promise.all thay vì nhiều round-trip tuần tự (giảm TTFB trang khách).
+  const [brand, allPhotos, { data: s }, { data: feedback }, { data: owner }] = await Promise.all([
     getStudioBrand(admin, album.owner_id),
     hasPassword
       ? Promise.resolve(null)
       : fetchAllPhotos(admin, album.id, "id, drive_file_id, name, source_id, position, is_video"),
-    hasPassword
-      ? Promise.resolve({ data: null })
-      : admin.from("album_sources").select("id, name, position, stage").eq("album_id", album.id).order("position"),
+    // drive_url/kind cần cho cả 2 trường hợp: có mật khẩu vẫn cần để tính link
+    // Drive (nhưng chỉ gửi cho client SAU khi mở khoá — xem access route).
+    admin.from("album_sources").select("id, name, position, stage, drive_url, kind").eq("album_id", album.id).order("position"),
     admin
       .from("feedback")
       .select("*")
       .eq("album_id", album.id)
       .eq("approved", true)
       .order("created_at", { ascending: false }),
+    admin.from("profiles").select("plan, plan_expires_at, role").eq("id", album.owner_id).maybeSingle(),
   ]);
   const studioName = brand.name;
 
+  // Chỉ gói Studio & Photographer Plus (và admin) được tải ZIP nén từ link album.
+  const ownerPlan = effectivePlan(owner?.plan as Plan, owner?.plan_expires_at);
+  const canZip = owner?.role === "admin" || ownerPlan === "studio" || ownerPlan === "photographer_plus";
+
+  // Sources hiển thị (ưu tiên stage 'delivery', fallback tất cả nếu chưa gắn).
+  const delSources = (s ?? []).filter((x) => x.stage === "delivery");
+  const useStages = delSources.length > 0;
+  const shownSources = useStages ? delSources : (s ?? []);
+  const delSourceIds = new Set(delSources.map((x) => x.id));
+
   let photos = null;
   let sources = null;
+  // Link Drive của các folder trong album — dùng cho nút "Tải album". Với album
+  // có mật khẩu, KHÔNG lộ trước khi mở khoá; access route trả về sau khi đúng mk.
+  let driveFolders: { name: string; url: string }[] = [];
   if (!hasPassword) {
-    // Delivery view prefers delivery-stage photos. But if the studio hasn't
-    // tagged any source as 'delivery' yet (e.g. they just flipped the phase),
-    // fall back to showing all the album's photos so the page is never empty.
-    const delSources = (s ?? []).filter((x) => x.stage === "delivery");
-    const useStages = delSources.length > 0;
-    const delSourceIds = new Set(delSources.map((x) => x.id));
     photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
-    sources = (useStages ? delSources : (s ?? [])).map(({ id, name, position }) => ({ id, name, position }));
+    sources = shownSources.map(({ id, name, position }) => ({ id, name, position }));
+    driveFolders = shownSources
+      .filter((x) => x.kind === "folder" && x.drive_url)
+      .map(({ name, drive_url }) => ({ name, url: drive_url as string }));
   }
 
   return (
@@ -105,10 +117,12 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
         cover_url: album.cover_url,
         hasPassword,
         allowDownload: album.download_enabled !== false,
+        canZip,
         watermark: album.watermark_delivery ? (album.watermark_text || studioName) : null,
       }}
       initialPhotos={photos}
       initialSources={sources}
+      initialDriveFolders={driveFolders}
       feedback={(feedback ?? []) as Feedback[]}
       shareIds={shareIds}
       studioName={studioName}

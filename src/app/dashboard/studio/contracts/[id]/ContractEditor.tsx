@@ -78,8 +78,8 @@ type CrewRow = {
 
 const CREW_STATUS_TONE: Record<string, string> = {
   pending: "var(--text3)",
-  accepted: "#7bb38a",
-  declined: "#c77b7b",
+  accepted: "var(--s-green)",
+  declined: "var(--s-red)",
 };
 
 function today() {
@@ -335,7 +335,7 @@ export default function ContractEditor({
     client_phone: !phoneOk,
   };
   const studioSigned = !!contract.studio_signed_at || !!(studioSignName.trim() && studioSignature);
-  const redIf = (bad: boolean) => (bad ? { borderColor: "#c77b7b" } : undefined);
+  const redIf = (bad: boolean) => (bad ? { borderColor: "var(--s-red)" } : undefined);
 
   async function fillCode() {
     if (f.code.trim()) return;
@@ -748,7 +748,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
     await supabase.from("contract_products").delete().eq("id", id);
     setProducts((p) => p.filter((x) => x.id !== id));
   }
-  const PROD_TONE: Record<ProductStatus, string> = { ordered: "var(--text3)", in_progress: "#6ba3c7", done: "#7bb38a" };
+  const PROD_TONE: Record<ProductStatus, string> = { ordered: "var(--text3)", in_progress: "var(--s-blue)", done: "var(--s-green)" };
 
   // ── Quote options ──────────────────────────────────────────────
   async function addOption() {
@@ -879,10 +879,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </select>
           </label>
           <div className="flex flex-col items-end">
-            <span className="flex items-center gap-1 px-3 py-2 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
+            <span className="flex items-center gap-1 px-3 py-2 text-xs" style={{ color: contractSaved === "saved" ? "var(--s-green)" : "var(--text3)" }}>
               {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu</> : "Tự động lưu"}
             </span>
-            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "#c77b7b" }}>Chưa có chữ ký studio</span>}
+            {!studioSigned && <span className="mt-1 text-[10px]" style={{ color: "var(--s-red)" }}>Chưa có chữ ký studio</span>}
           </div>
           <a href={shareUrl} target="_blank" rel="noreferrer" className="btn-ghost px-3 py-2 text-xs">
             Xem như khách
@@ -900,8 +900,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       {/* Same-day scheduling warning */}
       {sameDayContracts.length > 0 && (
-        <div className="card mb-6 p-4" style={{ borderColor: "#c7a76b55", background: "#c7a76b11" }}>
-          <p className="flex items-center gap-2 text-sm font-medium" style={{ color: "#c7a76b" }}>
+        <div className="card mb-6 p-4" style={{ borderColor: "var(--s-amberS)", background: "var(--s-amberS)" }}>
+          <p className="flex items-center gap-2 text-sm font-medium" style={{ color: "var(--s-amber)" }}>
             <CalendarClock size={16} /> Trùng ngày {f.event_date}: có {sameDayContracts.length} hợp đồng khác cùng ngày
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">
@@ -925,7 +925,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             Cổng khách: xem HĐ · lịch · ảnh · thanh toán (mật khẩu = SĐT khách)
           </p>
           <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{shareUrl}</p>
-          <p className="text-[11px]" style={{ color: contract.client_viewed_at ? "#7bb38a" : "var(--text3)" }}>
+          <p className="text-[11px]" style={{ color: contract.client_viewed_at ? "var(--s-green)" : "var(--text3)" }}>
             {contract.client_viewed_at
               ? `Khách đã xem · ${new Date(contract.client_viewed_at).toLocaleString("vi-VN")}`
               : "Khách chưa mở link"}
@@ -972,7 +972,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       {/* Ask for a review */}
       <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
-        <Star size={16} style={{ color: "#c7a76b" }} />
+        <Star size={16} style={{ color: "var(--s-amber)" }} />
         <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--text2)" }}>
           Xin khách đánh giá sau khi giao ảnh (gửi kèm link cổng → mục “Đánh giá studio”).
         </p>
@@ -989,10 +989,10 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       {/* Signature banner */}
       {contract.client_signed_at && (
-        <div className="card mb-6 flex flex-wrap items-center gap-4 p-5" style={{ borderColor: "#7bb38a55" }}>
-          <PenLine size={18} style={{ color: "#7bb38a" }} />
+        <div className="card mb-6 flex flex-wrap items-center gap-4 p-5" style={{ borderColor: "var(--s-greenS)" }}>
+          <PenLine size={18} style={{ color: "var(--s-green)" }} />
           <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "#7bb38a" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--s-green)" }}>
               Khách đã ký hợp đồng
             </p>
             <p className="text-xs" style={{ color: "var(--text3)" }}>
@@ -1008,8 +1008,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       {/* Open edit requests */}
       {openRequests.length > 0 && (
-        <div className="card mb-6 p-5" style={{ borderColor: "#c7a76b55" }}>
-          <h2 className="mb-3 font-serif text-lg font-medium" style={{ color: "#c7a76b" }}>
+        <div className="card mb-6 p-5" style={{ borderColor: "var(--s-amberS)" }}>
+          <h2 className="mb-3 font-serif text-lg font-medium" style={{ color: "var(--s-amber)" }}>
             Khách yêu cầu chỉnh sửa ({openRequests.length})
           </h2>
           <ul className="space-y-2">
@@ -1032,8 +1032,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
       {/* Client brief */}
       {contract.brief_submitted_at && (
-        <div className="card mb-6 p-5" style={{ borderColor: "#6ba3c755" }}>
-          <h2 className="mb-2 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "#6ba3c7" }}>
+        <div className="card mb-6 p-5" style={{ borderColor: "var(--s-blueS)" }}>
+          <h2 className="mb-2 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: "var(--s-blue)" }}>
             <FileText size={18} /> Brief từ khách
           </h2>
           <dl className="space-y-1.5 text-sm">
@@ -1054,11 +1054,11 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="label">Tên hợp đồng <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <label className="label">Tên hợp đồng <span style={{ color: "var(--s-red)" }}>*</span></label>
                   <input className="input" value={f.title} onChange={(e) => set("title", e.target.value)} style={redIf(reqMissing.title)} />
                 </div>
                 <div>
-                  <label className="label">Mã hợp đồng <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <label className="label">Mã hợp đồng <span style={{ color: "var(--s-red)" }}>*</span></label>
                   <div className="flex gap-2">
                     <input className="input" placeholder="HD-06-2026-001" value={f.code} onChange={(e) => set("code", e.target.value)} style={redIf(reqMissing.code)} />
                     {!f.code.trim() && <button type="button" onClick={fillCode} className="btn-ghost shrink-0 px-3 text-xs">Tạo mã</button>}
@@ -1067,13 +1067,13 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label className="label">Khách hàng <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <label className="label">Khách hàng <span style={{ color: "var(--s-red)" }}>*</span></label>
                   <input className="input" value={f.client_name} onChange={(e) => set("client_name", e.target.value)} style={redIf(reqMissing.client_name)} />
                 </div>
                 <div>
-                  <label className="label">SĐT khách <span style={{ color: "#c77b7b" }}>*</span></label>
+                  <label className="label">SĐT khách <span style={{ color: "var(--s-red)" }}>*</span></label>
                   <input className="input" inputMode="numeric" maxLength={15} placeholder="0901234567" value={f.client_phone} onChange={(e) => set("client_phone", e.target.value)} style={redIf(reqMissing.client_phone)} />
-                  {reqMissing.client_phone && <p className="mt-1 text-[11px]" style={{ color: "#c77b7b" }}>Phải đủ 10 số.</p>}
+                  {reqMissing.client_phone && <p className="mt-1 text-[11px]" style={{ color: "var(--s-red)" }}>Phải đủ 10 số.</p>}
                 </div>
                 <div>
                   <label className="label">Email khách</label>
@@ -1186,7 +1186,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Sửa trong Dịch vụ &amp; điều khoản</Link>
                 </p>
               </div>
-              <p className="flex items-center gap-1 text-xs" style={{ color: contractSaved === "saved" ? "#7bb38a" : "var(--text3)" }}>
+              <p className="flex items-center gap-1 text-xs" style={{ color: contractSaved === "saved" ? "var(--s-green)" : "var(--text3)" }}>
                 {contractSaved === "saving" ? "Đang lưu…" : contractSaved === "saved" ? <><Check size={13} /> Đã lưu tự động</> : "Thông tin tự động lưu khi nhập"}
               </p>
             </div>
@@ -1256,7 +1256,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mb-1 flex items-center justify-between">
               <h2 className="font-serif text-lg font-medium">Thanh toán</h2>
               <p className="text-xs" style={{ color: "var(--text2)" }}>
-                Đã thu <b style={{ color: "#7bb38a" }}>{vnd(collected)}</b> · Còn lại <b style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</b>
+                Đã thu <b style={{ color: "var(--s-green)" }}>{vnd(collected)}</b> · Còn lại <b style={{ color: balance > 0 ? "var(--s-amber)" : "var(--s-green)" }}>{vnd(balance)}</b>
               </p>
             </div>
             <p className="mb-4 text-[11px]" style={{ color: "var(--text3)" }}>
@@ -1275,7 +1275,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           {it.paid ? (
                             <>
                               <p className="text-sm font-medium">{vnd(it.amount)} · {it.label}</p>
-                              <p className="text-[11px]" style={{ color: "#7bb38a" }}>✓ Đã thu{it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}</p>
+                              <p className="text-[11px]" style={{ color: "var(--s-green)" }}>✓ Đã thu{it.paid_at ? ` · ${it.paid_at.slice(0, 10)}` : ""}</p>
                             </>
                           ) : (
                             <div className="flex flex-wrap gap-1.5">
@@ -1295,7 +1295,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                                 value={it.due_date ?? ""}
                                 onChange={(v) => autosavePlan(it.id, { due_date: v || null })}
                               />
-                              {overdue && <span className="text-[11px] self-center" style={{ color: "#c77b7b" }}>quá hạn</span>}
+                              {overdue && <span className="text-[11px] self-center" style={{ color: "var(--s-red)" }}>quá hạn</span>}
                             </div>
                           )}
                           {/* Client proofs for this instalment */}
@@ -1306,27 +1306,27 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                             </button>
                           ))}
                         </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center justify-end gap-3">
                         {!it.paid && it.amount > 0 && <VietQRButton bank={bank} amount={it.amount} addInfo={qrInfo} label="QR" />}
                         {it.paid && linked?.proof_url && (
-                          <button type="button" onClick={() => setLightbox(linked.proof_url!)} className="cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
+                          <button type="button" onClick={() => setLightbox(linked.proof_url!)} className="shrink-0 cursor-zoom-in" title="Phóng to ảnh chuyển khoản">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={linked.proof_url} alt="CK" className="h-7 w-7 rounded object-cover" style={{ border: "1px solid var(--border)" }} />
                           </button>
                         )}
                         {it.paid && linked && (
-                          <label className="cursor-pointer text-[11px]" style={{ color: "var(--text3)" }} title="Tải ảnh đã chuyển khoản">
+                          <label className="flex shrink-0 cursor-pointer items-center p-1 text-[11px]" style={{ color: "var(--text3)" }} title="Tải ảnh đã chuyển khoản" aria-label="Tải ảnh đã chuyển khoản">
                             <ImageIcon size={14} />
                             <input type="file" accept="image/*" className="hidden" onChange={(e) => attachProof(linked.id, e.target.files?.[0] ?? null)} />
                           </label>
                         )}
                         {it.paid && linked && (
-                          <button onClick={() => printReceipt(linked)} className="text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
+                          <button onClick={() => printReceipt(linked)} className="shrink-0 p-1 text-[11px]" style={{ color: "var(--text2)" }}>Phiếu thu</button>
                         )}
-                        <button onClick={() => markPlanPaid(it)} className="text-[11px]" style={{ color: it.paid ? "#7bb38a" : "var(--text3)" }}>
+                        <button onClick={() => markPlanPaid(it)} className="shrink-0 p-1 text-[11px]" style={{ color: it.paid ? "var(--s-green)" : "var(--text3)" }}>
                           {it.paid ? "✓ Đã thu" : "Đánh dấu thu"}
                         </button>
-                        <button onClick={() => deletePlan(it)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                        <button onClick={() => deletePlan(it)} className="shrink-0 p-1" aria-label="Xoá đợt thanh toán" title="Xoá" style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
                       </div>
                       </div>
                     </li>
@@ -1379,7 +1379,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={() => addPlan(false)} disabled={busy === "plan"} className="btn-ghost"><Plus size={15} /> {busy === "plan" ? "Đang thêm…" : "Thêm đợt thu"}</button>
-              <button onClick={() => addPlan(true)} disabled={busy === "planPaid"} className="btn-ghost" style={{ color: "#7bb38a" }}><Check size={15} /> {busy === "planPaid" ? "Đang lưu…" : "Thêm & đã thu"}</button>
+              <button onClick={() => addPlan(true)} disabled={busy === "planPaid"} className="btn-ghost" style={{ color: "var(--s-green)" }}><Check size={15} /> {busy === "planPaid" ? "Đang lưu…" : "Thêm & đã thu"}</button>
             </div>
 
             {/* Unlinked client proofs (not tied to any instalment) */}
@@ -1443,7 +1443,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                         onClick={() => toggleExpenseVisible(e.id, !e.client_visible)}
                         className="rounded-full px-2 py-0.5 text-[10px]"
                         style={e.client_visible
-                          ? { background: "#c7a76b22", color: "#c7a76b" }
+                          ? { background: "var(--s-amberS)", color: "var(--s-amber)" }
                           : { background: "var(--surface)", color: "var(--text3)" }}
                         title={e.client_visible ? "Khách thấy & bị tính vào hóa đơn — bấm để chuyển thành nội bộ" : "Chỉ nội bộ (tính lãi/lỗ) — bấm để hiện cho khách"}
                       >
@@ -1518,14 +1518,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-serif text-lg font-medium">Checklist công việc</h2>
               {tasks.length > 0 && (
-                <span className="text-xs" style={{ color: tasksDone === tasks.length ? "#7bb38a" : "var(--text3)" }}>
+                <span className="text-xs" style={{ color: tasksDone === tasks.length ? "var(--s-green)" : "var(--text3)" }}>
                   {tasksDone}/{tasks.length} xong
                 </span>
               )}
             </div>
             {tasks.length > 0 && (
               <div className="mb-3 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
-                <div className="h-full rounded-full" style={{ width: `${(tasksDone / tasks.length) * 100}%`, background: "#7bb38a" }} />
+                <div className="h-full rounded-full" style={{ width: `${(tasksDone / tasks.length) * 100}%`, background: "var(--s-green)" }} />
               </div>
             )}
             {tasks.length === 0 ? (
@@ -1534,7 +1534,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <ul className="space-y-1.5">
                 {tasks.map((t) => (
                   <li key={t.id} className="flex items-center gap-2.5">
-                    <button onClick={() => toggleTask(t)} className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md" style={{ border: "1px solid var(--border2)", background: t.done ? "#7bb38a" : "transparent" }}>
+                    <button onClick={() => toggleTask(t)} className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md" style={{ border: "1px solid var(--border2)", background: t.done ? "var(--s-green)" : "transparent" }}>
                       {t.done && <Check size={13} color="#0c0c0c" />}
                     </button>
                     <span className="flex-1 text-sm" style={{ color: t.done ? "var(--text3)" : "var(--text)", textDecoration: t.done ? "line-through" : "none" }}>{t.label}</span>
@@ -1602,14 +1602,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                       </div>
                       <input className="input mt-2" placeholder="Yêu cầu riêng gửi cho người này (vd: mang lens 35mm, có mặt 7:30)…" value={c.note} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, note: e.target.value } : x)))} />
                       {c.phone && conflictFor(c.phone) && (
-                        <p className="mt-2 rounded-lg px-2.5 py-1.5 text-[11px]" style={{ background: "rgba(199,123,123,0.12)", color: "#d99" }}>
+                        <p className="mt-2 rounded-lg px-2.5 py-1.5 text-[11px]" style={{ background: "rgba(199,123,123,0.12)", color: "var(--s-red)" }}>
                           ⚠ {conflictFor(c.phone)} (ngày {f.event_date})
                         </p>
                       )}
                       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <span className="text-[11px]" style={{ color: CREW_STATUS_TONE[st] }}>{CREW_STATUS_LABEL[st]}</span>
-                          <button onClick={() => togglePaid(c, idx)} className="text-[11px]" style={{ color: c.paid ? "#7bb38a" : "var(--text3)" }}>
+                          <button onClick={() => togglePaid(c, idx)} className="text-[11px]" style={{ color: c.paid ? "var(--s-green)" : "var(--text3)" }}>
                             {c.paid ? "✓ Đã trả lương" : "Chưa trả lương"}
                           </button>
                         </div>
@@ -1718,7 +1718,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </div>
 
         {/* Right: finance summary */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           <div className="card p-6">
             <h2 className="mb-4 font-serif text-lg font-medium">Tài chính</h2>
             <dl className="space-y-3 text-sm">
@@ -1728,18 +1728,18 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
               <div className="flex justify-between">
                 <dt style={{ color: "var(--text2)" }}>Đã thu</dt>
-                <dd className="font-medium" style={{ color: "#7bb38a" }}>{vnd(collected)}</dd>
+                <dd className="font-medium" style={{ color: "var(--s-green)" }}>{vnd(collected)}</dd>
               </div>
               <div className="flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
                 <dt style={{ color: "var(--text2)" }}>Còn lại</dt>
                 <dd className="flex items-center gap-2">
-                  <span className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</span>
+                  <span className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "var(--s-amber)" : "var(--s-green)" }}>{vnd(balance)}</span>
                   {balance > 0 && <VietQRButton bank={bank} amount={balance} addInfo={qrInfo} label="QR" />}
                 </dd>
               </div>
               <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
                 <dt style={{ color: "var(--text2)" }}>Tổng lương nhân sự</dt>
-                <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(payroll)}</dd>
+                <dd className="font-medium" style={{ color: "var(--s-red)" }}>− {vnd(payroll)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt style={{ color: "var(--text3)" }}>· Đã trả lương</dt>
@@ -1747,15 +1747,15 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               </div>
               <div className="flex justify-between">
                 <dt style={{ color: "var(--text2)" }}>Chi phí sản phẩm</dt>
-                <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(productCost)}</dd>
+                <dd className="font-medium" style={{ color: "var(--s-red)" }}>− {vnd(productCost)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt style={{ color: "var(--text2)" }}>Chi phí phát sinh</dt>
-                <dd className="font-medium" style={{ color: "#c77b7b" }}>− {vnd(expenseTotal)}</dd>
+                <dd className="font-medium" style={{ color: "var(--s-red)" }}>− {vnd(expenseTotal)}</dd>
               </div>
               <div className="flex justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
                 <dt style={{ color: "var(--text2)" }}>Lãi/lỗ dự tính</dt>
-                <dd className="font-serif text-lg font-medium" style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }}>
+                <dd className="font-serif text-lg font-medium" style={{ color: profit >= 0 ? "var(--s-green)" : "var(--s-red)" }}>
                   {vnd(profit)}
                 </dd>
               </div>

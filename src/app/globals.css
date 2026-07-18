@@ -187,12 +187,13 @@ body {
     transform: scale(0.97);
   }
   .btn-danger {
-    @apply btn border text-red-300;
-    border-color: rgba(248, 113, 113, 0.4);
+    @apply btn border;
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, transparent);
     transition: background-color 0.15s ease, transform 0.1s ease;
   }
   .btn-danger:hover:not(:disabled) {
-    background: rgba(127, 29, 29, 0.25);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
   }
   .btn-danger:active:not(:disabled) {
     transform: scale(0.97);
