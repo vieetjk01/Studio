@@ -15,11 +15,11 @@ export type QuoteRow = StudioQuote & {
 
 const STATUS_COLOR: Record<QuoteStatus, string> = {
   draft: "var(--text3)",
-  sent: "#60a5fa",
-  viewed: "#a78bfa",
-  adjust_requested: "#f59e0b",
-  accepted: "#34d399",
-  converted: "#10b981",
+  sent: "var(--s-blue)",
+  viewed: "var(--s-blue)",
+  adjust_requested: "var(--s-amber)",
+  accepted: "var(--s-green)",
+  converted: "var(--s-green)",
   expired: "var(--text3)",
   cancelled: "var(--text3)",
 };
@@ -70,7 +70,7 @@ export default function QuotesListView({ list: initialList, studioHost = null }:
                     <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text3)" }}>
                       <span>{q.code || "—"}</span>
                       {pendingAdj > 0 && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#f59e0b22", color: "#f59e0b" }}>
+                        <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-amberS)", color: "var(--s-amber)" }}>
                           {pendingAdj} yêu cầu chỉnh
                         </span>
                       )}
@@ -88,7 +88,8 @@ export default function QuotesListView({ list: initialList, studioHost = null }:
                       </p>
                     </div>
                     <select
-                      className="input py-1 text-xs"
+                      className="input py-1.5 text-xs"
+                      aria-label="Đổi trạng thái báo giá"
                       style={{
                         width: "auto",
                         color: STATUS_COLOR[q.status],

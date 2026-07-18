@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, TrendingUp, TrendingDown, Wall
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import { vnd, EXPENSE_CATEGORY_LABEL, PAYMENT_KIND_LABEL, type StudioExpense, type PaymentKind } from "@/lib/types";
-import { fmtDate } from "@/lib/date";
+import { fmtDate, todayVN } from "@/lib/date";
 
 export type PaymentRow = {
   id: string;
@@ -50,7 +50,7 @@ export default function ReportsView({
   const [targetEdit, setTargetEdit] = useState(false);
   const [targetInput, setTargetInput] = useState(initialTarget || 0);
 
-  const [exp, setExp] = useState({ title: "", amount: 0, category: "equipment", spent_at: now.toISOString().slice(0, 10), note: "" });
+  const [exp, setExp] = useState({ title: "", amount: 0, category: "equipment", spent_at: todayVN(), note: "" });
   const [busy, setBusy] = useState(false);
 
   const ym = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}`;
@@ -134,7 +134,7 @@ export default function ReportsView({
     setBusy(false);
     if (!error && data) {
       setExpenses((p) => [...p, data as StudioExpense]);
-      setExp({ title: "", amount: 0, category: "equipment", spent_at: now.toISOString().slice(0, 10), note: "" });
+      setExp({ title: "", amount: 0, category: "equipment", spent_at: todayVN(), note: "" });
     }
   }
 
@@ -149,32 +149,32 @@ export default function ReportsView({
         <h1 className="font-serif text-2xl font-medium mr-auto">Thu chi &amp; doanh thu</h1>
         <div className="flex items-center gap-2">
           <button onClick={exportCsv} className="btn-ghost px-3 py-2 text-xs"><Download size={14} /> CSV</button>
-          <button onClick={() => move(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>
+          <button onClick={() => move(-1)} aria-label="Tháng trước" className="btn-ghost p-2"><ChevronLeft size={16} /></button>
           <span className="min-w-[120px] text-center font-medium">{MONTHS[cursor.month]} {cursor.year}</span>
-          <button onClick={() => move(1)} className="btn-ghost p-2"><ChevronRight size={16} /></button>
+          <button onClick={() => move(1)} aria-label="Tháng sau" className="btn-ghost p-2"><ChevronRight size={16} /></button>
         </div>
       </div>
 
       {/* Summary cards */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card p-5">
-          <TrendingUp size={18} style={{ color: "#7bb38a" }} />
-          <p className="mt-3 font-serif text-2xl font-medium" style={{ color: "#7bb38a" }}>{vnd(income)}</p>
+          <TrendingUp size={18} style={{ color: "var(--s-green)" }} />
+          <p className="mt-3 font-serif text-2xl font-medium" style={{ color: "var(--s-green)" }}>{vnd(income)}</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Doanh thu (đã thu)</p>
         </div>
         <div className="card p-5">
-          <TrendingDown size={18} style={{ color: "#c77b7b" }} />
+          <TrendingDown size={18} style={{ color: "var(--s-red)" }} />
           <p className="mt-3 font-serif text-2xl font-medium">{vnd(salaryOut)}</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Chi lương nhân sự</p>
         </div>
         <div className="card p-5">
-          <TrendingDown size={18} style={{ color: "#c77b7b" }} />
+          <TrendingDown size={18} style={{ color: "var(--s-red)" }} />
           <p className="mt-3 font-serif text-2xl font-medium">{vnd(otherOut)}</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Chi phí khác</p>
         </div>
-        <div className="card p-5" style={{ borderColor: profit >= 0 ? "#7bb38a55" : "#c77b7b55" }}>
-          <Wallet size={18} style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }} />
-          <p className="mt-3 font-serif text-2xl font-medium" style={{ color: profit >= 0 ? "#7bb38a" : "#c77b7b" }}>{vnd(profit)}</p>
+        <div className="card p-5" style={{ borderColor: profit >= 0 ? "var(--s-greenS)" : "var(--s-redS)" }}>
+          <Wallet size={18} style={{ color: profit >= 0 ? "var(--s-green)" : "var(--s-red)" }} />
+          <p className="mt-3 font-serif text-2xl font-medium" style={{ color: profit >= 0 ? "var(--s-green)" : "var(--s-red)" }}>{vnd(profit)}</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>Lợi nhuận</p>
         </div>
       </div>
@@ -197,10 +197,10 @@ export default function ReportsView({
         {target > 0 ? (
           <>
             <div className="h-3 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
-              <div className="h-full rounded-full" style={{ width: `${targetPct}%`, background: targetPct >= 100 ? "#7bb38a" : "#c7a76b" }} />
+              <div className="h-full rounded-full" style={{ width: `${targetPct}%`, background: targetPct >= 100 ? "var(--s-green)" : "var(--s-amber)" }} />
             </div>
             <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
-              {vnd(income)} / {vnd(target)} · <b style={{ color: targetPct >= 100 ? "#7bb38a" : "var(--text)" }}>{targetPct}%</b>
+              {vnd(income)} / {vnd(target)} · <b style={{ color: targetPct >= 100 ? "var(--s-green)" : "var(--text)" }}>{targetPct}%</b>
               {targetPct >= 100 ? " 🎉 đạt mục tiêu!" : ` · còn ${vnd(Math.max(0, target - income))}`}
             </p>
           </>
@@ -216,16 +216,16 @@ export default function ReportsView({
           {series.map((s) => (
             <div key={s.ym} className="flex flex-1 flex-col items-center justify-end gap-1" title={`Tháng ${s.label}: thu ${vnd(s.income)} · chi ${vnd(s.expense)}`}>
               <div className="flex w-full items-end justify-center gap-0.5" style={{ height: 130 }}>
-                <div style={{ width: "42%", height: `${(s.income / chartMax) * 100}%`, background: "#7bb38a", borderRadius: "3px 3px 0 0", minHeight: s.income ? 2 : 0 }} />
-                <div style={{ width: "42%", height: `${(s.expense / chartMax) * 100}%`, background: "#c77b7b", borderRadius: "3px 3px 0 0", minHeight: s.expense ? 2 : 0 }} />
+                <div style={{ width: "42%", height: `${(s.income / chartMax) * 100}%`, background: "var(--s-green)", borderRadius: "3px 3px 0 0", minHeight: s.income ? 2 : 0 }} />
+                <div style={{ width: "42%", height: `${(s.expense / chartMax) * 100}%`, background: "var(--s-red)", borderRadius: "3px 3px 0 0", minHeight: s.expense ? 2 : 0 }} />
               </div>
               <span className="text-[10px]" style={{ color: s.ym === ym ? "var(--accent)" : "var(--text3)" }}>{s.label}</span>
             </div>
           ))}
         </div>
         <div className="mt-3 flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#7bb38a" }} /> Thu</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#c77b7b" }} /> Chi</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-green)" }} /> Thu</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-red)" }} /> Chi</span>
         </div>
       </div>
 
@@ -258,7 +258,7 @@ export default function ReportsView({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Income detail */}
         <div className="card p-6">
-          <h2 className="mb-4 font-serif text-lg font-medium" style={{ color: "#7bb38a" }}>Khoản thu</h2>
+          <h2 className="mb-4 font-serif text-lg font-medium" style={{ color: "var(--s-green)" }}>Khoản thu</h2>
           {monthPayments.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có khoản thu trong tháng.</p>
           ) : (
@@ -275,7 +275,7 @@ export default function ReportsView({
 
         {/* Expense detail + salaries */}
         <div className="card p-6">
-          <h2 className="mb-4 font-serif text-lg font-medium" style={{ color: "#c77b7b" }}>Khoản chi</h2>
+          <h2 className="mb-4 font-serif text-lg font-medium" style={{ color: "var(--s-red)" }}>Khoản chi</h2>
           {monthSalaries.length === 0 && monthExpenses.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--text3)" }}>Chưa có khoản chi trong tháng.</p>
           ) : (
@@ -289,11 +289,11 @@ export default function ReportsView({
               {monthExpenses.map((e) => (
                 <li key={e.id} className="flex items-center justify-between">
                   <span>
-                    {e.title} <span style={{ color: "var(--text3)" }}>· {EXPENSE_CATEGORY_LABEL[e.category || "other"] || e.category} · {e.spent_at}</span>
+                    {e.title} <span style={{ color: "var(--text3)" }}>· {EXPENSE_CATEGORY_LABEL[e.category || "other"] || e.category} · {fmtDate(e.spent_at)}</span>
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="font-medium">{vnd(e.amount)}</span>
-                    <button onClick={() => delExpense(e.id)} style={{ color: "var(--text3)" }}><Trash2 size={13} /></button>
+                    <button onClick={() => delExpense(e.id)} aria-label="Xoá chi phí" title="Xoá" className="p-1" style={{ color: "var(--text3)" }}><Trash2 size={13} /></button>
                   </span>
                 </li>
               ))}

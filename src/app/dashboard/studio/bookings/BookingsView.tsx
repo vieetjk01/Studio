@@ -23,6 +23,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
   pending:  { label: "Chờ",     color: "var(--s-amber)", bg: "var(--s-amberS)" },
   declined: { label: "Từ chối", color: "var(--s-red)", bg: "var(--s-redS)" },
   handled:  { label: "Đã xử lý",color: "var(--s-green)", bg: "var(--s-greenS)" },
+  archived: { label: "Lưu trữ", color: "var(--text3)", bg: "var(--surface2)" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -71,6 +72,14 @@ export default function BookingsView({
   const [editState, setEditState] = useState<EditState | null>(null);
   const [editBusy, setEditBusy] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  // Đóng modal sửa bằng phím Esc.
+  useEffect(() => {
+    if (!editState) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setEditState(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editState]);
 
   useEffect(() => {
     setBookingUrl(studioHost ? studioUrl(studioHost, `/book/${token}`) : `${window.location.origin}/book/${token}`);
@@ -135,8 +144,9 @@ export default function BookingsView({
     router.push(`/dashboard/studio/contracts/${data.id}`);
   }
 
+  // "Tất cả" bỏ qua mục đã lưu trữ (xem riêng ở tab "Lưu trữ").
   const filtered = filterStatus === "all"
-    ? list
+    ? list.filter((b) => b.status !== "archived")
     : list.filter((b) => b.status === filterStatus);
 
   const counts = list.reduce<Record<string, number>>((acc, b) => {
@@ -170,8 +180,8 @@ export default function BookingsView({
       </div>
 
       {!tokenSaved && (
-        <div className="mb-4 rounded-xl p-4" style={{ border: "1px solid rgba(224,116,111,.4)", background: "rgba(224,116,111,.08)" }}>
-          <p className="text-sm font-semibold" style={{ color: "#e0746f" }}>Không lưu được mã đặt lịch.</p>
+        <div className="mb-4 rounded-xl p-4" style={{ border: "1px solid var(--s-red)", background: "var(--s-redS)" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--s-red)" }}>Không lưu được mã đặt lịch.</p>
           <p className="mt-1 text-xs" style={{ color: "var(--text2)" }}>
             Kiểm tra biến <code>SUPABASE_SERVICE_ROLE_KEY</code> trên Vercel và cột <code>booking_token</code> trong bảng <code>profiles</code>.
           </p>
@@ -187,6 +197,7 @@ export default function BookingsView({
             { key: "accepted", label: "Đã nhận", count: counts.accepted ?? 0 },
             { key: "declined", label: "Từ chối", count: counts.declined ?? 0 },
             { key: "handled", label: "Đã xử lý", count: counts.handled ?? 0 },
+            { key: "archived", label: "Lưu trữ", count: counts.archived ?? 0 },
           ].map((f) => (
             <button
               key={f.key}
@@ -295,26 +306,29 @@ export default function BookingsView({
                         facebook: b.facebook ?? "",
                       })}
                       title="Sửa"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg"
+                      aria-label="Sửa yêu cầu đặt lịch"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg"
                       style={{ background: "var(--surface2)", color: "var(--text2)" }}
                     >
-                      <Pencil size={13} />
+                      <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => updateStatus(b.id, "archived")}
                       title="Lưu trữ"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg"
+                      aria-label="Lưu trữ yêu cầu"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg"
                       style={{ background: "var(--surface2)", color: "var(--text2)" }}
                     >
-                      <Archive size={13} />
+                      <Archive size={14} />
                     </button>
                     <button
                       onClick={() => deleteBooking(b.id)}
                       title="Xoá"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg"
+                      aria-label="Xoá yêu cầu"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg"
                       style={{ background: "var(--s-redS)", color: "var(--s-red)" }}
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -332,13 +346,14 @@ export default function BookingsView({
             onClick={() => setEditState(null)}
           />
           <div
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl p-6 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-2xl p-6 shadow-2xl"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Sửa yêu cầu đặt lịch</h2>
               <button
                 onClick={() => setEditState(null)}
+                aria-label="Đóng"
                 className="flex h-8 w-8 items-center justify-center rounded-lg"
                 style={{ background: "var(--surface2)", color: "var(--text2)" }}
               >

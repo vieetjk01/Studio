@@ -151,7 +151,8 @@ export default function QuoteEditor({
           it.unit_price === saved.unit_price &&
           it.is_optional === saved.is_optional &&
           it.is_discount === saved.is_discount &&
-          it.position === saved.position
+          it.position === saved.position &&
+          (it.package_group ?? "") === (saved.package_group ?? "")
         ) {
           return;
         }
@@ -303,13 +304,13 @@ export default function QuoteEditor({
     <div className="space-y-6" data-testid="quote-edit-page">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Link href="/dashboard/studio/quotes" className="btn-ghost px-2 py-1.5"><ArrowLeft size={14} /></Link>
+          <Link href="/dashboard/studio/quotes" aria-label="Quay lại danh sách báo giá" className="btn-ghost px-2 py-1.5"><ArrowLeft size={14} /></Link>
           <div>
             <h1 className="font-serif text-2xl font-medium">{quote.title}</h1>
             <p className="text-xs" style={{ color: "var(--text3)" }}>
               {quote.code || "—"} • <span className="text-accent">{QUOTE_STATUS_LABEL[quote.status]}</span>
               {dirty && !locked && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#f59e0b22", color: "#f59e0b" }}>
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-amberS)", color: "var(--s-amber)" }}>
                   <CloudOff size={10} /> Chưa lưu
                 </span>
               )}
@@ -375,13 +376,13 @@ export default function QuoteEditor({
         </div>
       </header>
 
-      {msg && <p className="rounded-md px-3 py-2 text-xs" style={{ background: "#10b98122", color: "#34d399" }}>{msg}</p>}
-      {err && <p className="rounded-md px-3 py-2 text-xs" style={{ background: "#ef444422", color: "#fca5a5" }}>{err}</p>}
+      {msg && <p className="rounded-md px-3 py-2 text-xs" style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}>{msg}</p>}
+      {err && <p className="rounded-md px-3 py-2 text-xs" style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" }}>{err}</p>}
 
       {adjustments.length > 0 && (
         <section className="card p-5" data-testid="quote-adjustments">
-          <h2 className="text-sm font-medium" style={{ color: pendingAdj.length > 0 ? "#f59e0b" : "var(--text2)" }}>
-            Trao đổi với khách {pendingAdj.length > 0 && <span className="ml-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#f59e0b33", color: "#f59e0b" }}>{pendingAdj.length} chưa xử lý</span>}
+          <h2 className="text-sm font-medium" style={{ color: pendingAdj.length > 0 ? "var(--s-amber)" : "var(--text2)" }}>
+            Trao đổi với khách {pendingAdj.length > 0 && <span className="ml-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-amberS)", color: "var(--s-amber)" }}>{pendingAdj.length} chưa xử lý</span>}
           </h2>
           <div className="mt-3 space-y-2">
             {adjustments.map((a) => {
@@ -391,17 +392,17 @@ export default function QuoteEditor({
                   key={a.id}
                   className="rounded-md p-3"
                   style={{
-                    background: isPending ? "rgba(245,158,11,0.07)" : "var(--surface2)",
-                    border: isPending ? "1px solid rgba(245,158,11,0.3)" : "1px solid transparent",
+                    background: isPending ? "var(--s-amberS)" : "var(--surface2)",
+                    border: isPending ? "1px solid var(--s-amberS)" : "1px solid transparent",
                     opacity: a.resolved ? 0.55 : 1,
                   }}
                 >
                   <div className="mb-1 flex items-center gap-2 text-[10px]" style={{ color: "var(--text3)" }}>
-                    <span className="font-medium" style={{ color: a.author === "client" ? "#f59e0b" : "var(--text2)" }}>
+                    <span className="font-medium" style={{ color: a.author === "client" ? "var(--s-amber)" : "var(--text2)" }}>
                       {a.author === "client" ? "Khách" : "Studio"}
                     </span>
                     <span>{new Date(a.created_at).toLocaleString("vi-VN")}</span>
-                    {a.resolved && <span className="rounded-full px-1.5 py-0.5 text-[9px]" style={{ background: "rgba(52,211,153,0.15)", color: "#34d399" }}>Đã xử lý</span>}
+                    {a.resolved && <span className="rounded-full px-1.5 py-0.5 text-[9px]" style={{ background: "rgba(52,211,153,0.15)", color: "var(--success)" }}>Đã xử lý</span>}
                   </div>
                   <p className="text-sm whitespace-pre-wrap">{a.message}</p>
                   {isPending && (
@@ -482,7 +483,7 @@ export default function QuoteEditor({
             </p>
           )}
           {quote.discount_package_group && (quote.bulk_discount_amount ?? 0) > 0 && (
-            <p className="mt-2 text-xs" style={{ color: bulkDiscountActive ? "#34d399" : "var(--text3)" }}>
+            <p className="mt-2 text-xs" style={{ color: bulkDiscountActive ? "var(--success)" : "var(--text3)" }}>
               {bulkDiscountActive
                 ? `✓ Đang áp dụng — khách được giảm ${vnd(quote.bulk_discount_amount ?? 0)}`
                 : `Khách chưa chọn gói “${quote.discount_package_group}” nên chưa được giảm`}
@@ -499,7 +500,7 @@ export default function QuoteEditor({
               <button onClick={() => addItem(false)} className="btn-ghost px-2.5 py-1.5 text-xs">
                 <Plus size={12} /> Thêm hạng mục
               </button>
-              <button onClick={() => addItem(true)} className="btn-ghost px-2.5 py-1.5 text-xs" style={{ color: "#fb923c" }} data-testid="quote-add-discount">
+              <button onClick={() => addItem(true)} className="btn-ghost px-2.5 py-1.5 text-xs" style={{ color: "var(--s-amber)" }} data-testid="quote-add-discount">
                 <Tag size={12} /> Thêm giảm giá
               </button>
             </div>
@@ -511,14 +512,14 @@ export default function QuoteEditor({
               key={it.id}
               className="rounded-lg border p-3"
               style={{
-                borderColor: it.is_discount ? "#fb923c55" : "var(--border)",
-                background: it.is_discount ? "rgba(251,146,60,0.04)" : "transparent",
+                borderColor: it.is_discount ? "var(--s-amberS)" : "var(--border)",
+                background: it.is_discount ? "var(--s-amberS)" : "transparent",
                 opacity: it.is_optional && !it.selected ? 0.5 : 1,
               }}
               data-testid={`quote-edit-item-${it.id}`}
             >
               {it.is_discount && (
-                <p className="mb-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
+                <p className="mb-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-amberS)", color: "var(--s-amber)" }}>
                   <Tag size={10} /> Khoản giảm giá — trừ vào tổng
                 </p>
               )}
@@ -581,9 +582,9 @@ export default function QuoteEditor({
                 <span>
                   {it.is_optional ? (it.selected ? "✓ Khách đã chọn" : "✗ Khách bỏ chọn") : "Bắt buộc"}
                 </span>
-                <span style={{ color: it.is_discount ? "#fb923c" : "var(--text3)" }}>
+                <span style={{ color: it.is_discount ? "var(--s-amber)" : "var(--text3)" }}>
                   {it.is_discount ? "Giảm: " : "Thành tiền: "}
-                  <b style={{ color: it.is_discount ? "#fb923c" : "var(--text)" }}>
+                  <b style={{ color: it.is_discount ? "var(--s-amber)" : "var(--text)" }}>
                     {it.is_discount ? "−" : ""}{vnd((it.qty || 0) * (it.unit_price || 0))}
                   </b>
                 </span>
@@ -593,8 +594,8 @@ export default function QuoteEditor({
         </div>
         <div className="mt-4 flex flex-col items-end gap-1 text-sm" style={{ color: "var(--text2)" }}>
           <p>Tổng hạng mục: {vnd(grossTotal)}</p>
-          {discountTotal > 0 && <p style={{ color: "#fb923c" }}>Giảm giá item: −{vnd(discountTotal)}</p>}
-          {bulkDiscountActive && <p style={{ color: "#34d399" }}>Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount ?? 0)}</p>}
+          {discountTotal > 0 && <p style={{ color: "var(--s-amber)" }}>Giảm giá item: −{vnd(discountTotal)}</p>}
+          {bulkDiscountActive && <p style={{ color: "var(--success)" }}>Ưu đãi gói {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount ?? 0)}</p>}
           <p>
             <b className="text-base text-accent">
               Khách đang chọn: {vnd(bulkDiscountActive ? total - (quote.bulk_discount_amount ?? 0) : total)}

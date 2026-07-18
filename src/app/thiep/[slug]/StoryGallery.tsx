@@ -59,9 +59,9 @@ export default function StoryGallery({ images }: { images: string[] }) {
 
       {/* controls */}
       <div className="absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-6 text-white">
-        <button onClick={() => go(-1)} className="rounded-full bg-black/30 p-2 backdrop-blur"><ChevronLeft size={18} /></button>
-        <button onClick={() => setPaused((p) => !p)} className="rounded-full bg-black/30 p-2 backdrop-blur">{paused ? <Play size={18} /> : <Pause size={18} />}</button>
-        <button onClick={() => go(1)} className="rounded-full bg-black/30 p-2 backdrop-blur"><ChevronRight size={18} /></button>
+        <button onClick={() => go(-1)} aria-label="Ảnh trước" className="rounded-full bg-black/30 p-2 backdrop-blur"><ChevronLeft size={18} /></button>
+        <button onClick={() => setPaused((p) => !p)} aria-label={paused ? "Tiếp tục" : "Tạm dừng"} className="rounded-full bg-black/30 p-2 backdrop-blur">{paused ? <Play size={18} /> : <Pause size={18} />}</button>
+        <button onClick={() => go(1)} aria-label="Ảnh sau" className="rounded-full bg-black/30 p-2 backdrop-blur"><ChevronRight size={18} /></button>
       </div>
     </div>
   );

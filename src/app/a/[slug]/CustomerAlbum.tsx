@@ -21,7 +21,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ShareDialog from "@/components/ShareDialog";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl, fullImageUrl, stripExtension } from "@/lib/drive";
-import { buildZip, triggerDownload } from "@/lib/download";
+import { buildZip, triggerDownload, downloadImage } from "@/lib/download";
 
 interface PublicPhoto {
   id: string;
@@ -743,15 +743,16 @@ export default function CustomerAlbum({
               </button>
             )}
             {album.allowZip && (
-              <a
-                href={`/api/img?id=${lbPhoto.drive_file_id}&w=2400`}
-                download={lbPhoto.name}
+              <button
+                type="button"
+                onClick={() => downloadImage(lbPhoto.drive_file_id, lbPhoto.name, wm)}
                 title={t("downloadZip")}
+                aria-label={t("downloadZip")}
                 className="flex h-10 w-10 items-center justify-center rounded-lg"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
               >
                 <Download size={17} />
-              </a>
+              </button>
             )}
             <button onClick={() => zoomBy(-0.5)} disabled={zoom <= 1} title="Thu nhỏ" className="flex h-10 w-10 items-center justify-center rounded-lg disabled:opacity-40" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}>
               <ZoomOut size={17} />

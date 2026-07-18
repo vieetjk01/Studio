@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { fmtDate } from "@/lib/date";
+import { useEffect, useMemo, useState } from "react";
+import { fmtDate, todayVN } from "@/lib/date";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -63,7 +63,7 @@ export default function CalendarView({
 }) {
   const [feedCopied, setFeedCopied] = useState(false);
   const supabase = createClient();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayVN();
   const [y, mIdx] = todayStr.split("-").map(Number);
   const [cursor, setCursor] = useState({ year: y, month: mIdx - 1 });
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
@@ -71,6 +71,11 @@ export default function CalendarView({
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"month" | "week">("month");
   const [weekAnchor, setWeekAnchor] = useState(todayStr); // any date inside the displayed week
+
+  // Trên điện thoại, lịch tháng chật → mặc định mở chế độ Tuần (dễ đọc/chạm hơn).
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) setView("week");
+  }, []);
 
   // add-note form
   const [title, setTitle] = useState("");
@@ -251,8 +256,8 @@ export default function CalendarView({
               {MONTHS[cursor.month]} {cursor.year}
             </h2>
             <div className="flex gap-2">
-              <button onClick={() => move(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>
-              <button onClick={() => move(1)} className="btn-ghost p-2"><ChevronRight size={16} /></button>
+              <button onClick={() => move(-1)} aria-label="Tháng trước" className="btn-ghost p-2"><ChevronLeft size={16} /></button>
+              <button onClick={() => move(1)} aria-label="Tháng sau" className="btn-ghost p-2"><ChevronRight size={16} /></button>
             </div>
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -301,7 +306,7 @@ export default function CalendarView({
                       );
                     })}
                     {evs.map((e) => (
-                      <span key={e.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,#6ba3c7 18%,transparent)", color: "var(--text2)" }} title={eventLabel(e)}>
+                      <span key={e.id} className="truncate rounded px-1 py-0.5 text-[9px] leading-tight" style={{ background: "color-mix(in srgb,var(--s-blue) 18%,transparent)", color: "var(--text2)" }} title={eventLabel(e)}>
                         {eventLabel(e)}
                       </span>
                     ))}
@@ -313,7 +318,7 @@ export default function CalendarView({
           </div>
           <div className="mt-3 flex gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: DEFAULT_MARK }} /> Hợp đồng</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#6ba3c7" }} /> Ghi chú</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-blue)" }} /> Ghi chú</span>
             <span style={{ color: "var(--text3)" }}>· Chọn ngày để đổi màu từng hợp đồng</span>
           </div>
         </div>
@@ -348,9 +353,13 @@ export default function CalendarView({
                         onClick={() => setContractColor(c.id, col)}
                         title={col}
                         aria-label={`Đổi màu ${col}`}
-                        className="h-4 w-4 rounded-full transition-transform hover:scale-110"
-                        style={{ background: col, border: mc.toLowerCase() === col.toLowerCase() ? "2px solid var(--text)" : "1px solid var(--border)" }}
-                      />
+                        className="flex h-7 w-7 items-center justify-center rounded-full transition-transform hover:scale-110"
+                      >
+                        <span
+                          className="block h-4 w-4 rounded-full"
+                          style={{ background: col, border: mc.toLowerCase() === col.toLowerCase() ? "2px solid var(--text)" : "1px solid var(--border)" }}
+                        />
+                      </button>
                     ))}
                   </div>
                   <dl className="mt-2 space-y-0.5 text-[11px]" style={{ color: "var(--text2)" }}>
@@ -383,12 +392,12 @@ export default function CalendarView({
                 <div key={e.id} className="mb-2 flex items-start justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 text-sm font-medium">
-                      {e.remind ? <Bell size={12} style={{ color: "#6ba3c7" }} /> : <BellOff size={12} style={{ color: "var(--text3)" }} />}
+                      {e.remind ? <Bell size={12} style={{ color: "var(--s-blue)" }} /> : <BellOff size={12} style={{ color: "var(--text3)" }} />}
                       {eventLabel(e)}{e.event_time ? ` · ${e.event_time}` : ""}
                     </p>
                     {e.note && <p className="text-[11px]" style={{ color: "var(--text3)" }}>{e.note}</p>}
                   </div>
-                  <button onClick={() => delEvent(e.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                  <button onClick={() => delEvent(e.id)} aria-label="Xoá ghi chú" title="Xoá" className="p-1" style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
                 </div>
               ))}
 
@@ -420,7 +429,7 @@ export default function CalendarView({
           {/* Reminders */}
           <div className="card p-5">
             <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-medium">
-              <Bell size={16} style={{ color: "#6ba3c7" }} /> Nhắc lịch 30 ngày tới
+              <Bell size={16} style={{ color: "var(--s-blue)" }} /> Nhắc lịch 30 ngày tới
             </h2>
             {upcoming.length === 0 ? (
               <p className="text-sm" style={{ color: "var(--text3)" }}>Không có nhắc nào.</p>
@@ -466,8 +475,8 @@ function WeekView({
           {first.slice(8)}/{first.slice(5, 7)} – {last.slice(8)}/{last.slice(5, 7)}/{last.slice(0, 4)}
         </h2>
         <div className="flex gap-2">
-          <button onClick={() => moveWeek(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>
-          <button onClick={() => moveWeek(1)} className="btn-ghost p-2"><ChevronRight size={16} /></button>
+          <button onClick={() => moveWeek(-1)} aria-label="Tuần trước" className="btn-ghost p-2"><ChevronLeft size={16} /></button>
+          <button onClick={() => moveWeek(1)} aria-label="Tuần sau" className="btn-ghost p-2"><ChevronRight size={16} /></button>
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
@@ -516,16 +525,16 @@ function WeekView({
                   <div
                     key={e.id}
                     className="group flex items-start justify-between gap-1 rounded-lg px-2 py-1.5 text-[11px] leading-snug"
-                    style={{ background: "color-mix(in srgb,#6ba3c7 16%,transparent)", borderLeft: "2px solid #6ba3c7" }}
+                    style={{ background: "color-mix(in srgb,var(--s-blue) 16%,transparent)", borderLeft: "2px solid var(--s-blue)" }}
                   >
                     <div className="min-w-0">
                       <p className="flex items-center gap-1 font-medium">
-                        {e.remind ? <Bell size={10} style={{ color: "#6ba3c7", flex: "none" }} /> : <BellOff size={10} style={{ color: "var(--text3)", flex: "none" }} />}
+                        {e.remind ? <Bell size={10} style={{ color: "var(--s-blue)", flex: "none" }} /> : <BellOff size={10} style={{ color: "var(--text3)", flex: "none" }} />}
                         <span className="truncate">{e.event_time ? `${e.event_time} · ` : ""}{eventLabel(e)}</span>
                       </p>
                       {e.note && <p style={{ color: "var(--text3)" }}>{e.note}</p>}
                     </div>
-                    <button onClick={() => onDelEvent(e.id)} className="opacity-0 transition-opacity group-hover:opacity-100" style={{ color: "var(--text3)" }}><Trash2 size={12} /></button>
+                    <button onClick={() => onDelEvent(e.id)} aria-label="Xoá ghi chú" title="Xoá" className="shrink-0 p-1" style={{ color: "var(--text3)" }}><Trash2 size={12} /></button>
                   </div>
                 ))}
                 {evs.length + cons.length === 0 && (

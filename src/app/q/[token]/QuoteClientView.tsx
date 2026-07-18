@@ -178,6 +178,7 @@ export default function QuoteClientView({
   const [accepted, setAccepted] = useState(quote.status === "accepted" || quote.status === "converted");
   const [contractToken, setContractToken] = useState<string | null>(initialContractToken);
   const [copied, setCopied] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [clientName, setClientName] = useState(quote.client_name || "");
   const [clientPhone, setClientPhone] = useState(quote.client_phone || "");
@@ -270,14 +271,15 @@ export default function QuoteClientView({
     }
   }
 
-  async function accept() {
+  // Mở hộp xác nhận trong app (thay cho window.confirm gốc — đẹp & dịch được).
+  function accept() {
     if (locked || !formValid) return;
-    const confirmMsg =
-      `${tr.confirmTitle}\n\n` +
-      `${tr.confirmTotal} ${vnd(effectiveTotal)}\n` +
-      `${tr.confirmDeposit} ${vnd(deposit)}\n` +
-      (autoCreate && studioCanContract ? tr.confirmAutoContract : tr.confirmManual);
-    if (!confirm(confirmMsg)) return;
+    setConfirmOpen(true);
+  }
+
+  async function doAccept() {
+    if (locked || !formValid) return;
+    setConfirmOpen(false);
     setAccepting(true);
     setError(null);
     try {
@@ -395,7 +397,7 @@ export default function QuoteClientView({
                         </div>
                         <span className="truncate font-medium">{groupName}</span>
                         {quote.discount_package_group === groupName && quote.bulk_discount_amount > 0 && (
-                          <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
+                          <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "color-mix(in srgb, var(--gold) 16%, transparent)", color: "var(--gold)" }}>
                             <Tag size={9} className="inline mr-0.5" /> {tr.discount} {vnd(quote.bulk_discount_amount)}
                           </span>
                         )}
@@ -429,9 +431,9 @@ export default function QuoteClientView({
                     disabled={!it.is_optional || locked}
                     className="w-full rounded-lg border p-3 text-left transition"
                     style={{
-                      borderColor: it.is_discount ? "#fb923c66" : isOn ? "var(--accent)" : "var(--border)",
+                      borderColor: it.is_discount ? "color-mix(in srgb, var(--gold) 45%, transparent)" : isOn ? "var(--accent)" : "var(--border)",
                       background: it.is_discount
-                        ? "rgba(251,146,60,0.06)"
+                        ? "color-mix(in srgb, var(--gold) 8%, transparent)"
                         : isOn
                         ? "rgba(199,167,107,0.06)"
                         : "transparent",
@@ -444,8 +446,8 @@ export default function QuoteClientView({
                       <div
                         className="mt-0.5 grid h-5 w-5 flex-shrink-0 place-items-center rounded border"
                         style={{
-                          borderColor: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "var(--text3)",
-                          background: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "transparent",
+                          borderColor: it.is_discount ? "var(--gold)" : isOn ? "var(--accent)" : "var(--text3)",
+                          background: it.is_discount ? "var(--gold)" : isOn ? "var(--accent)" : "transparent",
                         }}
                       >
                         {it.is_discount ? (
@@ -457,14 +459,14 @@ export default function QuoteClientView({
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : undefined }}>
+                        <p className="text-sm font-medium" style={{ color: it.is_discount ? "var(--gold)" : undefined }}>
                           {it.is_discount && "🏷️ "}
                           {it.name}
                         </p>
                         {it.description && <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
                         <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{it.qty} × {vnd(it.unit_price)}</p>
                       </div>
-                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : "var(--accent)" }}>
+                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "var(--gold)" : "var(--accent)" }}>
                         {it.is_discount ? "−" : ""}{vnd(lineTotal)}
                       </p>
                     </div>
@@ -477,7 +479,7 @@ export default function QuoteClientView({
           {/* Total */}
           <div className="mt-4 space-y-1 border-t pt-4 text-right" style={{ borderColor: "var(--border)" }}>
             {bulkDiscountActive && (
-              <p className="text-sm" style={{ color: "#fb923c" }}>
+              <p className="text-sm" style={{ color: "var(--gold)" }}>
                 🏷️ {tr.packageOffer} {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount)}
               </p>
             )}
@@ -588,7 +590,7 @@ export default function QuoteClientView({
           </section>
         )}
 
-        {error && <p className="text-sm text-red-400" data-testid="quote-error">{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--danger)" }} data-testid="quote-error">{error}</p>}
 
         {!locked ? (
           <button
@@ -662,6 +664,34 @@ export default function QuoteClientView({
           {tr.footer} <b>{studioName}</b>
         </footer>
       </div>
+
+      {/* Hộp xác nhận đồng ý báo giá (thay window.confirm) */}
+      {confirmOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,.5)", backdropFilter: "blur(2px)" }}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => e.target === e.currentTarget && setConfirmOpen(false)}
+        >
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <h2 className="font-serif text-xl font-medium">{tr.confirmTitle}</h2>
+            <div className="mt-4 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span style={{ color: "var(--text2)" }}>{tr.confirmTotal}</span><b>{vnd(effectiveTotal)}</b></div>
+              <div className="flex justify-between"><span style={{ color: "var(--text2)" }}>{tr.confirmDeposit}</span><b>{vnd(deposit)}</b></div>
+            </div>
+            <p className="mt-3 whitespace-pre-line text-[13px]" style={{ color: "var(--text2)" }}>
+              {autoCreate && studioCanContract ? tr.confirmAutoContract : tr.confirmManual}
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1 justify-center">{lang === "en" ? "Cancel" : "Huỷ"}</button>
+              <button onClick={doAccept} disabled={accepting} className="btn-primary flex-1 justify-center" data-testid="quote-accept-confirm">
+                <ShieldCheck size={16} /> {accepting ? tr.processing : tr.acceptBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
