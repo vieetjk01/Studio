@@ -109,6 +109,13 @@ export default function DesktopPanel() {
           <div style={{ color: "var(--text2)" }}>
             <b style={{ color: "var(--text)" }}>Khi cài đặt, Windows có thể hiện cảnh báo SmartScreen</b> vì ứng dụng chưa mua chứng chỉ ký số.
             Bấm <b>“More info” → “Run anyway”</b> (Thông tin thêm → Vẫn chạy) để tiếp tục — file cài chỉ tải từ trang này là an toàn.
+            {" "}Nếu file bị “khoá”: chuột phải file <code>-setup.exe</code> → <b>Properties</b> → tick <b>Unblock</b> → OK rồi mở lại.
+            <br />
+            <span className="mt-1 inline-block">
+              Máy hiện <b style={{ color: "var(--text)" }}>“Smart App Control blocked an app…”</b> (chỉ có trên Windows 11 cài mới): vào
+              {" "}<b>Settings → Privacy &amp; security → Windows Security → App &amp; browser control → Smart App Control → Off</b> rồi cài lại.
+              {" "}<i>(Tắt Smart App Control là một chiều — chỉ nên làm trên máy của bạn.)</i>
+            </span>
           </div>
         </div>
       </div>
