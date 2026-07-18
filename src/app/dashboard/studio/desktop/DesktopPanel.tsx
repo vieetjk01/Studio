@@ -35,8 +35,42 @@ export default function DesktopPanel() {
   const [pairToken, setPairToken] = useState("");
   const [pairErr, setPairErr] = useState("");
   const [copied, setCopied] = useState("");
-  // Ưu tiên link cấu hình sẵn; nếu chưa đặt thì trỏ vào Release mới nhất trên GitHub.
-  const downloadUrl = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || "https://github.com/vieetjk01/Studio/releases/latest";
+  // Link tải: mặc định là env cấu hình sẵn, nếu trống thì trang Releases. Sau đó
+  // tự lấy file .exe MỚI NHẤT trực tiếp từ GitHub (kênh desktop-dev — cùng nguồn
+  // bộ tự cập nhật đọc) để nút luôn ra link .exe đúng bản mới, không phụ thuộc env.
+  const RELEASES_PAGE = "https://github.com/vieetjk01/Studio/releases";
+  const [dl, setDl] = useState<{ url: string; ver: string | null }>({
+    url: process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || RELEASES_PAGE,
+    ver: null,
+  });
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("https://api.github.com/repos/vieetjk01/Studio/releases/tags/desktop-dev", {
+          headers: { Accept: "application/vnd.github+json" },
+        });
+        if (!r.ok) return;
+        const rel = await r.json();
+        const setups = (rel.assets || []).filter((a: { name?: string }) => /-setup\.exe$/i.test(a.name || ""));
+        if (!setups.length) return;
+        const parseVer = (n: string) => { const m = /(\d+\.\d+\.\d+)/.exec(n || ""); return m ? m[1] : "0"; };
+        const cmp = (a: string, b: string) => {
+          const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+          for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+          return 0;
+        };
+        const best = setups.reduce(
+          (x: { name: string; browser_download_url: string }, a: { name: string; browser_download_url: string }) =>
+            cmp(parseVer(a.name), parseVer(x.name)) > 0 ? a : x,
+          setups[0]
+        );
+        if (alive && best?.browser_download_url) setDl({ url: best.browser_download_url, ver: parseVer(best.name) });
+      } catch { /* giữ link mặc định */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const downloadUrl = dl.url;
   const serverUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   async function load() {
@@ -99,8 +133,8 @@ export default function DesktopPanel() {
               và tự xuất Excel toàn bộ dữ liệu hằng ngày để chống mất dữ liệu.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-2"><Download size={16} /> Tải bản cài đặt</a>
-              <span className="text-xs" style={{ color: "var(--text2)" }}>Windows 10/11 · 64-bit · tải file <code>-setup.exe</code> trong bản phát hành</span>
+              <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download className="btn-primary inline-flex items-center gap-2"><Download size={16} /> Tải bản cài đặt{dl.ver ? ` (${dl.ver})` : ""}</a>
+              <span className="text-xs" style={{ color: "var(--text2)" }}>Windows 10/11 · 64-bit · file <code>-setup.exe</code></span>
             </div>
           </div>
         </div>
