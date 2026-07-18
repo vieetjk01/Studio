@@ -71,6 +71,18 @@ export default function StoryFeed({
     return null;
   }
 
+  // Khởi tạo theo giao diện chung của site (boot script đặt data-theme trước khi
+  // paint) để không mặc định luôn sáng khi khách đang dùng giao diện tối; nút
+  // ☀/☾ vẫn cho khách tự đổi riêng trang này.
+  useEffect(() => {
+    try {
+      const t = document.documentElement.dataset.theme;
+      if (t === "dark" || t === "light") setTheme(t);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   // Build stories (curated + guest) and feed posts.
   const allPhotos: FeedPhoto[] = [...guestPhotos, ...photos];
   const stories: Story[] = allPhotos.slice(0, 12).map((p, i) => ({
