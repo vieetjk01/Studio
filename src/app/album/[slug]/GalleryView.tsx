@@ -61,7 +61,7 @@ import ShareButton from "@/components/ShareButton";
 import ShareDialog from "@/components/ShareDialog";
 import { mainUrl } from "@/lib/hosts";
 import { thumbnailUrl, fullImageUrl } from "@/lib/drive";
-import { buildZip, triggerDownload } from "@/lib/download";
+import { buildZip, triggerDownload, downloadImage } from "@/lib/download";
 import type { Feedback } from "@/lib/types";
 
 interface P { id: string; drive_file_id: string; name: string; source_id: string | null; position: number; is_video?: boolean; }
@@ -376,19 +376,18 @@ export default function GalleryView({
                         <Heart size={18} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
                       </button>
                     )}
-                    {/* Tải riêng từng ảnh full-size (bản gốc) — mọi gói khi cho phép tải. */}
+                    {/* Tải riêng từng ảnh — bản gốc full-size; có watermark nếu album bật watermark. */}
                     {allowDownload && !isVideo(p) && (
-                      <a
-                        href={`/api/img?id=${p.drive_file_id}&orig=1`}
-                        download={p.name}
-                        onClick={(e) => e.stopPropagation()}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); downloadImage(p.drive_file_id, p.name, wm); }}
                         title={tr.dlPhoto}
                         aria-label={`${tr.dlPhoto}: ${p.name}`}
                         className="absolute left-2 top-2 z-[4] flex h-9 w-9 items-center justify-center rounded-full opacity-100 transition-opacity focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         style={{ background: "rgba(10,10,12,.5)", color: "#fff", border: "1px solid rgba(255,255,255,.6)" }}
                       >
                         <Download size={15} />
-                      </a>
+                      </button>
                     )}
                   </div>
                   );
@@ -445,7 +444,11 @@ export default function GalleryView({
             <span className="text-[13px]" style={{ color: "var(--text2)" }}>{lbIdx + 1} / {visible.length}</span>
             <div className="flex-1" />
             {gallery.allowDownload !== false && (
-              <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&orig=1`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} aria-label={tr.dlPhoto} title={tr.dlPhoto} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+              isVideo(lb) ? (
+                <a href={`https://drive.google.com/file/d/${lb.drive_file_id}/view`} target="_blank" rel="noopener noreferrer" aria-label={tr.dlPhoto} title={tr.dlPhoto} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+              ) : (
+                <button type="button" onClick={() => downloadImage(lb.drive_file_id, lb.name, wm)} aria-label={tr.dlPhoto} title={tr.dlPhoto} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></button>
+              )
             )}
             <button onClick={() => setLbIdx(null)} aria-label="Đóng" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
           </div>

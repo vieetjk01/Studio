@@ -97,6 +97,21 @@ function ensureExt(name: string, fallback: string): string {
   return /\.[a-z0-9]{2,4}$/i.test(name) ? name : `${name}.${fallback}`;
 }
 
+/**
+ * Tải một ảnh Drive lẻ. Nếu có `watermark` → đóng watermark bằng canvas (ảnh
+ * ~2560px) để ảnh tải về vẫn được bảo vệ; nếu không → tải thẳng bản GỐC full-size.
+ */
+export async function downloadImage(fileId: string, name: string, watermark?: string | null): Promise<void> {
+  if (watermark) {
+    const img = await loadImage(`/api/img?id=${encodeURIComponent(fileId)}&w=2560`);
+    const blob = await watermarkImage(img, watermark);
+    triggerDownload(blob, ensureExt(name, "jpg"));
+  } else {
+    const res = await fetch(`/api/img?id=${encodeURIComponent(fileId)}&orig=1`);
+    triggerDownload(await res.blob(), name);
+  }
+}
+
 export function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

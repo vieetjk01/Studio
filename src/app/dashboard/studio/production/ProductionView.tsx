@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Package, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PRODUCT_STATUS_LABEL, type ProductStatus } from "@/lib/types";
+import { fmtDate, todayVN } from "@/lib/date";
 
 export type ProductRow = {
   id: string;
@@ -20,13 +21,13 @@ export type ProductRow = {
 type Staff = { id: string; full_name: string | null; email: string };
 
 const ORDER: ProductStatus[] = ["ordered", "in_progress", "done"];
-const TONE: Record<ProductStatus, string> = { ordered: "#c7a76b", in_progress: "#6ba3c7", done: "#7bb38a" };
+const TONE: Record<ProductStatus, string> = { ordered: "var(--s-amber)", in_progress: "var(--s-blue)", done: "var(--s-green)" };
 
 export default function ProductionView({ initial, staff }: { initial: ProductRow[]; staff: Staff[] }) {
   const supabase = createClient();
   const [rows, setRows] = useState<ProductRow[]>(initial);
   const [filter, setFilter] = useState<ProductStatus | "all">("all");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayVN();
   const staffName = (id: string | null) => {
     if (!id) return "";
     const s = staff.find((x) => x.id === id);
@@ -77,7 +78,7 @@ export default function ProductionView({ initial, staff }: { initial: ProductRow
             <span className="font-medium">{doneCount}/{rows.length} xong · {pct}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#7bb38a" }} />
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--s-green)" }} />
           </div>
         </div>
       )}
@@ -115,7 +116,7 @@ export default function ProductionView({ initial, staff }: { initial: ProductRow
                     ) : "—"}
                     {r.contract?.client_name ? ` · ${r.contract.client_name}` : ""}
                     {r.contract?.delivery_due ? (
-                      <span style={{ color: overdue ? "#c77b7b" : "var(--text3)" }}> · <Clock size={11} className="inline" /> giao {r.contract.delivery_due}{overdue ? " · trễ" : ""}</span>
+                      <span style={{ color: overdue ? "var(--s-red)" : "var(--text3)" }}> · <Clock size={11} className="inline" /> giao {fmtDate(r.contract.delivery_due)}{overdue ? " · trễ" : ""}</span>
                     ) : ""}
                     {r.assigned_to ? ` · 👤 ${staffName(r.assigned_to)}` : ""}
                     {r.note ? ` · ${r.note}` : ""}

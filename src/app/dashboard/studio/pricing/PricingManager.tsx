@@ -244,7 +244,7 @@ export default function PricingManager({
   async function seedActive() {
     const rows: SeedItem[] = activeList === "dinh-hon" ? ENGAGEMENT_SEED : WEDDING_SEED;
     setBusy(true);
-    const payload = rows.map((s, i) => ({ ...s, owner_id: ownerId, position: list.length + i }));
+    const payload = rows.map((s, i) => ({ ...s, owner_id: ownerId, list_key: activeList, position: list.length + i }));
     const { data, error } = await supabase.from("studio_pricelist").insert(payload).select("*");
     setBusy(false);
     if (!error && data) setList((p) => [...p, ...(data as PricelistItem[])]);

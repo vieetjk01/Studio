@@ -16,6 +16,15 @@ function toDate(v: string | number | Date | null | undefined): Date | null {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/**
+ * Hôm nay theo giờ Việt Nam (UTC+7) dạng "YYYY-MM-DD" — dùng cho các so sánh
+ * ngày (hôm nay/quá hạn/mốc nhắc) để không lệch 1 ngày vào buổi tối như khi
+ * lấy trực tiếp toISOString() (UTC). An toàn cả client lẫn server.
+ */
+export function todayVN(): string {
+  return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 /** dd/mm/yyyy. Returns "" for empty/invalid input. */
 export function fmtDate(v: string | number | Date | null | undefined): string {
   const d = toDate(v);

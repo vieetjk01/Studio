@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Phone, Repeat, Search, Download, HeartHandshake, Users } from "lucide-react";
 import MessengerButton from "@/components/MessengerButton";
 import { vnd, LEAD_SOURCE_LABEL } from "@/lib/types";
+import { fmtDate } from "@/lib/date";
 
 export type ClientAgg = {
   key: string;
@@ -130,7 +131,7 @@ export default function ClientsView({ clients }: { clients: ClientAgg[] }) {
                     <p className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text3)" }}>
                       <Phone size={12} /> {c.phone || "—"} · {c.count} hợp đồng
                       {c.source ? ` · ${LEAD_SOURCE_LABEL[c.source] || c.source}` : ""}
-                      {c.last ? ` · gần nhất ${c.last}` : ""}
+                      {c.last ? ` · gần nhất ${fmtDate(c.last)}` : ""}
                     </p>
                   </Link>
                   <div className="flex items-center justify-between gap-3 sm:justify-end">

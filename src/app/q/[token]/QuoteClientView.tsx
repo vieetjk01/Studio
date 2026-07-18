@@ -395,7 +395,7 @@ export default function QuoteClientView({
                         </div>
                         <span className="truncate font-medium">{groupName}</span>
                         {quote.discount_package_group === groupName && quote.bulk_discount_amount > 0 && (
-                          <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
+                          <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "color-mix(in srgb, var(--gold) 16%, transparent)", color: "var(--gold)" }}>
                             <Tag size={9} className="inline mr-0.5" /> {tr.discount} {vnd(quote.bulk_discount_amount)}
                           </span>
                         )}
@@ -429,9 +429,9 @@ export default function QuoteClientView({
                     disabled={!it.is_optional || locked}
                     className="w-full rounded-lg border p-3 text-left transition"
                     style={{
-                      borderColor: it.is_discount ? "#fb923c66" : isOn ? "var(--accent)" : "var(--border)",
+                      borderColor: it.is_discount ? "color-mix(in srgb, var(--gold) 45%, transparent)" : isOn ? "var(--accent)" : "var(--border)",
                       background: it.is_discount
-                        ? "rgba(251,146,60,0.06)"
+                        ? "color-mix(in srgb, var(--gold) 8%, transparent)"
                         : isOn
                         ? "rgba(199,167,107,0.06)"
                         : "transparent",
@@ -444,8 +444,8 @@ export default function QuoteClientView({
                       <div
                         className="mt-0.5 grid h-5 w-5 flex-shrink-0 place-items-center rounded border"
                         style={{
-                          borderColor: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "var(--text3)",
-                          background: it.is_discount ? "#fb923c" : isOn ? "var(--accent)" : "transparent",
+                          borderColor: it.is_discount ? "var(--gold)" : isOn ? "var(--accent)" : "var(--text3)",
+                          background: it.is_discount ? "var(--gold)" : isOn ? "var(--accent)" : "transparent",
                         }}
                       >
                         {it.is_discount ? (
@@ -457,14 +457,14 @@ export default function QuoteClientView({
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : undefined }}>
+                        <p className="text-sm font-medium" style={{ color: it.is_discount ? "var(--gold)" : undefined }}>
                           {it.is_discount && "🏷️ "}
                           {it.name}
                         </p>
                         {it.description && <p className="mt-0.5 text-xs" style={{ color: "var(--text3)" }}>{it.description}</p>}
                         <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{it.qty} × {vnd(it.unit_price)}</p>
                       </div>
-                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "#fb923c" : "var(--accent)" }}>
+                      <p className="text-sm font-medium" style={{ color: it.is_discount ? "var(--gold)" : "var(--accent)" }}>
                         {it.is_discount ? "−" : ""}{vnd(lineTotal)}
                       </p>
                     </div>
@@ -477,7 +477,7 @@ export default function QuoteClientView({
           {/* Total */}
           <div className="mt-4 space-y-1 border-t pt-4 text-right" style={{ borderColor: "var(--border)" }}>
             {bulkDiscountActive && (
-              <p className="text-sm" style={{ color: "#fb923c" }}>
+              <p className="text-sm" style={{ color: "var(--gold)" }}>
                 🏷️ {tr.packageOffer} {quote.discount_package_group}: −{vnd(quote.bulk_discount_amount)}
               </p>
             )}

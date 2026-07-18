@@ -54,18 +54,19 @@ export default function RsvpForm({ slug, note }: { slug: string; note?: string }
         className={inputCls}
         style={{ borderColor: "var(--wed-accent)" }}
         placeholder="Tên của bạn *"
+        aria-label="Tên của bạn"
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={120}
         required
       />
       <div className="flex gap-2">
-        <select className={inputCls} style={{ borderColor: "var(--wed-accent)" }} value={side} onChange={(e) => setSide(e.target.value as typeof side)}>
+        <select className={inputCls} aria-label="Bạn là khách của" style={{ borderColor: "var(--wed-accent)" }} value={side} onChange={(e) => setSide(e.target.value as typeof side)}>
           <option value="both">Khách chung</option>
           <option value="groom">Khách của chú rể</option>
           <option value="bride">Khách của cô dâu</option>
         </select>
-        <select className={inputCls} style={{ borderColor: "var(--wed-accent)" }} value={attending ? "yes" : "no"} onChange={(e) => setAttending(e.target.value === "yes")}>
+        <select className={inputCls} aria-label="Khả năng tham dự" style={{ borderColor: "var(--wed-accent)" }} value={attending ? "yes" : "no"} onChange={(e) => setAttending(e.target.value === "yes")}>
           <option value="yes">Sẽ tham dự</option>
           <option value="no">Không thể tham dự</option>
         </select>
@@ -88,6 +89,7 @@ export default function RsvpForm({ slug, note }: { slug: string; note?: string }
         className={inputCls}
         style={{ borderColor: "var(--wed-accent)" }}
         placeholder="Gửi lời chúc đến cô dâu chú rể…"
+        aria-label="Lời chúc"
         rows={3}
         value={wish}
         onChange={(e) => setWish(e.target.value)}
@@ -100,7 +102,7 @@ export default function RsvpForm({ slug, note }: { slug: string; note?: string }
         className="flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-medium text-white disabled:opacity-50"
         style={{ background: "var(--wed-accent)" }}
       >
-        {state === "saving" ? <Check size={16} /> : <Send size={16} />}
+        <Send size={16} />
         {state === "saving" ? "Đang gửi…" : "Gửi xác nhận & lời chúc"}
       </button>
     </form>
