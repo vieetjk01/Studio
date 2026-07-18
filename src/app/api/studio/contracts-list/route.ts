@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStudio } from "@/lib/auth-guards";
+import { autoAdvanceContracts } from "@/lib/contract-status";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,16 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const profile = await requireStudio("plus");
   if (!profile) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  // Tới ngày sớm nhất của HĐ (kể cả ngày đãi trước) thì tự chuyển sang "đang
+  // thực hiện" ngay khi mở trang. Dùng admin client (scoped theo owner) để chạy
+  // được cả với tài khoản nhân viên; lỗi ở bước này không được làm hỏng danh sách.
+  try {
+    await autoAdvanceContracts(createAdminClient(), profile.id);
+  } catch {
+    /* best-effort — cron hằng ngày vẫn xử lý */
+  }
+
   const supabase = createClient();
   let q = supabase
     .from("studio_contracts")

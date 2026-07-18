@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { mainUrl } from "@/lib/hosts";
 import { vnd } from "@/lib/types";
+import { autoAdvanceContracts } from "@/lib/contract-status";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,16 @@ export async function GET(req: NextRequest) {
   }
 
   const db = createAdminClient();
+
+  // Tự chuyển HĐ (đã gửi/đã duyệt) sang "đang thực hiện" khi tới ngày sớm nhất
+  // (event_date hoặc mốc studio_events như ngày đãi trước). Chạy mỗi ngày cho
+  // MỌI chủ studio — kể cả khi họ không mở trang.
+  let advanced = 0;
+  try {
+    advanced = (await autoAdvanceContracts(db)).length;
+  } catch {
+    /* không chặn digest nhắc việc nếu bước này lỗi */
+  }
 
   // Work in VN time (UTC+7).
   const nowVN = new Date(Date.now() + 7 * 3600 * 1000);
@@ -75,7 +86,7 @@ export async function GET(req: NextRequest) {
   for (const l of late) bucket(l.owner_id).late.push(l);
 
   const allOwnerIds = [...new Set([...byOwner.keys(), ...shoots.map((s) => s.owner_id), ...done.map((d) => d.owner_id)])];
-  if (allOwnerIds.length === 0) return NextResponse.json({ ok: true, sent: 0, note: "nothing to remind" });
+  if (allOwnerIds.length === 0) return NextResponse.json({ ok: true, sent: 0, advanced, note: "nothing to remind" });
 
   const { data: owners } = await db.from("profiles").select("id, email, full_name, auto_client_emails").in("id", allOwnerIds);
   type OwnerRow = { id: string; email: string | null; full_name: string | null; auto_client_emails: boolean };
@@ -161,5 +172,5 @@ ${link ? `<p><a href="${link}">Mở cổng &amp; đánh giá →</a> (mục “�
     if (r.ok) clientSent++;
   }
 
-  return NextResponse.json({ ok: true, sent, clientSent, owners: results.length });
+  return NextResponse.json({ ok: true, sent, clientSent, advanced, owners: results.length });
 }
