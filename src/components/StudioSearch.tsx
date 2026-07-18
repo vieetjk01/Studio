@@ -55,6 +55,7 @@ export default function StudioSearch() {
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => hits.length && setOpen(true)}
           placeholder="Tìm HĐ, khách…"
+          aria-label="Tìm hợp đồng, khách hàng"
           className="w-24 bg-transparent text-sm outline-none sm:w-40"
           style={{ color: "var(--text)" }}
         />

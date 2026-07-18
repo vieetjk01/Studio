@@ -592,8 +592,8 @@ export default function ContractView({ token }: { token: string }) {
               <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Chi phí in ấn" : "Printing"}</dt><dd>{vnd(printing)}</dd></div>
             )}
             <div className="flex justify-between border-t pt-2" style={{ borderColor: "var(--border)" }}><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Tổng giá trị hợp đồng" : "Total"}</dt><dd className="font-serif text-lg font-medium">{vnd(total)}</dd></div>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Đã thanh toán / cọc" : "Paid / deposit"}</dt><dd style={{ color: "#7bb38a" }}>− {vnd(collected)}</dd></div>
-            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "#c7a76b" : "#7bb38a" }}>{vnd(balance)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{lang === "vi" ? "Đã thanh toán / cọc" : "Paid / deposit"}</dt><dd style={{ color: "var(--success)" }}>− {vnd(collected)}</dd></div>
+            <div className="flex justify-between"><dt style={{ color: "var(--text2)" }}>{t("remaining")}</dt><dd className="font-serif text-lg font-medium" style={{ color: balance > 0 ? "var(--gold)" : "var(--success)" }}>{vnd(balance)}</dd></div>
           </dl>
           {/* Payment plan — all instalments */}
           {plan.length > 0 && (
@@ -604,7 +604,7 @@ export default function ContractView({ token }: { token: string }) {
                   <li key={p.id} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--surface2)" }}>
                     <div>
                       <p className="font-medium">{p.label} · {vnd(p.amount)}</p>
-                      <p className="text-[11px]" style={{ color: p.paid ? "#7bb38a" : "var(--text3)" }}>
+                      <p className="text-[11px]" style={{ color: p.paid ? "var(--success)" : "var(--text3)" }}>
                         {p.paid
                           ? `✓ ${lang === "vi" ? "Đã thanh toán" : "Paid"}${p.paid_at ? ` · ${p.paid_at.slice(0, 10)}` : ""}`
                           : p.due_date
@@ -749,7 +749,7 @@ export default function ContractView({ token }: { token: string }) {
             <ul className="space-y-2">
               {tasks.map((tk) => (
                 <li key={tk.id} className="flex items-center gap-2.5 text-sm">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md" style={{ border: "1px solid var(--border2)", background: tk.done ? "#7bb38a" : "transparent" }}>
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md" style={{ border: "1px solid var(--border2)", background: tk.done ? "var(--success)" : "transparent" }}>
                     {tk.done && <Check size={13} color="#0c0c0c" />}
                   </span>
                   <span style={{ color: tk.done ? "var(--text3)" : "var(--text)", textDecoration: tk.done ? "line-through" : "none" }}>{tk.label}</span>
@@ -785,7 +785,7 @@ export default function ContractView({ token }: { token: string }) {
           <p className="eyebrow mb-2">{lang === "vi" ? "Bên B · Khách hàng" : "Party B · Client"}</p>
           {signed ? (
             <div>
-              <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
+              <p className="flex items-center gap-2 text-sm" style={{ color: "var(--success)" }}>
                 <Check size={15} /> {t("signedOn")} {new Date(contract.client_signed_at!).toLocaleString("vi-VN")}.
               </p>
               {contract.client_signature && (
@@ -828,7 +828,7 @@ export default function ContractView({ token }: { token: string }) {
         <div className="card mt-6 p-6">
           <h2 className="mb-2 font-serif text-lg font-medium">{t("review")}</h2>
           {reviewSent ? (
-            <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
+            <p className="flex items-center gap-2 text-sm" style={{ color: "var(--success)" }}>
               <Check size={15} /> {t("reviewThanks")}
             </p>
           ) : (
@@ -871,7 +871,7 @@ export default function ContractView({ token }: { token: string }) {
           <h2 className="mb-2 font-serif text-lg font-medium">{t("editReq")}</h2>
           <p className="mb-3 text-sm" style={{ color: "var(--text2)" }}>{t("editPrompt")}</p>
           {sent ? (
-            <p className="flex items-center gap-2 text-sm" style={{ color: "#7bb38a" }}>
+            <p className="flex items-center gap-2 text-sm" style={{ color: "var(--success)" }}>
               <Check size={15} /> {t("editSent")}
             </p>
           ) : (

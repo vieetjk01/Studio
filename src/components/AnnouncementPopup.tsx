@@ -92,19 +92,19 @@ export default function AnnouncementPopup() {
           aria-modal="true"
         >
           <div
-            className="w-full max-w-md rounded-2xl p-6 shadow-2xl animate-[vkFade_.3s_ease_both]"
+            className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl p-6 shadow-2xl animate-[vkFade_.3s_ease_both]"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
           >
             <div className="mb-3 flex items-center gap-2.5">
               <span
                 className="flex h-10 w-10 items-center justify-center rounded-full"
-                style={{ background: "rgba(224,116,111,.14)", color: "#e0746f" }}
+                style={{ background: "var(--s-redS, rgba(224,116,111,.14))", color: "var(--danger)" }}
               >
                 <BellRing size={20} />
               </span>
               <h2 className="font-serif text-lg font-medium">Thông báo quan trọng</h2>
             </div>
-            <div className="space-y-3">
+            <div className="-mr-1 space-y-3 overflow-y-auto pr-1">
               {important.map((n) => (
                 <div key={n.id}>
                   <p className="whitespace-pre-wrap text-sm" style={{ color: "var(--text)" }}>{n.message}</p>
@@ -116,7 +116,7 @@ export default function AnnouncementPopup() {
             </div>
             <button
               onClick={() => dismiss(important.map((n) => n.id))}
-              className="btn-primary mt-5 w-full justify-center"
+              className="btn-primary mt-5 w-full flex-shrink-0 justify-center"
             >
               Đã hiểu
             </button>
@@ -126,7 +126,7 @@ export default function AnnouncementPopup() {
 
       {/* Thẻ nổi góc dưới phải — thông báo thường */}
       {normal.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[90] flex w-[min(92vw,360px)] flex-col gap-2">
+        <div className="fixed bottom-20 right-4 z-[80] flex w-[min(92vw,360px)] flex-col gap-2 md:bottom-4 md:right-20">
           {normal.map((n) => (
             <div
               key={n.id}

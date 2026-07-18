@@ -79,7 +79,11 @@ export default function ShowcaseAlbum({
                 src={thumbnailUrl(p.fileId, 600)}
                 alt={p.name}
                 loading="lazy"
+                role="button"
+                tabIndex={0}
+                aria-label={`Xem ${p.name}`}
                 onClick={() => setLbIdx(idx)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLbIdx(idx); } }}
                 className="h-full w-full cursor-zoom-in object-cover transition-transform duration-700 hover:scale-[1.03]"
               />
             </div>
@@ -99,17 +103,17 @@ export default function ShowcaseAlbum({
           <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3.5 md:px-7" style={{ borderBottom: "1px solid var(--border)" }}>
             <span className="text-[13px]" style={{ color: "var(--text2)" }}>{lbIdx + 1} / {photos.length}</span>
             <div className="flex-1" />
-            <button onClick={() => setLbIdx(null)} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
+            <button onClick={() => setLbIdx(null)} aria-label="Đóng" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
               <X size={17} />
             </button>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center p-4 md:p-10">
-            <button onClick={() => setLbIdx(Math.max(0, lbIdx - 1))} disabled={lbIdx === 0} className="absolute left-3.5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
+            <button onClick={() => setLbIdx(Math.max(0, lbIdx - 1))} disabled={lbIdx === 0} aria-label="Ảnh trước" className="absolute left-3.5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
               <ChevronLeft size={22} />
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={fullImageUrl(lb.fileId, 1600)} alt={lb.name} className="max-h-[82vh] max-w-full rounded object-contain animate-[vkPop_.35s_ease_both]" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.6)" }} />
-            <button onClick={() => setLbIdx(Math.min(photos.length - 1, lbIdx + 1))} disabled={lbIdx >= photos.length - 1} className="absolute right-3.5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
+            <button onClick={() => setLbIdx(Math.min(photos.length - 1, lbIdx + 1))} disabled={lbIdx >= photos.length - 1} aria-label="Ảnh sau" className="absolute right-3.5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
               <ChevronRight size={22} />
             </button>
           </div>

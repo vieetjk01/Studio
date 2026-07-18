@@ -53,7 +53,19 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
     })();
   }, []);
 
-  if (!usage) return null;
+  // Giữ chỗ đúng chiều cao trong lúc tải để lưới album không bị nhảy (CLS).
+  if (!usage) {
+    return (
+      <div
+        className="mb-6 flex items-center gap-3 rounded-2xl px-5 py-3.5"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+        aria-hidden="true"
+      >
+        <span className="skeleton h-8 w-8 rounded-lg" />
+        <span className="skeleton h-4 w-52 max-w-[60%] rounded" />
+      </div>
+    );
+  }
 
   const reached = usage.limit != null && usage.used >= usage.limit;
 
@@ -81,7 +93,7 @@ export default function PlanUsage({ showUpgrade = true }: { showUpgrade?: boolea
         <Link
           href="/dashboard/upgrade"
           className="ml-auto rounded-full px-3.5 py-1.5 text-[13px] font-semibold"
-          style={{ background: "var(--gold)", color: "#0a0a0c" }}
+          style={{ background: "var(--gold)", color: "#1a1205" }}
         >
           Nâng cấp
         </Link>

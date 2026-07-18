@@ -4,6 +4,7 @@ import type { Lang } from "@/lib/i18n";
 import { mainUrl } from "@/lib/hosts";
 import MstudoVideo from "@/components/MstudoVideo";
 import LandingControls from "./landing/LandingControls";
+import LandingMobileMenu from "./landing/LandingMobileMenu";
 import CyclePricing from "./landing/CyclePricing";
 import ContactSection from "./landing/ContactSection";
 
@@ -20,7 +21,7 @@ import ContactSection from "./landing/ContactSection";
 
 /* ── Bilingual content (ported from the mstudo design) ─────────────────── */
 type Dict = {
-  nav: { features: string; guide: string; pricing: string; faq: string; about: string; login: string; start: string; website: string };
+  nav: { features: string; guide: string; pricing: string; faq: string; about: string; contact: string; login: string; start: string; website: string };
   hero: { badge: string; title: string; sub: string; ctaPrimary: string; ctaSecondary: string; ctaWebsite: string; note: string; shot: string };
   feat: { title: string; sub: string; cards: { t: string; d: string }[] };
   guide: { title: string; sub: string; steps: { t: string; d: string }[] };
@@ -53,7 +54,7 @@ const fmtVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}₫`;
 
 const D: Record<"vi" | "en", Dict> = {
   vi: {
-    nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", login: "Đăng nhập", start: "Bắt đầu miễn phí", website: "Website riêng" },
+    nav: { features: "Tính năng", guide: "Hướng dẫn", pricing: "Bảng giá", faq: "Câu hỏi", about: "Giới thiệu", contact: "Liên hệ", login: "Đăng nhập", start: "Bắt đầu miễn phí", website: "Website riêng" },
     hero: {
       badge: "Phần mềm quản lý studio chụp ảnh",
       title: "Giải pháp quản lý studio toàn diện",
@@ -119,7 +120,7 @@ const D: Record<"vi" | "en", Dict> = {
     footer: { copy: "© 2026 mstudo. Một sản phẩm của Vieetjk." },
   },
   en: {
-    nav: { features: "Features", guide: "Guide", pricing: "Pricing", faq: "FAQ", about: "About", login: "Log in", start: "Start free", website: "Build your website" },
+    nav: { features: "Features", guide: "Guide", pricing: "Pricing", faq: "FAQ", about: "About", contact: "Contact", login: "Log in", start: "Start free", website: "Build your website" },
     hero: {
       badge: "Studio management software for photographers",
       title: "All-in-one studio management",
@@ -296,7 +297,7 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
             <a href="#pricing" style={navLink}>{L.nav.pricing}</a>
             <a href="#faq" style={navLink}>{L.nav.faq}</a>
             <a href="#about" style={navLink}>{L.nav.about}</a>
-            <a href="#contact" style={navLink}>Liên hệ</a>
+            <a href="#contact" style={navLink}>{L.nav.contact}</a>
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
             <LandingControls lang={lang} />
@@ -305,6 +306,20 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
               {L.nav.website}
             </Link>
             <Link href={loginUrl} style={primaryBtn} className="ms-start-btn">{L.nav.start}</Link>
+            <LandingMobileMenu
+              items={[
+                { href: "#features", label: L.nav.features },
+                { href: "#guide", label: L.nav.guide },
+                { href: "#pricing", label: L.nav.pricing },
+                { href: "#faq", label: L.nav.faq },
+                { href: "#about", label: L.nav.about },
+                { href: "#contact", label: L.nav.contact },
+              ]}
+              loginUrl={loginUrl}
+              websiteHref={`${loginUrl}?next=/dashboard/site`}
+              websiteLabel={L.nav.website}
+              startLabel={L.nav.start}
+            />
           </div>
         </div>
       </header>
@@ -375,7 +390,7 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
           <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 28px" }}>
             <h2 style={h2}>{L.pricing.title}</h2>
             <p style={sectionSub}>{L.pricing.sub}</p>
-            <p style={{ marginTop: 10, display: "inline-block", background: "var(--accentSoft)", color: "var(--accent)", fontSize: 13, fontWeight: 700, padding: "6px 14px", borderRadius: 999 }}>
+            <p style={{ marginTop: 10, display: "inline-block", background: "var(--accentSoft)", color: "var(--accent-strong)", fontSize: 13, fontWeight: 700, padding: "6px 14px", borderRadius: 999 }}>
               {lang === "en" ? "🎁 Buy yearly, get 30 bonus days — all plans" : "🎁 Mua gói theo năm — tặng thêm 30 ngày cho tất cả các gói"}
             </p>
           </div>
@@ -404,7 +419,7 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                   <div key={p.name} style={{ border: p.accent ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--surface)", borderRadius: 18, padding: 30, position: "relative", boxShadow: p.accent ? "var(--shadow)" : undefined, display: "flex", flexDirection: "column", height: "100%" }}>
                     {p.accent && <span style={{ position: "absolute", top: -12, left: 30, background: "var(--accent)", color: "var(--accentFg)", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999 }}>{L.pricing.popular}</span>}
                     {/* Dòng tên gói. */}
-                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent)" : "var(--muted)" }}>{p.name}</h3>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: p.accent ? "var(--accent-strong)" : "var(--muted)" }}>{p.name}</h3>
                     {/* Dòng giá gốc (gạch ngang) + nhãn -x% — dòng ngắn riêng nên giá
                         năm lớn không tràn khung; chiều cao cố định để nút thẳng hàng. */}
                     {hasAnyDiscount && (
@@ -412,13 +427,13 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                         {dynMonth && (dynMonth.full || dynMonth.off) && (
                           <span className="ms-cy-month" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
                             {dynMonth.full && <span style={{ color: "var(--muted)", fontSize: 14, textDecoration: "line-through" }}>{dynMonth.full}</span>}
-                            {dynMonth.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${dynMonth.off}%`}</span>}
+                            {dynMonth.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent-strong)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${dynMonth.off}%`}</span>}
                           </span>
                         )}
                         {dynYear && (dynYear.full || dynYear.off) && (
                           <span className="ms-cy-year" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
                             {dynYear.full && <span style={{ color: "var(--muted)", fontSize: 14, textDecoration: "line-through" }}>{dynYear.full}</span>}
-                            {dynYear.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${dynYear.off}%`}</span>}
+                            {dynYear.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent-strong)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${dynYear.off}%`}</span>}
                           </span>
                         )}
                       </div>
@@ -445,13 +460,13 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                             {plusMonth?.full && <span style={{ color: "var(--muted)", fontSize: 13, textDecoration: "line-through" }}>{plusMonth.full}</span>}
                             <span style={{ fontSize: 20, fontWeight: 800 }}>{plusMonth?.price ?? L.pricing.plus.price}</span>
                             <span style={{ color: "var(--muted)", fontSize: 13 }}>{plusMonth?.period ?? (lng === "en" ? "/mo" : "/tháng")}</span>
-                            {plusMonth?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${plusMonth.off}%`}</span>}
+                            {plusMonth?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent-strong)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${plusMonth.off}%`}</span>}
                           </span>
                           <span className="ms-cy-year" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
                             {plusYear?.full && <span style={{ color: "var(--muted)", fontSize: 13, textDecoration: "line-through" }}>{plusYear.full}</span>}
                             <span style={{ fontSize: 20, fontWeight: 800 }}>{plusYear?.price ?? L.pricing.plus.price}</span>
                             <span style={{ color: "var(--muted)", fontSize: 13 }}>{plusYear?.period ?? (lng === "en" ? "/yr" : "/năm")}</span>
-                            {plusYear?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${plusYear.off}%`}</span>}
+                            {plusYear?.off && <span style={{ background: "var(--accentSoft)", color: "var(--accent-strong)", fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999 }}>{`-${plusYear.off}%`}</span>}
                           </span>
                         </div>
                         <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 12px", lineHeight: 1.5 }}>{L.pricing.plus.tagline}</p>
@@ -480,7 +495,7 @@ export default function LandingPage({ lang, pricing }: { lang: Lang; pricing?: L
                 <figure key={r.n} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: 28, margin: 0 }}>
                   <blockquote style={{ margin: "0 0 22px", fontSize: 16, lineHeight: 1.65 }}>“{r.q}”</blockquote>
                   <figcaption style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accentSoft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{r.i}</span>
+                    <span style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accentSoft)", color: "var(--accent-strong)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{r.i}</span>
                     <span><strong style={{ display: "block", fontSize: 14.5 }}>{r.n}</strong><span style={{ color: "var(--muted)", fontSize: 13 }}>{r.role}</span></span>
                   </figcaption>
                 </figure>

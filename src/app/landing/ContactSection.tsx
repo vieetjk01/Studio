@@ -55,7 +55,7 @@ export default function ContactSection({ lang }: { lang: Lang }) {
     <section id="contact" style={{ padding: "80px 0", background: "var(--surface)" }}>
       <div style={{ ...wrap }}>
         <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>{ct.eyebrow}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent-strong)", marginBottom: 12 }}>{ct.eyebrow}</p>
           <h2 style={{ fontSize: "clamp(26px,3.5vw,38px)", fontWeight: 800, lineHeight: 1.15, marginBottom: 12 }}>{ct.title}</h2>
           <p style={{ color: "var(--muted)", fontSize: 16, marginBottom: 36 }}>{ct.sub}</p>
 
@@ -65,7 +65,7 @@ export default function ContactSection({ lang }: { lang: Lang }) {
             </div>
           ) : (
             <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="ms-contact-grid" style={{ display: "grid", gap: 12 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.name}</label>
                   <input required style={inp} value={form.name} placeholder={ct.namePh} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
@@ -79,7 +79,7 @@ export default function ContactSection({ lang }: { lang: Lang }) {
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{ct.message}</label>
                 <textarea required rows={4} style={{ ...inp, resize: "vertical", minHeight: 110 }} value={form.message} placeholder={ct.messagePh} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
               </div>
-              {state === "error" && <p style={{ color: "#e0746f", fontSize: 13 }}>{ct.error}</p>}
+              {state === "error" && <p style={{ color: "var(--danger)", fontSize: 13 }}>{ct.error}</p>}
               <button type="submit" disabled={state === "sending"} style={{ height: 46, border: "none", background: "var(--accent)", color: "var(--accentFg)", borderRadius: 10, fontFamily: "inherit", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
                 {state === "sending" ? ct.sending : ct.send}
               </button>

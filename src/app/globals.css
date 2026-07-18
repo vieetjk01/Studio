@@ -18,6 +18,9 @@
   --accentInk: #f4f3f0;
   --gold: #b8893a;
   --logo: #c0151a;
+  /* Status colours — tuned for AA contrast on the light surfaces above. */
+  --danger: #cc2f2f;
+  --success: #1f9d63;
 }
 
 /* Explicit light alias — anything that still sets data-theme="light" stays light. */
@@ -36,6 +39,8 @@
   --accentInk: #f4f3f0;
   --gold: #b8893a;
   --logo: #c0151a;
+  --danger: #cc2f2f;
+  --success: #1f9d63;
 }
 
 /* Dark theme — opt-in via data-theme="dark" (Obsidian design tokens). */
@@ -54,6 +59,9 @@
   --accentInk: #0a0a0c;
   --gold: #e8c57c;
   --logo: #c0151a;
+  /* Status colours — brighter values that read on the dark surfaces above. */
+  --danger: #f2726e;
+  --success: #5fd29a;
 }
 
 html,
@@ -427,6 +435,8 @@ body {
   --accent: #1f9d63;
   --accentFg: #ffffff;
   --accentSoft: rgba(31, 157, 99, 0.1);
+  /* Darker accent for small text/badges on light backgrounds (AA contrast). */
+  --accent-strong: #147a49;
   --shadow: 0 1px 2px rgba(20, 24, 33, 0.05), 0 10px 30px rgba(20, 24, 33, 0.06);
   font-family: var(--font-manrope), system-ui, sans-serif;
   background: var(--bg);
@@ -448,6 +458,7 @@ body {
   --accent: #3fb98a;
   --accentFg: #06120c;
   --accentSoft: rgba(63, 185, 138, 0.14);
+  --accent-strong: #5fd0a3;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 .mstudo-landing a:hover {
@@ -459,6 +470,10 @@ body {
 @media (max-width: 860px) {
   .mstudo-landing .ms-nav {
     display: none !important;
+  }
+  /* Hamburger thay cho nav ngang trên mobile. */
+  .mstudo-landing .ms-burger-btn {
+    display: inline-flex !important;
   }
 }
 @media (max-width: 560px) {
@@ -489,6 +504,12 @@ body {
 }
 @media (min-width: 1024px) {
   .mstudo-landing .ms-pricing-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Form liên hệ: 1 cột trên mobile, 2 cột từ ≥560px (tránh chèn ép trên điện thoại). */
+.mstudo-landing .ms-contact-grid { grid-template-columns: 1fr; }
+@media (min-width: 560px) {
+  .mstudo-landing .ms-contact-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* Toggle giá tháng/năm: hiện đúng một biến thể theo data-cycle của island.

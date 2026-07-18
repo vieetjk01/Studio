@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, ChevronDown, LayoutDashboard, UserCircle, Settings, Gift, LogOut, ShieldCheck } from "lucide-react";
@@ -41,7 +41,13 @@ export default function DashboardHeader({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
+
+  // Đóng menu thả xuống khi chuyển trang (tránh dropdown "kẹt" mở).
+  useEffect(() => {
+    setOpenGroup(null);
+  }, [pathname]);
 
   async function signOut() {
     const supabase = createClient();
@@ -203,24 +209,37 @@ export default function DashboardHeader({
 
   function renderGroup(g: NavGroup) {
     const active = g.children.some((c) => pathname === c.href);
+    const isOpen = openGroup === g.label;
     return (
-      <div key={g.label} className="group relative">
-        <button className={`flex items-center gap-1 text-sm transition-colors ${active ? "text-accent" : "text-accent-muted hover:text-accent"}`}>
+      <div key={g.label} className="relative">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => setOpenGroup((cur) => (cur === g.label ? null : g.label))}
+          className={`flex items-center gap-1 text-sm transition-colors ${active || isOpen ? "text-accent" : "text-accent-muted hover:text-accent"}`}
+        >
           {g.label}
-          <ChevronDown size={13} />
+          <ChevronDown size={13} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </button>
-        <div className="invisible absolute left-0 top-full z-30 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
-          <div className="grid min-w-[170px] gap-1 rounded-xl p-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            {g.children.map((c) => {
-              const cls = `rounded-lg px-3 py-1.5 text-sm transition-colors ${pathname === c.href ? "text-accent" : "text-accent-muted hover:bg-[var(--surface2)] hover:text-accent"}`;
-              return c.external ? (
-                <a key={c.href} href={c.href} className={cls}>{c.label}</a>
-              ) : (
-                <Link key={c.href} href={c.href} className={cls}>{c.label}</Link>
-              );
-            })}
-          </div>
-        </div>
+        {isOpen && (
+          <>
+            {/* Lớp phủ vô hình để bấm ra ngoài là đóng (giống menu avatar). */}
+            <div className="fixed inset-0 z-30" onClick={() => setOpenGroup(null)} />
+            <div className="absolute left-0 top-full z-40 pt-2">
+              <div className="grid min-w-[180px] gap-1 rounded-xl p-2 shadow-xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                {g.children.map((c) => {
+                  const cls = `rounded-lg px-3 py-1.5 text-sm transition-colors ${pathname === c.href ? "text-accent" : "text-accent-muted hover:bg-[var(--surface2)] hover:text-accent"}`;
+                  return c.external ? (
+                    <a key={c.href} href={c.href} onClick={() => setOpenGroup(null)} className={cls}>{c.label}</a>
+                  ) : (
+                    <Link key={c.href} href={c.href} onClick={() => setOpenGroup(null)} className={cls}>{c.label}</Link>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   }
