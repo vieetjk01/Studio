@@ -230,10 +230,13 @@ export default function GalleryView({
   }
 
   async function downloadAll() {
-    if (visible.length === 0) return;
+    // Nén TOÀN BỘ album (mọi nguồn/tab), không chỉ tab đang xem; ở chế độ chia sẻ
+    // chọn lọc thì chỉ nén đúng những ảnh được chia sẻ.
+    const zipPhotos = shareSet ? photos.filter((p) => shareSet.has(p.id)) : photos;
+    if (zipPhotos.length === 0) return;
     setZipProgress(0);
     const blob = await buildZip(
-      visible.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
+      zipPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
       { watermark: wm, onProgress: (d, t) => setZipProgress(Math.round((d / t) * 100)) }
     );
     triggerDownload(blob, `${gallery.slug}.zip`);
@@ -286,11 +289,12 @@ export default function GalleryView({
               {shareBusy ? "Đang tạo link…" : `Chia sẻ ${selected.size} ảnh đã chọn`}
             </button>
           )}
-          {/* Tải cả album = link Drive (mọi gói). ZIP nén chỉ Studio & Photographer Plus. */}
-          {allowDownload && driveFolders.length > 0 && (
+          {/* Tải cả album = link Drive (mọi gói). ZIP nén chỉ Studio & Photographer Plus.
+              Ẩn ở chế độ chia sẻ chọn lọc: link Drive trỏ cả thư mục → sẽ lộ toàn album. */}
+          {!shareMode && allowDownload && driveFolders.length > 0 && (
             <DriveDownload folders={driveFolders} label={tr.driveDownload} labelOne={tr.driveDownloadOne} />
           )}
-          {allowDownload && gallery.canZip && (
+          {!shareMode && allowDownload && gallery.canZip && (
             <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]" title={tr.zipDownload}>
               <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.zipDownload}
             </button>
