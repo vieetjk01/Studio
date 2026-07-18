@@ -46,10 +46,32 @@ Upload file `...-setup.exe` lên hosting rồi đặt biến môi trường
 `NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL` cho web app (Vercel) — nút "Tải bản cài đặt"
 trên trang MStudo Desktop sẽ tự trỏ vào đó.
 
+## Cài đặt trên Windows khi app CHƯA ký số
+
+Bản cài hiện **chưa mua chứng chỉ ký số**, nên Windows không xác minh được nhà
+phát hành. Có 2 mức cảnh báo — hầu hết máy khách chỉ gặp mức 1:
+
+**1) SmartScreen** (đa số máy — SAC đang tắt): mở `.exe` → hiện "Windows
+protected your PC" → bấm **More info → Run anyway**. Nếu file vừa tải bị "khoá":
+chuột phải `.exe` → **Properties** → tick **Unblock** → **OK**, rồi mở lại.
+
+**2) Smart App Control** ("*Smart App Control blocked an app that may be
+unsafe*") — chỉ bật mặc định trên **Windows 11 cài mới tinh**. SAC nghiêm hơn
+SmartScreen: app chưa ký **không thể chạy** khi SAC đang bật. Cách duy nhất để
+chạy app chưa ký là **tắt SAC**: *Settings → Privacy & security → Windows
+Security → App & browser control → Smart App Control → **Off***.
+> ⚠️ Tắt SAC là **một chiều** — muốn bật lại phải **reset/cài lại Windows**. Chỉ
+> nên tắt trên máy của bạn để test; **không** yêu cầu khách làm điều này.
+
+**Bỏ hẳn cảnh báo** cho mọi máy (kể cả SAC) thì bắt buộc **ký số** installer +
+app: khuyến nghị **Azure Trusted Signing** (~$10/tháng, SmartScreen & SAC đều
+tin) hoặc **chứng chỉ EV**. Khi đã có, ký trong CI qua `bundle.windows.signCommand`
+của Tauri (nhớ ký cả `*-setup.exe` lẫn binary bên trong).
+
 ## Ghi chú
 
-- **SmartScreen**: chưa mua chứng chỉ ký số nên lần cài đầu Windows sẽ cảnh báo —
-  hướng dẫn người dùng bấm *More info → Run anyway* (đã ghi sẵn trên trang tải).
+- **SmartScreen / Smart App Control**: chưa mua chứng chỉ ký số nên Windows sẽ
+  cảnh báo khi cài — xem mục *"Cài đặt trên Windows khi app CHƯA ký số"* ở trên.
 - **Tự cập nhật**: app kiểm tra bản phát hành mới (GitHub Releases, tag
   `desktop-dev`) khi mở app và mỗi 2 giờ. Khi có bản mới, nếu app đang **rảnh**
   (không đồng bộ/đang tải/đang xuất) sẽ **tự tải & cài** (đóng app → chạy trình
