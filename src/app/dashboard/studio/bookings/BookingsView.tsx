@@ -73,6 +73,14 @@ export default function BookingsView({
   const [editBusy, setEditBusy] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
+  // Đóng modal sửa bằng phím Esc.
+  useEffect(() => {
+    if (!editState) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setEditState(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editState]);
+
   useEffect(() => {
     setBookingUrl(studioHost ? studioUrl(studioHost, `/book/${token}`) : `${window.location.origin}/book/${token}`);
   }, [token, studioHost]);
@@ -338,13 +346,14 @@ export default function BookingsView({
             onClick={() => setEditState(null)}
           />
           <div
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl p-6 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-2xl p-6 shadow-2xl"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Sửa yêu cầu đặt lịch</h2>
               <button
                 onClick={() => setEditState(null)}
+                aria-label="Đóng"
                 className="flex h-8 w-8 items-center justify-center rounded-lg"
                 style={{ background: "var(--surface2)", color: "var(--text2)" }}
               >

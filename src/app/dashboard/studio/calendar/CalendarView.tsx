@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fmtDate, todayVN } from "@/lib/date";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Bell, BellOff, Camera, CalendarDays } from "lucide-react";
@@ -71,6 +71,11 @@ export default function CalendarView({
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"month" | "week">("month");
   const [weekAnchor, setWeekAnchor] = useState(todayStr); // any date inside the displayed week
+
+  // Trên điện thoại, lịch tháng chật → mặc định mở chế độ Tuần (dễ đọc/chạm hơn).
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) setView("week");
+  }, []);
 
   // add-note form
   const [title, setTitle] = useState("");
@@ -348,9 +353,13 @@ export default function CalendarView({
                         onClick={() => setContractColor(c.id, col)}
                         title={col}
                         aria-label={`Đổi màu ${col}`}
-                        className="h-4 w-4 rounded-full transition-transform hover:scale-110"
-                        style={{ background: col, border: mc.toLowerCase() === col.toLowerCase() ? "2px solid var(--text)" : "1px solid var(--border)" }}
-                      />
+                        className="flex h-7 w-7 items-center justify-center rounded-full transition-transform hover:scale-110"
+                      >
+                        <span
+                          className="block h-4 w-4 rounded-full"
+                          style={{ background: col, border: mc.toLowerCase() === col.toLowerCase() ? "2px solid var(--text)" : "1px solid var(--border)" }}
+                        />
+                      </button>
                     ))}
                   </div>
                   <dl className="mt-2 space-y-0.5 text-[11px]" style={{ color: "var(--text2)" }}>

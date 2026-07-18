@@ -178,6 +178,7 @@ export default function QuoteClientView({
   const [accepted, setAccepted] = useState(quote.status === "accepted" || quote.status === "converted");
   const [contractToken, setContractToken] = useState<string | null>(initialContractToken);
   const [copied, setCopied] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [clientName, setClientName] = useState(quote.client_name || "");
   const [clientPhone, setClientPhone] = useState(quote.client_phone || "");
@@ -270,14 +271,15 @@ export default function QuoteClientView({
     }
   }
 
-  async function accept() {
+  // Mở hộp xác nhận trong app (thay cho window.confirm gốc — đẹp & dịch được).
+  function accept() {
     if (locked || !formValid) return;
-    const confirmMsg =
-      `${tr.confirmTitle}\n\n` +
-      `${tr.confirmTotal} ${vnd(effectiveTotal)}\n` +
-      `${tr.confirmDeposit} ${vnd(deposit)}\n` +
-      (autoCreate && studioCanContract ? tr.confirmAutoContract : tr.confirmManual);
-    if (!confirm(confirmMsg)) return;
+    setConfirmOpen(true);
+  }
+
+  async function doAccept() {
+    if (locked || !formValid) return;
+    setConfirmOpen(false);
     setAccepting(true);
     setError(null);
     try {
@@ -588,7 +590,7 @@ export default function QuoteClientView({
           </section>
         )}
 
-        {error && <p className="text-sm text-red-400" data-testid="quote-error">{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--danger)" }} data-testid="quote-error">{error}</p>}
 
         {!locked ? (
           <button
@@ -662,6 +664,34 @@ export default function QuoteClientView({
           {tr.footer} <b>{studioName}</b>
         </footer>
       </div>
+
+      {/* Hộp xác nhận đồng ý báo giá (thay window.confirm) */}
+      {confirmOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,.5)", backdropFilter: "blur(2px)" }}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => e.target === e.currentTarget && setConfirmOpen(false)}
+        >
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <h2 className="font-serif text-xl font-medium">{tr.confirmTitle}</h2>
+            <div className="mt-4 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span style={{ color: "var(--text2)" }}>{tr.confirmTotal}</span><b>{vnd(effectiveTotal)}</b></div>
+              <div className="flex justify-between"><span style={{ color: "var(--text2)" }}>{tr.confirmDeposit}</span><b>{vnd(deposit)}</b></div>
+            </div>
+            <p className="mt-3 whitespace-pre-line text-[13px]" style={{ color: "var(--text2)" }}>
+              {autoCreate && studioCanContract ? tr.confirmAutoContract : tr.confirmManual}
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1 justify-center">{lang === "en" ? "Cancel" : "Huỷ"}</button>
+              <button onClick={doAccept} disabled={accepting} className="btn-primary flex-1 justify-center" data-testid="quote-accept-confirm">
+                <ShieldCheck size={16} /> {accepting ? tr.processing : tr.acceptBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
