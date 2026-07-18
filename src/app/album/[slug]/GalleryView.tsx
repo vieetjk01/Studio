@@ -13,6 +13,10 @@ const TR = {
     pwOpening: "Đang mở…",
     pwEnter: "Vào xem",
     downloadAll: "Tải cả album",
+    driveDownload: "Tải album (Drive)",
+    driveDownloadOne: "Tải từ Drive",
+    zipDownload: "Tải ZIP nén",
+    dlPhoto: "Tải ảnh",
     photoCount: "ảnh",
     tabAll: "Tất cả",
     feedbackTitle: "Cảm nhận của bạn",
@@ -32,6 +36,10 @@ const TR = {
     pwOpening: "Opening…",
     pwEnter: "Enter",
     downloadAll: "Download album",
+    driveDownload: "Download album (Drive)",
+    driveDownloadOne: "Download from Drive",
+    zipDownload: "Download ZIP",
+    dlPhoto: "Download",
     photoCount: "photos",
     tabAll: "All",
     feedbackTitle: "Your feedback",
@@ -44,7 +52,7 @@ const TR = {
   },
 } as const;
 import {
-  Lock, ChevronLeft, ChevronRight, X, Download, Calendar, Star, Send, Check, Play, Heart, Share2,
+  Lock, ChevronLeft, ChevronRight, ChevronDown, X, Download, Calendar, Star, Send, Check, Play, Heart, Share2, ExternalLink,
 } from "lucide-react";
 import StudioBrand from "@/components/StudioBrand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -60,14 +68,16 @@ interface P { id: string; drive_file_id: string; name: string; source_id: string
 
 const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
-interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; watermark?: string | null; }
+interface DriveFolder { name: string; url: string; }
+interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; canZip?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, feedback, shareIds, studioName = "Studio", logoUrl = null,
+  gallery, initialPhotos, initialSources, initialDriveFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
   initialSources: S[] | null;
+  initialDriveFolders?: DriveFolder[];
   feedback: Feedback[];
   shareIds?: string[] | null;
   studioName?: string;
@@ -77,6 +87,8 @@ export default function GalleryView({
   const [unlocked, setUnlocked] = useState(!gallery.hasPassword);
   const [photos, setPhotos] = useState<P[]>(initialPhotos ?? []);
   const [sources, setSources] = useState<S[]>(initialSources ?? []);
+  const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(initialDriveFolders);
+  const allowDownload = gallery.allowDownload !== false;
   const [password, setPassword] = useState("");
   const [pwError, setPwError] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
@@ -153,7 +165,9 @@ export default function GalleryView({
     setPwLoading(false);
     if (!res.ok) return setPwError(true);
     const data = await res.json();
-    setPhotos(data.photos ?? []); setSources(data.sources ?? []); setUnlocked(true);
+    setPhotos(data.photos ?? []); setSources(data.sources ?? []);
+    setDriveFolders(data.driveFolders ?? []);
+    setUnlocked(true);
   }
 
   const tabSources = useMemo(() => sources.filter((s) => photos.some((p) => p.source_id === s.id)), [sources, photos]);
@@ -272,9 +286,13 @@ export default function GalleryView({
               {shareBusy ? "Đang tạo link…" : `Chia sẻ ${selected.size} ảnh đã chọn`}
             </button>
           )}
-          {gallery.allowDownload !== false && (
-            <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]">
-              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.downloadAll}
+          {/* Tải cả album = link Drive (mọi gói). ZIP nén chỉ Studio & Photographer Plus. */}
+          {allowDownload && driveFolders.length > 0 && (
+            <DriveDownload folders={driveFolders} label={tr.driveDownload} labelOne={tr.driveDownloadOne} />
+          )}
+          {allowDownload && gallery.canZip && (
+            <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]" title={tr.zipDownload}>
+              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.zipDownload}
             </button>
           )}
           {!shareMode && <ShareButton path={mainUrl(`/album/${gallery.slug}`)} title={gallery.title} className="btn-ghost px-3 py-1.5 text-[13px]" />}
@@ -324,7 +342,7 @@ export default function GalleryView({
                 {sec.items.map(({ p, i }) => {
                   const isSel = selected.has(p.id);
                   return (
-                  <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
+                  <div key={p.id} className="group relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img onClick={() => setLbIdx(i)} role="button" tabIndex={0} aria-label={`Xem ${p.name}`} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLbIdx(i); } }} src={thumbnailUrl(p.drive_file_id, 400)} alt={p.name} loading="lazy" decoding="async" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full cursor-zoom-in select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
                     {wm && (
@@ -353,6 +371,20 @@ export default function GalleryView({
                       >
                         <Heart size={18} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
                       </button>
+                    )}
+                    {/* Tải riêng từng ảnh full-size (bản gốc) — mọi gói khi cho phép tải. */}
+                    {allowDownload && !isVideo(p) && (
+                      <a
+                        href={`/api/img?id=${p.drive_file_id}&orig=1`}
+                        download={p.name}
+                        onClick={(e) => e.stopPropagation()}
+                        title={tr.dlPhoto}
+                        aria-label={`${tr.dlPhoto}: ${p.name}`}
+                        className="absolute left-2 top-2 z-[4] flex h-9 w-9 items-center justify-center rounded-full opacity-100 transition-opacity focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                        style={{ background: "rgba(10,10,12,.5)", color: "#fff", border: "1px solid rgba(255,255,255,.6)" }}
+                      >
+                        <Download size={15} />
+                      </a>
                     )}
                   </div>
                   );
@@ -409,7 +441,7 @@ export default function GalleryView({
             <span className="text-[13px]" style={{ color: "var(--text2)" }}>{lbIdx + 1} / {visible.length}</span>
             <div className="flex-1" />
             {gallery.allowDownload !== false && (
-              <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} aria-label="Tải ảnh" title="Tải ảnh" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+              <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&orig=1`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} aria-label={tr.dlPhoto} title={tr.dlPhoto} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
             )}
             <button onClick={() => setLbIdx(null)} aria-label="Đóng" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
           </div>
@@ -465,5 +497,50 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
     <button onClick={onClick} className="rounded-full px-4 py-1.5 text-[13px] transition-colors" style={active ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}>
       {children}
     </button>
+  );
+}
+
+/**
+ * "Tải album" = link Drive. Một folder → link trực tiếp; nhiều folder → menu thả
+ * xuống liệt kê từng thư mục. Khách tải trực tiếp từ Google Drive (giữ nguyên
+ * chất lượng gốc), không qua ZIP nén.
+ */
+function DriveDownload({ folders, label, labelOne }: { folders: DriveFolder[]; label: string; labelOne: string }) {
+  const [open, setOpen] = useState(false);
+  if (folders.length === 1) {
+    return (
+      <a href={folders[0].url} target="_blank" rel="noopener noreferrer" className="btn-ghost px-3 py-1.5 text-[13px]">
+        <Download size={14} /> {labelOne}
+      </a>
+    );
+  }
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} className="btn-ghost px-3 py-1.5 text-[13px]">
+        <Download size={14} /> {label}
+        <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-2 min-w-[220px] max-w-[80vw] rounded-xl p-1.5 shadow-xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            {folders.map((f, i) => (
+              <a
+                key={i}
+                href={f.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-[var(--surface2)]"
+                style={{ color: "var(--text)" }}
+              >
+                <ExternalLink size={14} style={{ color: "var(--text3)" }} className="shrink-0" />
+                <span className="truncate">{f.name || "Thư mục Drive"}</span>
+              </a>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

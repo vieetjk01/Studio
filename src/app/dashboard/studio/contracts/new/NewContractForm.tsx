@@ -147,20 +147,22 @@ export default function NewContractForm({
                 ))}
               </select>
             </div>
-            <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+            <p className="mt-1 text-[11px] sm:pl-32" style={{ color: "var(--text3)" }}>
               Chọn mẫu để tự điền hạng mục, giá &amp; điều khoản.
             </p>
           </div>
         )}
-        <div className="field">
-          <label className="label">Tên hợp đồng</label>
-          <input
-            className="input"
-            placeholder={selectedService ? `Hợp đồng ${selectedService.name} ${fmtDate(new Date())}` : "Để trống để tự đặt tên"}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+        <div>
+          <div className="field">
+            <label className="label">Tên hợp đồng</label>
+            <input
+              className="input"
+              placeholder={selectedService ? `Hợp đồng ${selectedService.name} ${fmtDate(new Date())}` : "Để trống để tự đặt tên"}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+          <p className="mt-1 text-[11px] sm:pl-32" style={{ color: "var(--text3)" }}>
             Để trống sẽ tự đặt: <b>Hợp đồng {selectedService?.name || "{loại dịch vụ}"} {fmtDate(new Date())}</b>
           </p>
         </div>
@@ -182,7 +184,7 @@ export default function NewContractForm({
                 ))}
               </select>
             </div>
-            <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+            <p className="mt-1 text-[11px] sm:pl-32" style={{ color: "var(--text3)" }}>
               Điều khoản cố định theo dịch vụ này.{" "}
               <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Sửa điều khoản dịch vụ</Link>
             </p>
@@ -197,7 +199,7 @@ export default function NewContractForm({
                 ))}
               </select>
             </div>
-            <p className="mt-1 text-[11px] sm:pl-44" style={{ color: "var(--text3)" }}>
+            <p className="mt-1 text-[11px] sm:pl-32" style={{ color: "var(--text3)" }}>
               Chưa có dịch vụ nào.{" "}
               <Link href="/dashboard/studio/services" className="hover:underline" style={{ color: "var(--brand, var(--accent))" }}>Tạo dịch vụ &amp; điều khoản</Link>
             </p>
@@ -231,7 +233,7 @@ export default function NewContractForm({
           </div>
         </div>
 
-        {err && <p className="text-sm text-red-400">{err}</p>}
+        {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
 
         <button onClick={create} disabled={saving} className="btn-primary w-full">
           {saving ? "Đang tạo…" : "Tạo hợp đồng"}

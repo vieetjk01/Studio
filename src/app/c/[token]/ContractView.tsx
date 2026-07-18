@@ -348,7 +348,7 @@ export default function ContractView({ token }: { token: string }) {
           <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>{t("gatePrompt")}</p>
           <input className="input mt-5 text-center" placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} />
           {err && (
-            <p className="mt-3 rounded-lg px-3 py-2 text-sm font-medium" style={{ background: "var(--s-redS)", color: "var(--s-red)" }}>{err}</p>
+            <p className="mt-3 rounded-lg px-3 py-2 text-sm font-medium" style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" }}>{err}</p>
           )}
           <button type="submit" disabled={loading} className="btn-primary mt-4 w-full">
             {loading ? t("opening") : t("view")}
@@ -666,11 +666,11 @@ export default function ContractView({ token }: { token: string }) {
             <label
               className="relative block w-full cursor-pointer rounded-2xl border-2 border-dashed py-8 text-center transition-colors"
               style={{
-                borderColor: proofUploading ? "var(--brand)" : "var(--border2)",
-                background: proofUploading ? "var(--brandSoft)" : "transparent",
+                borderColor: proofUploading ? "var(--gold)" : "var(--border2)",
+                background: proofUploading ? "color-mix(in srgb, var(--gold) 12%, transparent)" : "transparent",
                 opacity: proofUploading ? 0.8 : 1,
               }}
-              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.background = "var(--brandSoft)"; }}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--gold)"; e.currentTarget.style.background = "color-mix(in srgb, var(--gold) 12%, transparent)"; }}
               onDragLeave={(e) => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.background = ""; }}
               onDrop={(e) => {
                 e.preventDefault();
@@ -682,8 +682,8 @@ export default function ContractView({ token }: { token: string }) {
             >
               <input type="file" accept="image/*" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" disabled={proofUploading}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f, selectedPlanId || undefined); e.target.value = ""; }} />
-              <Upload size={22} className="mx-auto mb-2" style={{ color: proofUploading ? "var(--brand)" : "var(--text3)" }} />
-              <p className="text-sm font-medium" style={{ color: proofUploading ? "var(--brand)" : "var(--text2)" }}>
+              <Upload size={22} className="mx-auto mb-2" style={{ color: proofUploading ? "var(--gold)" : "var(--text3)" }} />
+              <p className="text-sm font-medium" style={{ color: proofUploading ? "var(--gold)" : "var(--text2)" }}>
                 {proofUploading
                   ? (lang === "vi" ? "Đang tải lên…" : "Uploading…")
                   : (lang === "vi" ? "Kéo ảnh vào đây hoặc bấm để chọn" : "Drag photo here or tap to select")}
@@ -701,7 +701,7 @@ export default function ContractView({ token }: { token: string }) {
                 </button>
               )}
               {paidReported && (
-                <p className="py-2 text-sm" style={{ color: "var(--s-green)" }}>✓ {lang === "vi" ? "Đã thông báo, studio sẽ đối soát." : "Notified — studio will reconcile."}</p>
+                <p className="py-2 text-sm" style={{ color: "var(--success)" }}>✓ {lang === "vi" ? "Đã thông báo, studio sẽ đối soát." : "Notified — studio will reconcile."}</p>
               )}
             </div>
           </div>
@@ -801,7 +801,7 @@ export default function ContractView({ token }: { token: string }) {
                 <label className="label">{t("signature")}</label>
                 <SignaturePad onChange={setSignature} />
               </div>
-              {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
+              {err && <p className="mt-2 text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
               <button onClick={sign} disabled={signing} className="btn-primary mt-3">
                 <PenLine size={15} /> {signing ? t("signing") : t("sign")}
               </button>
