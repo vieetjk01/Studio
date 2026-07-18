@@ -28,9 +28,9 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
   return (
     <div className="animate-fade-in">
       <PlanUsage />
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-light text-accent">{t("myAlbums")}</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/dashboard/studio/album-categories" className="btn-ghost">
             <Tag size={16} /> Loại album
           </Link>
@@ -49,9 +49,9 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
       </div>
 
       {showTrial && (
-        <div className="mb-6 card p-4 flex flex-col sm:flex-row sm:items-center gap-3" style={{ borderColor: "rgba(214,164,74,.4)", background: "rgba(214,164,74,.06)" }}>
+        <div className="mb-6 card p-4 flex flex-col sm:flex-row sm:items-center gap-3" style={{ borderColor: "rgba(184,137,58,.4)", background: "rgba(184,137,58,.07)" }}>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" style={{ color: "#d6a44a" }}>Trải nghiệm gói Studio miễn phí 1 ngày</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--gold)" }}>Trải nghiệm gói Studio miễn phí 1 ngày</p>
             <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>Hợp đồng, lịch chụp, quản lý khách hàng và toàn bộ tính năng Studio trong 24 giờ.</p>
           </div>
           <div className="shrink-0">
@@ -107,17 +107,19 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
           </div>
         )}
         <span
-          className={`absolute left-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-            status === "published" ? "bg-emerald-500/20 text-emerald-300" : "bg-ink-700 text-accent-muted"
-          }`}
+          className="absolute left-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide"
+          style={status === "published"
+            ? { background: "var(--success)", color: "#04150d" }
+            : { background: "var(--surface2)", color: "var(--text2)" }}
         >
           {status === "published" ? t("published") : t("draft")}
         </span>
         {canDelivery && (
           <span
-            className={`absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-              phase === "delivery" ? "bg-emerald-500/20 text-emerald-300" : "bg-accent-gold/20 text-accent-gold"
-            }`}
+            className="absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] uppercase tracking-wide"
+            style={phase === "delivery"
+              ? { background: "var(--success)", color: "#04150d" }
+              : { background: "var(--gold)", color: "#1a1205" }}
           >
             {phase === "delivery" ? "Giao khách" : "Chọn ảnh"}
           </span>
@@ -141,7 +143,7 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
           <button onClick={() => setMenu((v) => !v)} className="btn-ghost py-1.5 text-xs" title="Bật/tắt nhanh">
             <Settings2 size={13} /> {t("edit")}
           </button>
-          <Link href={`/a/${a.slug}`} target="_blank" className="btn-ghost py-1.5 text-xs">
+          <Link href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" aria-label="Mở trang album (tab mới)" title="Mở trang album" className="btn-ghost py-1.5 text-xs">
             <ExternalLink size={13} />
           </Link>
         </div>
@@ -168,10 +170,10 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
 
 function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!on)} className="flex w-full items-center justify-between py-1.5 text-sm text-accent">
+    <button onClick={() => onChange(!on)} role="switch" aria-checked={on} className="flex w-full items-center justify-between py-1.5 text-sm text-accent">
       <span>{label}</span>
       <span className="relative h-[22px] w-[40px] flex-shrink-0 rounded-full transition-all" style={on ? { background: "var(--gold)" } : { background: "var(--surface)", border: "1px solid var(--border2)" }}>
-        <span className="absolute top-[3px] h-4 w-4 rounded-full transition-all" style={on ? { left: "20px", background: "#0a0a0c" } : { left: "3px", background: "var(--text2)" }} />
+        <span className="absolute top-[3px] h-4 w-4 rounded-full transition-all" style={on ? { left: "20px", background: "var(--accentInk)" } : { left: "3px", background: "var(--text2)" }} />
       </span>
     </button>
   );

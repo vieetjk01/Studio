@@ -251,7 +251,7 @@ export default function GalleryView({
             <p className="mb-1 mt-2 text-sm" style={{ color: "var(--text2)" }}>{tr.enterPw}</p>
             <p className="mb-6 text-[12.5px]" style={{ color: "var(--gold)" }}>{tr.pwHint} <b>{tr.pwHintBold}</b>{tr.pwHintSuffix}</p>
             <input type="text" inputMode="numeric" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} className="input mb-4 text-center" placeholder="09xx xxx xxx" />
-            {pwError && <p className="mb-4 text-sm text-red-400">{tr.pwWrong}</p>}
+            {pwError && <p className="mb-4 text-sm" style={{ color: "var(--danger)" }}>{tr.pwWrong}</p>}
             <button disabled={pwLoading} className="btn-primary w-full">{pwLoading ? tr.pwOpening : tr.pwEnter}</button>
           </form>
         </div>
@@ -263,9 +263,9 @@ export default function GalleryView({
 
   return (
     <main className="min-h-screen pb-24">
-      <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 md:px-10" style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}>
+      <header className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3.5 md:px-10" style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)", backdropFilter: "blur(20px)", borderBottom: "1px solid var(--border)" }}>
         <StudioBrand name={studioName} logoUrl={logoUrl} />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {!shareMode && selected.size > 0 && (
             <button onClick={shareSelected} disabled={shareBusy} className="btn-primary px-3 py-1.5 text-[13px]">
               <Share2 size={14} />
@@ -326,7 +326,7 @@ export default function GalleryView({
                   return (
                   <div key={p.id} className="relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img onClick={() => setLbIdx(i)} src={thumbnailUrl(p.drive_file_id, 400)} alt={p.name} loading="lazy" decoding="async" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
+                    <img onClick={() => setLbIdx(i)} role="button" tabIndex={0} aria-label={`Xem ${p.name}`} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLbIdx(i); } }} src={thumbnailUrl(p.drive_file_id, 400)} alt={p.name} loading="lazy" decoding="async" draggable={false} onContextMenu={(e) => wm && e.preventDefault()} className="h-full w-full cursor-zoom-in select-none object-cover transition-transform duration-700 hover:scale-[1.04]" />
                     {wm && (
                       <div className="pointer-events-none absolute inset-0 z-[2] flex flex-wrap content-center items-center justify-center gap-x-8 gap-y-6 opacity-20">
                         {Array.from({ length: 8 }).map((_, wi) => (
@@ -344,7 +344,9 @@ export default function GalleryView({
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
                         title="Chọn ảnh để chia sẻ"
-                        className="absolute right-2 top-2 z-[4] flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-90"
+                        aria-label="Chọn ảnh để chia sẻ"
+                        aria-pressed={isSel}
+                        className="absolute right-2 top-2 z-[4] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90"
                         style={isSel
                           ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
                           : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }}
@@ -366,13 +368,13 @@ export default function GalleryView({
           <div className="mt-5 grid gap-6 lg:grid-cols-2">
             <div className="card p-5">
               {fbSent ? (
-                <div className="flex items-center gap-2.5 text-sm" style={{ color: "#5fd29a" }}><Check size={18} /> {tr.fbThanks}</div>
+                <div className="flex items-center gap-2.5 text-sm" style={{ color: "var(--success)" }}><Check size={18} /> {tr.fbThanks}</div>
               ) : (
                 <>
                   <input value={fbName} onChange={(e) => setFbName(e.target.value)} placeholder={tr.fbNamePh} className="input mb-3" />
                   <div className="mb-3 flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <button key={n} onClick={() => setFbRating(n)} style={{ color: n <= fbRating ? "var(--gold)" : "var(--text3)" }}>
+                      <button key={n} type="button" onClick={() => setFbRating(n)} aria-label={`${n} sao`} aria-pressed={n <= fbRating} className="p-1" style={{ color: n <= fbRating ? "var(--gold)" : "var(--text3)" }}>
                         <Star size={22} fill={n <= fbRating ? "currentColor" : "none"} strokeWidth={n <= fbRating ? 0 : 2} />
                       </button>
                     ))}
@@ -407,9 +409,9 @@ export default function GalleryView({
             <span className="text-[13px]" style={{ color: "var(--text2)" }}>{lbIdx + 1} / {visible.length}</span>
             <div className="flex-1" />
             {gallery.allowDownload !== false && (
-              <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
+              <a href={isVideo(lb) ? `https://drive.google.com/file/d/${lb.drive_file_id}/view` : `/api/img?id=${lb.drive_file_id}&w=2400`} target={isVideo(lb) ? "_blank" : undefined} download={isVideo(lb) ? undefined : lb.name} aria-label="Tải ảnh" title="Tải ảnh" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}><Download size={17} /></a>
             )}
-            <button onClick={() => setLbIdx(null)} className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
+            <button onClick={() => setLbIdx(null)} aria-label="Đóng" className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><X size={17} /></button>
           </div>
           <div
             className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-10"
@@ -418,7 +420,7 @@ export default function GalleryView({
             onPointerMove={onSwipeMove}
             onPointerUp={onSwipeUp}
           >
-            <button onClick={() => setLbIdx(Math.max(0, lbIdx - 1))} disabled={lbIdx === 0} className="absolute left-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronLeft size={22} /></button>
+            <button onClick={() => setLbIdx(Math.max(0, lbIdx - 1))} disabled={lbIdx === 0} aria-label="Ảnh trước" className="absolute left-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronLeft size={22} /></button>
             {isVideo(lb) ? (
               <iframe
                 src={`https://drive.google.com/file/d/${lb.drive_file_id}/preview`}
@@ -443,7 +445,7 @@ export default function GalleryView({
                 )}
               </div>
             )}
-            <button onClick={() => setLbIdx(Math.min(visible.length - 1, lbIdx + 1))} disabled={lbIdx >= visible.length - 1} className="absolute right-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronRight size={22} /></button>
+            <button onClick={() => setLbIdx(Math.min(visible.length - 1, lbIdx + 1))} disabled={lbIdx >= visible.length - 1} aria-label="Ảnh sau" className="absolute right-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:opacity-25" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}><ChevronRight size={22} /></button>
           </div>
         </div>
       )}

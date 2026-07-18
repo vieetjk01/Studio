@@ -127,16 +127,16 @@ export default function BookingForm({
       <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>{tr.subtitle}</p>
 
       <form onSubmit={submit} className="card mt-6 space-y-4 p-6">
-        <div>
-          <label className="label">{tr.fullName}</label>
+        <label className="block">
+          <span className="label">{tr.fullName}</span>
           <input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} />
-        </div>
-        <div>
-          <label className="label">{tr.phone}</label>
-          <input className="input" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
-        </div>
-        <div>
-          <label className="label">{tr.package}</label>
+        </label>
+        <label className="block">
+          <span className="label">{tr.phone}</span>
+          <input className="input" inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
+        </label>
+        <label className="block">
+          <span className="label">{tr.package}</span>
           <select className="input" value={pkg} onChange={(e) => setPkg(e.target.value)}>
             <option value="">{tr.packageDefault}</option>
             {packages.map((p) => (
@@ -147,25 +147,25 @@ export default function BookingForm({
           {pkg === "__custom__" && (
             <input className="input mt-2" placeholder={tr.packageCustomPh} value={customPkg} onChange={(e) => setCustomPkg(e.target.value)} />
           )}
-        </div>
-        <div>
-          <label className="label">{tr.service}</label>
+        </label>
+        <label className="block">
+          <span className="label">{tr.service}</span>
           <input className="input" placeholder={tr.servicePh} value={f.service} onChange={(e) => set("service", e.target.value)} />
-        </div>
-        <div>
-          <label className="label">{tr.facebook}</label>
+        </label>
+        <label className="block">
+          <span className="label">{tr.facebook}</span>
           <input className="input" placeholder={tr.facebookPh} value={f.facebook} onChange={(e) => set("facebook", e.target.value)} />
-        </div>
+        </label>
         <div>
-          <label className="label">{tr.date}</label>
+          <span className="label">{tr.date}</span>
           <DateInput value={f.preferred_date} onChange={(v) => set("preferred_date", v)} />
         </div>
-        <div>
-          <label className="label">{tr.note}</label>
+        <label className="block">
+          <span className="label">{tr.note}</span>
           <textarea className="input min-h-[80px]" value={f.note} onChange={(e) => set("note", e.target.value)} />
-        </div>
+        </label>
         <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} onError={() => setCaptchaToken(null)} />
-        {err && <p className="text-sm text-red-400">{err}</p>}
+        {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
         <button type="submit" disabled={busy || !captchaToken} className="btn-primary w-full">
           {busy ? tr.submitting : tr.submit}
         </button>

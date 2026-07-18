@@ -82,11 +82,12 @@ export default function InstallPwaButton() {
 
         {showIosHint && (
           <div
-            className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl p-4 shadow-xl"
+            className="absolute bottom-full left-0 mb-2 w-[min(18rem,calc(100vw-2rem))] max-w-[18rem] rounded-2xl p-4 shadow-xl"
             style={{ background: "var(--surface)", border: "1px solid var(--border)", zIndex: 60 }}
           >
             <button
               onClick={() => setShowIosHint(false)}
+              aria-label="Đóng"
               className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full"
               style={{ background: "var(--surface2)", color: "var(--text3)" }}
             >

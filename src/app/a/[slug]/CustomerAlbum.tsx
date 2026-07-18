@@ -445,7 +445,7 @@ export default function CustomerAlbum({
               className="input mb-4 text-center"
               placeholder="••••••"
             />
-            {pwError && <p className="mb-4 text-sm text-red-400">{t("wrongPassword")}</p>}
+            {pwError && <p className="mb-4 text-sm" style={{ color: "var(--danger)" }}>{t("wrongPassword")}</p>}
             <button disabled={pwLoading} className="btn-primary w-full">
               {pwLoading ? t("loading") : t("enter")}
             </button>
@@ -461,7 +461,7 @@ export default function CustomerAlbum({
   return (
     <main className="min-h-screen pb-32">
       <header
-        className="sticky top-0 z-40 flex flex-wrap items-center gap-3 px-6 py-3.5 md:px-10"
+        className="sticky top-0 z-40 flex h-16 items-center gap-3 px-5 md:px-10"
         style={{
           background: "color-mix(in srgb, var(--bg) 80%, transparent)",
           backdropFilter: "blur(20px)",
@@ -470,11 +470,13 @@ export default function CustomerAlbum({
       >
         <StudioBrand name={studioName} logoUrl={logoUrl} />
         <div
-          className="ml-auto flex items-center gap-2.5 rounded-full px-3.5 py-1.5 text-[12.5px]"
+          className="ml-auto flex min-w-0 items-center gap-2.5 rounded-full px-3.5 py-1.5 text-[12.5px]"
           style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
         >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: shareMode ? "var(--gold)" : "#3fbf7f" }} />
-          {shareMode ? `${shareIds!.length} ảnh được chia sẻ` : "Album được chia sẻ · chế độ khách"}
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: shareMode ? "var(--gold)" : "#3fbf7f" }} />
+          <span className="truncate">
+            {shareMode ? `${shareIds!.length} ảnh được chia sẻ` : "Album được chia sẻ · chế độ khách"}
+          </span>
         </div>
         <LanguageSwitcher />
       </header>
@@ -566,7 +568,7 @@ export default function CustomerAlbum({
           <div className="flex-1" />
 
           {/* Auto-save status */}
-          <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: saveStatus === "saved" ? "#5fd29a" : "var(--text3)" }}>
+          <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: saveStatus === "saved" ? "var(--success)" : "var(--text3)" }}>
             {saveStatus === "saving" ? (
               <>{t("saving")}</>
             ) : saveStatus === "saved" ? (
@@ -643,7 +645,16 @@ export default function CustomerAlbum({
                       loading="lazy"
                       decoding="async"
                       draggable={false}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Xem ảnh ${stripExtension(p.name)}`}
                       onClick={() => setLbIdx(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setLbIdx(idx);
+                        }
+                      }}
                       onContextMenu={(e) => wm && e.preventDefault()}
                       className="h-full w-full cursor-zoom-in select-none object-cover"
                     />
@@ -689,7 +700,7 @@ export default function CustomerAlbum({
                     >
                       <FileText size={12} className="flex-shrink-0" style={{ color: note?.trim() ? "var(--gold)" : "var(--text3)" }} />
                       <span
-                        className="truncate text-[11.5px]"
+                        className="min-w-0 truncate text-[11.5px]"
                         style={{ color: note?.trim() ? "var(--text)" : "var(--text3)" }}
                       >
                         {note?.trim() || "Thêm ghi chú…"}
@@ -750,6 +761,7 @@ export default function CustomerAlbum({
             </button>
             <button
               onClick={() => setLbIdx(null)}
+              aria-label="Đóng"
               className="flex h-10 w-10 items-center justify-center rounded-lg"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
             >
@@ -766,6 +778,7 @@ export default function CustomerAlbum({
               <button
                 onClick={() => setLbIdx(Math.max(0, lbIdx - 1))}
                 disabled={lbIdx === 0}
+                aria-label="Ảnh trước"
                 className="absolute left-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
               >
@@ -817,6 +830,7 @@ export default function CustomerAlbum({
               <button
                 onClick={() => setLbIdx(Math.min(visiblePhotos.length - 1, lbIdx + 1))}
                 disabled={lbIdx >= visiblePhotos.length - 1}
+                aria-label="Ảnh sau"
                 className="absolute right-3.5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity disabled:pointer-events-none disabled:opacity-25"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
               >

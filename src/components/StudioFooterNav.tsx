@@ -13,20 +13,26 @@ interface Props {
   role: string;
 }
 
+// Rank + per-item minTier mirror StudioShell so the bottom bar never links to a
+// page the account's plan can't open (avoids dead links for booking/plus tiers).
+const TIER_RANK: Record<string, number> = { none: 0, booking: 1, plus: 2, full: 3 };
+
 const NAV_ITEMS = [
-  { href: "/dashboard/studio",             icon: LayoutDashboard, label: "Tổng quan" },
-  { href: "/dashboard/studio/contracts",   icon: FileText,        label: "Hợp đồng" },
-  { href: "/dashboard/studio/calendar",    icon: CalendarDays,    label: "Lịch chụp" },
-  { href: "/dashboard/studio/quotes",      icon: FileEdit,        label: "Báo giá"   },
-  { href: "/dashboard/studio/production",  icon: Film,            label: "Sản xuất"  },
-  { href: "/dashboard/albums",             icon: ImageIcon,       label: "Album"     },
-  { href: "/dashboard/studio/clients",     icon: Users,           label: "Khách hàng"},
-  { href: "/dashboard/studio/bookings",    icon: Clock,           label: "Đặt lịch"  },
-  { href: "/dashboard/studio/crew",        icon: UserCog,         label: "Sổ thợ"    },
+  { href: "/dashboard/studio",             icon: LayoutDashboard, label: "Tổng quan",  minTier: "booking" },
+  { href: "/dashboard/studio/contracts",   icon: FileText,        label: "Hợp đồng",   minTier: "plus"    },
+  { href: "/dashboard/studio/calendar",    icon: CalendarDays,    label: "Lịch chụp",  minTier: "booking" },
+  { href: "/dashboard/studio/quotes",      icon: FileEdit,        label: "Báo giá",    minTier: "plus"    },
+  { href: "/dashboard/studio/production",  icon: Film,            label: "Sản xuất",   minTier: "full"    },
+  { href: "/dashboard/albums",             icon: ImageIcon,       label: "Album",      minTier: "booking" },
+  { href: "/dashboard/studio/clients",     icon: Users,           label: "Khách hàng", minTier: "booking" },
+  { href: "/dashboard/studio/bookings",    icon: Clock,           label: "Đặt lịch",   minTier: "booking" },
+  { href: "/dashboard/studio/crew",        icon: UserCog,         label: "Sổ thợ",     minTier: "full"    },
 ];
 
-export default function StudioFooterNav({ tier: _tier, role: _role }: Props) {
+export default function StudioFooterNav({ tier, role: _role }: Props) {
   const pathname = usePathname();
+  const rank = TIER_RANK[tier] ?? 0;
+  const items = NAV_ITEMS.filter((it) => rank >= (TIER_RANK[it.minTier] ?? 0));
   const [pending, setPending] = useState<string | null>(null);
   useEffect(() => { setPending(null); }, [pathname]);
 
@@ -41,12 +47,12 @@ export default function StudioFooterNav({ tier: _tier, role: _role }: Props) {
       style={{ background: "var(--surface)", borderColor: "var(--border)" }}
     >
       {/* Scrollable strip — centered on lg+ */}
-      <div className="flex justify-center">
+      <div className="relative flex justify-center">
         <div
           className="flex w-full lg:w-auto overflow-x-auto"
           style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
-          {NAV_ITEMS.map((item) => {
+          {items.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
@@ -69,6 +75,11 @@ export default function StudioFooterNav({ tier: _tier, role: _role }: Props) {
             );
           })}
         </div>
+        {/* Gợi ý còn mục để cuốn ngang trên mobile (khi tràn) — mờ dần ở mép phải. */}
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 w-8 lg:hidden"
+          style={{ background: "linear-gradient(to right, transparent, var(--surface))" }}
+        />
       </div>
 
       {/* Safe area spacer for iOS */}

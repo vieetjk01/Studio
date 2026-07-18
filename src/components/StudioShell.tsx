@@ -352,7 +352,7 @@ export default function StudioShell({
             <button
               onClick={signOut}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
-              style={{ background: "rgba(224,116,111,.1)", color: "#e0746f" }}
+              style={{ background: "var(--s-redS)", color: "var(--s-red)" }}
             >
               <LogOut size={18} />
               Đăng xuất

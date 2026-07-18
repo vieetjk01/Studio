@@ -205,11 +205,11 @@ export default function DashboardHeader({
     const active = g.children.some((c) => pathname === c.href);
     return (
       <div key={g.label} className="group relative">
-        <button className={`flex items-center gap-1 text-sm transition-colors ${active ? "text-accent" : "text-accent-muted hover:text-accent"}`}>
+        <button type="button" aria-haspopup="menu" className={`flex items-center gap-1 text-sm transition-colors ${active ? "text-accent" : "text-accent-muted hover:text-accent"}`}>
           {g.label}
           <ChevronDown size={13} />
         </button>
-        <div className="invisible absolute left-0 top-full z-30 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
+        <div className="invisible absolute left-0 top-full z-30 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
           <div className="grid min-w-[170px] gap-1 rounded-xl p-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             {g.children.map((c) => {
               const cls = `rounded-lg px-3 py-1.5 text-sm transition-colors ${pathname === c.href ? "text-accent" : "text-accent-muted hover:bg-[var(--surface2)] hover:text-accent"}`;

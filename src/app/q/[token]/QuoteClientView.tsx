@@ -325,7 +325,7 @@ export default function QuoteClientView({
           {quote.code && <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>{tr.codeLabel} {quote.code}</p>}
           <span
             className="mt-3 inline-block rounded-full px-3 py-1 text-xs"
-            style={{ background: "var(--surface2)", color: accepted ? "#34d399" : "var(--text2)" }}
+            style={{ background: "var(--surface2)", color: accepted ? "var(--success)" : "var(--text2)" }}
             data-testid="quote-status-badge"
           >
             {QUOTE_STATUS_LABEL[accepted ? "accepted" : quote.status]}
@@ -383,7 +383,7 @@ export default function QuoteClientView({
                     }}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <div
                           className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full border-2"
                           style={{
@@ -391,9 +391,9 @@ export default function QuoteClientView({
                             background: groupSelected ? "var(--accent)" : "transparent",
                           }}
                         >
-                          {groupSelected && <Check size={11} color="#000" />}
+                          {groupSelected && <Check size={11} color="var(--accentInk)" />}
                         </div>
-                        <span className="font-medium">{groupName}</span>
+                        <span className="truncate font-medium">{groupName}</span>
                         {quote.discount_package_group === groupName && quote.bulk_discount_amount > 0 && (
                           <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
                             <Tag size={9} className="inline mr-0.5" /> {tr.discount} {vnd(quote.bulk_discount_amount)}
@@ -451,9 +451,9 @@ export default function QuoteClientView({
                         {it.is_discount ? (
                           <Tag size={11} color="#000" />
                         ) : !it.is_optional ? (
-                          <Lock size={11} color="#000" />
+                          <Lock size={11} color="var(--accentInk)" />
                         ) : isOn ? (
-                          <Check size={12} color="#000" />
+                          <Check size={12} color="var(--accentInk)" />
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -602,8 +602,8 @@ export default function QuoteClientView({
         ) : accepted ? (
           <div className="space-y-3">
             <div className="rounded-lg p-6 text-center" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.3)" }} data-testid="quote-accepted-banner">
-              <Check size={36} className="mx-auto text-green-400" />
-              <p className="mt-3 text-lg font-medium text-green-400">{tr.acceptedMsg}</p>
+              <Check size={36} className="mx-auto" style={{ color: "var(--success)" }} />
+              <p className="mt-3 text-lg font-medium" style={{ color: "var(--success)" }}>{tr.acceptedMsg}</p>
               {contractToken ? (
                 <>
                   <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>

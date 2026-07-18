@@ -26,9 +26,10 @@ export default function CyclePricing({
             <button
               key={c}
               onClick={() => setCycle(c)}
+              aria-pressed={cycle === c}
               style={{
                 border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5,
-                padding: "8px 20px", borderRadius: 999,
+                padding: "10px 20px", minHeight: 40, borderRadius: 999,
                 background: cycle === c ? "var(--accent)" : "transparent",
                 color: cycle === c ? "var(--accentFg)" : "var(--muted)",
               }}

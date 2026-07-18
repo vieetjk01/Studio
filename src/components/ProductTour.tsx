@@ -79,6 +79,16 @@ export default function ProductTour() {
     setOpen(true);
   }
 
+  // Cho phép đóng hướng dẫn bằng phím Esc (giống ShareDialog).
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") finish();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const step = STEPS[i];
   const last = i === STEPS.length - 1;
 

@@ -162,7 +162,7 @@ function LoginForm() {
           />
 
           {error && (
-            <p className="mb-4 text-sm text-red-400">{error}</p>
+            <p className="mb-4 text-sm" style={{ color: "var(--danger)" }}>{error}</p>
           )}
 
           <button type="submit" disabled={loading || !captchaToken} className="btn-primary w-full">

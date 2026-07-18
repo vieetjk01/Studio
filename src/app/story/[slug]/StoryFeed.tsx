@@ -215,9 +215,9 @@ export default function StoryFeed({
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             {guestUploadEnabled && (
-              <button onClick={openCamera} title="Chụp ảnh" style={{ width: 34, height: 34, border: "none", background: "none", cursor: "pointer", color: v.fg, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{camSvg}</button>
+              <button onClick={openCamera} title="Chụp ảnh" aria-label="Chụp ảnh" style={{ width: 34, height: 34, border: "none", background: "none", cursor: "pointer", color: v.fg, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{camSvg}</button>
             )}
-            <button onClick={() => setTheme(dark ? "light" : "dark")} style={{ width: 34, height: 34, border: "none", background: "none", cursor: "pointer", color: v.fg, fontSize: 16 }}>{dark ? "☾" : "☀"}</button>
+            <button onClick={() => setTheme(dark ? "light" : "dark")} aria-label={dark ? "Chuyển giao diện sáng" : "Chuyển giao diện tối"} style={{ width: 34, height: 34, border: "none", background: "none", cursor: "pointer", color: v.fg, fontSize: 16 }}>{dark ? "☾" : "☀"}</button>
           </div>
         </header>
 

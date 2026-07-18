@@ -8,7 +8,9 @@ export default function LanguageSwitcher() {
     <div className="inline-flex overflow-hidden rounded-md border border-ink-700 text-xs">
       <button
         onClick={() => setLang("vi")}
-        className={`px-2.5 py-1 transition-colors ${
+        aria-pressed={lang === "vi"}
+        aria-label="Tiếng Việt"
+        className={`px-3 py-1.5 transition-colors ${
           lang === "vi" ? "bg-accent text-ink-950" : "text-accent-muted hover:bg-ink-800"
         }`}
       >
@@ -16,7 +18,9 @@ export default function LanguageSwitcher() {
       </button>
       <button
         onClick={() => setLang("en")}
-        className={`px-2.5 py-1 transition-colors ${
+        aria-pressed={lang === "en"}
+        aria-label="English"
+        className={`px-3 py-1.5 transition-colors ${
           lang === "en" ? "bg-accent text-ink-950" : "text-accent-muted hover:bg-ink-800"
         }`}
       >

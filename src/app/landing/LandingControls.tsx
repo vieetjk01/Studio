@@ -47,10 +47,10 @@ export default function LandingControls({ lang }: { lang: Lang }) {
 
   return (
     <>
-      <button onClick={switchLang} style={{ ...ghostBtn, gap: 6, padding: "0 12px", fontSize: 13, letterSpacing: ".02em" }}>
+      <button onClick={switchLang} aria-label={lang === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"} style={{ ...ghostBtn, gap: 6, padding: "0 12px", fontSize: 13, letterSpacing: ".02em" }}>
         {lang === "vi" ? "EN" : "VI"}
       </button>
-      <button onClick={toggleTheme} aria-label="theme" style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", background: "transparent", color: "var(--fg)", borderRadius: 9, cursor: "pointer" }}>
+      <button onClick={toggleTheme} aria-label={isDark ? (lang === "en" ? "Switch to light mode" : "Chuyển giao diện sáng") : (lang === "en" ? "Switch to dark mode" : "Chuyển giao diện tối")} style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", background: "transparent", color: "var(--fg)", borderRadius: 9, cursor: "pointer" }}>
         {isDark ? (
           <svg width="17" height="17" viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8Z" fill="var(--fg)" /></svg>
         ) : (

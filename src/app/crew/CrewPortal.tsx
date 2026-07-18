@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DateInput from "@/components/DateInput";
+import { fmtDate } from "@/lib/date";
 import { Phone, MapPin, Calendar, Check, X, Camera, CalendarOff, Plus, Trash2 } from "lucide-react";
 import Turnstile from "@/components/Turnstile";
 import {
@@ -32,6 +33,7 @@ const TR = {
     switchTo: "Đổi sang",
     busyTitle: "Ngày bận của tôi",
     busySubtitle: "Báo ngày bạn bận để studio không xếp lịch trùng.",
+    busyRemove: "Xoá ngày bận",
     notePh: "Ghi chú (tuỳ chọn)",
     add: "Thêm",
   },
@@ -51,6 +53,7 @@ const TR = {
     switchTo: "Switch to",
     busyTitle: "My unavailable days",
     busySubtitle: "Mark days you're busy so studios won't schedule conflicts.",
+    busyRemove: "Remove busy day",
     notePh: "Note (optional)",
     add: "Add",
   },
@@ -200,7 +203,7 @@ export default function CrewPortal() {
                   {a.contract?.event_date && (
                     <p className="flex items-center gap-2">
                       <Calendar size={14} style={{ color: "var(--text3)" }} />
-                      {a.contract.event_date}{a.contract.event_time ? ` · ${a.contract.event_time}` : ""}
+                      {fmtDate(a.contract.event_date)}{a.contract.event_time ? ` · ${a.contract.event_time}` : ""}
                     </p>
                   )}
                   {a.contract?.location && (
@@ -246,15 +249,15 @@ export default function CrewPortal() {
           {/* Busy days */}
           <div className="card p-5">
             <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium">
-              <CalendarOff size={16} style={{ color: "#c7a76b" }} /> {tr.busyTitle}
+              <CalendarOff size={16} style={{ color: "var(--gold)" }} /> {tr.busyTitle}
             </h2>
             <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>{tr.busySubtitle}</p>
             {busyDays.length > 0 && (
               <ul className="mb-3 space-y-2">
                 {busyDays.map((b) => (
                   <li key={b.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm" style={{ background: "var(--surface2)" }}>
-                    <span>{b.date}{b.note ? ` · ${b.note}` : ""}</span>
-                    <button onClick={() => removeBusy(b.id)} style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
+                    <span>{fmtDate(b.date)}{b.note ? ` · ${b.note}` : ""}</span>
+                    <button onClick={() => removeBusy(b.id)} aria-label={tr.busyRemove} title={tr.busyRemove} className="rounded-md p-1.5" style={{ color: "var(--text3)" }}><Trash2 size={14} /></button>
                   </li>
                 ))}
               </ul>
