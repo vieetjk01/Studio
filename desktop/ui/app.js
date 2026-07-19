@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.3"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.6.4"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -422,20 +422,26 @@ async function getPlan(id) {
 
 // Quét 1 hợp đồng: trả DANH SÁCH file cần tải (chưa tải) + tham chiếu manifest,
 // để lõi đồng bộ gom tổng số ảnh/tổng dung lượng trước khi tải (tính % + ETA).
-async function scanContract(c) {
+async function scanContract(c, manual = false) {
   const plan = await getPlan(c.id);
   if (plan.skip) throw new Error(plan.skip);
-  // Cây thư mục local = mediaDir + [Gốc, Loại dịch vụ, Thang N, Tên hợp đồng] —
-  // y hệt cấu trúc trên Drive.
+  // Cây thư mục local = mediaDir + [Loại dịch vụ, Thang N, Tên hợp đồng] — y hệt
+  // cấu trúc trên Drive (không kèm thư mục gốc; mediaDir chính là gốc trên máy).
   const base = join(cfg.mediaDir, ...(plan.pathSegments && plan.pathSegments.length ? plan.pathSegments : [plan.folderName]));
   const manPath = join(base, "mstudo-drive.json");
   let man = { folderId: plan.folderId, uploaded: {} };
   try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }
   man.uploaded = man.uploaded || {};
-  // Tạo thư mục local cho MỌI nút (kể cả loại trừ — để studio bỏ ảnh/raw vào).
+  // Tạo thư mục hợp đồng + MỌI nút con (kể cả loại trừ — để studio bỏ ảnh/raw vào).
+  // KHÔNG nuốt lỗi tạo thư mục → nếu ổ đĩa/quyền có vấn đề, ghi rõ ra log.
+  let dirErr = null;
+  try { await invoke("create_dir", { path: base }); } catch (e) { dirErr = e; }
   for (const node of plan.tree) {
-    await invoke("create_dir", { path: join(base, node.path.replace(/\//g, "\\")) }).catch(() => {});
+    try { await invoke("create_dir", { path: join(base, node.path.replace(/\//g, "\\")) }); }
+    catch (e) { dirErr = e; }
   }
+  if (dirErr) log(`Lỗi tạo thư mục HĐ ${c.code || c.id} tại ${base}: ${dirErr.message || dirErr}`, "err");
+  else if (manual) log(`HĐ ${c.code || c.id}: đã tạo ${plan.tree.length} thư mục con tại ${base}`);
   const pending = [];
   for (const node of plan.tree) {
     if (node.excluded) continue; // thư mục loại trừ (VD Raw, Video gốc) → chỉ giữ ở máy
@@ -455,9 +461,10 @@ async function scanContract(c) {
 
 // Lõi đồng bộ: quét danh sách hợp đồng → gom việc → tải lần lượt kèm tiến trình.
 async function driveSyncRun(contracts, manual = false) {
+  if (manual) log(`Đồng bộ Drive: ${contracts.length} hợp đồng đã ký cần quét.`);
   const jobs = [];
   for (const c of contracts) {
-    try { jobs.push(await scanContract(c)); }
+    try { jobs.push(await scanContract(c, manual)); }
     catch (e) {
       // Ghi rõ lý do bỏ qua (chưa ký / chưa nối Drive / lỗi khác) — kể cả vòng tự
       // động, log 1 lần / hợp đồng để không lặp mỗi 20s.
