@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
 import StudioTrialButton from "@/components/StudioTrialButton";
 
-interface AlbumRow {
+export interface AlbumRow {
   id: string;
   slug: string;
   title: string;
@@ -18,7 +18,9 @@ interface AlbumRow {
   watermark_enabled: boolean;
   download_enabled: boolean;
   phase?: "selection" | "delivery";
-  photos: { drive_file_id: string }[];
+  // Đếm ảnh + 1 ảnh bìa dự phòng (thay vì kéo toàn bộ drive_file_id mọi ảnh).
+  photoCount: number;
+  coverFallback: string | null;
   selections: { count: number }[];
 }
 
@@ -88,7 +90,7 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
   const [phase, setPhase] = useState<"selection" | "delivery">(a.phase ?? "selection");
 
   const cover =
-    a.cover_url || (a.photos?.[0]?.drive_file_id ? thumbnailUrl(a.photos[0].drive_file_id, 800) : null);
+    a.cover_url || (a.coverFallback ? thumbnailUrl(a.coverFallback, 800) : null);
 
   async function patch(fields: Record<string, unknown>) {
     await supabase.from("albums").update(fields).eq("id", a.id);
@@ -130,7 +132,7 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
         <h3 className="truncate font-medium text-accent">{a.title}</h3>
         <div className="mt-2 flex items-center gap-4 text-xs text-accent-muted">
           <span className="flex items-center gap-1">
-            <ImageIcon size={13} /> {a.photos?.length ?? 0} {t("photos")}
+            <ImageIcon size={13} /> {a.photoCount ?? 0} {t("photos")}
           </span>
           <span className="flex items-center gap-1">
             <CheckSquare size={13} /> {a.selections?.[0]?.count ?? 0} {t("selections")}

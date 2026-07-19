@@ -1,13 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { effectivePlan, planAllowsDelivery } from "@/lib/plans";
+import { fetchAlbumRows } from "@/lib/album-rows";
 import AlbumList from "./AlbumList";
 
 export default async function DashboardPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: albums }, { data: profile }] = await Promise.all([
-    supabase.from("albums").select("id, slug, title, cover_url, status, watermark_enabled, download_enabled, phase, photos(drive_file_id), selections(count)").eq("is_gallery", false).eq("owner_id", user?.id ?? "").order("updated_at", { ascending: false }),
+  const [rows, { data: profile }] = await Promise.all([
+    fetchAlbumRows(supabase, user?.id ?? "", { excludeGalleries: true }),
     user ? supabase.from("profiles").select("plan, plan_expires_at, role, trial_used_at").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
@@ -17,5 +18,5 @@ export default async function DashboardPage() {
   const showTrial = !isAdmin && (plan === "free" || plan === "basic");
   const trialUsed = !!(profile as { trial_used_at?: string | null } | null)?.trial_used_at;
 
-  return <AlbumList albums={albums ?? []} showTrial={showTrial} trialUsed={trialUsed} canDelivery={planAllowsDelivery(plan, isAdmin)} />;
+  return <AlbumList albums={rows} showTrial={showTrial} trialUsed={trialUsed} canDelivery={planAllowsDelivery(plan, isAdmin)} />;
 }
