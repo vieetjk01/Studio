@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.2"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.6.3"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -301,6 +301,13 @@ let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
 let driveWarned = false;
 const planCache = new Map();                 // contractId → { tree, folderId, folderName, at }
+const driveSkipLogged = new Set();           // {id}:{reason} đã log (tránh lặp mỗi vòng)
+// Lý do bỏ qua 1 hợp đồng khi đồng bộ ảnh → câu tiếng Việt dễ hiểu.
+function driveSkipReason(msg) {
+  if (msg === "not_signed") return "hợp đồng chưa ký / chưa duyệt";
+  if (msg === "not_connected") return "chưa kết nối Google Drive";
+  return msg;
+}
 
 const MIME_BY_EXT = {
   jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
@@ -451,7 +458,16 @@ async function driveSyncRun(contracts, manual = false) {
   const jobs = [];
   for (const c of contracts) {
     try { jobs.push(await scanContract(c)); }
-    catch (e) { if (manual) log(`Lỗi quét ảnh HĐ ${c.code || c.id}: ${e.message || e}`, "err"); }
+    catch (e) {
+      // Ghi rõ lý do bỏ qua (chưa ký / chưa nối Drive / lỗi khác) — kể cả vòng tự
+      // động, log 1 lần / hợp đồng để không lặp mỗi 20s.
+      const msg = e.message || String(e);
+      const key = `${c.id}:${msg}`;
+      if (manual || !driveSkipLogged.has(key)) {
+        driveSkipLogged.add(key);
+        log(`Bỏ qua thư mục HĐ ${c.code || c.id}: ${driveSkipReason(msg)}`, "warn");
+      }
+    }
   }
   const files = [];
   for (const j of jobs) for (const p of j.pending) files.push({ job: j, ...p });

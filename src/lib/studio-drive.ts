@@ -300,15 +300,16 @@ async function ensureRootFolder(
 }
 
 /**
- * Các đoạn đường dẫn tương đối từ thư mục gốc Drive (≡ thư mục ảnh trên máy) tới
- * thư mục hợp đồng: [Gốc, Loại dịch vụ, Thang N?, Tên hợp đồng]. Chỉ đọc DB —
- * dùng cho desktop lồng thư mục local y hệt Drive.
+ * Đường dẫn tương đối cho DESKTOP tạo thư mục local: [Loại dịch vụ, Thang N?,
+ * Tên hợp đồng]. KHÔNG kèm tên thư mục gốc — trên máy, thư mục studio đã chọn
+ * (mediaDir) CHÍNH LÀ gốc, không thêm thư mục "MStudo" nữa. (Trên Drive vẫn có
+ * thư mục gốc riêng vì đó là thư mục thật trong Drive của studio.) Chỉ đọc DB.
  */
-async function contractPathSegments(db: any, contract: ContractForDrive, rootName: string): Promise<string[]> {
+async function contractPathSegments(db: any, contract: ContractForDrive): Promise<string[]> {
   const svc = await serviceFolderName(db, contract);
   const month = monthFolderName(contract.event_date);
   const contractFolderName = contractBaseName(contract as any);
-  return [rootName, svc, ...(month ? [month] : []), contractFolderName];
+  return [svc, ...(month ? [month] : []), contractFolderName];
 }
 
 /**
@@ -328,8 +329,7 @@ export async function ensureContractDriveTree(
   // Đã tạo rồi → trả lại (không tạo trùng). Vẫn tính lại đường dẫn (chỉ đọc DB)
   // để desktop lồng thư mục local đúng cấu trúc.
   if (contract.drive_folder_id && Array.isArray(contract.drive_tree)) {
-    const rootName = cleanFolderName(row.root_folder_name || "") || ROOT_FOLDER_NAME;
-    const pathSegments = await contractPathSegments(db, contract, rootName);
+    const pathSegments = await contractPathSegments(db, contract);
     return { folderId: contract.drive_folder_id, tree: contract.drive_tree as DriveTreeNode[], pathSegments };
   }
 
@@ -339,7 +339,7 @@ export async function ensureContractDriveTree(
   const template = normalizeTemplate(row.folder_template);
 
   // 1) Gốc → Loại dịch vụ → Thang N (dịch vụ & tháng tái dùng nếu đã có).
-  const { rootId, rootName } = await ensureRootFolder(db, drive, ownerId, row, true);
+  const { rootId } = await ensureRootFolder(db, drive, ownerId, row, true);
   const svcName = await serviceFolderName(db, contract);
   const serviceFolderId = await findOrCreateFolder(drive, svcName, rootId as string);
   const month = monthFolderName(contract.event_date);
@@ -348,7 +348,8 @@ export async function ensureContractDriveTree(
   // 2) Thư mục hợp đồng (nằm trong thư mục tháng của loại dịch vụ).
   const contractFolderName = contractBaseName(contract as any);
   const contractFolderId = await findOrCreateFolder(drive, contractFolderName, parentId);
-  const pathSegments = [rootName, svcName, ...(month ? [month] : []), contractFolderName];
+  // Đường dẫn local KHÔNG kèm thư mục gốc — mediaDir của studio chính là gốc.
+  const pathSegments = [svcName, ...(month ? [month] : []), contractFolderName];
 
   const tree: DriveTreeNode[] = [];
   const makePhoto = contract.drive_make_photo !== false;
