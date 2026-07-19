@@ -1,14 +1,14 @@
 /* MStudo Desktop — engine đồng bộ.
- * - Hợp đồng: tải bù từ mốc lần-đồng-bộ-cuối, mỗi hợp đồng 1 thư mục
- *   "Hop dong {mã} - {tên} - {SĐT}", lưu PDF (qua Edge headless) + Word;
- *   hợp đồng sửa/ký lại → lưu BẢN MỚI, không ghi đè.
+ * - Hợp đồng: tải bù từ mốc lần-đồng-bộ-cuối, lưu theo cấu trúc
+ *   {Loại dịch vụ}/Thang N/{Tên hợp đồng}/, mỗi hợp đồng đúng 1 file PDF (qua
+ *   Edge headless) + 1 Word; sửa/ký lại → GHI ĐÈ (không tạo nhiều bản).
  * - Excel: xuất mỗi mảng 1 file, hằng ngày + khi mở app; SaoLuu JSON đầy đủ;
  *   tự dọn file cũ hơn 30 ngày (không đụng thư mục hợp đồng).
  */
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.5"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.6.6"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -246,16 +246,19 @@ async function runSync(manual = false) {
 
 async function saveContract(c) {
   const meta = await apiJson(`/api/desktop/contracts/${c.id}`);
-  const folderRel = join("HopDong", meta.file_base);
+  // Lưu file hợp đồng theo CÙNG cấu trúc với ảnh/video:
+  //   {thư mục lưu}/{Loại dịch vụ}/Thang N/{Tên hợp đồng}/...
+  // (bản server cũ không trả path_segments → giữ nếp cũ "HopDong/{tên}").
+  const folderRel = Array.isArray(meta.path_segments) && meta.path_segments.length
+    ? join(...meta.path_segments)
+    : join("HopDong", meta.file_base);
   const manifestPath = join(cfg.dir, folderRel, "mstudo.json");
-  let man = { updated_at: null, versions: [] };
+  let man = { updated_at: null };
   try { man = JSON.parse(await invoke("read_text", { path: manifestPath })); } catch { /* chưa có */ }
   if (man.updated_at === c.updated_at) return; // bản này đã lưu rồi
 
-  // Bản mới khi sửa/ký lại: "(ban 2 - 2026-07-10)", bản đầu không hậu tố.
-  const ver = (man.versions || []).length;
-  const suffix = ver === 0 ? "" : ` (ban ${ver + 1} - ${today()})`;
-  const baseRel = join(folderRel, meta.file_base + suffix);
+  // GHI ĐÈ lên file cũ (không tạo nhiều "(ban 2, 3…)") — mỗi hợp đồng đúng 1 file.
+  const baseRel = join(folderRel, meta.file_base);
 
   // Word
   const docx = await apiB64(`/api/desktop/contracts/${c.id}?format=docx`);
@@ -275,10 +278,9 @@ async function saveContract(c) {
   }
 
   man.updated_at = c.updated_at;
-  man.versions = [...(man.versions || []), { at: c.updated_at, saved: new Date().toISOString(), file: meta.file_base + suffix }];
   await invoke("write_file_b64", { path: manifestPath, contentsB64: textToB64(JSON.stringify(man, null, 2)) });
   cfg.saved = cfg.saved || {}; cfg.saved[c.id] = c.updated_at; saveCfg();
-  log(`Đã lưu hợp đồng: ${meta.file_base}${suffix}`);
+  log(`Đã lưu hợp đồng: ${meta.file_base}`);
 }
 
 // ─── Đồng bộ ảnh/video hợp đồng lên Google Drive (1 chiều: máy → Drive) ───────

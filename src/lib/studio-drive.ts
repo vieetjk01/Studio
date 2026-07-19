@@ -3,7 +3,7 @@ import { google } from "googleapis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signOAuthState, verifyOAuthState } from "@/lib/oauth-state";
 import { contractBaseName } from "@/lib/desktop/contract-doc";
-import { SHOOT_TYPE_LABEL, type ShootType } from "@/lib/types";
+import { cleanFolderName, serviceFolderName, monthFolderName, contractFolderSegments } from "@/lib/desktop/contract-path";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -236,29 +236,8 @@ const CONTRACT_DRIVE_COLS =
   "id, code, title, client_name, client_phone, event_date, shoot_type, service_id, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id";
 
 // ─── Cây thư mục: Gốc / Loại dịch vụ / Thang N / Hợp đồng ─────────────────────
-
-const cleanFolderName = (name: string) =>
-  (name || "").trim().replace(/[\\/]/g, " ").replace(/\s+/g, " ").slice(0, 100);
-
-/**
- * Tên thư mục LOẠI DỊCH VỤ: ưu tiên tên dịch vụ studio đặt (service_id →
- * studio_services.name), nếu không có thì lấy nhãn loại chụp (shoot_type).
- */
-async function serviceFolderName(db: any, contract: ContractForDrive): Promise<string> {
-  if (contract.service_id) {
-    const { data: svc } = await db.from("studio_services").select("name").eq("id", contract.service_id).maybeSingle();
-    const n = cleanFolderName((svc as { name?: string } | null)?.name || "");
-    if (n) return n;
-  }
-  const st = (contract.shoot_type || "") as ShootType;
-  return cleanFolderName(SHOOT_TYPE_LABEL[st] || "") || "Khac";
-}
-
-/** Thư mục THÁNG theo ngày thực hiện hợp đồng: "Thang 8". Chưa có ngày → null. */
-function monthFolderName(eventDate?: string | null): string | null {
-  const m = /^(\d{4})-(\d{2})/.exec(eventDate || "");
-  return m ? `Thang ${parseInt(m[2], 10)}` : null;
-}
+// Quy ước tên thư mục (loại dịch vụ / tháng) dùng chung với file hợp đồng — xem
+// @/lib/desktop/contract-path.
 
 /**
  * Tìm thư mục con theo tên trong 1 thư mục cha (chưa xoá) — tái dùng nếu đã có,
@@ -302,14 +281,11 @@ async function ensureRootFolder(
 /**
  * Đường dẫn tương đối cho DESKTOP tạo thư mục local: [Loại dịch vụ, Thang N?,
  * Tên hợp đồng]. KHÔNG kèm tên thư mục gốc — trên máy, thư mục studio đã chọn
- * (mediaDir) CHÍNH LÀ gốc, không thêm thư mục "MStudo" nữa. (Trên Drive vẫn có
- * thư mục gốc riêng vì đó là thư mục thật trong Drive của studio.) Chỉ đọc DB.
+ * (mediaDir) CHÍNH LÀ gốc. (Trên Drive vẫn có thư mục gốc riêng vì đó là thư mục
+ * thật trong Drive.) Dùng CHUNG quy ước với file hợp đồng để 2 bên cùng cấu trúc.
  */
 async function contractPathSegments(db: any, contract: ContractForDrive): Promise<string[]> {
-  const svc = await serviceFolderName(db, contract);
-  const month = monthFolderName(contract.event_date);
-  const contractFolderName = contractBaseName(contract as any);
-  return [svc, ...(month ? [month] : []), contractFolderName];
+  return contractFolderSegments(db, contract, contractBaseName(contract as any));
 }
 
 /**

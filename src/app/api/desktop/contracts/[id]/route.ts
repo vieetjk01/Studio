@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireDesktopOwner } from "@/lib/desktop/auth";
 import { getStudioBrand } from "@/lib/studio-brand";
 import { buildContractHtml, buildContractDocx, contractBaseName, asciiName, type ContractDocData } from "@/lib/desktop/contract-doc";
+import { contractFolderSegments } from "@/lib/desktop/contract-path";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ async function handle(req: Request, params: { id: string }, ownerId: string) {
   const { data: contract } = await db
     .from("studio_contracts")
     .select(
-      "id, owner_id, code, title, client_name, client_phone, client_email, shoot_type, event_date, event_time, location, status, deposit, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, created_at, updated_at"
+      "id, owner_id, code, title, client_name, client_phone, client_email, shoot_type, service_id, event_date, event_time, location, status, deposit, note, client_signed_name, client_signature, client_signed_at, studio_signed_name, studio_signature, studio_signed_at, created_at, updated_at"
     )
     .eq("id", params.id)
     .maybeSingle();
@@ -77,5 +78,8 @@ async function handle(req: Request, params: { id: string }, ownerId: string) {
       },
     });
   }
-  return NextResponse.json({ ...data, file_base: base });
+  // Đường dẫn [Loại dịch vụ, Thang N?, Tên hợp đồng] để desktop lưu file HĐ cùng
+  // cấu trúc với thư mục ảnh/video.
+  const pathSegments = await contractFolderSegments(db, contract, base);
+  return NextResponse.json({ ...data, file_base: base, path_segments: pathSegments });
 }
