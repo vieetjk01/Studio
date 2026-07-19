@@ -37,7 +37,7 @@ export default function GoogleCalendarConnect({ connected: initialConnected, gca
         </div>
       )}
       {gcalStatus === "error" && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb,#e0746f 12%,transparent)", border: "1px solid color-mix(in srgb,#e0746f 30%,transparent)", color: "#e0746f" }}>
+        <div className="mb-6 flex items-center gap-3 rounded-xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)", color: "var(--danger)" }}>
           <X size={16} /> Kết nối thất bại{gcalMsg ? `: ${gcalMsg}` : ""}. Thử lại hoặc kiểm tra cài đặt Google OAuth.
         </div>
       )}
@@ -80,7 +80,7 @@ export default function GoogleCalendarConnect({ connected: initialConnected, gca
               onClick={disconnect}
               disabled={disconnecting}
               className="btn-ghost w-full py-2.5 text-sm"
-              style={{ color: "#e0746f" }}
+              style={{ color: "var(--danger)" }}
             >
               {disconnecting ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
               {disconnecting ? "Đang ngắt kết nối…" : "Ngắt kết nối"}

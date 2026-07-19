@@ -167,7 +167,7 @@ export default function SettingsPanel({
           <p className="mt-0.5 text-sm" style={{ color: "var(--text2)" }}>Quản lý nội dung trang mstudo.com và cấu hình hệ thống</p>
         </div>
         {msg && (
-          <span className="rounded-full px-4 py-1.5 text-sm font-medium" style={{ background: "color-mix(in srgb, var(--s-green, var(--gold)) 14%, transparent)", color: "var(--s-green, var(--gold))" }}>
+          <span className="rounded-full px-4 py-1.5 text-sm font-medium" style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}>
             {msg}
           </span>
         )}
@@ -334,7 +334,7 @@ export default function SettingsPanel({
           <Field label="Mã">
             <div className="flex gap-1.5">
               <input className="input" value={newCode.code} placeholder="VD: TET2026" onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
-              <button onClick={randomCode} type="button" className="btn-ghost px-2.5" title="Tạo ngẫu nhiên"><Shuffle size={14} /></button>
+              <button onClick={randomCode} type="button" className="btn-ghost px-2.5" title="Tạo ngẫu nhiên" aria-label="Tạo mã ngẫu nhiên"><Shuffle size={14} /></button>
             </div>
           </Field>
           <Field label="%"><input type="number" min={0} max={100} className="input w-16" value={newCode.percent} onChange={(e) => setNewCode({ ...newCode, percent: Number(e.target.value) })} /></Field>
@@ -381,12 +381,12 @@ export default function SettingsPanel({
             {codes.map((c) => (
               <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 text-[13px]">
                 <span className="font-mono font-semibold" style={{ color: "var(--text)" }}>{c.code}</span>
-                {c.trial_days ? <span style={{ color: "var(--s-green, var(--gold))" }}>dùng thử {c.trial_days} ngày</span>
+                {c.trial_days ? <span style={{ color: "var(--success)" }}>dùng thử {c.trial_days} ngày</span>
                   : <span style={{ color: "var(--gold)" }}>-{c.percent}%</span>}
                 <span style={{ color: "var(--text3)" }}>{c.plan ?? "mọi gói"}{c.cycle ? ` · ${c.cycle === "year" ? "năm" : "tháng"}` : ""}</span>
                 <span style={{ color: "var(--text3)" }}>{c.max_uses == null ? `đã dùng ${c.used_count}` : `${c.used_count}/${c.max_uses}`}</span>
-                {c.expires_at && <span style={{ color: new Date(c.expires_at).getTime() < Date.now() ? "#f87171" : "var(--text3)" }}>HH {new Date(c.expires_at).toLocaleDateString("vi-VN")}</span>}
-                <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }}><Trash2 size={14} /></button>
+                {c.expires_at && <span style={{ color: new Date(c.expires_at).getTime() < Date.now() ? "var(--danger)" : "var(--text3)" }}>HH {new Date(c.expires_at).toLocaleDateString("vi-VN")}</span>}
+                <button onClick={() => deleteCode(c.id)} className="ml-auto rounded-md p-1.5" style={{ color: "var(--text2)" }} aria-label="Xoá mã giảm giá"><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
@@ -410,10 +410,10 @@ export default function SettingsPanel({
                     <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>{new Date(f.created_at).toLocaleString("vi-VN")}</p>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => handleFeedback("handled", f.id, !f.handled)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: f.handled ? "var(--s-green, var(--gold))" : "var(--text3)" }} title={f.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã đọc"}>
+                    <button onClick={() => handleFeedback("handled", f.id, !f.handled)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: f.handled ? "var(--success)" : "var(--text3)" }} title={f.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã đọc"} aria-label={f.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã đọc"}>
                       <Check size={15} />
                     </button>
-                    <button onClick={() => handleFeedback("delete", f.id)} className="rounded-lg p-2 text-red-400" style={{ background: "var(--surface)" }} title="Xoá">
+                    <button onClick={() => handleFeedback("delete", f.id)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: "var(--danger)" }} title="Xoá" aria-label="Xoá góp ý">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -445,10 +445,10 @@ export default function SettingsPanel({
                     <p className="text-[11px] mt-0.5" style={{ color: "var(--text3)" }}>{new Date(u.created_at).toLocaleString("vi-VN")}</p>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => handleUpgrade("handled", u.id, !u.handled)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: u.handled ? "var(--s-green, var(--gold))" : "var(--text3)" }}>
+                    <button onClick={() => handleUpgrade("handled", u.id, !u.handled)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: u.handled ? "var(--success)" : "var(--text3)" }} aria-label={u.handled ? "Đánh dấu chưa xử lý" : "Đánh dấu đã xử lý"}>
                       <Check size={15} />
                     </button>
-                    <button onClick={() => handleUpgrade("delete", u.id)} className="rounded-lg p-2 text-red-400" style={{ background: "var(--surface)" }}>
+                    <button onClick={() => handleUpgrade("delete", u.id)} className="rounded-lg p-2" style={{ background: "var(--surface)", color: "var(--danger)" }} aria-label="Xoá yêu cầu nâng cấp">
                       <Trash2 size={14} />
                     </button>
                   </div>

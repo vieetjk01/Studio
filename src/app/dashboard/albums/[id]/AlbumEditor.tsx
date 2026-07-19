@@ -292,7 +292,12 @@ export default function AlbumEditor({
       {/* Project phase: which set of photos the client link currently shows. */}
       <div className="card mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className={`flex h-9 w-9 items-center justify-center rounded-full ${phase === "delivery" ? "bg-emerald-500/15 text-emerald-400" : "bg-accent-gold/15 text-accent-gold"}`}>
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={phase === "delivery"
+              ? { background: "color-mix(in srgb, var(--success) 15%, transparent)", color: "var(--success)" }
+              : { background: "color-mix(in srgb, var(--gold) 15%, transparent)", color: "var(--gold)" }}
+          >
             {phase === "delivery" ? <PackageCheck size={18} /> : <Images size={18} />}
           </span>
           <div>
@@ -334,7 +339,7 @@ export default function AlbumEditor({
       {phase === "delivery" && (deliveryCount > 0 || deliveryFolders.length > 0) && (
         <div className="card mb-6 p-5">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, var(--success) 15%, transparent)", color: "var(--success)" }}>
               <HardDriveDownload size={18} />
             </span>
             <div className="min-w-0 flex-1">
@@ -574,7 +579,12 @@ export default function AlbumEditor({
                       <span className="rounded bg-ink-700 px-1.5 py-0.5 text-[10px] uppercase text-accent-muted">
                         {s.kind}
                       </span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${s.stage === "delivery" ? "bg-emerald-500/15 text-emerald-400" : "bg-accent-gold/15 text-accent-gold"}`}>
+                      <span
+                        className="rounded px-1.5 py-0.5 text-[10px] uppercase"
+                        style={s.stage === "delivery"
+                          ? { background: "color-mix(in srgb, var(--success) 15%, transparent)", color: "var(--success)" }
+                          : { background: "color-mix(in srgb, var(--gold) 15%, transparent)", color: "var(--gold)" }}
+                      >
                         {s.stage === "delivery" ? "Giao" : "Chọn"}
                       </span>
                       {s.name}
@@ -584,6 +594,7 @@ export default function AlbumEditor({
                   <button
                     onClick={() => removeSource(s.id)}
                     className="text-accent-muted hover:text-red-400"
+                    aria-label={t("delete")}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -642,8 +653,8 @@ export default function AlbumEditor({
               {photos.length} {t("photos")}
               {deliveryCount > 0 && (
                 <span className="flex gap-1.5 normal-case">
-                  <span className="rounded bg-accent-gold/15 px-1.5 py-0.5 text-[10px] text-accent-gold">{selectionCount} chọn</span>
-                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-400">{deliveryCount} giao</span>
+                  <span className="rounded px-1.5 py-0.5 text-[10px]" style={{ background: "color-mix(in srgb, var(--gold) 15%, transparent)", color: "var(--gold)" }}>{selectionCount} chọn</span>
+                  <span className="rounded px-1.5 py-0.5 text-[10px]" style={{ background: "color-mix(in srgb, var(--success) 15%, transparent)", color: "var(--success)" }}>{deliveryCount} giao</span>
                 </span>
               )}
             </h2>
@@ -664,13 +675,16 @@ export default function AlbumEditor({
                     <button
                       onClick={() => setCover(p.drive_file_id)}
                       title={t("setCover")}
+                      aria-label={t("setCover")}
                       className="rounded bg-ink-900/80 p-1.5 text-accent-gold hover:bg-ink-800"
                     >
                       <Star size={14} />
                     </button>
                     <button
                       onClick={() => removePhoto(p.id)}
-                      className="rounded bg-ink-900/80 p-1.5 text-red-300 hover:bg-ink-800"
+                      aria-label={t("delete")}
+                      className="rounded bg-ink-900/80 p-1.5 hover:bg-ink-800"
+                      style={{ color: "var(--danger)" }}
                     >
                       <Trash2 size={14} />
                     </button>

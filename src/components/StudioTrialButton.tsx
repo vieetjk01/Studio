@@ -33,7 +33,7 @@ export default function StudioTrialButton({ used: initialUsed }: Props) {
 
   if (used) {
     return msg ? (
-      <p className="text-xs font-medium" style={{ color: "#3fb98a" }}>{msg}</p>
+      <p className="text-xs font-medium" style={{ color: "var(--success)" }}>{msg}</p>
     ) : (
       <p className="text-xs" style={{ color: "var(--text3)" }}>Đã dùng thử Studio.</p>
     );
@@ -49,7 +49,7 @@ export default function StudioTrialButton({ used: initialUsed }: Props) {
       >
         <Sparkles size={14} /> {busy ? "Đang kích hoạt…" : "Dùng thử Studio 7 ngày"}
       </button>
-      {msg && <p className="text-xs" style={{ color: msg.includes("Đã kích") ? "#3fb98a" : "#e0746f" }}>{msg}</p>}
+      {msg && <p className="text-xs" style={{ color: msg.includes("Đã kích") ? "var(--success)" : "var(--danger)" }}>{msg}</p>}
     </div>
   );
 }

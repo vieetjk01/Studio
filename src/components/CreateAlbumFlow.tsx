@@ -341,7 +341,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
         </div>
 
         {notice && <p className="mt-4 text-sm" style={{ color: "var(--gold)" }}>{notice}</p>}
-        {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-4 text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
 
         <button onClick={create} disabled={busy} className="btn-primary mt-5 w-full rounded-xl py-3.5 text-[15px]">
           {createLabel}
@@ -374,6 +374,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
           <button
             onClick={copyLink}
             disabled={!result}
+            aria-label="Sao chép link"
             className="flex w-[50px] flex-shrink-0 items-center justify-center rounded-xl transition-all disabled:opacity-40"
             style={copied ? { background: "var(--gold)", color: "#0a0a0c" } : { background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}
           >

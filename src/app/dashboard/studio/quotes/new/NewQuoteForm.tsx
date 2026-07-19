@@ -201,7 +201,7 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
           <h2 className="text-sm font-medium" style={{ color: "var(--text2)" }}>Hạng mục báo giá</h2>
           <div className="flex items-center gap-1.5">
             <button onClick={() => add(false)} className="btn-ghost px-2.5 py-1.5 text-xs" data-testid="quote-item-add"><Plus size={12} /> Thêm hạng mục</button>
-            <button onClick={() => add(true)} className="btn-ghost px-2.5 py-1.5 text-xs" style={{ color: "#fb923c" }} data-testid="quote-add-discount"><Tag size={12} /> Thêm giảm giá</button>
+            <button onClick={() => add(true)} className="btn-ghost px-2.5 py-1.5 text-xs" style={{ color: "var(--s-amber)" }} data-testid="quote-add-discount"><Tag size={12} /> Thêm giảm giá</button>
           </div>
         </div>
         <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
@@ -213,13 +213,13 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
               key={idx}
               className="rounded-lg border p-3"
               style={{
-                borderColor: it.is_discount ? "#fb923c55" : "var(--border)",
-                background: it.is_discount ? "rgba(251,146,60,0.04)" : "transparent",
+                borderColor: it.is_discount ? "var(--s-amberS)" : "var(--border)",
+                background: it.is_discount ? "var(--s-amberS)" : "transparent",
               }}
               data-testid={`quote-item-${idx}`}
             >
               {it.is_discount && (
-                <p className="mb-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "#fb923c22", color: "#fb923c" }}>
+                <p className="mb-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--s-amberS)", color: "var(--s-amber)" }}>
                   <Tag size={10} /> Khoản giảm giá — trừ vào tổng
                 </p>
               )}
@@ -241,7 +241,7 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
               )}
               <p className="mt-1 text-right text-xs" style={{ color: "var(--text3)" }}>
                 {it.is_discount ? "Giảm: " : "Thành tiền: "}
-                <b style={{ color: it.is_discount ? "#fb923c" : "var(--text)" }}>
+                <b style={{ color: it.is_discount ? "var(--s-amber)" : "var(--text)" }}>
                   {it.is_discount ? "−" : ""}{vnd((it.qty || 0) * (it.unit_price || 0))}
                 </b>
               </p>
@@ -250,7 +250,7 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
         </div>
         <div className="mt-4 flex flex-col items-end gap-1 text-sm">
           <p style={{ color: "var(--text2)" }}>Tổng hạng mục: {vnd(grossTotal)}</p>
-          {discountTotal > 0 && <p style={{ color: "#fb923c" }}>Giảm giá: −{vnd(discountTotal)}</p>}
+          {discountTotal > 0 && <p style={{ color: "var(--s-amber)" }}>Giảm giá: −{vnd(discountTotal)}</p>}
           <p style={{ color: "var(--text2)" }}>Tổng tạm tính: <span className="text-lg font-medium text-accent" data-testid="quote-total">{vnd(total)}</span></p>
           <p className="text-xs" style={{ color: "var(--text3)" }}>
             Cọc đề xuất (~{depositPct.toFixed(0)}%, làm tròn 500K): <b style={{ color: "var(--text2)" }}>{vnd(deposit)}</b>
@@ -258,7 +258,7 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
         </div>
       </section>
 
-      {error && <p className="text-sm text-red-400" data-testid="quote-save-error">{error}</p>}
+      {error && <p className="text-sm" style={{ color: "var(--danger)" }} data-testid="quote-save-error">{error}</p>}
     </div>
   );
 }

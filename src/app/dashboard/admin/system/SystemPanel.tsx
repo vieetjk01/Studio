@@ -294,7 +294,7 @@ export default function SystemPanel() {
         </div>
 
         {restoreErr && (
-          <div className="mt-3 flex items-start gap-2 rounded-md px-3 py-2 text-sm" style={{ background: "rgba(224,116,111,.12)", color: "#e0746f" }}>
+          <div className="mt-3 flex items-start gap-2 rounded-md px-3 py-2 text-sm" style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" }}>
             <AlertTriangle size={15} className="mt-0.5 shrink-0" />
             <span>{restoreErr}</span>
           </div>
@@ -302,7 +302,7 @@ export default function SystemPanel() {
 
         {preview && (
           <div className="mt-4">
-            <div className="mb-2 flex items-start gap-2 rounded-md px-3 py-2 text-[13px]" style={{ background: "rgba(224,184,92,.12)", color: "#b8901f" }}>
+            <div className="mb-2 flex items-start gap-2 rounded-md px-3 py-2 text-[13px]" style={{ background: "color-mix(in srgb, var(--gold) 14%, transparent)", color: "var(--gold)" }}>
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
               <span>Bản sao lưu chứa dữ liệu dưới đây. Kiểm tra kỹ rồi bấm khôi phục — dữ liệu hiện tại sẽ bị ghi đè bằng các bản ghi này.</span>
             </div>

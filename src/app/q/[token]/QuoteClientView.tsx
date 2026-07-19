@@ -555,7 +555,7 @@ export default function QuoteClientView({
               <ClientField icon={<Phone size={14} />} label={tr.phoneLabel}>
                 <input className="input" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="0901234567" inputMode="numeric" data-testid="accept-phone" />
                 {clientPhone && !phoneValid && (
-                  <p className="mt-1 text-[11px] text-red-400">{tr.phoneErr}</p>
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--danger)" }}>{tr.phoneErr}</p>
                 )}
               </ClientField>
               <ClientField icon={<Mail size={14} />} label={tr.emailLabel}>

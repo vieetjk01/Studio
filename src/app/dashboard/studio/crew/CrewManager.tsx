@@ -97,7 +97,7 @@ export default function CrewManager({
               <label className="label">Ghi chú</label>
               <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
-            {err && <p className="text-sm text-red-400">{err}</p>}
+            {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
             <button onClick={add} disabled={busy} className="btn-primary w-full">
               <Plus size={15} /> {busy ? "Đang thêm…" : "Thêm vào sổ"}
             </button>
@@ -126,13 +126,13 @@ export default function CrewManager({
                       const rate = Math.round((s.accepted / s.total) * 100);
                       return (
                         <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
-                          <span style={{ color: "#7bb38a" }}>{s.accepted} buổi đã nhận</span> · {s.total} lời mời · nhận {rate}%
+                          <span style={{ color: "var(--s-green)" }}>{s.accepted} buổi đã nhận</span> · {s.total} lời mời · nhận {rate}%
                           {s.declined ? ` · từ chối ${s.declined}` : ""}
                         </p>
                       );
                     })()}
                   </div>
-                  <button onClick={() => remove(c.id)} className="btn-ghost px-2.5 py-1.5 text-xs">
+                  <button onClick={() => remove(c.id)} aria-label="Xoá thợ" className="btn-ghost px-2.5 py-1.5 text-xs">
                     <Trash2 size={14} />
                   </button>
                 </div>

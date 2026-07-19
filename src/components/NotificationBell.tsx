@@ -49,7 +49,7 @@ export default function NotificationBell() {
       {count > 0 && (
         <span
           className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-semibold"
-          style={{ background: "var(--s-red, #e0746f)", color: "#fff" }}
+          style={{ background: "var(--danger)", color: "#fff" }}
         >
           {count > 9 ? "9+" : count}
         </span>

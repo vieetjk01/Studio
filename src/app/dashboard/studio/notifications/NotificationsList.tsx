@@ -22,17 +22,17 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   info: Bell,
 };
 const TONE: Record<NotificationKind, string> = {
-  signed: "#7bb38a",
-  edit_request: "#c7a76b",
-  crew_accepted: "#7bb38a",
-  crew_declined: "#c77b7b",
-  review: "#e0b85c",
-  payment: "#6ba3c7",
-  quote_accepted: "#3fb98a",
+  signed: "var(--s-green)",
+  edit_request: "var(--s-amber)",
+  crew_accepted: "var(--s-green)",
+  crew_declined: "var(--s-red)",
+  review: "var(--s-amber)",
+  payment: "var(--s-blue)",
+  quote_accepted: "var(--s-green)",
   announcement: "#c78bd1",
-  new_user: "#6ba3c7",
-  upgrade_request: "#e0b85c",
-  contact: "#7bb38a",
+  new_user: "var(--s-blue)",
+  upgrade_request: "var(--s-amber)",
+  contact: "var(--s-green)",
   info: "var(--text3)",
 };
 

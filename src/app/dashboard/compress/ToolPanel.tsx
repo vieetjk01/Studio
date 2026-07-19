@@ -582,7 +582,7 @@ export default function ToolPanel({
           </>
         )}
 
-        {driveError && <p className="mt-3 text-sm text-red-400">{driveError}</p>}
+        {driveError && <p className="mt-3 text-sm" style={{ color: "var(--danger)" }}>{driveError}</p>}
         {srcLabel && <p className="mt-3 text-[13px]" style={{ color: "var(--text2)" }}>{srcLabel}</p>}
       </div>
 
@@ -629,7 +629,7 @@ export default function ToolPanel({
                 </label>
                 <label className="mt-1.5 flex items-center gap-2 text-[13px]" style={{ color: "var(--text)" }}>
                   <input type="radio" name="wm" checked={writeMode === "overwrite"} onChange={() => setWriteMode("overwrite")} className="accent-[var(--gold)]" />
-                  <span style={{ color: "#fbbf24" }}>Ghi đè bản gốc</span> (không hoàn tác)
+                  <span style={{ color: "var(--gold)" }}>Ghi đè bản gốc</span> (không hoàn tác)
                 </label>
               </div>
             )}
@@ -737,7 +737,7 @@ export default function ToolPanel({
         )}
 
         {activeQuota && (
-          <p className="mt-4 text-[12px]" style={{ color: outOfQuota ? "#fbbf24" : "var(--text3)" }}>
+          <p className="mt-4 text-[12px]" style={{ color: outOfQuota ? "var(--gold)" : "var(--text3)" }}>
             {activeQuota.unlimited
               ? "Không giới hạn"
               : isPicker
@@ -772,10 +772,10 @@ export default function ToolPanel({
               </button>
             </div>
             <div className="ml-auto flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
-              <button onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Thu nhỏ"><ZoomOut size={15} /></button>
+              <button onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Thu nhỏ" aria-label="Thu nhỏ"><ZoomOut size={15} /></button>
               <span className="w-12 text-center">{Math.round(zoom * 100)}%</span>
-              <button onClick={() => setZoom((z) => Math.min(8, +(z + 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Phóng to"><ZoomIn size={15} /></button>
-              <button onClick={() => setZoom(1)} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Đặt lại"><RotateCcw size={14} /></button>
+              <button onClick={() => setZoom((z) => Math.min(8, +(z + 0.5).toFixed(1)))} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Phóng to" aria-label="Phóng to"><ZoomIn size={15} /></button>
+              <button onClick={() => setZoom(1)} className="rounded-md p-1.5" style={{ border: "1px solid var(--border)" }} title="Đặt lại" aria-label="Đặt lại thu phóng"><RotateCcw size={14} /></button>
             </div>
           </div>
 
@@ -841,7 +841,7 @@ export default function ToolPanel({
         </div>
 
         {quotaMsg && (
-          <p className="mb-3 rounded-lg px-3 py-2 text-[13px]" style={{ background: "color-mix(in srgb,#f59e0b 14%,transparent)", color: "#fbbf24" }}>{quotaMsg}</p>
+          <p className="mb-3 rounded-lg px-3 py-2 text-[13px]" style={{ background: "color-mix(in srgb, var(--gold) 14%, transparent)", color: "var(--gold)" }}>{quotaMsg}</p>
         )}
         {writeMsg && <p className="mb-3 text-[13px]" style={{ color: "var(--gold)" }}>{writeMsg}</p>}
         {savingMsg && <p className="mb-3 text-[13px]" style={{ color: "var(--gold)" }}>{savingMsg}</p>}
@@ -862,7 +862,7 @@ export default function ToolPanel({
                     <span className="w-14 whitespace-nowrap text-right" style={{ color: pct > 0 ? "var(--gold)" : "var(--text3)" }}>{pct > 0 ? `−${pct}%` : "—"}</span>
                   )}
                   {!(tool === "compress" && isPicker) && (
-                    <button onClick={() => triggerDownload(r.blob, r.out)} className="rounded-md p-1.5" style={{ color: "var(--text2)" }} title="Tải ảnh này">
+                    <button onClick={() => triggerDownload(r.blob, r.out)} className="rounded-md p-1.5" style={{ color: "var(--text2)" }} title="Tải ảnh này" aria-label="Tải ảnh này">
                       <Download size={15} />
                     </button>
                   )}

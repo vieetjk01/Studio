@@ -24,8 +24,8 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Đã huỷ",
 };
 const STATUS_COLOR: Record<string, string> = {
-  pending: "#c7a76b",
-  paid: "#7bb38a",
+  pending: "var(--gold)",
+  paid: "var(--success)",
   cancelled: "var(--text3)",
 };
 
@@ -91,8 +91,8 @@ export default function AffiliatePage() {
       <div className="grid gap-4 sm:grid-cols-3 mb-8">
         {[
           { label: "Tổng hoa hồng", value: totalEarned, icon: TrendingUp, color: "#3fb98a" },
-          { label: "Đã nhận", value: totalPaid, icon: Wallet, color: "#7bb38a" },
-          { label: "Chờ thanh toán", value: totalPending, icon: Clock, color: "#c7a76b" },
+          { label: "Đã nhận", value: totalPaid, icon: Wallet, color: "var(--success)" },
+          { label: "Chờ thanh toán", value: totalPending, icon: Clock, color: "var(--gold)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="card p-5">
             <div className="mb-2 flex items-center gap-2 text-[13px]" style={{ color: "var(--text2)" }}>
@@ -125,7 +125,7 @@ export default function AffiliatePage() {
               <span className="truncate" style={{ color: "var(--text2)" }}>{refLink || "Đang tạo link…"}</span>
             </div>
             <button onClick={copyLink} className="btn-ghost flex-shrink-0 gap-1.5 px-3 py-2.5 text-sm">
-              {copied ? <Check size={15} style={{ color: "#7bb38a" }} /> : <Copy size={15} />}
+              {copied ? <Check size={15} style={{ color: "var(--success)" }} /> : <Copy size={15} />}
               {copied ? "Đã sao chép" : "Sao chép"}
             </button>
             <button onClick={shareLink} className="btn-primary flex-shrink-0 gap-1.5 px-3 py-2.5 text-sm">
@@ -192,7 +192,7 @@ export default function AffiliatePage() {
                     <td className="px-4 py-3 text-center">
                       <span
                         className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                        style={{ background: `${STATUS_COLOR[c.status]}22`, color: STATUS_COLOR[c.status] }}
+                        style={{ background: `color-mix(in srgb, ${STATUS_COLOR[c.status]} 14%, transparent)`, color: STATUS_COLOR[c.status] }}
                       >
                         {STATUS_LABEL[c.status] ?? c.status}
                       </span>

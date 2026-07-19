@@ -143,7 +143,7 @@ export default function ServicesManager({
               </div>
               <div className="mt-4 flex items-center gap-2">
                 <button onClick={saveService} disabled={busy} className="btn-primary"><Check size={15} /> {busy ? "Đang lưu…" : "Lưu"}</button>
-                <button onClick={() => deleteService(sel)} className="btn-ghost ml-auto px-3 py-2 text-xs" style={{ color: "#c77b7b" }}><Trash2 size={14} /> Xoá dịch vụ</button>
+                <button onClick={() => deleteService(sel)} className="btn-ghost ml-auto px-3 py-2 text-xs" style={{ color: "var(--s-red)" }}><Trash2 size={14} /> Xoá dịch vụ</button>
               </div>
             </div>
           )}

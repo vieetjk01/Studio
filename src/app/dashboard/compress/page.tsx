@@ -6,18 +6,18 @@ import { pickerConfigured, preloadGoogle, requestDriveToken } from "@/lib/google
 import ToolPanel, { type Tool, type QuotaState } from "./ToolPanel";
 
 function QuotaChip({ label, text, warn, active }: { label: string; text: string; warn: boolean; active: boolean }) {
-  const color = warn ? "#fbbf24" : active ? "var(--accent)" : "var(--text2)";
+  const color = warn ? "var(--gold)" : active ? "var(--accent)" : "var(--text2)";
   return (
     <span
       className="rounded-full px-3 py-1"
       style={{
-        background: warn ? "color-mix(in srgb,#f59e0b 16%,transparent)" : active ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "var(--surface2)",
+        background: warn ? "color-mix(in srgb, var(--gold) 16%, transparent)" : active ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "var(--surface2)",
         border: `1px solid ${active && !warn ? "var(--accent)" : "var(--border)"}`,
         color,
         opacity: active ? 1 : 0.7,
       }}
     >
-      {label}: <b style={{ color: warn ? "#fbbf24" : "var(--text)" }}>{text}</b>
+      {label}: <b style={{ color: warn ? "var(--gold)" : "var(--text)" }}>{text}</b>
     </span>
   );
 }

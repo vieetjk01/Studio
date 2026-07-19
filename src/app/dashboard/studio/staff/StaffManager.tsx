@@ -78,7 +78,7 @@ export default function StaffManager({ initial }: { initial: StaffRow[] }) {
                 <option value="accountant">Kế toán (tài chính)</option>
               </select>
             </div>
-            {err && <p className="text-sm text-red-400">{err}</p>}
+            {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
             <button onClick={add} disabled={busy} className="btn-primary w-full"><Plus size={15} /> {busy ? "Đang tạo…" : "Tạo tài khoản"}</button>
           </div>
         </div>

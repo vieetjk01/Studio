@@ -323,7 +323,7 @@ export default function FilterPage() {
                   <Search size={15} /> {loadingDrive ? "Đang tải…" : "Tải ảnh"}
                 </button>
               </div>
-              {driveError && <p className="mt-3 text-sm text-red-400">{driveError}</p>}
+              {driveError && <p className="mt-3 text-sm" style={{ color: "var(--danger)" }}>{driveError}</p>}
               {driveFiles.length > 0 && (
                 <p className="mt-3 text-[13px]" style={{ color: "var(--text2)" }}>Đã tải <b>{driveFiles.length}</b> ảnh từ Drive.</p>
               )}
@@ -410,7 +410,7 @@ export default function FilterPage() {
             ))}
           </select>
           {notFound.length > 0 && (
-            <span className="rounded-full px-2.5 py-1 text-[12px]" style={{ background: "color-mix(in srgb,#f59e0b 16%,transparent)", color: "#fbbf24" }}>
+            <span className="rounded-full px-2.5 py-1 text-[12px]" style={{ background: "color-mix(in srgb, var(--gold) 16%, transparent)", color: "var(--gold)" }}>
               {notFound.length} tên không tìm thấy
             </span>
           )}
@@ -428,12 +428,12 @@ export default function FilterPage() {
         </div>
 
         {filterQuota && !filterQuota.unlimited && (
-          <p className="mb-3 text-[12.5px]" style={{ color: (filterQuota.remaining ?? 0) <= 0 ? "#fbbf24" : "var(--text3)" }}>
+          <p className="mb-3 text-[12.5px]" style={{ color: (filterQuota.remaining ?? 0) <= 0 ? "var(--gold)" : "var(--text3)" }}>
             Lọc ảnh tháng này: <b style={{ color: "var(--text)" }}>{filterQuota.used}/{filterQuota.limit}</b> lần
           </p>
         )}
         {filterMsg && (
-          <p className="mb-3 rounded-lg px-3 py-2 text-[13px]" style={{ background: "color-mix(in srgb,#f59e0b 14%,transparent)", color: "#fbbf24" }}>
+          <p className="mb-3 rounded-lg px-3 py-2 text-[13px]" style={{ background: "color-mix(in srgb, var(--gold) 14%, transparent)", color: "var(--gold)" }}>
             {filterMsg}
           </p>
         )}
@@ -462,7 +462,7 @@ export default function FilterPage() {
 
         {notFound.length > 0 && (
           <div className="mt-5 rounded-xl p-4" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-            <p className="mb-2 text-[13px] font-medium" style={{ color: "#fbbf24" }}>Không tìm thấy trong nguồn ảnh ({notFound.length}):</p>
+            <p className="mb-2 text-[13px] font-medium" style={{ color: "var(--gold)" }}>Không tìm thấy trong nguồn ảnh ({notFound.length}):</p>
             <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--text2)" }}>{notFound.join(", ")}</p>
           </div>
         )}

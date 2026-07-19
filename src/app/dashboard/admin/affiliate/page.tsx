@@ -21,7 +21,7 @@ interface Commission {
 }
 
 const STATUS_LABEL: Record<string, string> = { pending: "Chờ", paid: "Đã trả", cancelled: "Huỷ" };
-const STATUS_COLOR: Record<string, string> = { pending: "#c7a76b", paid: "#7bb38a", cancelled: "var(--text3)" };
+const STATUS_COLOR: Record<string, string> = { pending: "var(--gold)", paid: "var(--success)", cancelled: "var(--text3)" };
 
 export default function AdminAffiliatePage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
@@ -84,11 +84,11 @@ export default function AdminAffiliatePage() {
       <div className="grid gap-4 sm:grid-cols-3 mb-8">
         <div className="card p-5">
           <p className="mb-1 text-[13px]" style={{ color: "var(--text2)" }}>Tổng đã trả</p>
-          <p className="font-serif text-2xl font-medium" style={{ color: "#7bb38a" }}>{formatVnd(totalPaid)}</p>
+          <p className="font-serif text-2xl font-medium" style={{ color: "var(--success)" }}>{formatVnd(totalPaid)}</p>
         </div>
         <div className="card p-5">
           <p className="mb-1 text-[13px]" style={{ color: "var(--text2)" }}>Chờ thanh toán</p>
-          <p className="font-serif text-2xl font-medium" style={{ color: "#c7a76b" }}>{formatVnd(totalPending)}</p>
+          <p className="font-serif text-2xl font-medium" style={{ color: "var(--gold)" }}>{formatVnd(totalPending)}</p>
         </div>
         <div className="card p-5">
           <p className="mb-1 text-[13px]" style={{ color: "var(--text2)" }}>Tổng giao dịch</p>
@@ -173,7 +173,7 @@ export default function AdminAffiliatePage() {
                     <td className="px-4 py-3 text-center">
                       <span
                         className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                        style={{ background: `${STATUS_COLOR[c.status]}22`, color: STATUS_COLOR[c.status] }}
+                        style={{ background: `color-mix(in srgb, ${STATUS_COLOR[c.status]} 14%, transparent)`, color: STATUS_COLOR[c.status] }}
                       >
                         {STATUS_LABEL[c.status] ?? c.status}
                       </span>
@@ -188,8 +188,9 @@ export default function AdminAffiliatePage() {
                           <button
                             onClick={() => updateStatus(c.id, "paid")}
                             title="Đánh dấu đã trả"
+                            aria-label="Đánh dấu đã trả"
                             className="rounded-lg p-1.5 transition-colors hover:bg-green-900/30"
-                            style={{ color: "#7bb38a" }}
+                            style={{ color: "var(--success)" }}
                           >
                             <Check size={14} />
                           </button>
@@ -198,8 +199,9 @@ export default function AdminAffiliatePage() {
                           <button
                             onClick={() => updateStatus(c.id, "cancelled")}
                             title="Huỷ"
+                            aria-label="Huỷ hoa hồng"
                             className="rounded-lg p-1.5 transition-colors hover:bg-red-900/30"
-                            style={{ color: "#c77b7b" }}
+                            style={{ color: "var(--danger)" }}
                           >
                             <X size={14} />
                           </button>
@@ -208,8 +210,9 @@ export default function AdminAffiliatePage() {
                           <button
                             onClick={() => updateStatus(c.id, "pending")}
                             title="Hoàn lại chờ"
+                            aria-label="Hoàn lại trạng thái chờ"
                             className="rounded-lg p-1.5 transition-colors hover:bg-amber-900/30"
-                            style={{ color: "#c7a76b" }}
+                            style={{ color: "var(--gold)" }}
                           >
                             <Clock size={14} />
                           </button>

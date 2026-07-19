@@ -277,7 +277,7 @@ export default function AdminPanel({ profiles }: { profiles: Profile[] }) {
                   />
                 </td>
                 <td className="px-4 py-3">
-                  <button onClick={() => removeUser(p)} className="rounded-md p-1.5 text-red-400 hover:bg-red-500/10" title={t("deleteAccount")}>
+                  <button onClick={() => removeUser(p)} className="rounded-md p-1.5 hover:bg-red-500/10" style={{ color: "var(--danger)" }} title={t("deleteAccount")} aria-label={t("deleteAccount")}>
                     <Trash2 size={15} />
                   </button>
                 </td>

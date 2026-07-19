@@ -155,7 +155,7 @@ export default function ThiepListView({ rows, ownerId }: { rows: InvitationRow[]
                     <p className="font-medium">{couple}</p>
                     <p className="text-xs" style={{ color: "var(--text3)" }}>
                       Mẫu: {r.template} ·{" "}
-                      <span style={{ color: r.published ? "#7bb38a" : "var(--text3)" }}>{r.published ? "Đang hiển thị" : "Nháp"}</span>
+                      <span style={{ color: r.published ? "var(--s-green)" : "var(--text3)" }}>{r.published ? "Đang hiển thị" : "Nháp"}</span>
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-sm text-rose-700">

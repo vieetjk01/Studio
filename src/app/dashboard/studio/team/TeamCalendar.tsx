@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarOff } from "lucide-react";
 import { CREW_ROLE_LABEL, CREW_STATUS_LABEL, type CrewRole, type CrewStatus } from "@/lib/types";
 import { lunarCellLabel } from "@/lib/lunar";
+import { todayVN } from "@/lib/date";
 
 export type TeamAssignment = {
   name: string;
@@ -18,7 +19,7 @@ export type TeamAssignment = {
 
 const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
-const STATUS_TONE: Record<CrewStatus, string> = { pending: "var(--text3)", accepted: "#7bb38a", declined: "#c77b7b" };
+const STATUS_TONE: Record<CrewStatus, string> = { pending: "var(--text3)", accepted: "var(--s-green)", declined: "var(--s-red)" };
 
 function ymd(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -31,7 +32,7 @@ export default function TeamCalendar({
   assignments: TeamAssignment[];
   busyByDate: Record<string, string[]>;
 }) {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayVN();
   const [y, mIdx] = todayStr.split("-").map(Number);
   const [cursor, setCursor] = useState({ year: y, month: mIdx - 1 });
   const [selected, setSelected] = useState<string | null>(todayStr);
@@ -75,8 +76,8 @@ export default function TeamCalendar({
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-serif text-lg font-medium">{MONTHS[cursor.month]} {cursor.year}</h2>
             <div className="flex gap-2">
-              <button onClick={() => move(-1)} className="btn-ghost p-2"><ChevronLeft size={16} /></button>
-              <button onClick={() => move(1)} className="btn-ghost p-2"><ChevronRight size={16} /></button>
+              <button onClick={() => move(-1)} aria-label="Tháng trước" className="btn-ghost p-2"><ChevronLeft size={16} /></button>
+              <button onClick={() => move(1)} aria-label="Tháng sau" className="btn-ghost p-2"><ChevronRight size={16} /></button>
             </div>
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -106,16 +107,16 @@ export default function TeamCalendar({
                       <span key={k} className="block truncate text-[10px]" style={{ color: STATUS_TONE[x.status] }}>{x.name}</span>
                     ))}
                     {a.length > 2 && <span className="block text-[10px]" style={{ color: "var(--text3)" }}>+{a.length - 2}</span>}
-                    {busy.length > 0 && <span className="block text-[10px]" style={{ color: "#c7a76b" }}>bận {busy.length}</span>}
+                    {busy.length > 0 && <span className="block text-[10px]" style={{ color: "var(--s-amber)" }}>bận {busy.length}</span>}
                   </span>
                 </button>
               );
             })}
           </div>
           <div className="mt-3 flex flex-wrap gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#7bb38a" }} /> Đã nhận</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-green)" }} /> Đã nhận</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--text3)" }} /> Chờ phản hồi</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "#c7a76b" }} /> Báo bận</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-amber)" }} /> Báo bận</span>
           </div>
         </div>
 
@@ -137,7 +138,7 @@ export default function TeamCalendar({
               ))}
               {selBusy.length > 0 && (
                 <div className="rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "#c7a76b" }}>
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--s-amber)" }}>
                     <CalendarOff size={12} /> Báo bận
                   </p>
                   <p className="mt-1 text-sm">{selBusy.join(", ")}</p>

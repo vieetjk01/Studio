@@ -71,7 +71,7 @@ export default async function ClientDetail({ params }: { params: { phone: string
       <div className="mt-6 grid grid-cols-3 gap-4">
         <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Hợp đồng</p><p className="mt-1 font-serif text-xl font-medium">{mine.length}</p></div>
         <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Tổng giá trị</p><p className="mt-1 font-serif text-xl font-medium">{vnd(totalValue)}</p></div>
-        <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Đã thu</p><p className="mt-1 font-serif text-xl font-medium" style={{ color: "#7bb38a" }}>{vnd(collected)}</p></div>
+        <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Đã thu</p><p className="mt-1 font-serif text-xl font-medium" style={{ color: "var(--s-green)" }}>{vnd(collected)}</p></div>
       </div>
 
       <h2 className="mb-3 mt-8 font-serif text-lg font-medium">Lịch sử hợp đồng</h2>

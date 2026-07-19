@@ -172,7 +172,7 @@ export default function PushToggle() {
   if (state === "denied") {
     return (
       <div className="card flex items-center gap-3 p-4 text-sm" style={{ color: "var(--text2)" }}>
-        <BellOff size={18} style={{ color: "#e0746f" }} />
+        <BellOff size={18} style={{ color: "var(--danger)" }} />
         Bạn đã chặn thông báo. Vào cài đặt trình duyệt/điện thoại để bật lại quyền cho mstudo.
       </div>
     );
@@ -194,7 +194,7 @@ export default function PushToggle() {
             ? "Bạn sẽ nhận thông báo trên thiết bị này khi có đặt lịch / hợp đồng mới."
             : "Nhận thông báo trên điện thoại kể cả khi không mở app."}
         </p>
-        {err && <p className="mt-1 text-xs" style={{ color: "#e0746f" }}>{err}</p>}
+        {err && <p className="mt-1 text-xs" style={{ color: "var(--danger)" }}>{err}</p>}
       </div>
       {state === "subscribed" ? (
         <button onClick={disable} className="btn-ghost shrink-0 px-3 py-2 text-xs">Tắt</button>

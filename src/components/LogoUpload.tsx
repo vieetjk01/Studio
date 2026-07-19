@@ -72,6 +72,7 @@ export default function LogoUpload({ value, onChange, bucket = "logos", label = 
             <img src={value} alt="logo" className="h-10 w-10 rounded-lg object-contain" style={{ border: "1px solid var(--border)", background: "var(--surface2)" }} />
             <button
               type="button"
+              aria-label="Gỡ logo"
               onClick={() => onChange("")}
               className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
@@ -101,7 +102,7 @@ export default function LogoUpload({ value, onChange, bucket = "logos", label = 
         </button>
         <input ref={ref} type="file" accept="image/*" className="hidden" onChange={pick} />
       </div>
-      {err && <p className="mt-1 text-xs" style={{ color: "#e0746f" }}>{err}</p>}
+      {err && <p className="mt-1 text-xs" style={{ color: "var(--danger)" }}>{err}</p>}
     </div>
   );
 }

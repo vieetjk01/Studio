@@ -95,20 +95,20 @@ export default function PackagesManager({
                         <p className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text3)" }}>
                           {p.client_phone && <><Phone size={12} /> {p.client_phone} · </>}
                           {vnd(p.price)} ·{" "}
-                          <button onClick={() => togglePaid(p)} style={{ color: p.paid ? "#7bb38a" : "#c7a76b" }}>
+                          <button onClick={() => togglePaid(p)} style={{ color: p.paid ? "var(--s-green)" : "var(--s-amber)" }}>
                             {p.paid ? "đã thanh toán" : "chưa thanh toán"}
                           </button>
                         </p>
                       </div>
-                      <button onClick={() => remove(p.id)} className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
+                      <button onClick={() => remove(p.id)} aria-label="Xoá thẻ buổi" className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <div>
-                        <p className="font-serif text-lg font-medium" style={{ color: remaining > 0 ? "var(--text)" : "#c77b7b" }}>
+                        <p className="font-serif text-lg font-medium" style={{ color: remaining > 0 ? "var(--text)" : "var(--s-red)" }}>
                           Còn {remaining}/{p.total_sessions} buổi
                         </p>
                         <div className="mt-1 h-1.5 w-40 overflow-hidden rounded-full" style={{ background: "var(--surface2)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${(p.used_sessions / p.total_sessions) * 100}%`, background: "#6ba3c7" }} />
+                          <div className="h-full rounded-full" style={{ width: `${(p.used_sessions / p.total_sessions) * 100}%`, background: "var(--s-blue)" }} />
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
