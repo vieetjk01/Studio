@@ -4,14 +4,15 @@ import { getFeatureFlags, desktopHidden } from "@/lib/feature-flags";
 import DesktopPanel from "./DesktopPanel";
 
 export default async function DesktopPage() {
-  const profile = await requireStudio("full");
+  // MStudo Desktop mở cho 2 gói lớn nhất: Photographer Plus (plus) & Studio (full).
+  const profile = await requireStudio("plus");
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <div className="card p-8">
-          <h1 className="font-serif text-2xl font-medium">Cần gói Studio</h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>MStudo Desktop chỉ dành cho tài khoản gói Studio.</p>
-          <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem gói Studio</a>
+          <h1 className="font-serif text-2xl font-medium">Cần gói Photographer Plus trở lên</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>MStudo Desktop dành cho gói Photographer Plus &amp; Studio.</p>
+          <a href="/dashboard/upgrade" className="btn-primary mt-5">Xem các gói</a>
         </div>
       </div>
     );

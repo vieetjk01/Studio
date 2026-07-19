@@ -8,14 +8,14 @@ import {
   Package, Film, UserCog, Star, MessageSquare, Wrench, Image as ImageIcon,
   Plus, Receipt, ClipboardList, Sun, Moon, LogOut, Kanban, CalendarRange,
   Menu, X as XIcon, ShieldCheck, Settings, SlidersHorizontal, Archive, Globe, Gift, Link2,
-  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Monitor, Server, Shirt, HardDrive,
+  UserCircle, ChevronDown, Heart, Clapperboard, BookImage, Video, Server, Shirt, HardDrive,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import NotificationBell from "@/components/NotificationBell";
 import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
 import MobileSearch from "@/components/MobileSearch";
-import InstallPwaButton from "@/components/InstallPwaButton";
+import DownloadAppButton from "@/components/DownloadAppButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
 import { APP_VERSION } from "@/lib/version";
@@ -99,7 +99,6 @@ const GROUPS: Group[] = [
       { href: "/dashboard/filter", label: "Lọc ảnh", icon: SlidersHorizontal, minTier: "booking" },
       { href: "/dashboard/compress", label: "Nén ảnh", icon: Archive, minTier: "booking" },
       { href: "/dashboard/site", label: "Website riêng", icon: Globe, minTier: "booking" },
-      { href: "/dashboard/studio/desktop", label: "MStudo Desktop", icon: Monitor, minTier: "full", roles: ["owner", "admin"] },
     ],
   },
 ];
@@ -338,7 +337,7 @@ export default function StudioShell({
               <MessageSquare size={18} style={{ color: "var(--brand)" }} />
               Nhóm Zalo hỗ trợ
             </a>
-            <InstallPwaButton />
+            <DownloadAppButton tier={tier} />
             <button
               onClick={toggleTheme}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
@@ -436,7 +435,7 @@ export default function StudioShell({
               <MessageSquare size={16} style={{ color: "var(--brand)" }} />
               Nhóm Zalo hỗ trợ
             </a>
-            <InstallPwaButton />
+            <DownloadAppButton tier={tier} />
           </div>
         </aside>
 

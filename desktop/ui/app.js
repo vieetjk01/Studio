@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.7"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.0"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -164,9 +164,7 @@ const _obb = $("btnOpenAppBrowser"); if (_obb) _obb.onclick = (e) => { e.prevent
 
 // ─── Menu trái: điều hướng giữa các mục dữ liệu + Sao lưu & thiết bị ─────────
 const NAV_TITLE = {
-  overview: "Tổng quan", contracts: "Hợp đồng", quotes: "Báo giá", clients: "Khách hàng",
-  pricelist: "Bảng giá", services: "Dịch vụ & điều khoản", equipment: "Thiết bị",
-  expenses: "Thu chi", payroll: "Lương", calendar: "Lịch & đặt lịch", backup: "Sao lưu & thiết bị",
+  overview: "Tổng quan", calendar: "Lịch & đặt lịch", backup: "Đồng bộ & sao lưu",
 };
 function gotoNav(nav) {
   document.querySelectorAll("#sideNav .side-item").forEach((b) => b.classList.toggle("on", b.dataset.nav === nav));
