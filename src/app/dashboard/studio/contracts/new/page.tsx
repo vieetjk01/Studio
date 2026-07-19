@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import type { StudioService } from "@/lib/types";
-import NewContractForm, { type TemplateOption, type ServiceOption } from "./NewContractForm";
+import NewContractForm, { type TemplateOption, type ServiceOption, type PackageOption } from "./NewContractForm";
 
 
 export default async function NewContractPage() {
@@ -20,7 +20,7 @@ export default async function NewContractPage() {
     );
   }
   const supabase = createClient();
-  const [{ data: templates }, { data: services }] = await Promise.all([
+  const [{ data: templates }, { data: services }, { data: packages }] = await Promise.all([
     supabase
       .from("contract_templates")
       .select("id, name, shoot_type, note, contract_template_items(name, qty, unit_price, position)")
@@ -32,6 +32,15 @@ export default async function NewContractPage() {
       .eq("owner_id", profile.id)
       .eq("active", true)
       .order("position", { ascending: true }),
+    // Gói dịch vụ trong bảng giá (studio_pricelist, price > 0) — dùng cho "tạo hợp đồng nhanh".
+    supabase
+      .from("studio_pricelist")
+      .select("id, list_key, name, price, unit, category")
+      .eq("owner_id", profile.id)
+      .eq("active", true)
+      .gt("price", 0)
+      .order("list_key", { ascending: true })
+      .order("position", { ascending: true }),
   ]);
 
   const assignTo = profile.actingRole === "staff" ? (profile.actingUserId as string) : null;
@@ -41,6 +50,7 @@ export default async function NewContractPage() {
       assignTo={assignTo}
       templates={(templates ?? []) as unknown as TemplateOption[]}
       services={((services ?? []) as Pick<StudioService, "id" | "name" | "clauses">[]) as ServiceOption[]}
+      packages={(packages ?? []) as unknown as PackageOption[]}
     />
   );
 }

@@ -20,6 +20,8 @@ import {
   Upload,
   X,
   Image as ImageIcon,
+  Gift,
+  ChevronDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl, studioUrl } from "@/lib/hosts";
@@ -954,38 +956,53 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </button>
       </div>
 
-      {/* Online wedding invitation (free gift) — shown on every contract */}
-      <WeddingInvitationCard
-        contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
-        clientName={f.client_name}
-        clientMessenger={f.client_messenger}
-      />
+      {/* Tiện ích tặng khách & xin đánh giá — gộp lại 1 mục thu gọn cho đỡ rối.
+          Mặc định đóng; bấm để mở Thiệp cưới · Love Story · Xin đánh giá. */}
+      <details className="group mb-6">
+        <summary className="card flex cursor-pointer list-none items-center gap-3 p-4">
+          <Gift size={16} style={{ color: "var(--brand)" }} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Tiện ích tặng khách &amp; xin đánh giá</p>
+            <p className="text-[12px]" style={{ color: "var(--text3)" }}>Thiệp cưới online · Love Story · Xin khách đánh giá</p>
+          </div>
+          <ChevronDown size={16} className="transition-transform group-open:rotate-180" style={{ color: "var(--text3)" }} />
+        </summary>
 
-      {/* Love Story page (free gift) */}
-      <LoveStoryCard
-        contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
-        clientName={f.client_name}
-        clientMessenger={f.client_messenger}
-        studioHost={studioHost}
-        comingSoon={storyComingSoon}
-      />
+        <div className="mt-3">
+          {/* Online wedding invitation (free gift) */}
+          <WeddingInvitationCard
+            contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
+            clientName={f.client_name}
+            clientMessenger={f.client_messenger}
+          />
 
-      {/* Ask for a review */}
-      <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
-        <Star size={16} style={{ color: "var(--s-amber)" }} />
-        <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--text2)" }}>
-          Xin khách đánh giá sau khi giao ảnh (gửi kèm link cổng → mục “Đánh giá studio”).
-        </p>
-        {(() => {
-          const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
-          return (
-            <>
-              <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
-              <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
-            </>
-          );
-        })()}
-      </div>
+          {/* Love Story page (free gift) */}
+          <LoveStoryCard
+            contract={{ id: contract.id, owner_id: contract.owner_id, title: f.title, event_date: f.event_date || null, location: f.location || null }}
+            clientName={f.client_name}
+            clientMessenger={f.client_messenger}
+            studioHost={studioHost}
+            comingSoon={storyComingSoon}
+          />
+
+          {/* Ask for a review */}
+          <div className="card mb-0 flex flex-wrap items-center gap-3 p-4">
+            <Star size={16} style={{ color: "var(--s-amber)" }} />
+            <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--text2)" }}>
+              Xin khách đánh giá sau khi giao ảnh (gửi kèm link cổng → mục “Đánh giá studio”).
+            </p>
+            {(() => {
+              const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
+              return (
+                <>
+                  <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
+                  <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      </details>
 
       {/* Signature banner */}
       {contract.client_signed_at && (
