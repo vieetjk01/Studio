@@ -60,8 +60,8 @@ export default function CustomDomain({ initialDomain, initialVerified }: { initi
       <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
         <Globe size={14} /> Tên miền riêng
         {saved && (verified
-          ? <span style={{ fontSize: 11, color: "var(--s-green,#3fb98a)" }}>· Đã xác minh</span>
-          : <span style={{ fontSize: 11, color: "var(--s-amber,#c79a3a)" }}>· Chờ DNS</span>)}
+          ? <span style={{ fontSize: 11, color: "var(--success)" }}>· Đã xác minh</span>
+          : <span style={{ fontSize: 11, color: "var(--gold)" }}>· Chờ DNS</span>)}
       </label>
       <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8 }}>
         Dùng tên miền mua riêng (vd studio.com). Mọi hoạt động gửi khách sẽ chạy trên domain này.
@@ -79,7 +79,7 @@ export default function CustomDomain({ initialDomain, initialVerified }: { initi
             <button onClick={verify} disabled={busy !== null} className="btn-ghost" style={{ fontSize: 12, padding: "6px 10px" }}>
               {busy === "verify" ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Kiểm tra
             </button>
-            <button onClick={remove} disabled={busy !== null} className="btn-ghost" style={{ fontSize: 12, padding: "6px 10px", color: "var(--s-red,#e0746f)" }}>
+            <button onClick={remove} disabled={busy !== null} className="btn-ghost" style={{ fontSize: 12, padding: "6px 10px", color: "var(--danger)" }}>
               <Trash2 size={13} /> Gỡ
             </button>
           </div>

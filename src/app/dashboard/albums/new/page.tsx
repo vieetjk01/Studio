@@ -72,7 +72,7 @@ export default function NewAlbumPage() {
           className="input mb-6"
           placeholder="Wedding — A & B"
         />
-        {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+        {error && <p className="mb-4 text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
         <button disabled={loading} className="btn-primary w-full">
           {loading ? t("saving") : t("newAlbum")}
         </button>

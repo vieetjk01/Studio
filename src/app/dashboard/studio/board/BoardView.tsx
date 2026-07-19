@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { contractTotal, vnd, CONTRACT_STATUS_LABEL, type ContractStatus } from "@/lib/types";
-import { fmtDate } from "@/lib/date";
+import { fmtDate, todayVN } from "@/lib/date";
 
 export type BoardCard = {
   id: string;
@@ -19,18 +19,18 @@ export type BoardCard = {
 const COLUMNS: ContractStatus[] = ["draft", "sent", "approved", "in_progress", "completed", "cancelled"];
 const TONE: Record<ContractStatus, string> = {
   draft: "var(--text3)",
-  sent: "#c7a76b",
-  approved: "#7bb38a",
-  in_progress: "#6ba3c7",
-  completed: "#7bb38a",
-  cancelled: "#c77b7b",
+  sent: "var(--s-amber)",
+  approved: "var(--s-green)",
+  in_progress: "var(--s-blue)",
+  completed: "var(--s-green)",
+  cancelled: "var(--s-red)",
 };
 
 export default function BoardView({ initial }: { initial: BoardCard[] }) {
   const [cards, setCards] = useState<BoardCard[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<ContractStatus | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayVN();
 
   async function moveTo(id: string, status: ContractStatus) {
     const card = cards.find((c) => c.id === id);
@@ -96,7 +96,7 @@ export default function BoardView({ initial }: { initial: BoardCard[] }) {
                           {tasks.length > 0 && <span>{doneN}/{tasks.length} việc</span>}
                         </div>
                         {(c.event_date || late) && (
-                          <p className="mt-1 text-[11px]" style={{ color: late ? "#c77b7b" : "var(--text3)" }}>
+                          <p className="mt-1 text-[11px]" style={{ color: late ? "var(--s-red)" : "var(--text3)" }}>
                             {late ? `Trễ giao · hạn ${fmtDate(c.delivery_due)}` : `Chụp ${fmtDate(c.event_date)}`}
                           </p>
                         )}

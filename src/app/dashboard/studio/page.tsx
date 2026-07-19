@@ -21,16 +21,16 @@ import {
   type QuoteStatus,
   type CrewRole,
 } from "@/lib/types";
-import { fmtDate } from "@/lib/date";
+import { fmtDate, todayVN } from "@/lib/date";
 
 /* ── Design tokens (ported from the mstudo app mockup) ─────────────────────
    Status tones with a soft background, matching the green-accent mstudo look.
    These work on the dark app shell; the accent is the brand green. */
 const TONE = {
-  green: { fg: "#3fb98a", soft: "rgba(63,185,138,.14)" },
-  amber: { fg: "#d6a44a", soft: "rgba(214,164,74,.16)" },
-  red: { fg: "#e0746f", soft: "rgba(224,116,111,.16)" },
-  blue: { fg: "#6fa0ec", soft: "rgba(111,160,236,.16)" },
+  green: { fg: "var(--s-green)", soft: "var(--s-greenS)" },
+  amber: { fg: "var(--s-amber)", soft: "var(--s-amberS)" },
+  red: { fg: "var(--s-red)", soft: "var(--s-redS)" },
+  blue: { fg: "var(--s-blue)", soft: "var(--s-blueS)" },
   gray: { fg: "var(--text2)", soft: "var(--surface2)" },
 } as const;
 type ToneKey = keyof typeof TONE;
@@ -128,7 +128,7 @@ function RevenueChart({ bars }: { bars: { label: string; value: number }[] }) {
 /** Photographer-plan overview: bookings + upcoming shoots, no contracts/finance. */
 async function BookingOverview({ ownerId }: { ownerId: string }) {
   const supabase = createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayVN();
 
   // 3 query độc lập → chạy song song thay vì tuần tự (giảm TTFB dashboard).
   const [{ data: trialProf }, { data }, { count: selectingAlbums }] = await Promise.all([
@@ -208,9 +208,9 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
       </div>
 
       {/* Upgrade to Studio CTA */}
-      <div className="mb-6 card p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ borderColor: "rgba(214,164,74,.4)", background: "rgba(214,164,74,.06)" }}>
+      <div className="mb-6 card p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ borderColor: "var(--s-amber)", background: "var(--s-amberS)" }}>
         <div className="flex-1 min-w-0">
-          <p className="font-medium" style={{ color: "#d6a44a" }}>Nâng cấp lên Studio</p>
+          <p className="font-medium" style={{ color: "var(--s-amber)" }}>Nâng cấp lên Studio</p>
           <p className="mt-0.5 text-xs" style={{ color: "var(--text2)" }}>
             Mở khóa quản lý hợp đồng, tài chính, đội ngũ và toàn bộ tính năng studio chuyên nghiệp.
           </p>
@@ -274,7 +274,7 @@ export default async function StudioOverview() {
 
   // Pre-compute date constants so all query groups can run in parallel.
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = todayVN();
   const monthStart = `${today.slice(0, 7)}-01`;
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 7);
@@ -662,7 +662,7 @@ export default async function StudioOverview() {
       {(unsigned.length > 0 || debts.length > 0 || pendingCrew.length > 0 || lateDeliveries.length > 0 || duePlan.length > 0) && (
         <div className="mb-8 grid gap-6 lg:grid-cols-2">
           {unsigned.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#6fa0ec55" }}>
+            <div className="card p-6" style={{ borderColor: "var(--s-blueS)" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.blue.fg }}>
                 <FileText size={18} /> Hợp đồng chờ khách ký
               </h2>
@@ -687,7 +687,7 @@ export default async function StudioOverview() {
             </div>
           )}
           {duePlan.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#d6a44a55" }}>
+            <div className="card p-6" style={{ borderColor: "var(--s-amberS)" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.amber.fg }}>
                 <Wallet size={18} /> Sắp đến hạn thu
               </h2>
@@ -709,7 +709,7 @@ export default async function StudioOverview() {
             </div>
           )}
           {lateDeliveries.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#e0746f55" }}>
+            <div className="card p-6" style={{ borderColor: "var(--s-redS)" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.red.fg }}>
                 <Clock size={18} /> Trễ hạn giao ảnh
               </h2>
@@ -727,7 +727,7 @@ export default async function StudioOverview() {
             </div>
           )}
           {debts.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#d6a44a55" }}>
+            <div className="card p-6" style={{ borderColor: "var(--s-amberS)" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.amber.fg }}>
                 <Wallet size={18} /> Công nợ cần thu
               </h2>
@@ -754,7 +754,7 @@ export default async function StudioOverview() {
           )}
 
           {pendingCrew.length > 0 && (
-            <div className="card p-6" style={{ borderColor: "#6fa0ec55" }}>
+            <div className="card p-6" style={{ borderColor: "var(--s-blueS)" }}>
               <h2 className="mb-1 flex items-center gap-2 font-serif text-lg font-medium" style={{ color: TONE.blue.fg }}>
                 <UserCheck size={18} /> Thợ chưa phản hồi
               </h2>

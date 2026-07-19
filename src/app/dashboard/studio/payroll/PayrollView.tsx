@@ -75,8 +75,8 @@ export default function PayrollView({ rows }: { rows: PayrollRow[] }) {
 
       <div className="mb-6 grid grid-cols-3 gap-4">
         <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Tổng lương</p><p className="mt-1 font-serif text-xl font-medium">{vnd(grandTotal)}</p></div>
-        <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Đã trả</p><p className="mt-1 font-serif text-xl font-medium" style={{ color: "#7bb38a" }}>{vnd(grandPaid)}</p></div>
-        <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Còn nợ</p><p className="mt-1 font-serif text-xl font-medium" style={{ color: "#c7a76b" }}>{vnd(grandTotal - grandPaid)}</p></div>
+        <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Đã trả</p><p className="mt-1 font-serif text-xl font-medium" style={{ color: "var(--s-green)" }}>{vnd(grandPaid)}</p></div>
+        <div className="card p-5"><p className="text-xs" style={{ color: "var(--text3)" }}>Còn nợ</p><p className="mt-1 font-serif text-xl font-medium" style={{ color: "var(--s-amber)" }}>{vnd(grandTotal - grandPaid)}</p></div>
       </div>
 
       {groups.length === 0 ? (
@@ -99,7 +99,7 @@ export default function PayrollView({ rows }: { rows: PayrollRow[] }) {
                   </div>
                   <div className="text-right">
                     <p className="font-serif font-medium">{vnd(tot)}</p>
-                    <p className="text-[11px]" style={{ color: paid >= tot ? "#7bb38a" : "#c7a76b" }}>
+                    <p className="text-[11px]" style={{ color: paid >= tot ? "var(--s-green)" : "var(--s-amber)" }}>
                       Đã trả {vnd(paid)}
                     </p>
                   </div>
@@ -118,7 +118,7 @@ export default function PayrollView({ rows }: { rows: PayrollRow[] }) {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-medium">{vnd(r.salary)}</span>
-                          <button onClick={() => togglePaid(r)} className="text-[11px]" style={{ color: r.paid ? "#7bb38a" : "var(--text3)" }}>
+                          <button onClick={() => togglePaid(r)} className="text-[11px]" style={{ color: r.paid ? "var(--s-green)" : "var(--text3)" }}>
                             {r.paid ? "✓ Đã trả" : "Đánh dấu trả"}
                           </button>
                         </div>

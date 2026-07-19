@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { todayVN } from "@/lib/date";
 import {
   RENTAL_CATEGORIES,
   RENTAL_CATEGORY_LABEL,
@@ -41,7 +42,7 @@ const ORDER_STATUSES: RentalOrderStatus[] = [
 /** Orders in these statuses still hold physical stock (item is "out"). */
 const ACTIVE_ORDER_STATUSES: RentalOrderStatus[] = ["booked", "picked_up", "overdue"];
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => todayVN();
 
 /**
  * How many units of each item are currently out (reserved by active orders).
@@ -346,8 +347,8 @@ function Inventory({
                             <span
                               className="rounded-md px-1.5 py-0.5 font-medium"
                               style={{
-                                background: avail > 0 ? "rgba(34,197,94,.12)" : "rgba(208,104,122,.12)",
-                                color: avail > 0 ? "#15803d" : "#d0687a",
+                                background: avail > 0 ? "var(--s-greenS)" : "rgba(208,104,122,.12)",
+                                color: avail > 0 ? "var(--s-green)" : "#d0687a",
                               }}
                             >
                               Còn {avail}/{e.quantity}
@@ -365,7 +366,7 @@ function Inventory({
                               <option key={s} value={s}>{RENTAL_ITEM_STATUS_LABEL[s]}</option>
                             ))}
                           </select>
-                          <button onClick={() => remove(e.id)} className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
+                          <button onClick={() => remove(e.id)} aria-label="Xoá trang phục" className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
                         </div>
                       </div>
                     );
@@ -557,7 +558,7 @@ function Orders({
                       />
                     )}
                     <span style={{ color: "var(--text3)" }}>{vnd(l.price * l.qty)}</span>
-                    <button onClick={() => removeLine(l.item_id)} className="text-xs" style={{ color: "var(--text3)" }}><Trash2 size={13} /></button>
+                    <button onClick={() => removeLine(l.item_id)} aria-label="Xoá món khỏi đơn" className="text-xs" style={{ color: "var(--text3)" }}><Trash2 size={13} /></button>
                   </div>
                 </div>
               ))}
@@ -625,7 +626,7 @@ function Orders({
                           <option key={s} value={s}>{RENTAL_ORDER_STATUS_LABEL[s]}</option>
                         ))}
                       </select>
-                      <button onClick={() => remove(o.id)} className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
+                      <button onClick={() => remove(o.id)} aria-label="Xoá đơn thuê" className="btn-ghost px-2.5 py-1.5 text-xs"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 </div>

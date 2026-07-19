@@ -328,7 +328,7 @@ export default function UpgradePage() {
           <button onClick={applyCode} className="btn-ghost"><Tag size={14} /> Áp dụng</button>
         </div>
       </div>
-      {codeMsg && <p className="mb-4 text-[13px]" style={{ color: appliedCode ? "var(--gold)" : "#f87171" }}>{codeMsg}</p>}
+      {codeMsg && <p className="mb-4 text-[13px]" style={{ color: appliedCode ? "var(--gold)" : "var(--danger)" }}>{codeMsg}</p>}
 
       {/* Trial code — instant activation */}
       <div className="card mb-6 p-5">
@@ -338,7 +338,7 @@ export default function UpgradePage() {
           <input value={trialCode} onChange={(e) => setTrialCode(e.target.value.toUpperCase())} placeholder="Mã dùng thử" className="input w-44" />
           <button onClick={redeemTrial} disabled={trialBusy} className="btn-primary"><Zap size={14} /> {trialBusy ? "Đang kích hoạt…" : "Kích hoạt dùng thử"}</button>
         </div>
-        {trialMsg && <p className="mt-2 text-[13px]" style={{ color: trialOk ? "#5fd29a" : "#f87171" }}>{trialMsg}</p>}
+        {trialMsg && <p className="mt-2 text-[13px]" style={{ color: trialOk ? "#5fd29a" : "var(--danger)" }}>{trialMsg}</p>}
       </div>
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -484,7 +484,7 @@ export default function UpgradePage() {
             <label className="mt-3 mb-1 block text-[13px]" style={{ color: "var(--text2)" }}>Lời nhắn (tuỳ chọn)</label>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhu cầu của bạn, số lượng album dự kiến…" className="input min-h-[70px] resize-y" />
 
-            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+            {error && <p className="mt-2 text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
 
             <div className="mt-4 flex gap-2.5">
               <button onClick={() => setModalPlan(null)} disabled={sending !== null} className="btn-ghost flex-1 py-2.5">
