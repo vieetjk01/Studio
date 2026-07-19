@@ -1,7 +1,7 @@
 {
   "name": "mstudo-desktop",
   "private": true,
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "MStudo Desktop — tự động lưu hợp đồng & sao lưu dữ liệu studio về máy tính",
   "scripts": {
     "tauri": "tauri",

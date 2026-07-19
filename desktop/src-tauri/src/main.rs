@@ -333,6 +333,9 @@ fn hostname() -> String {
 async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
     use tauri::Manager;
     if let Some(w) = app.get_webview_window("studioapp") {
+        // Đã mở (kể cả đang ẩn xuống khay) → hiện lại + đưa lên trước.
+        let _ = w.show();
+        let _ = w.unminimize();
         let _ = w.set_focus();
         return Ok(());
     }
@@ -664,22 +667,43 @@ fn show_main(app: &tauri::AppHandle) {
     }
 }
 
+/// Ẩn cửa sổ BẢNG ĐIỀU KHIỂN (main) xuống khay — engine đồng bộ vẫn chạy trong
+/// webview ẩn. Dùng sau khi mở giao diện studio để người dùng chỉ thấy 1 cửa sổ.
+#[tauri::command]
+fn hide_main(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
+}
+
+/// Mở giao diện studio đầy đủ: gọi hàm frontend trong webview main (chạy cả khi
+/// main đang ẩn) để nó đọc địa chỉ máy chủ rồi mở/hiện cửa sổ studioapp.
+fn open_studio(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.eval("window.openStudioApp && window.openStudioApp()");
+    }
+}
+
 /// Tạo biểu tượng khay hệ thống + menu (Mở / Đồng bộ ngay / Thoát). Để app chạy
 /// ngầm dưới khay: đóng cửa sổ chỉ ẩn đi, engine đồng bộ vẫn tiếp tục.
 fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
-    let show_i = MenuItem::with_id(app, "show", "Mở MStudo", true, None::<&str>)?;
+    let studio_i = MenuItem::with_id(app, "studio", "Mở giao diện studio", true, None::<&str>)?;
+    let show_i = MenuItem::with_id(app, "show", "Bảng điều khiển & đồng bộ", true, None::<&str>)?;
     let sync_i = MenuItem::with_id(app, "sync", "Đồng bộ ngay", true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, "quit", "Thoát", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_i, &sync_i, &quit_i])?;
+    let menu = Menu::with_items(app, &[&studio_i, &show_i, &sync_i, &quit_i])?;
 
     let mut builder = TrayIconBuilder::with_id("main-tray")
         .tooltip("MStudo Desktop — đang chạy ngầm")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
+            "studio" => open_studio(app),
             "show" => show_main(app),
             "sync" => {
                 show_main(app);
@@ -692,14 +716,14 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            // Bấm trái vào biểu tượng khay → mở lại cửa sổ.
+            // Bấm trái vào biểu tượng khay → mở lại giao diện studio (màn chính).
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
                 ..
             } = event
             {
-                show_main(tray.app_handle());
+                open_studio(tray.app_handle());
             }
         });
     if let Some(icon) = app.default_window_icon() {
@@ -719,7 +743,10 @@ fn main() {
             // Bấm dấu × ở cửa sổ chính → ẩn xuống khay thay vì thoát (engine đồng
             // bộ ảnh/hợp đồng vẫn chạy ngầm). Thoát hẳn bằng menu khay "Thoát".
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
+                // Đóng cả cửa sổ studio lẫn bảng điều khiển → ẩn xuống khay thay vì
+                // thoát (engine đồng bộ vẫn chạy ngầm). Thoát hẳn bằng menu khay.
+                let label = window.label();
+                if label == "main" || label == "studioapp" {
                     let _ = window.hide();
                     api.prevent_close();
                 }
@@ -742,6 +769,7 @@ fn main() {
             open_file,
             open_url,
             open_app,
+            hide_main,
             download_and_run,
             create_dir,
             list_dir,

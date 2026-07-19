@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.6"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.6.7"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -135,15 +135,25 @@ $("btnFolderNext").onclick = async () => {
   log("Đã chọn thư mục lưu: " + p);
   show("main"); refreshStats(); renderLog(); gotoNav("overview");
   bootSync(true); // lần đầu: tải TOÀN BỘ hợp đồng đã ký + xuất đủ bộ Excel
+  openStudioApp(); // vào thẳng giao diện studio đầy đủ sau khi cài đặt xong
 };
 
 // ─── Mở TOÀN BỘ ứng dụng quản lý NGAY TRONG CLIENT (cửa sổ nhúng phóng to) ────
 // Cửa sổ nhúng chính là web app thật → giao diện & tính năng y hệt. Đăng nhập
 // một lần trong cửa sổ đó; phiên được lưu lại cho các lần sau.
-function openStudioApp() {
+async function openStudioApp() {
   if (!cfg.server) return;
-  invoke("open_app", { url: cfg.server + "/dashboard/studio" }).catch((e) => log("Không mở được ứng dụng: " + e, "err"));
+  try {
+    await invoke("open_app", { url: cfg.server + "/dashboard/studio" });
+    // Ẩn BẢNG ĐIỀU KHIỂN xuống khay → người dùng chỉ thấy giao diện studio đầy đủ
+    // (engine đồng bộ vẫn chạy ngầm trong webview ẩn). Mở lại bảng điều khiển ở
+    // menu khay "Bảng điều khiển & đồng bộ".
+    setTimeout(() => { invoke("hide_main").catch(() => {}); }, 600);
+  } catch (e) {
+    log("Không mở được ứng dụng: " + e, "err");
+  }
 }
+window.openStudioApp = openStudioApp; // để menu khay (Rust) gọi được
 // Dự phòng: mở trong trình duyệt ngoài (nếu cửa sổ nhúng gặp sự cố).
 function openStudioBrowser() {
   if (!cfg.server) return;
@@ -786,4 +796,5 @@ async function loadCacheFromDisk() {
   await loadCacheFromDisk();  // hiển thị dữ liệu offline ngay lập tức
   gotoNav("overview");     // mặc định mở Tổng quan
   bootSync(false);
+  openStudioApp();         // dùng desktop như app chính: mở thẳng giao diện studio đầy đủ
 })();
