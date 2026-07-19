@@ -34,8 +34,10 @@ export async function POST(req: Request) {
   if (!contract || contract.owner_id !== auth.ownerId) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  // Chỉ hợp đồng đã ký/xác nhận mới tạo thư mục (theo lựa chọn của studio).
-  if (!contract.client_signed_at && contract.status !== "approved") {
+  // Hợp đồng đã sẵn sàng mới tạo thư mục: khách đã ký HOẶC studio đã duyệt / đang
+  // thực hiện / hoàn thành (khớp bộ lọc ?drive=1 của /api/desktop/contracts).
+  const driveReady = !!contract.client_signed_at || ["approved", "in_progress", "completed"].includes(contract.status || "");
+  if (!driveReady) {
     return NextResponse.json({ error: "not_signed" }, { status: 409 });
   }
 

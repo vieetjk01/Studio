@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.4"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.6.5"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -529,7 +529,9 @@ async function runDriveSync(manual = false) {
       return;
     }
     driveWarned = false;
-    const list = await apiJson("/api/desktop/contracts"); // mặc định: hợp đồng đã ký
+    // ?drive=1: hợp đồng khách đã ký HOẶC studio đã duyệt/đang thực hiện/hoàn thành
+    // (không chỉ hợp đồng khách e-ký) → mới tạo đủ thư mục trên máy.
+    const list = await apiJson("/api/desktop/contracts?drive=1");
     const uploaded = await driveSyncRun(list.contracts || [], manual);
     cfg.lastDriveSync = new Date().toISOString(); saveCfg();
     if (manual) log(uploaded ? `Đã tải ${uploaded} file lên Drive.` : "Không có file mới để tải lên Drive.");
