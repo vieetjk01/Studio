@@ -220,6 +220,7 @@ export type ContractForDrive = {
   client_phone?: string | null;
   event_date?: string | null;
   shoot_type?: string | null;
+  service_id?: string | null;
   status?: string | null;
   drive_folder_id?: string | null;
   drive_tree?: any;
@@ -229,6 +230,141 @@ export type ContractForDrive = {
   gallery_album_id?: string | null;
 };
 
+// Cột chọn cho các query hợp đồng cần đồng bộ Drive (thêm service_id để chọn root).
+const CONTRACT_DRIVE_COLS =
+  "id, code, title, client_name, client_phone, event_date, shoot_type, service_id, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id";
+
+// ─── Thư mục gốc theo loại dịch vụ ────────────────────────────────────────────
+
+export type DriveRoot = { id: string; name: string; drive_folder_id: string | null; folder_template: any; position: number };
+
+/** Danh sách thư mục gốc của studio (Cưới, Sự kiện, Kỷ yếu…). */
+export async function listDriveRoots(ownerId: string): Promise<DriveRoot[]> {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("studio_drive_roots")
+    .select("id, name, drive_folder_id, folder_template, position")
+    .eq("owner_id", ownerId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  return (data as DriveRoot[]) ?? [];
+}
+
+/** Loại dịch vụ + thư mục gốc đang gán (để hiện bảng ánh xạ trong UI). */
+export async function listServicesWithRoot(
+  ownerId: string
+): Promise<{ id: string; name: string; drive_root_id: string | null }[]> {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("studio_services")
+    .select("id, name, drive_root_id")
+    .eq("owner_id", ownerId)
+    .eq("active", true)
+    .order("position", { ascending: true });
+  return (data as { id: string; name: string; drive_root_id: string | null }[]) ?? [];
+}
+
+const cleanRootName = (name: string) => (name || "").trim().replace(/[\\/]/g, " ").slice(0, 100);
+
+export async function addDriveRoot(ownerId: string, name: string): Promise<DriveRoot | null> {
+  const clean = cleanRootName(name) || ROOT_FOLDER_NAME;
+  const db = createAdminClient();
+  const roots = await listDriveRoots(ownerId);
+  const { data } = await db
+    .from("studio_drive_roots")
+    .insert({ owner_id: ownerId, name: clean, position: roots.length })
+    .select("id, name, drive_folder_id, folder_template, position")
+    .single();
+  return (data as DriveRoot) ?? null;
+}
+
+/** Đổi tên thư mục gốc (đổi luôn trên Drive nếu đã tạo & đang kết nối). */
+export async function renameDriveRoot(ownerId: string, id: string, name: string): Promise<void> {
+  const clean = cleanRootName(name) || ROOT_FOLDER_NAME;
+  const db = createAdminClient();
+  const { data: r } = await db
+    .from("studio_drive_roots")
+    .update({ name: clean })
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .select("drive_folder_id")
+    .maybeSingle();
+  const row = await loadStudioDrive(ownerId);
+  const driveFolderId = (r as { drive_folder_id?: string | null } | null)?.drive_folder_id;
+  if (row?.refresh_token && driveFolderId) {
+    const o = oauth();
+    o.setCredentials({ refresh_token: row.refresh_token });
+    const drive = google.drive({ version: "v3", auth: o });
+    await drive.files.update({ fileId: driveFolderId, requestBody: { name: clean } }).catch(() => {});
+  }
+}
+
+/** Xoá thư mục gốc (chỉ bỏ khỏi app — không xoá thư mục trên Drive). */
+export async function deleteDriveRoot(ownerId: string, id: string): Promise<void> {
+  const db = createAdminClient();
+  await db.from("studio_drive_roots").delete().eq("id", id).eq("owner_id", ownerId);
+}
+
+/** Gán loại dịch vụ vào một thư mục gốc (null → dùng thư mục gốc mặc định). */
+export async function setServiceRoot(ownerId: string, serviceId: string, rootId: string | null): Promise<void> {
+  const db = createAdminClient();
+  await db.from("studio_services").update({ drive_root_id: rootId }).eq("id", serviceId).eq("owner_id", ownerId);
+}
+
+/**
+ * Chọn thư mục gốc cho hợp đồng theo loại dịch vụ (service_id → studio_services
+ * → drive_root_id → studio_drive_roots). Nếu không có mapping → dùng thư mục gốc
+ * mặc định (studio_drive). Khi create=true, tạo thư mục gốc trên Drive nếu chưa có.
+ */
+async function resolveContractRoot(
+  db: any,
+  drive: any,
+  ownerId: string,
+  contract: ContractForDrive,
+  legacyRow: DriveRow,
+  create: boolean
+): Promise<{ rootId: string | null; rootFolderName: string; template: FolderTemplate }> {
+  let rootFolderName = legacyRow.root_folder_name || ROOT_FOLDER_NAME;
+  let template = normalizeTemplate(legacyRow.folder_template);
+
+  if (contract.service_id) {
+    const { data: svc } = await db
+      .from("studio_services")
+      .select("drive_root_id")
+      .eq("id", contract.service_id)
+      .maybeSingle();
+    const rootRefId = (svc as { drive_root_id?: string | null } | null)?.drive_root_id;
+    if (rootRefId) {
+      const { data: r } = await db
+        .from("studio_drive_roots")
+        .select("id, name, drive_folder_id, folder_template")
+        .eq("id", rootRefId)
+        .maybeSingle();
+      if (r) {
+        rootFolderName = cleanRootName(r.name) || rootFolderName;
+        if (r.folder_template) template = normalizeTemplate(r.folder_template);
+        let rid = (r.drive_folder_id as string | null) ?? null;
+        if (!rid && create) {
+          rid = await mkFolder(drive, rootFolderName, null);
+          await db.from("studio_drive_roots").update({ drive_folder_id: rid }).eq("id", r.id);
+        }
+        return { rootId: rid, rootFolderName, template };
+      }
+    }
+  }
+
+  // Mặc định: thư mục gốc chung (studio_drive).
+  let rid = legacyRow.root_folder_id;
+  if (!rid && create) {
+    rid = await mkFolder(drive, rootFolderName, null);
+    await db
+      .from("studio_drive")
+      .update({ root_folder_id: rid, updated_at: new Date().toISOString() })
+      .eq("owner_id", ownerId);
+  }
+  return { rootId: rid ?? null, rootFolderName, template };
+}
+
 /**
  * Bảo đảm cây thư mục Drive cho hợp đồng đã tồn tại (idempotent — nếu đã tạo thì
  * trả lại sơ đồ cũ). Trả { folderId, tree } hoặc { error }.
@@ -236,36 +372,32 @@ export type ContractForDrive = {
 export async function ensureContractDriveTree(
   ownerId: string,
   contract: ContractForDrive
-): Promise<{ folderId: string; tree: DriveTreeNode[] } | { error: string }> {
+): Promise<{ folderId: string; tree: DriveTreeNode[]; rootFolderName: string } | { error: string }> {
   const row = await loadStudioDrive(ownerId);
   if (!row?.refresh_token) return { error: "not_connected" };
+  const db = createAdminClient();
 
-  // Đã tạo rồi → trả lại (không tạo trùng).
+  // Đã tạo rồi → trả lại (không tạo trùng). Vẫn tính lại tên thư mục gốc (theo
+  // loại dịch vụ) để client desktop lồng thư mục local đúng — chỉ đọc DB, không
+  // tạo gì trên Drive.
   if (contract.drive_folder_id && Array.isArray(contract.drive_tree)) {
-    return { folderId: contract.drive_folder_id, tree: contract.drive_tree as DriveTreeNode[] };
+    const { rootFolderName } = await resolveContractRoot(db, null, ownerId, contract, row, false);
+    return { folderId: contract.drive_folder_id, tree: contract.drive_tree as DriveTreeNode[], rootFolderName };
   }
 
   const o = oauth();
   o.setCredentials({ refresh_token: row.refresh_token });
   const drive = google.drive({ version: "v3", auth: o });
-  const db = createAdminClient();
 
-  // 1) Thư mục gốc (tên do studio đặt) — studio có thể tự kéo đi nơi khác trong
-  //    Drive sau khi tạo, app vẫn nhận đúng vì lưu theo ID.
-  let rootId = row.root_folder_id;
-  if (!rootId) {
-    rootId = await mkFolder(drive, row.root_folder_name || ROOT_FOLDER_NAME, null);
-    await db
-      .from("studio_drive")
-      .update({ root_folder_id: rootId, updated_at: new Date().toISOString() })
-      .eq("owner_id", ownerId);
-  }
+  // 1) Thư mục gốc theo loại dịch vụ (Cưới/Sự kiện/Kỷ yếu…), fallback thư mục gốc
+  //    mặc định. Studio có thể tự kéo thư mục gốc đi nơi khác trong Drive, app vẫn
+  //    nhận đúng vì lưu theo ID.
+  const { rootId, rootFolderName, template } = await resolveContractRoot(db, drive, ownerId, contract, row, true);
 
-  // 2) Thư mục hợp đồng.
+  // 2) Thư mục hợp đồng — nằm TRONG thư mục gốc của loại dịch vụ.
   const contractFolderName = contractBaseName(contract as any);
   const contractFolderId = await mkFolder(drive, contractFolderName, rootId);
 
-  const template = normalizeTemplate(row.folder_template);
   const tree: DriveTreeNode[] = [];
 
   // Studio chọn khi tạo hợp đồng: mặc định tạo Photo, Video chọn riêng.
@@ -297,7 +429,7 @@ export async function ensureContractDriveTree(
     .update({ drive_folder_id: contractFolderId, drive_tree: tree })
     .eq("id", contract.id);
 
-  return { folderId: contractFolderId, tree };
+  return { folderId: contractFolderId, tree, rootFolderName };
 }
 
 // ─── Tạo album chọn ảnh (JPG Goc) + gallery giao khách (File ChinhSua) ────────
@@ -437,9 +569,7 @@ export async function autoCreateContractDriveOnSign(ownerId: string, contractId:
   const db = createAdminClient();
   const { data: c } = await db
     .from("studio_contracts")
-    .select(
-      "id, code, title, client_name, client_phone, event_date, shoot_type, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
-    )
+    .select(CONTRACT_DRIVE_COLS)
     .eq("id", contractId)
     .maybeSingle();
   if (!c) return;
@@ -460,9 +590,7 @@ export async function autoCreateContractDeliveryOnComplete(ownerId: string, cont
   const db = createAdminClient();
   const { data: c } = await db
     .from("studio_contracts")
-    .select(
-      "id, code, title, client_name, client_phone, event_date, shoot_type, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id"
-    )
+    .select(CONTRACT_DRIVE_COLS)
     .eq("id", contractId)
     .maybeSingle();
   if (!c) return false;

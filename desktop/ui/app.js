@@ -403,7 +403,7 @@ async function getPlan(id) {
   if (c && Date.now() - c.at < PLAN_TTL_MS) return c;
   const plan = await prepareContract(id, false);
   if (plan.skip) return { skip: plan.skip };
-  const entry = { tree: plan.tree, folderId: plan.folderId, folderName: plan.folderName, at: Date.now() };
+  const entry = { tree: plan.tree, folderId: plan.folderId, folderName: plan.folderName, rootFolderName: plan.rootFolderName || "", at: Date.now() };
   planCache.set(id, entry);
   return entry;
 }
@@ -413,7 +413,9 @@ async function getPlan(id) {
 async function scanContract(c) {
   const plan = await getPlan(c.id);
   if (plan.skip) throw new Error(plan.skip);
-  const base = join(cfg.mediaDir, plan.folderName);
+  // Lồng thư mục hợp đồng trong thư mục gốc theo loại dịch vụ (giống Drive). Khi
+  // server không trả rootFolderName (bản cũ), join tự bỏ qua → phẳng như trước.
+  const base = join(cfg.mediaDir, plan.rootFolderName, plan.folderName);
   const manPath = join(base, "mstudo-drive.json");
   let man = { folderId: plan.folderId, uploaded: {} };
   try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }
