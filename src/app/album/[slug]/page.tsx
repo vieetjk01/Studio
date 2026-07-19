@@ -7,6 +7,7 @@ import GalleryView from "./GalleryView";
 import { buildAlbumMetadata } from "@/lib/album-meta";
 import { MAIN_HOST } from "@/lib/hosts";
 import { effectivePlan, type Plan } from "@/lib/plans";
+import { getOriginalFolders } from "@/lib/album-original";
 import type { Feedback } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -99,12 +100,15 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   // Link Drive của các folder trong album — dùng cho nút "Tải album". Với album
   // có mật khẩu, KHÔNG lộ trước khi mở khoá; access route trả về sau khi đúng mk.
   let driveFolders: { name: string; url: string }[] = [];
+  // Link Drive file gốc ở giai đoạn chọn ảnh (JPG Goc) — hiện trong album hoàn thiện.
+  let originalFolders: { name: string; url: string }[] = [];
   if (!hasPassword) {
     photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
     sources = shownSources.map(({ id, name, position }) => ({ id, name, position }));
     driveFolders = shownSources
       .filter((x) => x.kind === "folder" && x.drive_url)
       .map(({ name, drive_url }) => ({ name, url: drive_url as string }));
+    originalFolders = await getOriginalFolders(admin, album.id, s ?? []);
   }
 
   return (
@@ -123,6 +127,7 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
       initialPhotos={photos}
       initialSources={sources}
       initialDriveFolders={driveFolders}
+      initialOriginalFolders={originalFolders}
       feedback={(feedback ?? []) as Feedback[]}
       shareIds={shareIds}
       studioName={studioName}

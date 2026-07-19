@@ -72,12 +72,13 @@ interface DriveFolder { name: string; url: string; }
 interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; canZip?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, initialDriveFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
+  gallery, initialPhotos, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
   initialSources: S[] | null;
   initialDriveFolders?: DriveFolder[];
+  initialOriginalFolders?: DriveFolder[];
   feedback: Feedback[];
   shareIds?: string[] | null;
   studioName?: string;
@@ -88,6 +89,8 @@ export default function GalleryView({
   const [photos, setPhotos] = useState<P[]>(initialPhotos ?? []);
   const [sources, setSources] = useState<S[]>(initialSources ?? []);
   const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(initialDriveFolders);
+  // Link Drive file gốc ở giai đoạn chọn ảnh (JPG Goc) — hiện trong album hoàn thiện.
+  const [originalFolders, setOriginalFolders] = useState<DriveFolder[]>(initialOriginalFolders);
   const allowDownload = gallery.allowDownload !== false;
   const [password, setPassword] = useState("");
   const [pwError, setPwError] = useState(false);
@@ -167,6 +170,7 @@ export default function GalleryView({
     const data = await res.json();
     setPhotos(data.photos ?? []); setSources(data.sources ?? []);
     setDriveFolders(data.driveFolders ?? []);
+    setOriginalFolders(data.originalFolders ?? []);
     setUnlocked(true);
   }
 
@@ -293,6 +297,10 @@ export default function GalleryView({
               Ẩn ở chế độ chia sẻ chọn lọc: link Drive trỏ cả thư mục → sẽ lộ toàn album. */}
           {!shareMode && allowDownload && driveFolders.length > 0 && (
             <DriveDownload folders={driveFolders} label={tr.driveDownload} labelOne={tr.driveDownloadOne} />
+          )}
+          {/* File gốc ở giai đoạn chọn ảnh (JPG gốc) — cho khách muốn lấy file gốc. */}
+          {!shareMode && originalFolders.length > 0 && (
+            <DriveDownload folders={originalFolders} label="File gốc (ảnh chọn)" labelOne="File gốc (ảnh chọn)" />
           )}
           {!shareMode && allowDownload && gallery.canZip && (
             <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]" title={tr.zipDownload}>

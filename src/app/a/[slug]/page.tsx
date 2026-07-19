@@ -45,6 +45,28 @@ export default async function PublicAlbumPage({
     .eq("slug", params.slug)
     .single();
 
+  // Đồng bộ Drive (2 album riêng): sau khi giao khách, hợp đồng đã có album giao
+  // khách hoàn thiện → album chọn ảnh không còn hiện cho khách. Chuyển hướng
+  // link chọn ảnh sang album giai đoạn hoàn thiện.
+  if (album && album.phase !== "delivery") {
+    const { data: contract } = await admin
+      .from("studio_contracts")
+      .select("gallery_album_id")
+      .eq("selection_album_id", album.id)
+      .maybeSingle();
+    const galleryId = (contract as { gallery_album_id?: string | null } | null)?.gallery_album_id;
+    if (galleryId) {
+      const { data: g } = await admin
+        .from("albums")
+        .select("slug, status, is_gallery, phase")
+        .eq("id", galleryId)
+        .maybeSingle();
+      if (g && (g.is_gallery || g.phase === "delivery") && g.status === "published") {
+        redirect(`/album/${g.slug}`);
+      }
+    }
+  }
+
   // Unified project: once the studio switches to the delivery phase, the same
   // client link leads to the finished-photo delivery experience. Free-plan
   // owners don't get delivery, so their albums stay on the selection view even

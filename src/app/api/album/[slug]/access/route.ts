@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllPhotos } from "@/lib/photos";
+import { getOriginalFolders } from "@/lib/album-original";
 import { limitByIpDurable } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +53,8 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const driveFolders = shown
     .filter((x) => x.kind === "folder" && x.drive_url)
     .map(({ name, drive_url }) => ({ name, url: drive_url as string }));
+  // Link file gốc giai đoạn chọn ảnh (JPG Goc) — cũng gated sau mật khẩu.
+  const originalFolders = await getOriginalFolders(admin, album.id, allSources ?? []);
 
-  return NextResponse.json({ photos, sources, driveFolders });
+  return NextResponse.json({ photos, sources, driveFolders, originalFolders });
 }

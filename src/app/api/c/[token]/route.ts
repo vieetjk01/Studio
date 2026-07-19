@@ -250,6 +250,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (s && s.status === "published") selection = { slug: s.slug, title: s.title, phase: s.phase ?? "selection" };
   }
 
+  // Giai đoạn giao khách: khi đã có album hoàn thiện (giao khách), album chọn ảnh
+  // không còn hiện cho khách — chỉ còn lại album giai đoạn hoàn thiện. Link file gốc
+  // của giai đoạn chọn ảnh được hiện bên trong album hoàn thiện (/album/[slug]).
+  if (gallery) selection = null;
+
   // Free wedding-invitation gift linked to this contract (if the studio made one).
   let wedding: { slug: string; edit_token: string; published: boolean } | null = null;
   {
