@@ -66,12 +66,11 @@ panel.
   1 thư mục gốc lấy tên hợp đồng (`Photo/JPG Goc · Raw · File ChinhSua`, và
   `Video/…` nếu chọn có quay), rồi **tự tải lên Drive** (1 chiều).
   *JPG Goc* → album chọn ảnh, *File ChinhSua* → gallery giao khách; loại trừ được
-  thư mục không cần đồng bộ. Studio còn tạo được **nhiều thư mục gốc theo loại
-  dịch vụ** (Cưới, Sự kiện, Kỷ yếu…) và gán mỗi loại dịch vụ vào một thư mục gốc —
-  thư mục hợp đồng nằm trong thư mục gốc của loại dịch vụ đó, giống nhau trên Drive
-  lẫn trên máy; loại chưa gán dùng thư mục gốc mặc định. Env
-  `GOOGLE_STUDIO_DRIVE_REDIRECT_URI`, migration
-  `supabase/migrations/studio_drive_sync.sql` + `supabase/migrations/studio_drive_roots.sql`.
+  thư mục không cần đồng bộ. Cây thư mục tự chia theo cấu trúc **Thư mục gốc /
+  Loại dịch vụ / Thang{tháng ngày thực hiện} / Tên hợp đồng** — giống hệt trên
+  Drive lẫn trên máy; thư mục *loại dịch vụ* và *tháng* chỉ tạo một lần rồi các
+  hợp đồng sau lưu đúng vào đó. Env `GOOGLE_STUDIO_DRIVE_REDIRECT_URI`, migration
+  `supabase/migrations/studio_drive_sync.sql`.
 - **Giao khách (client handoff)** — khi hợp đồng chuyển giai đoạn giao khách (đã
   có album hoàn thiện), album chọn ảnh không còn hiện cho khách (cổng hợp đồng ẩn
   thẻ chọn ảnh, link `/a/[slug]` tự chuyển sang album hoàn thiện). Trong album hoàn

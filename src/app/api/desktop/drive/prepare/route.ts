@@ -59,8 +59,9 @@ export async function POST(req: Request) {
   return NextResponse.json({
     folderId: tree.folderId,
     folderName: contractBaseName(contract as any),
-    // Tên thư mục gốc (theo loại dịch vụ) để desktop lồng thư mục local giống Drive.
-    rootFolderName: tree.rootFolderName,
+    // Đường dẫn tương đối [Gốc, Loại dịch vụ, Thang N, Tên hợp đồng] để desktop
+    // lồng thư mục local y hệt cấu trúc trên Drive.
+    pathSegments: tree.pathSegments,
     tree: tree.tree,
     hasVideo: contract.drive_make_video === true,
     selectionAlbumId: albums.selectionAlbumId,

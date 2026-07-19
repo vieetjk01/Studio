@@ -1831,23 +1831,6 @@ create table if not exists public.studio_drive (
 revoke all on public.studio_drive from anon, authenticated;
 alter table public.studio_drive enable row level security;
 
--- Nhiều thư mục gốc theo loại dịch vụ (Cưới, Sự kiện, Kỷ yếu…). Loại dịch vụ trỏ
--- tới 1 thư mục gốc; hợp đồng tạo thư mục con trong thư mục gốc của loại dịch vụ
--- đó (cả Drive lẫn máy tính). Chưa gán → dùng thư mục gốc mặc định (studio_drive).
-create table if not exists public.studio_drive_roots (
-  id              uuid primary key default gen_random_uuid(),
-  owner_id        uuid not null references public.profiles (id) on delete cascade,
-  name            text not null default 'MStudo',
-  drive_folder_id text,
-  folder_template jsonb,
-  position        int not null default 0,
-  created_at      timestamptz not null default now()
-);
-create index if not exists studio_drive_roots_owner_idx on public.studio_drive_roots (owner_id, position);
-revoke all on public.studio_drive_roots from anon, authenticated;
-alter table public.studio_drive_roots enable row level security;
-alter table public.studio_services add column if not exists drive_root_id uuid references public.studio_drive_roots (id) on delete set null;
-
 -- Mỗi hợp đồng: thư mục Drive đã tạo + sơ đồ cây (local ↔ Drive) + mốc đồng bộ.
 -- drive_tree = [{ path, id, role: 'selection'|'delivery'|null, excluded }]
 alter table public.studio_contracts add column if not exists drive_folder_id text;

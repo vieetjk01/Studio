@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "0.6.1"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "0.6.2"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -403,7 +403,12 @@ async function getPlan(id) {
   if (c && Date.now() - c.at < PLAN_TTL_MS) return c;
   const plan = await prepareContract(id, false);
   if (plan.skip) return { skip: plan.skip };
-  const entry = { tree: plan.tree, folderId: plan.folderId, folderName: plan.folderName, rootFolderName: plan.rootFolderName || "", at: Date.now() };
+  // pathSegments = [Gốc, Loại dịch vụ, Thang N, Tên hợp đồng]; bản server cũ chỉ
+  // có folderName (+ rootFolderName) → dựng tạm để vẫn chạy.
+  const segments = Array.isArray(plan.pathSegments) && plan.pathSegments.length
+    ? plan.pathSegments
+    : [plan.rootFolderName, plan.folderName].filter(Boolean);
+  const entry = { tree: plan.tree, folderId: plan.folderId, folderName: plan.folderName, pathSegments: segments, at: Date.now() };
   planCache.set(id, entry);
   return entry;
 }
@@ -413,9 +418,9 @@ async function getPlan(id) {
 async function scanContract(c) {
   const plan = await getPlan(c.id);
   if (plan.skip) throw new Error(plan.skip);
-  // Lồng thư mục hợp đồng trong thư mục gốc theo loại dịch vụ (giống Drive). Khi
-  // server không trả rootFolderName (bản cũ), join tự bỏ qua → phẳng như trước.
-  const base = join(cfg.mediaDir, plan.rootFolderName, plan.folderName);
+  // Cây thư mục local = mediaDir + [Gốc, Loại dịch vụ, Thang N, Tên hợp đồng] —
+  // y hệt cấu trúc trên Drive.
+  const base = join(cfg.mediaDir, ...(plan.pathSegments && plan.pathSegments.length ? plan.pathSegments : [plan.folderName]));
   const manPath = join(base, "mstudo-drive.json");
   let man = { folderId: plan.folderId, uploaded: {} };
   try { man = JSON.parse(await invoke("read_text", { path: manPath })); } catch { /* chưa có */ }
