@@ -16,6 +16,7 @@ import StudioSearch from "@/components/StudioSearch";
 import StudioFooterNav from "@/components/StudioFooterNav";
 import MobileSearch from "@/components/MobileSearch";
 import DownloadAppButton from "@/components/DownloadAppButton";
+import SyncControlButton from "@/components/SyncControlButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
 import { APP_VERSION } from "@/lib/version";
@@ -338,6 +339,7 @@ export default function StudioShell({
               Nhóm Zalo hỗ trợ
             </a>
             <DownloadAppButton tier={tier} />
+            <SyncControlButton />
             <button
               onClick={toggleTheme}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors"
@@ -436,6 +438,7 @@ export default function StudioShell({
               Nhóm Zalo hỗ trợ
             </a>
             <DownloadAppButton tier={tier} />
+            <SyncControlButton />
           </div>
         </aside>
 

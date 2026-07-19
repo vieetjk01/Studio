@@ -340,11 +340,24 @@ async fn open_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
         return Ok(());
     }
     let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
+    let app_nav = app.clone();
     tauri::WebviewWindowBuilder::new(&app, "studioapp", tauri::WebviewUrl::External(parsed))
         .title("MStudo — Quản lý studio")
         .inner_size(1360.0, 900.0)
         .maximized(true)
         .focused(true)
+        // Cho web app biết nó đang chạy TRONG app desktop (để hiện nút "Điều khiển
+        // đồng bộ" chỉ trên app, không hiện trên trình duyệt web).
+        .initialization_script("window.__MSTUDO_DESKTOP__ = true;")
+        // Bắt đường dẫn nội bộ "/__mstudo_control" (do nút web bấm) → mở BẢNG ĐIỀU
+        // KHIỂN thay vì điều hướng. Không cần Tauri IPC trong trang web ngoài.
+        .on_navigation(move |u| {
+            if u.as_str().contains("__mstudo_control") {
+                show_main(&app_nav);
+                return false; // huỷ điều hướng, chỉ mở bảng điều khiển
+            }
+            true
+        })
         .build()
         .map_err(|e| e.to_string())?;
     Ok(())
