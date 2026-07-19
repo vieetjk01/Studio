@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { studioUrl } from "@/lib/hosts";
 import { getStudioHost } from "@/lib/studio-site";
+import { STUDIO_TIER_RANK, type StudioTier } from "@/lib/plans";
 import { ALL_SEED } from "@/lib/pricelist-seeds";
 import type { PricelistItem } from "@/lib/types";
 import PricingManager from "./PricingManager";
@@ -51,6 +52,9 @@ export default async function PricingPage() {
 
   const studioHost = await getStudioHost(supabase, profile.id);
 
+  // Báo giá cần gói Studio (plus trở lên) — booking-tier chỉ có bảng giá.
+  const canQuote = STUDIO_TIER_RANK[profile.studioTier as StudioTier] >= STUDIO_TIER_RANK.plus;
+
   return (
     <PricingManager
       ownerId={profile.id}
@@ -59,6 +63,7 @@ export default async function PricingPage() {
       listLabels={listLabels}
       services={(services ?? []) as { id: string; name: string }[]}
       showClauses={showClauses}
+      canQuote={canQuote}
       shareUrl={token ? studioUrl(studioHost, `/gia/${token}`) : ""}
       contact={{
         pl_phone: profile.pl_phone ?? "",

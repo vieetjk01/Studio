@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X, Home, GripVertical } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Plus, Trash2, Link as LinkIcon, Copy, Check, Eye, EyeOff, Sparkles, Pencil, X, Home, GripVertical, FileEdit, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MoneyInput from "@/components/MoneyInput";
 import LogoUpload from "@/components/LogoUpload";
 import { PRICE_LISTS, WEDDING_SEED, ENGAGEMENT_SEED, type SeedItem } from "@/lib/pricelist-seeds";
+import { nextQuoteCode, newShareToken } from "@/lib/contract-code";
+import { fmtDate } from "@/lib/date";
 import { BANKS } from "@/lib/banks";
 import { VietQR } from "@/components/VietQR";
 import { vnd, type PricelistItem } from "@/lib/types";
@@ -25,6 +29,7 @@ export default function PricingManager({
   appearance,
   services = [],
   showClauses: initialShowClauses = false,
+  canQuote = false,
 }: {
   ownerId: string;
   initial: PricelistItem[];
@@ -35,9 +40,17 @@ export default function PricingManager({
   appearance: Appearance;
   services?: { id: string; name: string }[];
   showClauses?: boolean;
+  canQuote?: boolean;
 }) {
   const supabase = createClient();
+  const router = useRouter();
   const [list, setList] = useState<PricelistItem[]>(initial);
+  // Báo giá nhanh từ bảng giá (gộp tính năng báo giá vào bảng giá cho gọn).
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quotePicks, setQuotePicks] = useState<Set<string>>(new Set());
+  const [quoteClient, setQuoteClient] = useState({ name: "", phone: "" });
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteErr, setQuoteErr] = useState<string | null>(null);
   // Built-in lists the studio has hidden (e.g. removed "Cưới" / "Đính hôn").
   const [hiddenLists, setHiddenLists] = useState<string[]>(initialHidden);
   const visibleBuiltIns = PRICE_LISTS.filter((l) => !hiddenLists.includes(l.key));
@@ -306,6 +319,70 @@ export default function PricingManager({
     setList((p) => p.filter((x) => x.id !== id));
   }
 
+  function toggleQuoteOpen() {
+    setQuoteErr(null);
+    setQuoteOpen((o) => {
+      const next = !o;
+      // Mở lần đầu → chọn sẵn tất cả gói của bảng giá đang xem.
+      if (next) setQuotePicks(new Set(pkgs.map((p) => p.id)));
+      return next;
+    });
+  }
+  function toggleQuotePick(id: string) {
+    setQuotePicks((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  }
+
+  // Tạo một báo giá từ các gói đã chọn trong bảng giá, rồi mở trình sửa báo giá.
+  async function createQuoteFromList() {
+    const picked = pkgs.filter((p) => quotePicks.has(p.id));
+    if (picked.length === 0) { setQuoteErr("Chọn ít nhất 1 gói để báo giá."); return; }
+    setQuoteBusy(true);
+    setQuoteErr(null);
+    try {
+      const code = await nextQuoteCode(supabase, ownerId);
+      const token = newShareToken();
+      const listLabel = getLabel(activeList, allLists.find((l) => l.key === activeList)?.label ?? "");
+      // Nếu tab bảng giá là một dịch vụ (key = service id) thì gắn điều khoản dịch vụ đó.
+      const svcId = services.find((s) => s.id === activeList)?.id;
+      const { data: quote, error: qErr } = await supabase
+        .from("studio_quotes")
+        .insert({
+          owner_id: ownerId,
+          code,
+          title: `Báo giá ${listLabel} ${fmtDate(new Date())}`.trim(),
+          client_name: quoteClient.name.trim() || null,
+          client_phone: quoteClient.phone.trim() || null,
+          ...(svcId ? { service_id: svcId } : {}),
+          client_token: token,
+          status: "draft",
+        })
+        .select("id")
+        .single();
+      if (qErr || !quote) throw new Error(qErr?.message || "Không tạo được báo giá.");
+      const rows = picked.map((p, idx) => ({
+        quote_id: quote.id,
+        name: p.name,
+        description: p.description || null,
+        qty: 1,
+        unit_price: p.price || 0,
+        is_optional: false,
+        is_discount: false,
+        selected: true,
+        position: idx,
+      }));
+      const { error: iErr } = await supabase.from("quote_items").insert(rows);
+      if (iErr) throw new Error(iErr.message);
+      router.push(`/dashboard/studio/quotes/${quote.id}`);
+    } catch (e) {
+      setQuoteErr(e instanceof Error ? e.message : "Lỗi không xác định.");
+      setQuoteBusy(false);
+    }
+  }
+
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-4">
@@ -418,6 +495,56 @@ export default function PricingManager({
             {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Đã chép" : "Chép link"}
           </button>
         </div>
+      )}
+
+      {/* Báo giá nhanh — gộp tính năng báo giá vào bảng giá cho gọn */}
+      {canQuote && (
+      <div className="card mb-6 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <FileEdit size={16} style={{ color: "var(--accent)" }} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Báo giá cho khách</p>
+            <p className="text-[12px]" style={{ color: "var(--text3)" }}>Chọn gói từ bảng giá này để tạo báo giá gửi khách — không cần nhập lại.</p>
+          </div>
+          <Link href="/dashboard/studio/quotes" className="btn-ghost px-3 py-2 text-xs">Danh sách báo giá</Link>
+          <button onClick={toggleQuoteOpen} className="btn-primary px-3 py-2 text-xs">
+            <ChevronDown size={14} className="transition-transform" style={{ transform: quoteOpen ? "rotate(180deg)" : "none" }} /> Tạo báo giá
+          </button>
+        </div>
+
+        {quoteOpen && (
+          <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            {pkgs.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--text3)" }}>Bảng giá này chưa có gói nào. Thêm gói bên dưới rồi tạo báo giá.</p>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  {pkgs.map((p) => (
+                    <label key={p.id} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--surface2)" }}>
+                      <input type="checkbox" checked={quotePicks.has(p.id)} onChange={() => toggleQuotePick(p.id)} />
+                      <span className="min-w-0 flex-1 truncate">{p.name}{p.category ? <span className="text-[11px]" style={{ color: "var(--text3)" }}> · {p.category}</span> : null}</span>
+                      <span className="font-medium">{vnd(p.price)}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="field"><label className="label">Tên khách (tuỳ chọn)</label><input className="input" value={quoteClient.name} onChange={(e) => setQuoteClient((p) => ({ ...p, name: e.target.value }))} /></div>
+                  <div className="field"><label className="label">SĐT khách (tuỳ chọn)</label><input className="input" inputMode="numeric" value={quoteClient.phone} onChange={(e) => setQuoteClient((p) => ({ ...p, phone: e.target.value }))} /></div>
+                </div>
+                {quoteErr && <p className="text-sm" style={{ color: "var(--danger)" }}>{quoteErr}</p>}
+                <div className="flex items-center gap-3">
+                  <button onClick={createQuoteFromList} disabled={quoteBusy} className="btn-primary">
+                    {quoteBusy ? "Đang tạo…" : `Tạo báo giá (${quotePicks.size} gói)`}
+                  </button>
+                  <span className="text-xs" style={{ color: "var(--text3)" }}>
+                    Tạm tính: <b style={{ color: "var(--text2)" }}>{vnd(pkgs.filter((p) => quotePicks.has(p.id)).reduce((s, p) => s + (p.price || 0), 0))}</b>
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
       )}
 
       {/* Contact + bank (shared across both lists) */}

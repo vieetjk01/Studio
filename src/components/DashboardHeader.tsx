@@ -98,7 +98,7 @@ export default function DashboardHeader({
       children: [
         { href: "/dashboard/studio/contracts", label: "Hợp đồng" },
         { href: "/dashboard/studio/production", label: "Xử lý hình ảnh" },
-        { href: "/dashboard/studio/templates", label: "Mẫu HĐ" },
+        { href: "/dashboard/studio/services", label: "Dịch vụ & mẫu HĐ" },
       ],
     },
     {
