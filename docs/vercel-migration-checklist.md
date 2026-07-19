@@ -12,6 +12,36 @@ Ký hiệu:
 
 ---
 
+## ⚡ Chọn cách chuyển (ít thao tác nhất trước)
+
+### Cách A — Vercel "Transfer Project" (KHUYẾN NGHỊ nếu cả 2 tài khoản là của bạn)
+Ít thao tác tay nhất. Vercel chuyển **nguyên project** sang tài khoản/team khác,
+**mang theo tự động**: toàn bộ env vars + domain + lịch sử deploy + cron.
+- Vào **Project cũ → Settings → General → Transfer Project** → chọn tài khoản/team đích.
+- Việc còn phải làm bằng tay: **(1)** kết nối lại Git repo cho project; **(2)** đặt
+  lại `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID` / `VERCEL_TOKEN` (mục 2L, vì project ID đổi);
+  **(3)** redeploy. **Không phải đụng DNS** (domain đi theo project).
+- Hạn chế: cần quyền ở cả 2 bên; chuyển dính gói Hobby có vài giới hạn.
+- → Nếu chọn cách này: **bỏ qua mục 1–3 và 5** bên dưới, chỉ làm 2L + mục 6, 7.
+
+### Cách B — Tạo project mới + copy env bằng script (khi không transfer được)
+Vẫn ít tay nhờ script `scripts/migrate-vercel-env.sh` tự copy toàn bộ env giữa 2
+tài khoản. Bạn chỉ cần 2 API token:
+```bash
+npm i -g vercel
+# Tạo token ở mỗi tài khoản: https://vercel.com/account/tokens
+SRC_TOKEN=<token_tài_khoản_cũ>  SRC_PROJECT=<tên_project_cũ>  [SRC_SCOPE=<team_cũ>] \
+DST_TOKEN=<token_tài_khoản_mới> DST_PROJECT=<tên_project_mới> [DST_SCOPE=<team_mới>] \
+./scripts/migrate-vercel-env.sh
+```
+Script tự động: kéo env production từ project cũ → đẩy sang project mới; **tự bỏ
+qua** bộ `VERCEL_*` (bạn đặt tay theo mục 2L). Sau đó theo tiếp mục 1, 3–8.
+
+> Với Cách B, vẫn nên tạo project mới (mục 1) và **liên kết Git** trước, rồi mới
+> chạy script để đẩy env vào đúng project đó.
+
+---
+
 ## 0. Chuẩn bị trước khi bắt đầu (làm trên tài khoản CŨ)
 
 - [ ] 🔴 **Xuất toàn bộ biến môi trường của project cũ**. Cách nhanh nhất bằng Vercel CLI:
@@ -209,14 +239,35 @@ dưới đây. Đặt scope **Production** (và **Preview** nếu muốn preview
   - Vercel sẽ báo **"Domain already in use"** vì đang gắn ở project cũ → đúng dự kiến.
 - [ ] 🔴 Vào **project CŨ → Settings → Domains → Remove** từng domain đó.
 - [ ] 🔴 Quay lại **project MỚI**, bấm **Refresh/Add** lại domain → giờ Vercel nhận.
-- [ ] 🔴 **Cập nhật DNS** theo hướng dẫn Vercel hiển thị cho từng domain:
+- [ ] 🔴 **Cập nhật DNS** theo hướng dẫn Vercel hiển thị cho từng domain (xem mục
+  5B nếu dùng Cloudflare):
   - Apex `mstudo.com`: bản ghi **A → `76.76.21.21`** (hoặc giá trị Vercel chỉ định),
     hoặc dùng **Vercel nameservers** nếu quản lý DNS bằng Vercel.
   - Subdomain: bản ghi **CNAME → `cname.vercel-dns.com`**.
-  - Nếu DNS ở **Cloudflare**: để chế độ **DNS only (mây xám)** khi verify, tránh
-    proxy cam gây lỗi cấp SSL; bật lại proxy sau khi cert đã cấp (nếu muốn).
 - [ ] 🔴 Chờ Vercel cấp lại **SSL** cho từng domain (thường vài phút). Domain phải
   hiện **Valid Configuration** + khoá SSL xanh.
+
+### 5B. Dùng Cloudflare đứng trước Vercel (khuyến nghị — an toàn hơn: DDoS/WAF/ẩn origin)
+Hoàn toàn được và nên dùng. Cấu hình đúng để không lỗi SSL / vòng lặp redirect:
+
+- [ ] 🔴 **SSL/TLS mode = Full (Strict)** (Cloudflare → SSL/TLS → Overview).
+  KHÔNG để "Flexible" — sẽ gây vòng lặp redirect vì Vercel luôn ép HTTPS.
+- [ ] 🔴 **DNS records** (Cloudflare → DNS):
+  - Apex `mstudo.com`: **CNAME → `cname.vercel-dns.com`** (Cloudflare tự flatten
+    apex về A), hoặc **A → `76.76.21.21`**.
+  - Mỗi subdomain (`album`, `img`, `admin`, `thiep`): **CNAME → `cname.vercel-dns.com`**.
+- [ ] 🔴 **Thứ tự để tránh kẹt cấp SSL**:
+  1. Tạm để tất cả bản ghi ở **DNS only (mây xám)**.
+  2. Chờ Vercel báo **Valid Configuration** + cấp cert xong cho mọi domain.
+  3. Rồi mới bật **Proxied (mây cam)** cho từng bản ghi (nếu muốn WAF/CDN Cloudflare).
+- [ ] 🟡 **Bật**: Always Use HTTPS, Automatic HTTPS Rewrites, Brotli.
+- [ ] 🟡 **KHÔNG** tạo Page Rule cache HTML kiểu "Cache Everything" cho toàn site —
+  Next.js phục vụ nội dung động (dashboard, `/api/*`) sẽ hỏng nếu bị cache. Mặc
+  định Cloudflare không cache HTML → cứ để mặc định là an toàn.
+- [ ] 🟡 Nếu bật WAF/Bot Fight Mode: **whitelist đường dẫn `/api/cron/*`** (Vercel
+  gọi từ IP của Vercel) và các callback OAuth Google, tránh bị chặn nhầm.
+- [ ] 🟡 Cookie session dùng domain `.mstudo.com` cho mọi subdomain → Cloudflare
+  proxy tất cả subdomain không ảnh hưởng; chỉ cần các subdomain đều trỏ đúng.
 
 ---
 
