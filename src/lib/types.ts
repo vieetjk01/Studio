@@ -255,7 +255,6 @@ export interface StudioContract {
   delivery_due: string | null;
   client_messenger: string | null;
   selection_album_id: string | null;
-  edited_drive_url: string | null;
   source: string | null;
   brief_concept: string | null;
   brief_outfit: string | null;

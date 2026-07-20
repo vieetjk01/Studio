@@ -4,9 +4,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { signOAuthState, verifyOAuthState } from "@/lib/oauth-state";
 import { contractBaseName } from "@/lib/desktop/contract-doc";
 import { cleanFolderName, serviceFolderName, monthFolderName, contractFolderSegments } from "@/lib/desktop/contract-path";
-import { extractFolderId, isFolderLink, thumbnailUrl } from "@/lib/drive";
-import { resolveSource } from "@/lib/drive-server";
-import { chunk } from "@/lib/photos";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -232,12 +229,11 @@ export type ContractForDrive = {
   drive_make_video?: boolean | null;
   selection_album_id?: string | null;
   gallery_album_id?: string | null;
-  edited_drive_url?: string | null;
 };
 
 // Cột chọn cho các query hợp đồng cần đồng bộ Drive (thêm service_id để chọn root).
 const CONTRACT_DRIVE_COLS =
-  "id, code, title, client_name, client_phone, event_date, shoot_type, service_id, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id, edited_drive_url";
+  "id, code, title, client_name, client_phone, event_date, shoot_type, service_id, status, drive_folder_id, drive_tree, drive_make_photo, drive_make_video, selection_album_id, gallery_album_id";
 
 // ─── Cây thư mục: Gốc / Loại dịch vụ / Thang N / Hợp đồng ─────────────────────
 // Quy ước tên thư mục (loại dịch vụ / tháng) dùng chung với file hợp đồng — xem
@@ -488,131 +484,6 @@ export async function wireContractAlbums(
   return { selectionAlbumId, galleryAlbumId };
 }
 
-// ─── Album giao khách từ LINK Drive nhập tay (không cần Đồng bộ Drive) ─────────
-
-/**
- * Đồng bộ ảnh cho MỘT album từ các nguồn Drive của nó (đọc qua GOOGLE_API_KEY
- * công khai — KHÔNG cần OAuth studio). Bản gọn của /api/albums/[id]/sync, dùng
- * cho album giao khách dựng từ link nhập tay. Trả về số ảnh đã ghi.
- */
-async function syncGalleryPhotos(db: any, albumId: string): Promise<number> {
-  const { data: sources } = await db
-    .from("album_sources")
-    .select("id, name, drive_url, kind, position")
-    .eq("album_id", albumId)
-    .order("position");
-  let added = 0;
-  let firstPhotoId: string | null = null;
-  for (const source of (sources ?? []) as { id: string; name: string; drive_url: string; kind: "file" | "folder"; position: number }[]) {
-    let files;
-    try {
-      const resolved = await resolveSource(source.drive_url, source.kind);
-      files = resolved.files;
-      // Đặt tên nguồn theo tên thư mục Drive nếu còn tên mặc định.
-      if (resolved.folderName && /^(Folder|Nhóm|Untitled|File)\b/i.test(source.name)) {
-        await db.from("album_sources").update({ name: resolved.folderName }).eq("id", source.id);
-      }
-    } catch {
-      continue;
-    }
-    const rows = files.map((f, i) => ({
-      album_id: albumId,
-      source_id: source.id,
-      drive_file_id: f.id,
-      name: f.name,
-      position: source.position * 100000 + i,
-      is_video: (f.mimeType ?? "").startsWith("video/"),
-    }));
-    for (const part of chunk(rows, 500)) {
-      const { count } = await db.from("photos").upsert(part, { onConflict: "album_id,drive_file_id", count: "exact" });
-      added += count ?? 0;
-    }
-    if (!firstPhotoId && files[0]) firstPhotoId = files[0].id;
-  }
-  // Ảnh bìa = ảnh đầu tiên nếu album chưa có bìa.
-  if (firstPhotoId) {
-    const { data: alb } = await db.from("albums").select("cover_url").eq("id", albumId).maybeSingle();
-    if (!alb?.cover_url) {
-      await db.from("albums").update({ cover_url: thumbnailUrl(firstPhotoId, 800) }).eq("id", albumId);
-    }
-  }
-  return added;
-}
-
-/**
- * Dựng (hoặc cập nhật) album GIAO KHÁCH từ link thư mục ảnh ĐÃ CHỈNH SỬA studio
- * dán tay — dùng khi studio KHÔNG đồng bộ Drive tự động. Idempotent theo hợp đồng:
- *  - Đã có gallery_album_id → trỏ nguồn giao khách về link mới rồi đồng bộ lại.
- *  - Chưa có → tạo album giao khách mới (phase 'delivery', is_gallery) + gắn hợp đồng.
- * Nút "ảnh gốc" trong album giao khách tự lấy từ album chọn ảnh (JPG gốc) qua
- * getOriginalFolders — không cần xử lý thêm ở đây.
- */
-export async function buildDeliveryGalleryFromLink(
-  ownerId: string,
-  contract: ContractForDrive,
-  url: string
-): Promise<{ galleryAlbumId: string | null; slug: string | null; added: number }> {
-  const db = createAdminClient();
-  const link = (url || "").trim();
-  if (!link) return { galleryAlbumId: contract.gallery_album_id ?? null, slug: null, added: 0 };
-  const kind: "file" | "folder" = isFolderLink(link) || extractFolderId(link) ? "folder" : "file";
-  const who = contract.client_name || contract.code || "Hợp đồng";
-
-  let galleryAlbumId = contract.gallery_album_id ?? null;
-
-  if (galleryAlbumId) {
-    // Album giao khách đã có → trỏ nguồn 'delivery' về link mới (thêm nếu chưa có).
-    const { data: delSrc } = await db
-      .from("album_sources")
-      .select("id")
-      .eq("album_id", galleryAlbumId)
-      .eq("stage", "delivery")
-      .order("position")
-      .limit(1)
-      .maybeSingle();
-    if (delSrc?.id) {
-      await db.from("album_sources").update({ drive_url: link, kind }).eq("id", delSrc.id);
-    } else {
-      await db.from("album_sources").insert({ album_id: galleryAlbumId, name: "File ChinhSua", drive_url: link, kind, stage: "delivery", position: 0 });
-    }
-    await db.from("albums").update({ phase: "delivery", is_gallery: true, status: "published", download_enabled: true }).eq("id", galleryAlbumId);
-  } else {
-    const slug = await uniqueSlug(db, `Giao khách · ${who}`);
-    const { data: album } = await db
-      .from("albums")
-      .insert({
-        owner_id: ownerId,
-        title: `Giao khách · ${who}`,
-        slug,
-        phase: "delivery",
-        is_gallery: true,
-        status: "published",
-        client_name: contract.client_name ?? null,
-        client_phone: contract.client_phone ?? null,
-        event_date: contract.event_date ?? null,
-        download_enabled: true,
-        watermark_enabled: false,
-      })
-      .select("id")
-      .single();
-    galleryAlbumId = (album?.id as string) ?? null;
-    if (galleryAlbumId) {
-      await db.from("album_sources").insert({ album_id: galleryAlbumId, name: "File ChinhSua", drive_url: link, kind, stage: "delivery", position: 0 });
-    }
-  }
-
-  // Lưu link + gắn album vào hợp đồng.
-  const patch: Record<string, any> = { edited_drive_url: link };
-  if (galleryAlbumId) patch.gallery_album_id = galleryAlbumId;
-  await db.from("studio_contracts").update(patch).eq("id", contract.id);
-
-  const added = galleryAlbumId ? await syncGalleryPhotos(db, galleryAlbumId) : 0;
-  const { data: alb } = galleryAlbumId
-    ? await db.from("albums").select("slug").eq("id", galleryAlbumId).maybeSingle()
-    : { data: null as { slug?: string } | null };
-  return { galleryAlbumId, slug: (alb?.slug as string) ?? null, added };
-}
-
 /**
  * Tự tạo cây thư mục Drive + album NGAY khi khách ký (chạy phía máy chủ, không
  * phụ thuộc app desktop). Nếu studio chưa kết nối Drive → bỏ qua im lặng.
@@ -647,17 +518,9 @@ export async function autoCreateContractDeliveryOnComplete(ownerId: string, cont
     .eq("id", contractId)
     .maybeSingle();
   if (!c) return false;
-  const contract = c as ContractForDrive;
-  if (contract.gallery_album_id) return true; // đã có album giao
-  const tree = await ensureContractDriveTree(ownerId, contract);
-  if ("error" in tree) {
-    // Chưa nối Drive tự động → nếu studio đã dán link ảnh đã chỉnh sửa, dựng từ link đó.
-    if (contract.edited_drive_url) {
-      const { galleryAlbumId } = await buildDeliveryGalleryFromLink(ownerId, contract, contract.edited_drive_url);
-      return !!galleryAlbumId;
-    }
-    return false; // not_connected → studio chưa nối Drive & chưa dán link
-  }
-  const { galleryAlbumId } = await wireContractAlbums(ownerId, contract, tree.tree, { phases: ["delivery"] });
+  if ((c as ContractForDrive).gallery_album_id) return true; // đã có album giao
+  const tree = await ensureContractDriveTree(ownerId, c as ContractForDrive);
+  if ("error" in tree) return false; // not_connected → studio chưa nối Drive
+  const { galleryAlbumId } = await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree, { phases: ["delivery"] });
   return !!galleryAlbumId;
 }

@@ -92,6 +92,12 @@ export default function AlbumEditor({
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
 
   const [newSource, setNewSource] = useState<{ name: string; url: string; stage: SourceStage }>({ name: "", url: "", stage: "selection" });
+  // Link ảnh đã CHỈNH SỬA (giao khách) — studio nhập ở giai đoạn giao. Ảnh trong
+  // thư mục này hiện cho khách ở album giao; ảnh gốc khách đã chọn tự thành "File gốc".
+  const [editedUrl, setEditedUrl] = useState(
+    initialSources.find((s) => s.stage === "delivery" && s.kind === "folder")?.drive_url ?? ""
+  );
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -196,6 +202,31 @@ export default function AlbumEditor({
     setNewSource({ name: "", url: "", stage: newSource.stage });
     // Auto-sync so photos & thumbnails appear immediately after adding a source.
     await sync();
+  }
+
+  // Lưu link ảnh đã chỉnh sửa (giao khách): tạo/cập nhật nguồn stage 'delivery'
+  // rồi đồng bộ ảnh. Ảnh trong thư mục này là ảnh hiện cho khách ở album giao.
+  async function saveDeliveryLink() {
+    const url = editedUrl.trim();
+    if (!url || deliveryBusy) return;
+    setDeliveryBusy(true);
+    const kind: SourceKind = isFolderLink(url) ? "folder" : "file";
+    const existing = sources.find((s) => s.stage === "delivery");
+    if (existing) {
+      const { error } = await supabase.from("album_sources").update({ drive_url: url, kind }).eq("id", existing.id);
+      if (error) { setDeliveryBusy(false); return flash(error.message); }
+      setSources(sources.map((s) => (s.id === existing.id ? { ...s, drive_url: url, kind } : s)));
+    } else {
+      const { data, error } = await supabase
+        .from("album_sources")
+        .insert({ album_id: album.id, name: "File ChinhSua", drive_url: url, kind, stage: "delivery", position: sources.length })
+        .select("*")
+        .single();
+      if (error) { setDeliveryBusy(false); return flash(error.message); }
+      setSources([...sources, data as AlbumSource]);
+    }
+    await sync();
+    setDeliveryBusy(false);
   }
 
   // Switch which phase the client link exposes (selection ↔ delivery). Plans
@@ -334,6 +365,35 @@ export default function AlbumEditor({
           </Link>
         )}
       </div>
+
+      {/* Delivery phase: studio pastes the EDITED-photos folder link. Those photos
+          are what the client sees in the delivery gallery; the originals the client
+          picked earlier auto-surface as the "File gốc" button (see getOriginalFolders). */}
+      {phase === "delivery" && (
+        <div className="card mb-6 p-5">
+          <label className="label">Link ảnh đã chỉnh sửa (hiện cho khách ở album giao)</label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              className="input flex-1"
+              placeholder="Dán link thư mục Google Drive ảnh đã chỉnh sửa…"
+              value={editedUrl}
+              onChange={(e) => setEditedUrl(e.target.value)}
+            />
+            <button
+              onClick={saveDeliveryLink}
+              disabled={deliveryBusy || syncing || !editedUrl.trim()}
+              className="btn-primary whitespace-nowrap"
+            >
+              {deliveryBusy ? "Đang lưu…" : "Lưu & đồng bộ"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
+            Ảnh trong thư mục này sẽ hiện ở album giao khách. Ảnh gốc khách đã chọn ở
+            giai đoạn trước tự thành nút <b>“File gốc (ảnh chọn)”</b> để khách xem/tải trên
+            Drive. Thư mục cần chia sẻ ở chế độ “ai có link xem được”.
+          </p>
+        </div>
+      )}
 
       {/* Delivery phase: download the finished album at ORIGINAL quality from Drive. */}
       {phase === "delivery" && (deliveryCount > 0 || deliveryFolders.length > 0) && (
