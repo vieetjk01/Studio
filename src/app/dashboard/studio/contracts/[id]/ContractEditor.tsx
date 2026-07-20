@@ -22,6 +22,7 @@ import {
   Image as ImageIcon,
   Gift,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl, studioUrl } from "@/lib/hosts";
@@ -162,11 +163,17 @@ export default function ContractEditor({
     delivery_due: contract.delivery_due ?? "",
     client_messenger: contract.client_messenger ?? "",
     selection_album_id: contract.selection_album_id ?? "",
+    edited_drive_url: contract.edited_drive_url ?? "",
     source: contract.source ?? "",
     assigned_to: contract.assigned_to ?? "",
   });
   const contractSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [contractSaved, setContractSaved] = useState<"idle" | "saving" | "saved">("idle");
+  // Album giao khách dựng từ link ảnh đã chỉnh sửa (nhập tay).
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
+  const [deliverySlug, setDeliverySlug] = useState<string | null>(
+    galleries.find((g) => g.id === contract.gallery_album_id)?.slug ?? null
+  );
 
   async function autosaveContract(data: typeof f) {
     setContractSaved("saving");
@@ -189,6 +196,7 @@ export default function ContractEditor({
         delivery_due: data.delivery_due || null,
         client_messenger: data.client_messenger.trim() || null,
         selection_album_id: data.selection_album_id || null,
+        edited_drive_url: data.edited_drive_url.trim() || null,
         source: data.source || null,
         ...(canAssign ? { assigned_to: data.assigned_to || null } : {}),
       })
@@ -207,6 +215,38 @@ export default function ContractEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind: "contract", id: contract.id, action: "upsert" }),
       }).catch(() => {});
+    }
+  }
+
+  // Dựng/cập nhật album giao khách từ link thư mục ảnh ĐÃ CHỈNH SỬA (nhập tay) —
+  // cho studio KHÔNG dùng Đồng bộ Drive tự động. Server tạo album, đồng bộ ảnh và
+  // gắn vào hợp đồng; nút "ảnh gốc" trong album giao tự lấy từ album chọn ảnh.
+  async function buildDeliveryFromLink() {
+    if (deliveryBusy) return;
+    const link = f.edited_drive_url.trim();
+    // Huỷ autosave đang chờ (ảnh chụp gallery_album_id cũ) để không ghi đè id mới.
+    if (contractSaveTimer.current) clearTimeout(contractSaveTimer.current);
+    setDeliveryBusy(true);
+    try {
+      const res = await fetch(`/api/studio/contracts/${contract.id}/delivery-from-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: link }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) { toast(`Lỗi: ${data?.error || res.status}`); return; }
+      if (data.cleared) { setDeliverySlug(null); toast("Đã bỏ link ảnh đã chỉnh sửa."); return; }
+      if (data.galleryAlbumId) setF((p) => ({ ...p, gallery_album_id: data.galleryAlbumId }));
+      if (data.slug) setDeliverySlug(data.slug);
+      toast(
+        data.added > 0
+          ? `Đã dựng album giao khách · ${data.added} ảnh.`
+          : "Đã dựng album giao khách. Kiểm tra thư mục đã chia sẻ ‘ai có link’ nếu chưa thấy ảnh."
+      );
+    } catch {
+      toast("Lỗi mạng, thử lại nhé.");
+    } finally {
+      setDeliveryBusy(false);
     }
   }
 
@@ -1193,6 +1233,41 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
                     Mẹo: nếu dùng Dự án hợp nhất, chỉ cần gắn ô này — link sẽ tự chuyển sang ảnh giao khách khi bạn đổi giai đoạn.
                   </p>
+                )}
+              </div>
+              <div>
+                <label className="label">Link thư mục ảnh đã chỉnh sửa (giao khách)</label>
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1"
+                    placeholder="Dán link Google Drive thư mục ảnh đã chỉnh sửa…"
+                    value={f.edited_drive_url}
+                    onChange={(e) => set("edited_drive_url", e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={buildDeliveryFromLink}
+                    disabled={deliveryBusy || !f.edited_drive_url.trim()}
+                    className="btn-ghost whitespace-nowrap"
+                  >
+                    {deliveryBusy ? "Đang dựng…" : "Dựng album giao"}
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                  Dành cho studio KHÔNG đồng bộ Drive tự động: dán link thư mục ảnh đã chỉnh sửa,
+                  bấm “Dựng album giao” để tạo album giao khách từ link này. Ảnh gốc (album chọn ảnh)
+                  sẽ tự thành nút “File gốc” trong trang giao khách. Thư mục cần chia sẻ “ai có link xem được”.
+                </p>
+                {deliverySlug && (
+                  <a
+                    href={mainUrl(`/album/${deliverySlug}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[12px] hover:underline"
+                    style={{ color: "var(--brand, var(--accent))" }}
+                  >
+                    <ExternalLink size={12} /> Mở trang giao khách
+                  </a>
                 )}
               </div>
               <div>

@@ -76,6 +76,12 @@ panel.
   thẻ chọn ảnh, link `/a/[slug]` tự chuyển sang album hoàn thiện). Trong album hoàn
   thiện có thêm nút **File gốc (ảnh chọn)** trỏ tới thư mục Drive *JPG Goc* của giai
   đoạn chọn ảnh để khách lấy file gốc khi cần.
+  Studio **không** dùng đồng bộ Drive tự động có thể dán tay **link thư mục ảnh đã
+  chỉnh sửa** ngay trên hợp đồng (ô *“Link thư mục ảnh đã chỉnh sửa (giao khách)”*)
+  rồi bấm **Dựng album giao** — hệ thống tạo album giao khách + đồng bộ ảnh từ link
+  đó, còn album chọn ảnh (JPG gốc) tự thành nút *File gốc*. Link này cũng tự dựng
+  album giao khách khi hợp đồng chuyển sang **Hoàn thành**. Migration
+  `supabase/migrations/contract_edited_drive_url.sql`.
 - **Bilingual UI** — Vietnamese / English toggle.
 
 ---

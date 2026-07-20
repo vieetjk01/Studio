@@ -1839,6 +1839,10 @@ alter table public.studio_contracts add column if not exists drive_synced_at tim
 -- Studio chọn khi TẠO hợp đồng: tạo thư mục ảnh / video (chọn riêng).
 alter table public.studio_contracts add column if not exists drive_make_photo boolean not null default true;
 alter table public.studio_contracts add column if not exists drive_make_video boolean not null default false;
+-- Link thư mục ảnh ĐÃ CHỈNH SỬA (giao khách) do studio dán TAY — dùng khi KHÔNG
+-- đồng bộ Drive tự động. Khi chuyển giai đoạn giao khách, link này tự dựng album
+-- giao khách; album chọn ảnh (JPG gốc) tự thành "ảnh gốc" hiện trong album giao.
+alter table public.studio_contracts add column if not exists edited_drive_url text;
 
 -- ─── Google Drive của ADMIN (lưu nội dung người dùng) — refresh token BÍ MẬT ───
 -- Tách khỏi site_settings (bảng có policy đọc công khai). RLS bật + revoke → chỉ
