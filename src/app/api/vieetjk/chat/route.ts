@@ -1,18 +1,21 @@
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt, CHAT_MODEL, MAX_TURNS, type ChatTurn } from "@/lib/vieetjk/assistant";
 import type { Lang } from "@/lib/vieetjk/content";
 
 /**
- * Trợ lý tư vấn tự động cho website vieetjk.com.
- * Nhận lịch sử hội thoại + ngôn ngữ, gọi Claude (streaming) và trả về text chạy dần.
+ * Trợ lý tư vấn tự động cho website vieetjk.com — dùng Google Gemini.
+ * Nhận lịch sử hội thoại + ngôn ngữ, gọi Gemini (streaming SSE) và trả về text
+ * chạy dần cho widget.
  *
- * Cần biến môi trường ANTHROPIC_API_KEY (đặt ở Vercel). Không có key → 503.
+ * Cần biến môi trường GEMINI_API_KEY (tạo ở aistudio.google.com, đặt trên Vercel).
+ * Thiếu key → 503. Model đặt qua GEMINI_MODEL (mặc định gemini-2.5-flash).
  */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 function sanitize(turns: unknown): ChatTurn[] {
   if (!Array.isArray(turns)) return [];
@@ -30,13 +33,18 @@ function sanitize(turns: unknown): ChatTurn[] {
   return trimmed;
 }
 
+/** Rút mọi đoạn text trong một chunk JSON của Gemini. */
+function extractText(json: unknown): string {
+  const parts = (json as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+    ?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts.map((p) => (typeof p?.text === "string" ? p.text : "")).join("");
+}
+
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return Response.json(
-      { error: "assistant_unavailable" },
-      { status: 503 }
-    );
+    return Response.json({ error: "assistant_unavailable" }, { status: 503 });
   }
 
   let body: { messages?: unknown; lang?: unknown };
@@ -52,40 +60,74 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "empty" }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey });
+  // Gemini: assistant → "model"; system prompt tách riêng ở system_instruction.
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const upstream = await fetch(
+    `${GEMINI_BASE}/${encodeURIComponent(CHAT_MODEL)}:streamGenerateContent?alt=sse`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: buildSystemPrompt(lang) }] },
+        contents,
+        generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
+      }),
+      cache: "no-store",
+    }
+  ).catch(() => null);
+
+  const errorMsg =
+    lang === "en"
+      ? "\n\nSorry, something went wrong. Please try again or contact us directly."
+      : "\n\nXin lỗi, có lỗi xảy ra. Bạn thử lại hoặc liên hệ trực tiếp giúp mình nhé.";
 
   const encoder = new TextEncoder();
+
+  if (!upstream || !upstream.ok || !upstream.body) {
+    return new Response(errorMsg.trim(), {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
+
+  const reader = upstream.body.getReader();
+  const decoder = new TextDecoder();
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let buf = "";
+      let emitted = false;
       try {
-        const anthropicStream = client.messages.stream({
-          model: CHAT_MODEL,
-          max_tokens: 1024,
-          // Q&A tư vấn ngắn gọn — ưu tiên tốc độ, không cần suy luận sâu.
-          output_config: { effort: "low" },
-          system: [
-            {
-              type: "text",
-              text: buildSystemPrompt(lang),
-              // Ngữ cảnh ổn định giữa các lượt → cache để tiết kiệm token.
-              cache_control: { type: "ephemeral" },
-            },
-          ],
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
-        });
-
-        anthropicStream.on("text", (delta) => {
-          controller.enqueue(encoder.encode(delta));
-        });
-        await anthropicStream.finalMessage();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          // SSE: mỗi sự kiện là các dòng "data: {...}" ngăn cách bằng dòng trống.
+          let nl: number;
+          while ((nl = buf.indexOf("\n")) !== -1) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === "[DONE]") continue;
+            try {
+              const text = extractText(JSON.parse(payload));
+              if (text) {
+                emitted = true;
+                controller.enqueue(encoder.encode(text));
+              }
+            } catch {
+              /* chunk chưa trọn — bỏ qua */
+            }
+          }
+        }
+        if (!emitted) controller.enqueue(encoder.encode(errorMsg.trim()));
       } catch {
-        controller.enqueue(
-          encoder.encode(
-            lang === "en"
-              ? "\n\nSorry, something went wrong. Please try again or contact us directly."
-              : "\n\nXin lỗi, có lỗi xảy ra. Bạn thử lại hoặc liên hệ trực tiếp giúp mình nhé."
-          )
-        );
+        controller.enqueue(encoder.encode(errorMsg));
       } finally {
         controller.close();
       }

@@ -15,11 +15,14 @@ import {
  * Toàn bộ "kiến thức" của bot được dựng từ nội dung site (content.ts) — nguồn sự
  * thật duy nhất. Khi studio cập nhật dịch vụ/giá ở content.ts, bot tự cập nhật theo.
  *
- * Model: claude-opus-4-8 (xem chat route). Không lưu bí mật ở đây.
+ * Model: Google Gemini (xem chat route). Không lưu bí mật ở đây.
  */
 
-/** Model dùng cho bot (khai báo tập trung để dễ đổi). */
-export const CHAT_MODEL = "claude-opus-4-8";
+/**
+ * Model Gemini mặc định (có gói miễn phí). Đổi nhanh qua biến môi trường
+ * GEMINI_MODEL mà không cần sửa code — vd "gemini-2.0-flash".
+ */
+export const CHAT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 /** Giới hạn số lượt hội thoại nhận từ client (chống lạm dụng token). */
 export const MAX_TURNS = 24;
