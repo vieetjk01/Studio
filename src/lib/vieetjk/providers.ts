@@ -18,10 +18,11 @@ import type { ChatTurn } from "./assistant";
  * - type "gemini": Google Gemini (generativelanguage.googleapis.com).
  * - type "openai": mọi API chuẩn OpenAI Chat Completions (OpenAI, OpenRouter,
  *   DeepSeek, Groq, Together…). baseUrl mặc định https://api.openai.com/v1.
+ * - type "anthropic": Claude API trực tiếp (api.anthropic.com Messages API).
  */
 
 export type ChatProvider = {
-  type: "gemini" | "openai";
+  type: "gemini" | "openai" | "anthropic";
   key: string;
   model: string;
   baseUrl?: string;
@@ -29,7 +30,14 @@ export type ChatProvider = {
 };
 
 function normalize(p: any): ChatProvider | null {
-  const type = p?.type === "openai" ? "openai" : p?.type === "gemini" ? "gemini" : null;
+  const type =
+    p?.type === "openai"
+      ? "openai"
+      : p?.type === "gemini"
+      ? "gemini"
+      : p?.type === "anthropic"
+      ? "anthropic"
+      : null;
   const key = typeof p?.key === "string" ? p.key.trim() : "";
   if (!type || !key) return null;
   const model =
@@ -37,6 +45,8 @@ function normalize(p: any): ChatProvider | null {
       ? p.model.trim()
       : type === "gemini"
       ? "gemini-flash-latest"
+      : type === "anthropic"
+      ? "claude-haiku-4-5"
       : "gpt-4o-mini";
   const baseUrl = typeof p?.baseUrl === "string" && p.baseUrl.trim() ? p.baseUrl.trim().replace(/\/+$/, "") : undefined;
   const label = typeof p?.label === "string" && p.label.trim() ? p.label.trim() : `${type}:${model}`;
@@ -85,6 +95,27 @@ export function requestProvider(p: ChatProvider, systemText: string, turns: Chat
       cache: "no-store",
     });
   }
+  if (p.type === "anthropic") {
+    // Claude API trực tiếp (Messages API, streaming SSE).
+    const base = p.baseUrl || "https://api.anthropic.com/v1";
+    return fetch(`${base}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": p.key,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: p.model,
+        max_tokens: 2048,
+        system: systemText,
+        messages: turns.map((t) => ({ role: t.role, content: t.content })),
+        stream: true,
+      }),
+      cache: "no-store",
+    });
+  }
+
   // OpenAI-compatible Chat Completions.
   const base = p.baseUrl || "https://api.openai.com/v1";
   return fetch(`${base}/chat/completions`, {
@@ -107,11 +138,19 @@ export function extractDelta(p: ChatProvider, json: any): string {
     const parts = json?.candidates?.[0]?.content?.parts;
     return Array.isArray(parts) ? parts.map((x: any) => (typeof x?.text === "string" ? x.text : "")).join("") : "";
   }
+  if (p.type === "anthropic") {
+    // Anthropic SSE: text nằm ở content_block_delta / text_delta.
+    if (json?.type === "content_block_delta" && json?.delta?.type === "text_delta") {
+      return typeof json.delta.text === "string" ? json.delta.text : "";
+    }
+    return "";
+  }
   return typeof json?.choices?.[0]?.delta?.content === "string" ? json.choices[0].delta.content : "";
 }
 
 /** Lý do dừng khi không có text (chẩn đoán) — chủ yếu cho Gemini. */
 export function finishReason(p: ChatProvider, json: any): string {
   if (p.type === "gemini") return json?.candidates?.[0]?.finishReason || json?.promptFeedback?.blockReason || "";
+  if (p.type === "anthropic") return json?.delta?.stop_reason || (json?.type === "message_stop" ? "stop" : "");
   return json?.choices?.[0]?.finish_reason || "";
 }
