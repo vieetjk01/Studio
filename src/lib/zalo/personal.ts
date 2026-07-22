@@ -10,24 +10,25 @@ import type { PersonalSession } from "./config";
  *    KHOÁ tài khoản. UI phải cảnh báo studio trước khi bật. Chỉ nên dùng để nhắn
  *    cho người ĐÃ là bạn bè (khách/thợ đã kết bạn).
  *
- * ⚠️ HẠ TẦNG: Vercel serverless không giữ phiên websocket sống lâu. Việc *GỬI*
- *    tin chạy tốt (khôi phục phiên từ cookie đã lưu rồi gọi API — không cần
- *    websocket). Bước *ĐĂNG NHẬP QR* cần tiến trình sống trong lúc quét → route
- *    gọi nó phải đặt maxDuration cao; nếu Zalo đổi cơ chế, phần này cần chạy ở
- *    một worker riêng. Toàn bộ phụ thuộc zca-js được CÔ LẬP trong file này.
+ * ⚠️ HẠ TẦNG: đăng nhập QR cần giữ tiến trình sống trong lúc quét (route đặt
+ *    maxDuration cao). Việc GỬI thì khôi phục phiên từ cookie đã lưu rồi gọi API
+ *    (không cần giữ websocket). Toàn bộ phụ thuộc zca-js CÔ LẬP trong file này.
  *
- * zca-js là optionalDependency → dùng dynamic import có `webpackIgnore` để
- * `next build` không cố bundle (và không chết khi gói chưa được cài).
+ * zca-js là optionalDependency + đánh dấu serverComponentsExternalPackages (không
+ * bundle, trace vào serverless). API dùng theo zca-js v2 (đã đối chiếu type defs).
  */
 
 async function loadZca(): Promise<any | null> {
   try {
-    // webpackIgnore: giữ import ở runtime, không để bundler phân giải lúc build.
-    const mod = await import(/* webpackIgnore: true */ "zca-js");
-    return mod;
+    return await import("zca-js");
   } catch {
     return null;
   }
+}
+
+function makeZalo(mod: any): any {
+  const Zalo = mod.Zalo || mod.default?.Zalo || mod.default;
+  return new Zalo({ checkUpdate: false, logging: false });
 }
 
 /** zca-js đã được cài trên máy chủ chưa? */
@@ -35,84 +36,94 @@ export async function personalAvailable(): Promise<boolean> {
   return (await loadZca()) !== null;
 }
 
-/** Trích phiên { cookie, imei, userAgent } từ instance api của zca-js. */
-function extractSession(zalo: any, api: any): PersonalSession | null {
-  const ctx = (api?.getContext && api.getContext()) || (zalo?.getContext && zalo.getContext()) || {};
-  const cookie =
-    (api?.getCookie && api.getCookie()) ??
-    ctx.cookie ??
-    (zalo?.getCookie && zalo.getCookie()) ??
-    null;
-  const imei = ctx.imei ?? api?.imei ?? zalo?.imei ?? "";
-  const userAgent = ctx.userAgent ?? api?.userAgent ?? "";
-  if (!cookie || !imei) return null;
-  return { cookie, imei, userAgent };
-}
-
-async function selfInfo(api: any): Promise<{ id: string; name?: string; avatar?: string } | null> {
-  try {
-    const id = api?.getOwnId ? String(api.getOwnId()) : "";
-    let name: string | undefined;
-    let avatar: string | undefined;
-    if (api?.fetchAccountInfo) {
-      const info = await api.fetchAccountInfo();
-      const p = info?.profile ?? info;
-      name = p?.displayName ?? p?.zaloName ?? p?.username;
-      avatar = p?.avatar;
-    }
-    return id ? { id, name, avatar } : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Đăng nhập bằng QR. `onQR` được gọi với ảnh QR (base64 PNG, KHÔNG kèm tiền tố
- * data:) để hiển thị cho studio quét. Promise resolve khi quét xong.
+ * Đăng nhập bằng QR. `onQR` được gọi với chuỗi ảnh QR (data URL hoặc base64) để
+ * hiển thị cho studio quét. `onScanned` (tuỳ chọn) báo khi khách đã quét. Promise
+ * resolve khi đăng nhập hoàn tất (đã nhận thông tin phiên).
  */
 export async function loginPersonalQR(
-  onQR: (imageBase64: string) => void
+  onQR: (image: string) => void,
+  onScanned?: (info: { display_name?: string; avatar?: string }) => void
 ): Promise<{ session: PersonalSession; self: { id: string; name?: string; avatar?: string } | null }> {
   const mod = await loadZca();
   if (!mod) throw new Error("zca_js_not_installed");
-  const Zalo = mod.Zalo || mod.default?.Zalo || mod.default;
-  const zalo = new Zalo();
+  const EventType = mod.LoginQRCallbackEventType ?? {
+    QRCodeGenerated: 0,
+    QRCodeExpired: 1,
+    QRCodeScanned: 2,
+    QRCodeDeclined: 3,
+    GotLoginInfo: 4,
+  };
+  const zalo = makeZalo(mod);
 
-  const api = await zalo.loginQR(undefined, (ev: any) => {
-    // Các phiên bản zca-js khác nhau: ảnh QR nằm ở ev.data.image hoặc ev.data.
-    const img = ev?.data?.image ?? ev?.image ?? (typeof ev?.data === "string" ? ev.data : null);
-    if (img) onQR(String(img));
+  // Holder object: các trường được gán TRONG closure callback. Dùng object (thay
+  // vì biến let) để TypeScript nới lại kiểu property sau await, không thu hẹp về null.
+  const captured: {
+    creds: PersonalSession | null;
+    scanned: { display_name?: string; avatar?: string } | null;
+  } = { creds: null, scanned: null };
+
+  const api = await zalo.loginQR(undefined, (event: any) => {
+    switch (event?.type) {
+      case EventType.QRCodeGenerated:
+        if (event.data?.image) onQR(String(event.data.image));
+        break;
+      case EventType.QRCodeScanned:
+        captured.scanned = { display_name: event.data?.display_name, avatar: event.data?.avatar };
+        onScanned?.(captured.scanned);
+        break;
+      case EventType.GotLoginInfo:
+        if (event.data) {
+          captured.creds = {
+            cookie: event.data.cookie,
+            imei: event.data.imei,
+            userAgent: event.data.userAgent,
+          };
+        }
+        break;
+      default:
+        break;
+    }
   });
 
-  const session = extractSession(zalo, api);
-  if (!session) throw new Error("no_session_after_login");
-  const self = await selfInfo(api);
-  return { session, self };
+  if (!captured.creds) throw new Error("no_session_after_login");
+  let id = "";
+  try {
+    id = api?.getOwnId ? String(api.getOwnId()) : "";
+  } catch {
+    /* bỏ qua */
+  }
+  const self = { id, name: captured.scanned?.display_name, avatar: captured.scanned?.avatar };
+  return { session: captured.creds, self };
 }
 
-/** Khôi phục instance api từ phiên đã lưu (dùng để gửi tin). */
+/** Khôi phục instance api từ phiên đã lưu. */
 async function apiFromSession(session: PersonalSession): Promise<any> {
   const mod = await loadZca();
   if (!mod) throw new Error("zca_js_not_installed");
-  const Zalo = mod.Zalo || mod.default?.Zalo || mod.default;
-  const zalo = new Zalo();
-  return zalo.login({ cookie: session.cookie, imei: session.imei, userAgent: session.userAgent });
+  const zalo = makeZalo(mod);
+  const api = await zalo.login({
+    cookie: session.cookie,
+    imei: session.imei,
+    userAgent: session.userAgent,
+  });
+  return { api, ThreadType: mod.ThreadType ?? { User: 0 } };
 }
 
-/** Phân giải SĐT → Zalo user id (uid) qua tài khoản đã đăng nhập. */
+/** Phân giải SĐT → Zalo user id (uid). Chỉ được nếu tìm thấy (thường là bạn bè). */
 export async function resolveUidByPhone(session: PersonalSession, phone: string): Promise<string | null> {
   try {
-    const api = await apiFromSession(session);
+    const { api } = await apiFromSession(session);
     const found = await api.findUser(phone);
-    return String(found?.uid ?? found?.userId ?? found?.data?.uid ?? "") || null;
+    return String(found?.uid ?? "") || null;
   } catch {
     return null;
   }
 }
 
 /**
- * Gửi tin văn bản tới một người. `target` là uid nếu biết, hoặc số điện thoại
- * (sẽ tự tìm uid — chỉ được nếu người đó đã là bạn bè / tìm thấy).
+ * Gửi tin văn bản tới một người. `target.uid` nếu biết, hoặc `target.phone`
+ * (tự tìm uid — chỉ được nếu người đó tìm thấy/đã kết bạn).
  */
 export async function sendPersonalText(
   session: PersonalSession,
@@ -120,21 +131,12 @@ export async function sendPersonalText(
   text: string
 ): Promise<{ ok: boolean; uid?: string; error?: string }> {
   try {
-    const mod = await loadZca();
-    if (!mod) return { ok: false, error: "zca_js_not_installed" };
-    const Zalo = mod.Zalo || mod.default?.Zalo || mod.default;
-    const ThreadType = mod.ThreadType ?? { User: 0 };
-    const zalo = new Zalo();
-    const api = await zalo.login({
-      cookie: session.cookie,
-      imei: session.imei,
-      userAgent: session.userAgent,
-    });
+    const { api, ThreadType } = await apiFromSession(session);
 
     let uid = target.uid || null;
     if (!uid && target.phone) {
       const found = await api.findUser(target.phone);
-      uid = String(found?.uid ?? found?.userId ?? found?.data?.uid ?? "") || null;
+      uid = String(found?.uid ?? "") || null;
     }
     if (!uid) return { ok: false, error: "recipient_not_found" };
 

@@ -32,10 +32,16 @@ export async function POST() {
   await saveZalo(profile!.id, { channel: "personal", status: "disconnected", personal_self: { phase: "waiting" }, last_error: null });
 
   try {
-    const { session, self } = await loginPersonalQR((img) => {
-      // Ghi ảnh QR để trình duyệt poll thấy (bỏ qua lỗi ghi).
-      saveZalo(profile!.id, { personal_self: { phase: "scan", qr: img } }).catch(() => {});
-    });
+    const { session, self } = await loginPersonalQR(
+      (img) => {
+        // Ghi ảnh QR để trình duyệt poll thấy (bỏ qua lỗi ghi).
+        saveZalo(profile!.id, { personal_self: { phase: "scan", qr: img } }).catch(() => {});
+      },
+      (info) => {
+        // Khách đã quét — báo trạng thái để UI hiện "đang hoàn tất".
+        saveZalo(profile!.id, { personal_self: { phase: "scanned", name: info.display_name } }).catch(() => {});
+      }
+    );
     await saveZalo(profile!.id, {
       channel: "personal",
       status: "connected",

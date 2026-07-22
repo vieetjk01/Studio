@@ -4,6 +4,11 @@ const nextConfig = {
   experimental: {
     // Tree-shake per-icon imports so navigating studio pages ships less JS.
     optimizePackageImports: ["lucide-react"],
+    // zca-js (kênh Zalo cá nhân) là gói Node-only ESM (tough-cookie, ws, http.Agent…).
+    // Đánh dấu external để webpack KHÔNG bundle và @vercel/nft trace đúng gói này vào
+    // serverless function (import ở runtime từ node_modules). Là optionalDependency
+    // nên build không chết nếu vắng gói.
+    serverComponentsExternalPackages: ["zca-js"],
     // Next 14.2 defaults dynamic route Router-Cache reuse to 0s, so going back
     // to a page just visited refetches the whole thing from the server. Reuse
     // dynamic segments for 30s (instant back/forward) and prefetched static
