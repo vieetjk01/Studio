@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import type { MessageTemplate } from "@/lib/types";
 import MessagesManager from "./MessagesManager";
+import ZaloPanel from "./ZaloPanel";
 
 
 export default async function MessagesPage() {
@@ -24,5 +25,10 @@ export default async function MessagesPage() {
     .eq("owner_id", profile.id)
     .order("created_at", { ascending: false });
 
-  return <MessagesManager ownerId={profile.id} initial={(data ?? []) as MessageTemplate[]} />;
+  return (
+    <div className="space-y-6">
+      <ZaloPanel />
+      <MessagesManager ownerId={profile.id} initial={(data ?? []) as MessageTemplate[]} />
+    </div>
+  );
 }

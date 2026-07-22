@@ -1,6 +1,5 @@
-// One-tap Zalo reminders. Fully automatic sending needs a Zalo Official Account
-// + API token + a scheduled job; until then we open the person's Zalo chat and
-// copy a ready-made message so the studio can paste & send in one tap.
+// Trình dựng nội dung tin nhắn Zalo — THUẦN, an toàn cho client (không server-only).
+// Dùng cho nút "Gửi cho khách" (deep-link + copy) lẫn gửi tự động phía máy chủ.
 
 /** Build a friendly reminder message for an upcoming shoot. */
 export function shootReminderMessage(opts: {

@@ -1852,3 +1852,53 @@ create table if not exists public.admin_drive (
 insert into public.admin_drive (id) values (1) on conflict (id) do nothing;
 revoke all on public.admin_drive from anon, authenticated;
 alter table public.admin_drive enable row level security;
+
+-- ─── Tự động nhắn tin Zalo (per-studio) — CHỈ gói `studio` ──────────────────
+-- Xem supabase/migrations/studio_zalo.sql. Token OA + phiên cá nhân là BÍ MẬT →
+-- RLS bật + REVOKE anon/authenticated (chỉ service-role đọc/ghi). Phiên cá nhân
+-- còn được mã hoá AES-256-GCM (src/lib/zalo/crypto.ts).
+create table if not exists public.studio_zalo (
+  owner_id             uuid primary key references public.profiles (id) on delete cascade,
+  channel              text not null default 'personal' check (channel in ('oa', 'personal')),
+  display_name         text,
+  status               text not null default 'disconnected'
+                         check (status in ('disconnected', 'connected', 'expired', 'error')),
+  oa_id                text,
+  oa_access_token      text,
+  oa_access_expires_at timestamptz,
+  oa_refresh_token     text,
+  personal_session     text,
+  personal_self        jsonb,
+  auto_events          jsonb not null default '{}'::jsonb,
+  last_error           text,
+  connected_at         timestamptz,
+  updated_at           timestamptz not null default now()
+);
+revoke all on public.studio_zalo from anon, authenticated;
+alter table public.studio_zalo enable row level security;
+
+create table if not exists public.zalo_messages (
+  id           uuid primary key default gen_random_uuid(),
+  owner_id     uuid not null references public.profiles (id) on delete cascade,
+  channel      text not null default 'personal',
+  audience     text,
+  to_phone     text,
+  to_uid       text,
+  to_name      text,
+  body         text not null default '',
+  template_id  text,
+  kind         text,
+  contract_id  uuid references public.studio_contracts (id) on delete set null,
+  status       text not null default 'pending'
+                 check (status in ('pending', 'sent', 'failed', 'skipped')),
+  error        text,
+  attempts     int not null default 0,
+  created_at   timestamptz not null default now(),
+  sent_at      timestamptz
+);
+create index if not exists zalo_messages_owner_idx on public.zalo_messages (owner_id, created_at desc);
+create index if not exists zalo_messages_pending_idx on public.zalo_messages (status) where status = 'pending';
+alter table public.zalo_messages enable row level security;
+drop policy if exists zalo_messages_owner_read on public.zalo_messages;
+create policy zalo_messages_owner_read on public.zalo_messages
+  for select using (owner_id = auth.uid() or public.is_admin());

@@ -4,6 +4,7 @@ import { sendEmail } from "@/lib/email";
 import { mainUrl } from "@/lib/hosts";
 import { vnd } from "@/lib/types";
 import { autoAdvanceContracts } from "@/lib/contract-status";
+import { autoNotify } from "@/lib/zalo/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   const [shootsRes, duesRes, lateRes, doneRes] = await Promise.all([
     db
       .from("studio_contracts")
-      .select("owner_id, title, client_name, client_email, event_time, location, contract_crew(name, role)")
+      .select("id, owner_id, title, client_name, client_email, client_phone, event_time, location, contract_crew(name, role, phone)")
       .eq("event_date", tomorrow)
       .neq("status", "cancelled"),
     db
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
       .gte("updated_at", since24h),
   ]);
 
-  type Shoot = { owner_id: string; title: string; client_name: string | null; client_email: string | null; event_time: string | null; location: string | null; contract_crew: { name: string; role: string }[] };
+  type Shoot = { id: string; owner_id: string; title: string; client_name: string | null; client_email: string | null; client_phone: string | null; event_time: string | null; location: string | null; contract_crew: { name: string; role: string; phone: string | null }[] };
   type Due = { amount: number; label: string; due_date: string; contract: { owner_id: string; title: string } | null };
   type Late = { owner_id: string; title: string; delivery_due: string };
   type Done = { owner_id: string; title: string; client_name: string | null; client_email: string | null; client_token: string };
@@ -172,5 +173,49 @@ ${link ? `<p><a href="${link}">Mở cổng &amp; đánh giá →</a> (mục “�
     if (r.ok) clientSent++;
   }
 
-  return NextResponse.json({ ok: true, sent, clientSent, advanced, owners: results.length });
+  // ── Zalo tự động: nhắc lịch chụp cho KHÁCH & THỢ (nếu studio đã bật mốc) ───
+  // autoNotify tự kiểm tra kết nối + cấu hình auto_events, tự bỏ qua nếu tắt.
+  let zaloSent = 0;
+  for (const s of shoots) {
+    const studio = ownerMap.get(s.owner_id)?.full_name || "Studio";
+    const when = `${tomorrow}${s.event_time ? ` lúc ${s.event_time}` : ""}${s.location ? ` tại ${s.location}` : ""}`;
+
+    if (s.client_phone) {
+      try {
+        const r = await autoNotify({
+          ownerId: s.owner_id,
+          event: "shoot_reminder",
+          audience: "client",
+          toPhone: s.client_phone,
+          toName: s.client_name,
+          body: `Chào ${s.client_name || "anh/chị"}, ${studio} xin nhắc lịch chụp NGÀY MAI (${when}). Hẹn gặp anh/chị đúng giờ nhé ạ! 📸`,
+          templateData: { name: s.client_name || "anh/chị", time: when, studio },
+          contractId: s.id,
+        });
+        if (r.ok) zaloSent++;
+      } catch {
+        /* không để lỗi Zalo chặn cron */
+      }
+    }
+
+    for (const c of s.contract_crew || []) {
+      if (!c.phone) continue;
+      try {
+        const r = await autoNotify({
+          ownerId: s.owner_id,
+          event: "shoot_reminder",
+          audience: "crew",
+          toPhone: c.phone,
+          toName: c.name,
+          body: `[${studio}] Nhắc lịch: "${s.title}" NGÀY MAI (${when}). Vai trò: ${c.role || "ê-kíp"}. Bạn chuẩn bị & có mặt đúng giờ nhé!`,
+          contractId: s.id,
+        });
+        if (r.ok) zaloSent++;
+      } catch {
+        /* bỏ qua */
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, sent, clientSent, zaloSent, advanced, owners: results.length });
 }
