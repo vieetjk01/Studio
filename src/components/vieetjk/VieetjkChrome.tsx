@@ -5,6 +5,7 @@ import Logo from "./Logo";
 import LangSwitch from "./LangSwitch";
 import ThemeSwitch, { type VjkTheme } from "./ThemeSwitch";
 import BookingButton from "./BookingButton";
+import ChatWidget from "./ChatWidget";
 import { VJK_CSS } from "./styles";
 import { BRAND, CONTACT, SERVICES, UI, tr, type Lang } from "@/lib/vieetjk/content";
 
@@ -128,6 +129,9 @@ export default function VieetjkChrome({
           </div>
         </div>
       </footer>
+
+      {/* Trợ lý tư vấn tự động (AI) — nổi góc phải, mọi trang vieetjk. */}
+      <ChatWidget lang={lang} />
     </div>
   );
 }
