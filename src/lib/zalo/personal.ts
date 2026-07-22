@@ -97,6 +97,23 @@ export async function loginPersonalQR(
   return { session: captured.creds, self };
 }
 
+/**
+ * Chuẩn hoá SĐT về dạng Zalo hiểu được: bỏ ký tự thừa; số VN bắt đầu bằng "0"
+ * → "84…". findUser của zca-js chỉ tự đổi 0→84 khi ngôn ngữ tài khoản là "vi",
+ * nên ta tự đổi trước để không phụ thuộc cấu hình ngôn ngữ.
+ */
+function normalizeZaloPhone(phone: string): string {
+  let d = (phone || "").replace(/[^\d]/g, "");
+  if (d.startsWith("0")) d = "84" + d.slice(1);
+  return d;
+}
+
+/** Tìm uid theo SĐT; ném lỗi có thông điệp nếu Zalo trả lỗi khác "không tìm thấy". */
+async function findUid(api: any, phone: string): Promise<string | null> {
+  const found = await api.findUser(normalizeZaloPhone(phone));
+  return String(found?.uid ?? "") || null;
+}
+
 /** Khôi phục instance api từ phiên đã lưu. */
 async function apiFromSession(session: PersonalSession): Promise<any> {
   const mod = await loadZca();
@@ -114,8 +131,7 @@ async function apiFromSession(session: PersonalSession): Promise<any> {
 export async function resolveUidByPhone(session: PersonalSession, phone: string): Promise<string | null> {
   try {
     const { api } = await apiFromSession(session);
-    const found = await api.findUser(phone);
-    return String(found?.uid ?? "") || null;
+    return await findUid(api, phone);
   } catch {
     return null;
   }
@@ -130,16 +146,26 @@ export async function sendPersonalText(
   target: { uid?: string | null; phone?: string | null },
   text: string
 ): Promise<{ ok: boolean; uid?: string; error?: string }> {
+  let api: any;
+  let ThreadType: any;
   try {
-    const { api, ThreadType } = await apiFromSession(session);
+    ({ api, ThreadType } = await apiFromSession(session));
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "login_failed" };
+  }
 
-    let uid = target.uid || null;
-    if (!uid && target.phone) {
-      const found = await api.findUser(target.phone);
-      uid = String(found?.uid ?? "") || null;
+  let uid = target.uid || null;
+  if (!uid && target.phone) {
+    try {
+      uid = await findUid(api, target.phone);
+    } catch (e: any) {
+      // findUser ném lỗi Zalo (vd chặn tìm theo SĐT) — nêu rõ thay vì "không tìm thấy".
+      return { ok: false, error: e?.message || "find_user_failed" };
     }
-    if (!uid) return { ok: false, error: "recipient_not_found" };
+  }
+  if (!uid) return { ok: false, error: "recipient_not_found" };
 
+  try {
     await api.sendMessage({ msg: text }, uid, ThreadType.User);
     return { ok: true, uid };
   } catch (e: any) {

@@ -117,7 +117,12 @@ export default function ZaloPanel() {
     if (res.ok) setTestState("ok");
     else {
       setTestState("fail");
-      setTestErr(res.error || "Gửi thất bại");
+      const map: Record<string, string> = {
+        not_connected: "Chưa kết nối Zalo.",
+        no_personal_session: "Phiên hết hạn — kết nối lại.",
+        recipient_not_found: "Không tìm thấy Zalo của số này (số sai, chưa có Zalo, hoặc đã tắt 'cho phép tìm bằng SĐT').",
+      };
+      setTestErr(map[res.error] || res.error || "Gửi thất bại");
     }
   }
 

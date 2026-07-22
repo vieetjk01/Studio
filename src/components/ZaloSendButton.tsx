@@ -11,7 +11,7 @@ import { MessageCircle, Check, Loader2, AlertCircle } from "lucide-react";
 const ERROR_VI: Record<string, string> = {
   not_connected: "Chưa kết nối Zalo. Vào Tin nhắn → kết nối trước.",
   no_personal_session: "Phiên Zalo hết hạn — kết nối lại ở trang Tin nhắn.",
-  recipient_not_found: "Không tìm thấy — người này cần kết bạn Zalo trước.",
+  recipient_not_found: "Không tìm thấy Zalo của số này (số sai, chưa có Zalo, hoặc đã tắt 'cho phép tìm bằng SĐT').",
   missing_recipient: "Thiếu số điện thoại người nhận.",
   personal_needs_body: "Thiếu nội dung tin.",
   zca_js_not_installed: "Máy chủ chưa bật gửi Zalo — liên hệ hỗ trợ.",
