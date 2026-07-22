@@ -68,13 +68,20 @@ export async function POST(req: NextRequest) {
     parts: [{ text: m.content }],
   }));
 
-  // gemini-2.5-* là "thinking model": nếu không tắt, phần suy nghĩ ăn hết token
-  // và trả về rỗng. Tắt thinking để có text + nhanh hơn (chỉ áp cho model 2.5).
+  // Các model "thinking" (2.5-*, 3-*, alias -latest) nếu không tắt sẽ tiêu hết
+  // token vào phần suy nghĩ và trả về rỗng. Tắt thinking để có text + nhanh hơn.
+  // Model cũ (2.0/1.5) KHÔNG hỗ trợ thinkingConfig nên không gửi (tránh 400).
+  const isThinker =
+    (CHAT_MODEL.includes("2.5") ||
+      CHAT_MODEL.includes("latest") ||
+      CHAT_MODEL.includes("gemini-3")) &&
+    !CHAT_MODEL.includes("2.0") &&
+    !CHAT_MODEL.includes("1.5");
   const generationConfig: Record<string, unknown> = {
     temperature: 0.6,
     maxOutputTokens: 2048,
   };
-  if (CHAT_MODEL.includes("2.5")) {
+  if (isThinker) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
 
