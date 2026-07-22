@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.1"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.2"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -307,6 +307,11 @@ const DRIVE_WATCH_MS = 10 * 1000;           // theo dõi nhanh hợp đồng đa
 const INPROGRESS_TTL_MS = 30 * 1000;        // cache danh sách hợp đồng đang thực hiện
 const PLAN_TTL_MS = 5 * 60 * 1000;          // cache cây thư mục Drive mỗi hợp đồng
 const THUMB_MAX_BYTES = 16 * 1024 * 1024;   // ảnh lớn hơn → không tạo xem trước
+// Số file tải SONG SONG cùng lúc (như app Google Drive) — chồng độ trễ mạng,
+// một video lớn không còn chặn các ảnh phía sau. 4 là cân bằng tốt cho mạng VN;
+// có thể chỉnh qua cfg.driveConcurrency (2–8).
+const DRIVE_CONCURRENCY_DEFAULT = 4;
+const DRIVE_UPLOAD_RETRIES = 2;             // thử lại file lỗi (tạm mạng) trước khi bỏ qua
 let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
 let driveWarned = false;
@@ -335,7 +340,16 @@ const dsync = {
   active: false, total: 0, done: 0,
   totalBytes: 0, doneBytes: 0, curBytes: 0,
   curName: "", curPath: "", curThumb: "", startedAt: 0,
+  // Nhiều file tải song song: theo dõi số byte đã gửi của TỪNG file đang tải
+  // (path → bytes) để tính tiến độ gộp mượt như app Drive.
+  inflight: new Map(),
 };
+// Tổng byte của các file đang tải dở (cộng vào doneBytes để ra tiến độ hiện tại).
+function inflightBytes() {
+  let s = 0;
+  for (const v of dsync.inflight.values()) s += v || 0;
+  return s;
+}
 let _lastSyncRender = 0;
 const fmtBytes = (n) => {
   if (!n || n < 0) n = 0;
@@ -359,17 +373,18 @@ function renderSyncStatus(force = false) {
   _lastSyncRender = now;
   if (!dsync.active) { box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
-  const sent = dsync.doneBytes + dsync.curBytes;
+  const sent = dsync.doneBytes + inflightBytes();
   const pct = dsync.totalBytes ? Math.min(100, Math.round((sent / dsync.totalBytes) * 100)) : 0;
   const elapsed = (now - dsync.startedAt) / 1000;
   const speed = elapsed > 0.6 ? sent / elapsed : 0;
   const remain = Math.max(0, dsync.totalBytes - sent);
   const eta = speed > 0 ? remain / speed : 0;
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-  set("syncTitle", `Đang đồng bộ ${Math.min(dsync.done + 1, dsync.total)}/${dsync.total} ảnh lên Drive`);
+  set("syncTitle", `Đang đồng bộ ${Math.min(dsync.done, dsync.total)}/${dsync.total} ảnh lên Drive`);
   const fill = $("syncBarFill"); if (fill) fill.style.width = pct + "%";
   set("syncPct", pct + "%");
-  set("syncFile", dsync.curName || "");
+  const nInflight = dsync.inflight.size;
+  set("syncFile", nInflight > 1 ? `Đang tải ${nInflight} file song song…` : dsync.curName || "");
   set("syncMeta", [speed ? fmtSpeed(speed) : "", eta ? "còn khoảng " + fmtDuration(eta) : ""].filter(Boolean).join(" · "));
   const img = $("syncThumb");
   if (img) {
@@ -388,8 +403,9 @@ async function makeThumb(file) {
 if (window.__TAURI__ && window.__TAURI__.event) {
   window.__TAURI__.event.listen("drive-progress", (ev) => {
     const p = ev.payload || {};
-    if (dsync.active && p.path === dsync.curPath) {
-      dsync.curBytes = Math.min(p.uploaded || 0, p.total || 0);
+    // Nhiều file tải song song → cập nhật byte theo path của từng file đang tải.
+    if (dsync.active && p.path && dsync.inflight.has(p.path)) {
+      dsync.inflight.set(p.path, Math.min(p.uploaded || 0, p.total || 0));
       renderSyncStatus();
     }
   }).catch(() => {});
@@ -493,29 +509,65 @@ async function driveSyncRun(contracts, manual = false) {
   dsync.active = true; dsync.total = files.length; dsync.done = 0;
   dsync.totalBytes = files.reduce((s, f) => s + (f.size || 0), 0);
   dsync.doneBytes = 0; dsync.curBytes = 0; dsync.startedAt = Date.now();
+  dsync.inflight.clear();
   const resyncNeeded = new Set();
   let uploaded = 0;
-  try {
-    for (const f of files) {
-      dsync.curName = f.name; dsync.curPath = f.path; dsync.curBytes = 0;
-      dsync.curThumb = await makeThumb(f);
-      renderSyncStatus(true);
+
+  // Ghi manifest AN TOÀN khi tải song song: nối chuỗi ghi theo TỪNG hợp đồng
+  // (job) để hai file cùng hợp đồng không ghi đè manifest của nhau.
+  const flushManifest = (job) => {
+    job._wq = (job._wq || Promise.resolve()).then(() =>
+      invoke("write_file_b64", {
+        path: job.manPath,
+        contentsB64: textToB64(JSON.stringify(job.man, null, 2)),
+      }).catch(() => {})
+    );
+    return job._wq;
+  };
+
+  // Tải 1 file (có thử lại khi lỗi tạm mạng). Cập nhật tiến độ gộp.
+  async function uploadOne(f) {
+    dsync.curName = f.name;
+    dsync.inflight.set(f.path, 0);
+    makeThumb(f).then((t) => { if (t) dsync.curThumb = t; }).catch(() => {}); // không chặn luồng tải
+    renderSyncStatus(true);
+    let ok = false;
+    for (let attempt = 0; attempt <= DRIVE_UPLOAD_RETRIES && !ok; attempt++) {
       try {
         const token = await getDriveToken();
         if (!token) throw new Error("not_connected");
         const res = await invoke("drive_upload", { accessToken: token, folderId: f.node.id, filePath: f.path, name: f.name, mime: guessMime(f.name) });
         f.job.man.uploaded[f.key] = { size: f.size, mtime: f.mtime, id: res.id };
-        uploaded++;
+        await flushManifest(f.job); // ghi manifest → ngắt giữa chừng cũng không tải lại từ đầu
         if (f.node.role === "selection" || f.node.role === "delivery") resyncNeeded.add(f.job.c.id);
-        // Ghi manifest sau mỗi file → ngắt giữa chừng cũng không tải lại từ đầu.
-        await invoke("write_file_b64", { path: f.job.manPath, contentsB64: textToB64(JSON.stringify(f.job.man, null, 2)) }).catch(() => {});
+        uploaded++;
+        ok = true;
       } catch (e) {
-        if (manual) log(`Lỗi tải ${f.name}: ${e.message || e}`, "err");
+        if (attempt < DRIVE_UPLOAD_RETRIES) {
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1))); // backoff 1s, 2s
+        } else if (manual) {
+          log(`Lỗi tải ${f.name}: ${e.message || e}`, "err");
+        }
       }
-      dsync.done++; dsync.doneBytes += (f.size || 0); dsync.curBytes = 0;
-      renderSyncStatus(true);
     }
+    dsync.inflight.delete(f.path);
+    dsync.done++;
+    dsync.doneBytes += (f.size || 0);
+    renderSyncStatus(true);
+  }
+
+  // Pool N luồng tải SONG SONG (như app Google Drive). idx++ an toàn vì JS đơn luồng.
+  const conc = Math.max(1, Math.min(8, cfg.driveConcurrency || DRIVE_CONCURRENCY_DEFAULT));
+  let idx = 0;
+  const worker = async () => {
+    while (idx < files.length) {
+      await uploadOne(files[idx++]);
+    }
+  };
+  try {
+    await Promise.all(Array.from({ length: Math.min(conc, files.length) }, worker));
   } finally {
+    dsync.inflight.clear();
     dsync.active = false; dsync.curThumb = ""; renderSyncStatus(true);
   }
   // Có file mới vào JPG Goc / File ChinhSua → đồng bộ lại danh sách ảnh của album.
