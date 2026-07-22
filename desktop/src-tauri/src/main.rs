@@ -598,6 +598,44 @@ async fn drive_upload(
         .build()
         .map_err(|e| e.to_string())?;
 
+    // File NHỎ (≤ 8MB, chủ yếu là ảnh) → multipart 1-request: tiết kiệm 1 round-trip
+    // "initiate" của resumable (nhanh hơn rõ khi có hàng trăm ảnh nhỏ). Nạp trọn
+    // vào RAM ở mức ≤ 8MB là chấp nhận được (× số luồng song song vẫn nhẹ).
+    const SIMPLE_MAX: u64 = 8 * 1024 * 1024;
+    if total > 0 && total <= SIMPLE_MAX {
+        let data = fs::read(&file_path).map_err(|e| e.to_string())?;
+        let meta_json = serde_json::to_string(&serde_json::json!({
+            "name": name.clone(),
+            "parents": [folder_id.clone()],
+        }))
+        .map_err(|e| e.to_string())?;
+        // Boundary duy nhất theo thời điểm + dung lượng → gần như không thể trùng
+        // với nội dung nhị phân của file.
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let boundary = format!("mstudoBoundary{nanos:x}{total:x}");
+        let mut body: Vec<u8> = Vec::with_capacity(data.len() + meta_json.len() + 256);
+        body.extend_from_slice(
+            format!("--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n").as_bytes(),
+        );
+        body.extend_from_slice(meta_json.as_bytes());
+        body.extend_from_slice(format!("\r\n--{boundary}\r\nContent-Type: {mime}\r\n\r\n").as_bytes());
+        body.extend_from_slice(&data);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        let resp = client
+            .post("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id")
+            .header("Authorization", format!("Bearer {access_token}"))
+            .header("Content-Type", format!("multipart/related; boundary={boundary}"))
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        emit(total);
+        return parse_upload_final(resp).await;
+    }
+
     // 1) Khởi tạo phiên resumable — gửi metadata, nhận URL tải lên ở header Location.
     let body = serde_json::json!({ "name": name, "parents": [folder_id] });
     let init = client

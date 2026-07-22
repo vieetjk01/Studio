@@ -308,9 +308,10 @@ const INPROGRESS_TTL_MS = 30 * 1000;        // cache danh sách hợp đồng đ
 const PLAN_TTL_MS = 5 * 60 * 1000;          // cache cây thư mục Drive mỗi hợp đồng
 const THUMB_MAX_BYTES = 16 * 1024 * 1024;   // ảnh lớn hơn → không tạo xem trước
 // Số file tải SONG SONG cùng lúc (như app Google Drive) — chồng độ trễ mạng,
-// một video lớn không còn chặn các ảnh phía sau. 4 là cân bằng tốt cho mạng VN;
-// có thể chỉnh qua cfg.driveConcurrency (2–8).
-const DRIVE_CONCURRENCY_DEFAULT = 4;
+// một video lớn không còn chặn các ảnh phía sau. Mặc định 10; chỉnh qua
+// cfg.driveConcurrency (2–16). Ảnh nhỏ dùng multipart 1-request ở Rust nên
+// 10 luồng chạy rất nhanh mà vẫn nhẹ RAM.
+const DRIVE_CONCURRENCY_DEFAULT = 10;
 const DRIVE_UPLOAD_RETRIES = 2;             // thử lại file lỗi (tạm mạng) trước khi bỏ qua
 let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
@@ -557,7 +558,7 @@ async function driveSyncRun(contracts, manual = false) {
   }
 
   // Pool N luồng tải SONG SONG (như app Google Drive). idx++ an toàn vì JS đơn luồng.
-  const conc = Math.max(1, Math.min(8, cfg.driveConcurrency || DRIVE_CONCURRENCY_DEFAULT));
+  const conc = Math.max(1, Math.min(16, cfg.driveConcurrency || DRIVE_CONCURRENCY_DEFAULT));
   let idx = 0;
   const worker = async () => {
     while (idx < files.length) {
