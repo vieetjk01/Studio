@@ -143,9 +143,14 @@ export default function DashboardHeader({
     return true;
   });
 
-  // Show studio nav when browsing any studio path (regardless of host).
+  // Show studio nav when browsing any studio path (regardless of host) — but
+  // only for accounts that actually have a studio tier. Free/Basic have no
+  // studio access, so on shared paths like /dashboard/albums they must keep the
+  // standard tools nav (albums, create, filter, compress); otherwise the
+  // tier-filtered studio nav renders empty and their menu disappears.
   const isOnStudio =
-    pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/albums");
+    hasStudio &&
+    (pathname.startsWith("/dashboard/studio") || pathname.startsWith("/dashboard/albums"));
 
   // Album / filter / compress grouped under one "Công cụ" dropdown inside the
   // studio nav (visible when isOnStudio). On the album side the links stay flat.
