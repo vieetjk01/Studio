@@ -68,20 +68,15 @@ export async function POST(req: NextRequest) {
     parts: [{ text: m.content }],
   }));
 
-  // Các model "thinking" (2.5-*, 3-*, alias -latest) nếu không tắt sẽ tiêu hết
-  // token vào phần suy nghĩ và trả về rỗng. Tắt thinking để có text + nhanh hơn.
-  // Model cũ (2.0/1.5) KHÔNG hỗ trợ thinkingConfig nên không gửi (tránh 400).
-  const isThinker =
-    (CHAT_MODEL.includes("2.5") ||
-      CHAT_MODEL.includes("latest") ||
-      CHAT_MODEL.includes("gemini-3")) &&
-    !CHAT_MODEL.includes("2.0") &&
-    !CHAT_MODEL.includes("1.5");
+  // thinkingConfig chỉ chắc chắn hợp lệ trên gemini-2.5-* (đặt thinkingBudget=0
+  // để tắt suy nghĩ, tránh trả về rỗng). Các model khác (alias -latest, đời 3,
+  // hay 2.0/1.5) có thể từ chối field này → 400, nên KHÔNG gửi; bù lại tăng
+  // maxOutputTokens để phần suy nghĩ (nếu có) không nuốt hết câu trả lời.
   const generationConfig: Record<string, unknown> = {
     temperature: 0.6,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,
   };
-  if (isThinker) {
+  if (CHAT_MODEL.includes("2.5")) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
 
@@ -113,13 +108,18 @@ export async function POST(req: NextRequest) {
       const raw = upstream ? await upstream.text() : "";
       const j = raw ? JSON.parse(raw) : null;
       detail = j?.error?.message || raw || "";
+      // Nêu rõ field vi phạm (nếu có) để chẩn đoán 400 "invalid argument".
+      const viol = (j?.error?.details as any[])
+        ?.flatMap((d) => (d?.fieldViolations || []).map((f: any) => `${f?.field}: ${f?.description}`))
+        ?.filter(Boolean);
+      if (viol?.length) detail += " | " + viol.join("; ");
     } catch {
       /* bỏ qua */
     }
     const status = upstream?.status ?? "network";
     console.error("[vieetjk/chat] gemini upstream error", status, detail);
     return new Response(
-      `${errorMsg.trim()}\n\n[DEBUG ${status}: ${detail.slice(0, 300)}]`,
+      `${errorMsg.trim()}\n\n[DEBUG ${status}: ${detail.slice(0, 400)}]`,
       {
         status: 200,
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
