@@ -116,10 +116,14 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
     if (open) taRef.current?.focus();
   }, [open]);
 
-  /** Lưu lead (best-effort). transcript lấy từ msgsRef (mới nhất). */
-  async function saveLead(name: string | null, phone: string): Promise<boolean> {
-    const transcript = msgsRef.current.map((m) => ({ role: m.role, content: m.content }));
-    const interest = msgsRef.current.find((m) => m.role === "user")?.content?.slice(0, 300) ?? null;
+  /**
+   * Lưu lead (best-effort). Nhận `convo` tường minh khi có (tránh phụ thuộc
+   * msgsRef có thể chưa kịp cập nhật tin cuối); nếu không thì lấy từ msgsRef.
+   */
+  async function saveLead(name: string | null, phone: string, convo?: Msg[]): Promise<boolean> {
+    const src = convo ?? msgsRef.current;
+    const transcript = src.map((m) => ({ role: m.role, content: m.content }));
+    const interest = src.find((m) => m.role === "user")?.content?.slice(0, 300) ?? null;
     try {
       const res = await fetch("/api/vieetjk/lead", {
         method: "POST",
@@ -142,6 +146,7 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
     const history: Msg[] = [...msgs, { role: "user", content: text }];
     setMsgs([...history, { role: "assistant", content: "" }]);
     setBusy(true);
+    let acc = "";
     try {
       const res = await fetch("/api/vieetjk/chat", {
         method: "POST",
@@ -154,7 +159,6 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
       if (!res.ok || !res.body) throw new Error("no_stream");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let acc = "";
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -185,7 +189,9 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
     // Khách gõ kèm SĐT → tự lưu lead (một lần / phiên) + xác nhận trong chat.
     const m = text.match(PHONE_RE);
     if (m && !leadSavedRef.current) {
-      const ok = await saveLead(null, m[0]);
+      // Dựng transcript tường minh: lịch sử + tin trả lời vừa nhận.
+      const convo: Msg[] = [...history, { role: "assistant", content: acc }];
+      const ok = await saveLead(null, m[0], convo);
       if (ok) {
         setMsgs((cur) => [
           ...cur,
