@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { buildSystemPrompt, CHAT_MODEL, MAX_TURNS, type ChatTurn } from "@/lib/vieetjk/assistant";
 import type { Lang } from "@/lib/vieetjk/content";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * Trợ lý tư vấn tự động cho website vieetjk.com — dùng Google Gemini.
  * Nhận lịch sử hội thoại + ngôn ngữ, gọi Gemini (streaming SSE) và trả về text
@@ -66,6 +68,16 @@ export async function POST(req: NextRequest) {
     parts: [{ text: m.content }],
   }));
 
+  // gemini-2.5-* là "thinking model": nếu không tắt, phần suy nghĩ ăn hết token
+  // và trả về rỗng. Tắt thinking để có text + nhanh hơn (chỉ áp cho model 2.5).
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.6,
+    maxOutputTokens: 2048,
+  };
+  if (CHAT_MODEL.includes("2.5")) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
+
   const upstream = await fetch(
     `${GEMINI_BASE}/${encodeURIComponent(CHAT_MODEL)}:streamGenerateContent?alt=sse`,
     {
@@ -74,7 +86,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: buildSystemPrompt(lang) }] },
         contents,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
+        generationConfig,
       }),
       cache: "no-store",
     }
@@ -88,10 +100,24 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
 
   if (!upstream || !upstream.ok || !upstream.body) {
-    return new Response(errorMsg.trim(), {
-      status: 200,
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-    });
+    // Chẩn đoán tạm thời: hiện lỗi thật từ Google để dễ khắc phục cấu hình.
+    let detail = "";
+    try {
+      const raw = upstream ? await upstream.text() : "";
+      const j = raw ? JSON.parse(raw) : null;
+      detail = j?.error?.message || raw || "";
+    } catch {
+      /* bỏ qua */
+    }
+    const status = upstream?.status ?? "network";
+    console.error("[vieetjk/chat] gemini upstream error", status, detail);
+    return new Response(
+      `${errorMsg.trim()}\n\n[DEBUG ${status}: ${detail.slice(0, 300)}]`,
+      {
+        status: 200,
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+      }
+    );
   }
 
   const reader = upstream.body.getReader();
@@ -101,6 +127,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       let buf = "";
       let emitted = false;
+      let reason = "";
       try {
         for (;;) {
           const { done, value } = await reader.read();
@@ -115,17 +142,26 @@ export async function POST(req: NextRequest) {
             const payload = line.slice(5).trim();
             if (!payload || payload === "[DONE]") continue;
             try {
-              const text = extractText(JSON.parse(payload));
+              const json = JSON.parse(payload);
+              const text = extractText(json);
               if (text) {
                 emitted = true;
                 controller.enqueue(encoder.encode(text));
+              } else {
+                // Ghi lại lý do dừng / chặn để chẩn đoán khi không có text.
+                const c = (json as any)?.candidates?.[0];
+                reason = c?.finishReason || (json as any)?.promptFeedback?.blockReason || reason;
               }
             } catch {
               /* chunk chưa trọn — bỏ qua */
             }
           }
         }
-        if (!emitted) controller.enqueue(encoder.encode(errorMsg.trim()));
+        if (!emitted) {
+          controller.enqueue(
+            encoder.encode(`${errorMsg.trim()}\n\n[DEBUG empty${reason ? `: ${reason}` : ""}]`)
+          );
+        }
       } catch {
         controller.enqueue(encoder.encode(errorMsg));
       } finally {
