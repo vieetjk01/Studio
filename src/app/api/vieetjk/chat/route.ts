@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { buildSystemPrompt, MAX_TURNS, type ChatTurn } from "@/lib/vieetjk/assistant";
 import { loadProviders, requestProvider, extractDelta, finishReason } from "@/lib/vieetjk/providers";
-import type { Lang } from "@/lib/vieetjk/content";
+import { CONTACT, type Lang } from "@/lib/vieetjk/content";
+
+/**
+ * Ký tự điều khiển đặt đầu tin "quá tải" để widget nhận biết → tự mở form để lại
+ * SĐT. Widget strip ký tự này trước khi hiển thị (khách không thấy).
+ */
+const LEAD_MARKER = "\u0002";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -51,10 +57,14 @@ export async function POST(req: NextRequest) {
   }
 
   const systemText = buildSystemPrompt(lang);
-  const errorMsg =
-    lang === "en"
-      ? "\n\nSorry, something went wrong. Please try again or contact us directly."
-      : "\n\nXin lỗi, có lỗi xảy ra. Bạn thử lại hoặc liên hệ trực tiếp giúp mình nhé.";
+
+  // Khi tất cả provider lỗi/hết hạn mức: mời khách để lại thông tin / liên hệ.
+  // Ký tự LEAD_MARKER ở đầu để widget tự mở form "Để lại SĐT" (khách không thấy).
+  const busyMsg =
+    LEAD_MARKER +
+    (lang === "en"
+      ? `Our assistant is a bit busy right now 🙏 Please leave your name and phone below (or tap "📞 Leave your number"), book a session on the website, or contact us on Zalo/phone ${CONTACT.phone} — the studio will advise you directly.`
+      : `Trợ lý đang hơi bận một chút 🙏 Bạn vui lòng để lại HỌ TÊN và SỐ ĐIỆN THOẠI bên dưới (hoặc bấm nút “📞 Để lại SĐT để được tư vấn”), đặt lịch trên website, hoặc liên hệ Zalo/điện thoại ${CONTACT.phone} để được studio tư vấn trực tiếp nhé!`);
 
   const encoder = new TextEncoder();
 
@@ -130,10 +140,9 @@ export async function POST(req: NextRequest) {
       }
 
       if (!done) {
+        // Ghi log server để chẩn đoán (khách KHÔNG thấy debug).
         console.error("[vieetjk/chat] all providers failed:", debug.join(" | "));
-        controller.enqueue(
-          encoder.encode(`${errorMsg.trim()}\n\n[DEBUG ${debug.join(" | ").slice(0, 400)}]`)
-        );
+        controller.enqueue(encoder.encode(busyMsg));
       }
       controller.close();
     },

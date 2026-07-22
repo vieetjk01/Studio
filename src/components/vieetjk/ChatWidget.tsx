@@ -18,6 +18,9 @@ interface Msg {
 /** SĐT VN: 0xxxxxxxxx hoặc +84/84xxxxxxxxx (cho phép cách/. /- xen giữa). */
 const PHONE_RE = /(?:\+?84|0)(?:\d[\s.-]?){8,9}\d/;
 
+/** Ký tự server đặt đầu tin "quá tải" → tự mở form để lại SĐT (khách không thấy). */
+const LEAD_MARKER = "\u0002";
+
 /** Lời chào mở đầu (client-side — không phụ thuộc module server). */
 function greeting(lang: Lang): string {
   return lang === "en"
@@ -116,6 +119,30 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
     if (open) taRef.current?.focus();
   }, [open]);
 
+  // Tự bật khung chat khi khách vào trang (trừ khi họ đã chủ động đóng phiên này).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let closed = false;
+    try {
+      closed = sessionStorage.getItem("vjk_chat_closed") === "1";
+    } catch {
+      /* bỏ qua */
+    }
+    if (closed) return;
+    const t = setTimeout(() => setOpen(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
+  /** Đóng khung chat + ghi nhớ để không tự bật lại trong phiên này. */
+  function closeChat() {
+    setOpen(false);
+    try {
+      sessionStorage.setItem("vjk_chat_closed", "1");
+    } catch {
+      /* bỏ qua */
+    }
+  }
+
   /**
    * Lưu lead (best-effort). Nhận `convo` tường minh khi có (tránh phụ thuộc
    * msgsRef có thể chưa kịp cập nhật tin cuối); nếu không thì lấy từ msgsRef.
@@ -165,11 +192,14 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
         acc += decoder.decode(value, { stream: true });
         setMsgs((cur) => {
           const next = [...cur];
-          next[next.length - 1] = { role: "assistant", content: acc };
+          // Bỏ ký tự marker khi hiển thị (khách không thấy).
+          next[next.length - 1] = { role: "assistant", content: acc.split(LEAD_MARKER).join("") };
           return next;
         });
       }
       if (!acc.trim()) throw new Error("empty");
+      // Server báo "quá tải" → tự mở form để lại SĐT cho khách.
+      if (acc.includes(LEAD_MARKER) && !leadSavedRef.current) setShowForm(true);
     } catch {
       setMsgs((cur) => {
         const next = [...cur];
@@ -248,7 +278,7 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
               <div className="vjk-chat-title">{lang === "en" ? "Assistant" : "Tư vấn viên"}</div>
               <div className="vjk-chat-sub">{lang === "en" ? "Usually replies instantly" : "Thường trả lời ngay"}</div>
             </div>
-            <button className="vjk-chat-x" onClick={() => setOpen(false)} aria-label={lang === "en" ? "Close" : "Đóng"}>
+            <button className="vjk-chat-x" onClick={closeChat} aria-label={lang === "en" ? "Close" : "Đóng"}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
@@ -320,7 +350,7 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
       )}
       <button
         className="vjk-chat-fab"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? closeChat() : setOpen(true))}
         aria-label={lang === "en" ? "Open chat" : "Mở khung tư vấn"}
       >
         {open ? (
