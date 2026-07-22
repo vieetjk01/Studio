@@ -263,8 +263,28 @@ export interface StudioContract {
   brief_submitted_at: string | null;
   chosen_quote_option_id: string | null;
   chosen_quote_at: string | null;
+  intake_token: string | null;
+  intake: ContractIntake | null;
+  intake_submitted_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Vị trí khách chọn trên bản đồ trong form điền thông tin. */
+export interface IntakeLocation {
+  lat: number;
+  lng: number;
+  mapUrl: string;
+}
+
+/** Dữ liệu form điền thông tin trước buổi chụp (lưu ở studio_contracts.intake). */
+export interface ContractIntake {
+  type: "psc" | "generic";
+  bride?: { phone?: string; makeup_time?: string; ceremony_time?: string; location?: IntakeLocation | null };
+  groom?: { phone?: string; depart_time?: string; ceremony_time?: string; location?: IntakeLocation | null };
+  contact_phone?: string;
+  location?: IntakeLocation | null;
+  note?: string;
 }
 
 export const LEAD_SOURCE_LABEL: Record<string, string> = {

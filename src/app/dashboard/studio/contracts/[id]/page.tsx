@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { getStudioHost } from "@/lib/studio-site";
 import { getFeatureFlags, storyComingSoon } from "@/lib/feature-flags";
+import { ensureIntakeToken } from "@/lib/contract-intake";
 import type {
   StudioContract,
   ContractItem,
@@ -48,6 +49,15 @@ export default async function ContractPage({ params }: { params: { id: string } 
 
   // Staff role: may only open contracts assigned to them.
   if (profile.actingRole === "staff" && contract.assigned_to !== profile.actingUserId) notFound();
+
+  // Bảo đảm có link form điền thông tin (tạo token nếu chưa có) để studio gửi khách.
+  if (!contract.intake_token) {
+    try {
+      contract.intake_token = await ensureIntakeToken(supabase, contract.id, contract.intake_token);
+    } catch {
+      /* không chặn mở hợp đồng nếu tạo token lỗi */
+    }
+  }
   const canAssign = profile.actingRole !== "staff";
 
   // Everything below depends only on the contract id / owner (not on the

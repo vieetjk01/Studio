@@ -22,6 +22,8 @@ import {
   Image as ImageIcon,
   Gift,
   ChevronDown,
+  ClipboardList,
+  MapPin,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl, studioUrl } from "@/lib/hosts";
@@ -974,6 +976,63 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </button>
       </div>
 
+      {/* Form điền thông tin buổi chụp — gửi khách qua Zalo (kèm tự động lúc nhắc lịch) */}
+      <div className="card mb-6 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <ClipboardList size={16} style={{ color: "var(--brand)" }} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Form thông tin buổi chụp</p>
+            <p className="text-[12px]" style={{ color: "var(--text3)" }}>
+              {contract.intake_submitted_at
+                ? `Khách đã điền · ${new Date(contract.intake_submitted_at).toLocaleString("vi-VN")}`
+                : contract.shoot_type === "psc" || contract.shoot_type === "wedding"
+                ? "Khách điền SĐT cô dâu/chú rể, giờ giấc & vị trí nhà gái/nhà trai (có bản đồ)."
+                : "Khách điền SĐT liên hệ, vị trí (có bản đồ) & ghi chú."}
+            </p>
+          </div>
+          {contract.intake_token &&
+            (() => {
+              const formUrl = studioUrl(studioHost, `/form/${contract.intake_token}`);
+              const msg = `Chào ${f.client_name || "anh/chị"}, anh/chị điền giúp studio một số thông tin cho buổi chụp tại: ${formUrl}`;
+              return (
+                <>
+                  <a href={formUrl} target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1.5 text-xs">
+                    <LinkIcon size={13} className="inline" /> Mở form
+                  </a>
+                  <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={msg} />
+                  <ZaloSendButton phone={f.client_phone} name={f.client_name} audience="client" contractId={contract.id} kind="intake_form" message={msg} />
+                </>
+              );
+            })()}
+        </div>
+
+        {contract.intake_submitted_at && contract.intake && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {contract.intake.type === "psc" ? (
+              <>
+                <IntakeSide title="Nhà gái (cô dâu)" rows={[
+                  ["SĐT", contract.intake.bride?.phone],
+                  ["Makeup", contract.intake.bride?.makeup_time],
+                  ["Giờ lễ", contract.intake.bride?.ceremony_time],
+                ]} location={contract.intake.bride?.location} />
+                <IntakeSide title="Nhà trai (chú rể)" rows={[
+                  ["SĐT", contract.intake.groom?.phone],
+                  ["Xuất phát", contract.intake.groom?.depart_time],
+                  ["Giờ lễ", contract.intake.groom?.ceremony_time],
+                ]} location={contract.intake.groom?.location} />
+              </>
+            ) : (
+              <IntakeSide title="Thông tin khách" rows={[["SĐT", contract.intake.contact_phone]]} location={contract.intake.location} />
+            )}
+            {contract.intake.note && (
+              <p className="sm:col-span-2 text-[12px]" style={{ color: "var(--text2)" }}>
+                Ghi chú: {contract.intake.note}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Tiện ích tặng khách & xin đánh giá — gộp lại 1 mục thu gọn cho đỡ rối.
           Mặc định đóng; bấm để mở Thiệp cưới · Love Story · Xin đánh giá. */}
       <details className="group mb-6">
@@ -1858,6 +1917,35 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
         </div>,
         document.body
       )}
+    </div>
+  );
+}
+
+/** Thẻ hiển thị một phía (nhà gái/nhà trai) của form thông tin khách đã điền. */
+function IntakeSide({
+  title,
+  rows,
+  location,
+}: {
+  title: string;
+  rows: [string, string | undefined | null][];
+  location?: { lat: number; lng: number; mapUrl: string } | null;
+}) {
+  return (
+    <div className="rounded-lg p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+      <p className="text-xs font-semibold">{title}</p>
+      <div className="mt-1 space-y-0.5 text-[12px]" style={{ color: "var(--text2)" }}>
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            {k}: {v || "—"}
+          </div>
+        ))}
+        {location && (
+          <a href={location.mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1" style={{ color: "#0068FF" }}>
+            <MapPin size={12} /> Xem vị trí trên bản đồ
+          </a>
+        )}
+      </div>
     </div>
   );
 }
