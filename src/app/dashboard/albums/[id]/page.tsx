@@ -40,6 +40,14 @@ export default async function AlbumEditPage({
   const studioName = (profile?.full_name ?? "").trim() || "Studio";
   const studioHost = user ? await getStudioHost(supabase, user.id) : null;
 
+  // Album này có thuộc hợp đồng nào không? Nếu có → lấy SĐT/tên khách để gửi Zalo
+  // thẳng; nếu không (album lẻ) → AlbumEditor sẽ hiện ô nhập SĐT.
+  const { data: linkedContract } = await supabase
+    .from("studio_contracts")
+    .select("id, client_name, client_phone")
+    .or(`selection_album_id.eq.${params.id},gallery_album_id.eq.${params.id}`)
+    .maybeSingle();
+
   // Loại album do CHÍNH studio này đã dùng (mỗi studio có bộ phân loại riêng).
   const { data: catRows } = await supabase
     .from("albums")
@@ -66,6 +74,9 @@ export default async function AlbumEditPage({
       studioName={studioName}
       studioHost={studioHost}
       studioCats={studioCats}
+      contractId={linkedContract?.id ?? null}
+      clientPhone={linkedContract?.client_phone ?? null}
+      clientName={linkedContract?.client_name ?? null}
     />
   );
 }

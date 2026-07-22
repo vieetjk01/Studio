@@ -7,6 +7,9 @@ import { MessageCircle, Check, Loader2, AlertCircle } from "lucide-react";
  * Nút "Gửi Zalo" — gửi tin qua tài khoản Zalo studio ĐÃ kết nối (kênh cá nhân),
  * gọi /api/studio/zalo/send. Khác với MessengerButton (mở app + copy tay), nút này
  * gửi TỰ ĐỘNG. Chỉ gửi được cho người đã kết bạn Zalo với tài khoản đăng nhập.
+ *
+ * Nếu có sẵn `phone` (vd album kèm hợp đồng) → 1 nút gửi thẳng. Nếu KHÔNG có
+ * `phone` và bật `askPhone` (vd album lẻ) → hiện ô nhập SĐT rồi gửi.
  */
 const ERROR_VI: Record<string, string> = {
   not_connected: "Chưa kết nối Zalo. Vào Tin nhắn → kết nối trước.",
@@ -25,6 +28,7 @@ export default function ZaloSendButton({
   audience,
   contractId,
   kind = "manual",
+  askPhone = false,
   className = "btn-ghost px-2.5 py-1.5 text-xs",
 }: {
   phone?: string | null;
@@ -34,15 +38,23 @@ export default function ZaloSendButton({
   audience?: "client" | "crew";
   contractId?: string | null;
   kind?: string;
+  /** Không có `phone` → hiện ô nhập SĐT để gửi (dùng cho album lẻ không kèm HĐ). */
+  askPhone?: boolean;
   className?: string;
 }) {
   const [state, setState] = useState<null | "sending" | "ok" | "fail">(null);
   const [err, setErr] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+
+  const fixed = (phone || "").trim();
+  // Album lẻ (không có số sẵn) và cho phép nhập tay → hiện ô nhập.
+  const inputMode = !fixed && askPhone;
 
   async function send() {
-    if (!phone || !phone.trim()) {
+    const to = fixed || manualPhone.trim();
+    if (!to) {
       setState("fail");
-      setErr("Chưa có số điện thoại.");
+      setErr("Nhập số điện thoại trước.");
       return;
     }
     setState("sending");
@@ -51,7 +63,7 @@ export default function ZaloSendButton({
       const res = await fetch("/api/studio/zalo/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toPhone: phone.trim(), toName: name ?? null, body: message, audience, contractId, kind }),
+        body: JSON.stringify({ toPhone: to, toName: name ?? null, body: message, audience, contractId, kind }),
       }).then((x) => x.json());
       if (res.ok) {
         setState("ok");
@@ -66,27 +78,41 @@ export default function ZaloSendButton({
     }
   }
 
+  const icon =
+    state === "sending" ? (
+      <Loader2 size={14} className="inline animate-spin" />
+    ) : state === "ok" ? (
+      <Check size={14} className="inline" />
+    ) : state === "fail" ? (
+      <AlertCircle size={14} className="inline" />
+    ) : (
+      <MessageCircle size={14} className="inline" />
+    );
+
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
-      <button
-        type="button"
-        onClick={send}
-        disabled={state === "sending"}
-        className={className}
-        title="Gửi tự động qua Zalo studio (người nhận phải đã kết bạn Zalo)"
-        style={{ color: "#0068FF" }}
-      >
-        {state === "sending" ? (
-          <Loader2 size={14} className="inline animate-spin" />
-        ) : state === "ok" ? (
-          <Check size={14} className="inline" />
-        ) : state === "fail" ? (
-          <AlertCircle size={14} className="inline" />
-        ) : (
-          <MessageCircle size={14} className="inline" />
-        )}{" "}
-        {state === "ok" ? "Đã gửi" : label}
-      </button>
+      <span className="inline-flex items-center gap-1.5">
+        {inputMode && (
+          <input
+            value={manualPhone}
+            onChange={(e) => setManualPhone(e.target.value)}
+            placeholder="SĐT khách"
+            inputMode="tel"
+            className="input px-2 py-1 text-xs"
+            style={{ width: 120 }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={send}
+          disabled={state === "sending"}
+          className={className}
+          title="Gửi tự động qua Zalo studio (người nhận phải đã kết bạn Zalo)"
+          style={{ color: "#0068FF" }}
+        >
+          {icon} {state === "ok" ? "Đã gửi" : label}
+        </button>
+      </span>
       {state === "fail" && err && (
         <span className="text-[10px]" style={{ color: "var(--s-red)" }}>
           {err}

@@ -22,6 +22,7 @@ import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
+import ZaloSendButton from "@/components/ZaloSendButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
 import { fetchAllPhotos } from "@/lib/photos";
@@ -37,6 +38,9 @@ export default function AlbumEditor({
   studioName = "Studio",
   studioHost = null,
   studioCats = [],
+  contractId = null,
+  clientPhone = null,
+  clientName = null,
 }: {
   album: Album;
   initialSources: AlbumSource[];
@@ -46,6 +50,9 @@ export default function AlbumEditor({
   studioName?: string;
   studioHost?: string | null;
   studioCats?: { slug: string; label: string }[];
+  contractId?: string | null;
+  clientPhone?: string | null;
+  clientName?: string | null;
 }) {
   const { t } = useLang();
   const supabase = createClient();
@@ -308,6 +315,15 @@ export default function AlbumEditor({
             <ExternalLink size={15} /> {t("view")}
           </a>
           <ShareButton path={studioUrl(studioHost, `/a/${form.slug}`)} title={form.title} />
+          <ZaloSendButton
+            phone={clientPhone || album.client_phone}
+            name={clientName || album.client_name}
+            contractId={contractId}
+            audience="client"
+            kind="album_share"
+            askPhone
+            message={`Chào ${clientName || album.client_name || "anh/chị"}, mời anh/chị xem album ảnh tại: ${studioUrl(studioHost, `/a/${form.slug}`)}`}
+          />
           <button onClick={deleteAlbum} disabled={deleting} className="btn-danger">
             <Trash2 size={15} /> {deleting ? "Đang xóa…" : t("delete")}
           </button>
