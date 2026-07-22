@@ -89,6 +89,7 @@ export default function DashboardHeader({
         { href: "/dashboard/studio/pricing", label: "Bảng giá" },
         { href: "/dashboard/studio/quotes", label: "Báo giá" },
         { href: "/dashboard/studio/clients", label: "Khách hàng" },
+        { href: "/dashboard/studio/leads", label: "Lead website" },
         { href: "/dashboard/albums", label: "Thư viện album" },
       ],
     },

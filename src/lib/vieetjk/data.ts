@@ -145,6 +145,31 @@ async function resolveOwner(
   return { ownerId, bookingToken, logoUrl };
 }
 
+/**
+ * Chủ studio của site vieetjk + SĐT/tên (để lưu lead và báo Zalo cho chủ).
+ * Dùng bởi API lead — nhẹ hơn loadVieetjkData (không nạp album/bảng giá).
+ */
+export async function resolveVieetjkOwner(): Promise<{
+  ownerId: string | null;
+  phone: string | null;
+  name: string | null;
+}> {
+  const db = createAdminClient();
+  const { ownerId } = await resolveOwner(db);
+  if (!ownerId) return { ownerId: null, phone: null, name: null };
+  const { data: prof } = await db
+    .from("profiles")
+    .select("pl_phone, full_name, studio_brand_name")
+    .eq("id", ownerId)
+    .maybeSingle();
+  const phone = (prof?.pl_phone as string | undefined) || null;
+  const name =
+    (prof?.studio_brand_name as string | undefined) ||
+    (prof?.full_name as string | undefined) ||
+    null;
+  return { ownerId, phone, name };
+}
+
 export async function loadVieetjkData(): Promise<VjkData> {
   const db = createAdminClient();
   const { ownerId, bookingToken, logoUrl } = await resolveOwner(db);

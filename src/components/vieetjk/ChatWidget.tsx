@@ -3,22 +3,26 @@
 import { useEffect, useRef, useState } from "react";
 import { BRAND, type Lang } from "@/lib/vieetjk/content";
 
-/** Lời chào mở đầu trong khung chat (client-side — không phụ thuộc module server). */
-function greeting(lang: Lang): string {
-  return lang === "en"
-    ? `Hi! I'm the ${BRAND.name} assistant. Ask me about our wedding, event or business photo & film services — or pricing. How can I help?`
-    : `Xin chào! Mình là trợ lý của ${BRAND.name}. Bạn cần tư vấn về chụp/quay cưới, sự kiện, doanh nghiệp hay bảng giá? Cứ hỏi mình nhé!`;
-}
-
 /**
  * Bong bóng chat tư vấn tự động (AI) trên website vieetjk.com.
  * Gắn trong VieetjkChrome nên dùng lại được biến CSS của site (--red, --paper…).
- * Gọi /api/vieetjk/chat (streaming) và render chữ chạy dần.
+ * Gọi /api/vieetjk/chat (streaming) để trả lời; khi khách để lại SĐT (tự gõ hoặc
+ * qua form) → gọi /api/vieetjk/lead lưu lead + báo Zalo cho chủ studio.
  */
 
 interface Msg {
   role: "user" | "assistant";
   content: string;
+}
+
+/** SĐT VN: 0xxxxxxxxx hoặc +84/84xxxxxxxxx (cho phép cách/. /- xen giữa). */
+const PHONE_RE = /(?:\+?84|0)(?:\d[\s.-]?){8,9}\d/;
+
+/** Lời chào mở đầu (client-side — không phụ thuộc module server). */
+function greeting(lang: Lang): string {
+  return lang === "en"
+    ? `Hi! I'm the ${BRAND.name} assistant. Ask me about our wedding, event or business photo & film services — or pricing. How can I help?`
+    : `Xin chào! Mình là trợ lý của ${BRAND.name}. Bạn cần tư vấn về chụp/quay cưới, sự kiện, doanh nghiệp hay bảng giá? Cứ hỏi mình nhé!`;
 }
 
 const CSS = `
@@ -48,6 +52,21 @@ const CSS = `
 .vjk-chat-typing i:nth-child(2){animation-delay:.2s;}
 .vjk-chat-typing i:nth-child(3){animation-delay:.4s;}
 @keyframes vjkBlink{0%,60%,100%{opacity:.25;}30%{opacity:1;}}
+.vjk-chat-lead{padding:10px 12px;border-top:1px solid var(--line);background:var(--paper3);}
+.vjk-chat-leadbtn{width:100%;background:none;border:1px dashed var(--line);color:var(--ink2);border-radius:10px;
+  padding:8px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:border-color .18s,color .18s;}
+.vjk-chat-leadbtn:hover{border-color:var(--red);color:var(--ink);}
+.vjk-chat-leadform{display:flex;flex-direction:column;gap:8px;}
+.vjk-chat-leadform input{background:var(--paper);border:1px solid var(--line);border-radius:10px;color:var(--ink);
+  padding:9px 11px;font-size:13.5px;font-family:inherit;outline:none;}
+.vjk-chat-leadform input:focus{border-color:var(--ink3);}
+.vjk-chat-leadrow{display:flex;gap:8px;}
+.vjk-chat-leadrow button{flex:1;border:0;border-radius:10px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+.vjk-chat-leadsend{background:var(--red);color:#fff;}
+.vjk-chat-leadsend:hover:not(:disabled){background:var(--red-dark);}
+.vjk-chat-leadsend:disabled{opacity:.45;cursor:default;}
+.vjk-chat-leadcancel{background:var(--paper);color:var(--ink2);border:1px solid var(--line) !important;}
+.vjk-chat-leaddone{font-size:12.5px;color:#22c55e;text-align:center;padding:2px;}
 .vjk-chat-foot{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--paper2);}
 .vjk-chat-input{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:12px;color:var(--ink);
   padding:10px 12px;font-size:14px;font-family:inherit;resize:none;max-height:96px;outline:none;}
@@ -71,23 +90,56 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([{ role: "assistant", content: greeting(lang) }]);
+  const [showForm, setShowForm] = useState(false);
+  const [leadName, setLeadName] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadDone, setLeadDone] = useState(false);
+  const [leadBusy, setLeadBusy] = useState(false);
+
+  const [sessionId] = useState(() =>
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `s-${Date.now()}`
+  );
   const bodyRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const msgsRef = useRef<Msg[]>(msgs);
+  const leadSavedRef = useRef(false);
+
+  useEffect(() => {
+    msgsRef.current = msgs;
+  }, [msgs]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-  }, [msgs, busy, open]);
+  }, [msgs, busy, open, showForm]);
 
   useEffect(() => {
     if (open) taRef.current?.focus();
   }, [open]);
+
+  /** Lưu lead (best-effort). transcript lấy từ msgsRef (mới nhất). */
+  async function saveLead(name: string | null, phone: string): Promise<boolean> {
+    const transcript = msgsRef.current.map((m) => ({ role: m.role, content: m.content }));
+    const interest = msgsRef.current.find((m) => m.role === "user")?.content?.slice(0, 300) ?? null;
+    try {
+      const res = await fetch("/api/vieetjk/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, name, phone, interest, transcript }),
+      });
+      if (!res.ok) return false;
+      leadSavedRef.current = true;
+      setLeadDone(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
     const history: Msg[] = [...msgs, { role: "user", content: text }];
-    // Thêm ô trả lời rỗng để stream vào.
     setMsgs([...history, { role: "assistant", content: "" }]);
     setBusy(true);
     try {
@@ -99,9 +151,7 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
           messages: history.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      if (!res.ok || !res.body) {
-        throw new Error("no_stream");
-      }
+      if (!res.ok || !res.body) throw new Error("no_stream");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let acc = "";
@@ -131,6 +181,45 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
     } finally {
       setBusy(false);
     }
+
+    // Khách gõ kèm SĐT → tự lưu lead (một lần / phiên) + xác nhận trong chat.
+    const m = text.match(PHONE_RE);
+    if (m && !leadSavedRef.current) {
+      const ok = await saveLead(null, m[0]);
+      if (ok) {
+        setMsgs((cur) => [
+          ...cur,
+          {
+            role: "assistant",
+            content:
+              lang === "en"
+                ? "Thanks! We've saved your number — the studio will reach out soon."
+                : "Cảm ơn bạn! Studio đã nhận số điện thoại và sẽ liên hệ sớm nhé.",
+          },
+        ]);
+      }
+    }
+  }
+
+  async function submitLead() {
+    const phone = leadPhone.trim();
+    if (!PHONE_RE.test(phone) || leadBusy) return;
+    setLeadBusy(true);
+    const ok = await saveLead(leadName.trim() || null, phone);
+    setLeadBusy(false);
+    if (ok) {
+      setShowForm(false);
+      setMsgs((cur) => [
+        ...cur,
+        {
+          role: "assistant",
+          content:
+            lang === "en"
+              ? `Thank you${leadName.trim() ? `, ${leadName.trim()}` : ""}! We've received your details and will contact you soon.`
+              : `Cảm ơn ${leadName.trim() || "bạn"}! Studio đã nhận thông tin và sẽ liên hệ sớm nhé.`,
+        },
+      ]);
+    }
   }
 
   function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -157,6 +246,7 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
+
           <div className="vjk-chat-body" ref={bodyRef}>
             {msgs.map((m, i) => (
               <div key={i} className={`vjk-chat-row ${m.role === "user" ? "me" : "bot"}`}>
@@ -170,6 +260,42 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
               </div>
             ))}
           </div>
+
+          {/* Bắt lead: nút mở form để lại SĐT, hoặc xác nhận đã gửi. */}
+          <div className="vjk-chat-lead">
+            {leadDone ? (
+              <div className="vjk-chat-leaddone">
+                ✓ {lang === "en" ? "Your details were sent to the studio." : "Đã gửi thông tin cho studio."}
+              </div>
+            ) : showForm ? (
+              <div className="vjk-chat-leadform">
+                <input
+                  value={leadName}
+                  onChange={(e) => setLeadName(e.target.value)}
+                  placeholder={lang === "en" ? "Your name (optional)" : "Họ tên (không bắt buộc)"}
+                />
+                <input
+                  value={leadPhone}
+                  onChange={(e) => setLeadPhone(e.target.value)}
+                  inputMode="tel"
+                  placeholder={lang === "en" ? "Phone number *" : "Số điện thoại *"}
+                />
+                <div className="vjk-chat-leadrow">
+                  <button className="vjk-chat-leadcancel" onClick={() => setShowForm(false)}>
+                    {lang === "en" ? "Cancel" : "Huỷ"}
+                  </button>
+                  <button className="vjk-chat-leadsend" onClick={submitLead} disabled={leadBusy || !PHONE_RE.test(leadPhone.trim())}>
+                    {leadBusy ? (lang === "en" ? "Sending…" : "Đang gửi…") : lang === "en" ? "Send" : "Gửi"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button className="vjk-chat-leadbtn" onClick={() => setShowForm(true)}>
+                📞 {lang === "en" ? "Leave your number for a callback" : "Để lại SĐT để được tư vấn"}
+              </button>
+            )}
+          </div>
+
           <div className="vjk-chat-foot">
             <textarea
               ref={taRef}
