@@ -1,0 +1,117 @@
+import "server-only";
+import type { ChatTurn } from "./assistant";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/**
+ * Nhiều nhà cung cấp AI cho chatbox — cấu hình danh sách, bot thử lần lượt, cái
+ * nào lỗi/hết hạn mức thì tự chuyển sang cái kế tiếp (dự phòng, gộp quota).
+ *
+ * Cấu hình qua biến môi trường CHAT_PROVIDERS (JSON mảng), vd:
+ * [
+ *   {"type":"gemini","key":"AIza...","model":"gemini-flash-latest"},
+ *   {"type":"openai","key":"sk-or-...","model":"deepseek/deepseek-chat","baseUrl":"https://openrouter.ai/api/v1"},
+ *   {"type":"openai","key":"sk-...","model":"gpt-4o-mini"}
+ * ]
+ * Nếu không đặt CHAT_PROVIDERS → dùng GEMINI_API_KEY (+ GEMINI_MODEL) như 1 provider.
+ *
+ * - type "gemini": Google Gemini (generativelanguage.googleapis.com).
+ * - type "openai": mọi API chuẩn OpenAI Chat Completions (OpenAI, OpenRouter,
+ *   DeepSeek, Groq, Together…). baseUrl mặc định https://api.openai.com/v1.
+ */
+
+export type ChatProvider = {
+  type: "gemini" | "openai";
+  key: string;
+  model: string;
+  baseUrl?: string;
+  label: string;
+};
+
+function normalize(p: any): ChatProvider | null {
+  const type = p?.type === "openai" ? "openai" : p?.type === "gemini" ? "gemini" : null;
+  const key = typeof p?.key === "string" ? p.key.trim() : "";
+  if (!type || !key) return null;
+  const model =
+    typeof p?.model === "string" && p.model.trim()
+      ? p.model.trim()
+      : type === "gemini"
+      ? "gemini-flash-latest"
+      : "gpt-4o-mini";
+  const baseUrl = typeof p?.baseUrl === "string" && p.baseUrl.trim() ? p.baseUrl.trim().replace(/\/+$/, "") : undefined;
+  const label = typeof p?.label === "string" && p.label.trim() ? p.label.trim() : `${type}:${model}`;
+  return { type, key, model, baseUrl, label };
+}
+
+/** Danh sách provider theo thứ tự ưu tiên. */
+export function loadProviders(): ChatProvider[] {
+  const raw = process.env.CHAT_PROVIDERS;
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        const out = arr.map(normalize).filter((p): p is ChatProvider => !!p);
+        if (out.length) return out;
+      }
+    } catch {
+      /* JSON hỏng → rơi xuống fallback bên dưới */
+    }
+  }
+  const gk = process.env.GEMINI_API_KEY;
+  if (gk) {
+    return [{ type: "gemini", key: gk, model: process.env.GEMINI_MODEL || "gemini-flash-latest", label: "gemini" }];
+  }
+  return [];
+}
+
+/** Gọi provider ở chế độ streaming; trả về Response thô để đọc SSE. */
+export function requestProvider(p: ChatProvider, systemText: string, turns: ChatTurn[]): Promise<Response> {
+  if (p.type === "gemini") {
+    const base = p.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
+    const generationConfig: Record<string, unknown> = { temperature: 0.6, maxOutputTokens: 2048 };
+    // Chỉ model 2.5-* chắc chắn nhận thinkingConfig (tắt suy nghĩ, tránh rỗng).
+    if (p.model.includes("2.5")) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    return fetch(`${base}/models/${encodeURIComponent(p.model)}:streamGenerateContent?alt=sse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": p.key },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemText }] },
+        contents: turns.map((t) => ({
+          role: t.role === "assistant" ? "model" : "user",
+          parts: [{ text: t.content }],
+        })),
+        generationConfig,
+      }),
+      cache: "no-store",
+    });
+  }
+  // OpenAI-compatible Chat Completions.
+  const base = p.baseUrl || "https://api.openai.com/v1";
+  return fetch(`${base}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+    body: JSON.stringify({
+      model: p.model,
+      stream: true,
+      temperature: 0.6,
+      max_tokens: 2048,
+      messages: [{ role: "system", content: systemText }, ...turns.map((t) => ({ role: t.role, content: t.content }))],
+    }),
+    cache: "no-store",
+  });
+}
+
+/** Rút đoạn text tăng dần từ một chunk JSON SSE (khác nhau theo provider). */
+export function extractDelta(p: ChatProvider, json: any): string {
+  if (p.type === "gemini") {
+    const parts = json?.candidates?.[0]?.content?.parts;
+    return Array.isArray(parts) ? parts.map((x: any) => (typeof x?.text === "string" ? x.text : "")).join("") : "";
+  }
+  return typeof json?.choices?.[0]?.delta?.content === "string" ? json.choices[0].delta.content : "";
+}
+
+/** Lý do dừng khi không có text (chẩn đoán) — chủ yếu cho Gemini. */
+export function finishReason(p: ChatProvider, json: any): string {
+  if (p.type === "gemini") return json?.candidates?.[0]?.finishReason || json?.promptFeedback?.blockReason || "";
+  return json?.choices?.[0]?.finish_reason || "";
+}
