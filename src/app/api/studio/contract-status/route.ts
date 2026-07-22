@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { autoCreateContractDeliveryOnComplete } from "@/lib/studio-drive";
+import { autoNotify } from "@/lib/zalo/notify";
+import { deliveryReadyMessage } from "@/lib/zalo/messages";
+import { mainUrl } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +55,32 @@ export async function POST(req: Request) {
       deliveryAlbum = await autoCreateContractDeliveryOnComplete(user.id, contractId);
     } catch {
       // Studio chưa nối Drive / lỗi tạm — desktop sẽ tạo bù khi đồng bộ.
+    }
+    // Zalo: tự báo "đã giao ảnh" cho khách (nếu studio đã bật mốc + kết nối).
+    // Không chặn response nếu lỗi.
+    try {
+      const { data: c2 } = await db
+        .from("studio_contracts")
+        .select("title, client_name, client_phone, gallery_album_id")
+        .eq("id", contractId)
+        .maybeSingle();
+      if (c2?.client_phone && c2.gallery_album_id) {
+        const { data: al } = await db.from("albums").select("slug").eq("id", c2.gallery_album_id).maybeSingle();
+        if (al?.slug) {
+          const { data: owner } = await db.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+          await autoNotify({
+            ownerId: user.id,
+            event: "delivery_ready",
+            audience: "client",
+            toPhone: c2.client_phone,
+            toName: c2.client_name,
+            body: deliveryReadyMessage({ name: c2.client_name, link: mainUrl(`/album/${al.slug}`), studio: owner?.full_name }),
+            contractId,
+          });
+        }
+      }
+    } catch {
+      /* bỏ qua — không chặn đổi trạng thái */
     }
   }
 

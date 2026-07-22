@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/reminders", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/zalo", "schedule": "0 4 * * *" },
     { "path": "/api/cron/cleanup-proofs", "schedule": "30 1 * * *" }
   ]
 }

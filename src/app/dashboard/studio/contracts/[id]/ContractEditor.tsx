@@ -700,6 +700,15 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
       if (payment) setPayments((p) => [payment as ContractPayment, ...p]);
       await supabase.from("contract_payment_plan").update({ paid: true, paid_at: nowIso, payment_id: pid }).eq("id", it.id);
       setPlan((p) => p.map((x) => (x.id === it.id ? { ...x, paid: true, paid_at: nowIso, payment_id: pid } : x)));
+      // Zalo: xác nhận cọc (chỉ với đợt CỌC) — tự gửi cho khách nếu studio đã bật
+      // mốc "Xác nhận cọc" + đã kết nối Zalo. Fire-and-forget, không chặn UI.
+      if ((it.label || "").toLowerCase().includes("cọc")) {
+        fetch("/api/studio/zalo/lifecycle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contractId: contract.id, event: "deposit_confirm", amount }),
+        }).catch(() => {});
+      }
       // Compute updated plan
       const updatedPlan = plan.map((x) => (x.id === it.id ? { ...x, paid: true } : x));
       const stillUnpaid = updatedPlan.filter((x) => !x.paid);

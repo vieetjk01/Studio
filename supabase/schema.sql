@@ -1902,3 +1902,11 @@ alter table public.zalo_messages enable row level security;
 drop policy if exists zalo_messages_owner_read on public.zalo_messages;
 create policy zalo_messages_owner_read on public.zalo_messages
   for select using (owner_id = auth.uid() or public.is_admin());
+
+-- ─── Form điền thông tin trước buổi chụp (gửi kèm nhắc lịch Zalo) ───────────
+-- Khách mở bằng link riêng không mật khẩu (intake_token). intake = jsonb dữ liệu
+-- (PSC: 2 phần nhà gái/nhà trai + vị trí lat/lng + link Maps). Xem migration
+-- supabase/migrations/contract_intake.sql.
+alter table public.studio_contracts add column if not exists intake_token       text unique;
+alter table public.studio_contracts add column if not exists intake              jsonb;
+alter table public.studio_contracts add column if not exists intake_submitted_at timestamptz;
