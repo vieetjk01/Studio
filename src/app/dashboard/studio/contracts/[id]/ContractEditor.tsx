@@ -26,6 +26,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl, studioUrl } from "@/lib/hosts";
 import MessengerButton from "@/components/MessengerButton";
+import ZaloSendButton from "@/components/ZaloSendButton";
 import EmailButton from "@/components/EmailButton";
 import WeddingInvitationCard from "./WeddingInvitationCard";
 import LoveStoryCard from "./LoveStoryCard";
@@ -938,6 +939,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           label="Gửi cho khách"
           message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
         />
+        <ZaloSendButton
+          phone={f.client_phone}
+          name={f.client_name}
+          audience="client"
+          contractId={contract.id}
+          kind="contract_share"
+          message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
+        />
         <EmailButton
           to={f.client_email}
           label="Gửi email"
@@ -996,6 +1005,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               return (
                 <>
                   <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
+                  <ZaloSendButton phone={f.client_phone} name={f.client_name} audience="client" contractId={contract.id} kind="review_request" message={reviewMsg} />
                   <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
                 </>
               );
@@ -1640,6 +1650,23 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                               time: f.event_time,
                               location: f.location,
                               role: CREW_ROLE_LABEL[c.role],
+                            })}
+                          />
+                          <ZaloSendButton
+                            phone={c.phone}
+                            name={c.name}
+                            audience="crew"
+                            contractId={contract.id}
+                            kind="crew_notify"
+                            label="Gửi Zalo"
+                            message={shootReminderMessage({
+                              name: c.name,
+                              title: f.title,
+                              date: f.event_date,
+                              time: f.event_time,
+                              location: f.location,
+                              role: CREW_ROLE_LABEL[c.role],
+                              studio: studioName,
                             })}
                           />
                           <button onClick={() => deleteCrew(c.id, idx)} className="text-xs" style={{ color: "var(--text3)" }}>
