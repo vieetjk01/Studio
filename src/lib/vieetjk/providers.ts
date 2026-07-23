@@ -19,13 +19,17 @@ import type { ChatTurn } from "./assistant";
  * - type "openai": mọi API chuẩn OpenAI Chat Completions (OpenAI, OpenRouter,
  *   DeepSeek, Groq, Together…). baseUrl mặc định https://api.openai.com/v1.
  * - type "anthropic": Claude API trực tiếp (api.anthropic.com Messages API).
+ * - type "responses": OpenAI **Responses API** (/v1/responses, wire_api="responses")
+ *   — dùng cho Codex & các reseller (vd base_url https://codex.../v1). Hỗ trợ
+ *   reasoning effort + store:false. Field "effort" tuỳ chọn (low|medium|high|xhigh).
  */
 
 export type ChatProvider = {
-  type: "gemini" | "openai" | "anthropic";
+  type: "gemini" | "openai" | "anthropic" | "responses";
   key: string;
   model: string;
   baseUrl?: string;
+  effort?: string;
   label: string;
 };
 
@@ -37,6 +41,8 @@ function normalize(p: any): ChatProvider | null {
       ? "gemini"
       : p?.type === "anthropic"
       ? "anthropic"
+      : p?.type === "responses"
+      ? "responses"
       : null;
   const key = typeof p?.key === "string" ? p.key.trim() : "";
   if (!type || !key) return null;
@@ -49,8 +55,9 @@ function normalize(p: any): ChatProvider | null {
       ? "claude-haiku-4-5"
       : "gpt-4o-mini";
   const baseUrl = typeof p?.baseUrl === "string" && p.baseUrl.trim() ? p.baseUrl.trim().replace(/\/+$/, "") : undefined;
+  const effort = typeof p?.effort === "string" && p.effort.trim() ? p.effort.trim() : undefined;
   const label = typeof p?.label === "string" && p.label.trim() ? p.label.trim() : `${type}:${model}`;
-  return { type, key, model, baseUrl, label };
+  return { type, key, model, baseUrl, effort, label };
 }
 
 /** Danh sách provider theo thứ tự ưu tiên. */
@@ -95,6 +102,26 @@ export function requestProvider(p: ChatProvider, systemText: string, turns: Chat
       cache: "no-store",
     });
   }
+  if (p.type === "responses") {
+    // OpenAI Responses API (/v1/responses) — Codex & reseller (wire_api="responses").
+    const base = p.baseUrl || "https://api.openai.com/v1";
+    const bodyResp: Record<string, unknown> = {
+      model: p.model,
+      instructions: systemText,
+      input: turns.map((t) => ({ role: t.role, content: t.content })),
+      stream: true,
+      store: false, // disable_response_storage
+      max_output_tokens: 4096,
+      reasoning: { effort: p.effort || "medium" },
+    };
+    return fetch(`${base}/responses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+      body: JSON.stringify(bodyResp),
+      cache: "no-store",
+    });
+  }
+
   if (p.type === "anthropic") {
     // Claude API trực tiếp (Messages API, streaming SSE).
     const base = p.baseUrl || "https://api.anthropic.com/v1";
@@ -145,6 +172,13 @@ export function extractDelta(p: ChatProvider, json: any): string {
     }
     return "";
   }
+  if (p.type === "responses") {
+    // Responses API SSE: text tăng dần ở response.output_text.delta.
+    if (json?.type === "response.output_text.delta") {
+      return typeof json.delta === "string" ? json.delta : "";
+    }
+    return "";
+  }
   return typeof json?.choices?.[0]?.delta?.content === "string" ? json.choices[0].delta.content : "";
 }
 
@@ -152,5 +186,12 @@ export function extractDelta(p: ChatProvider, json: any): string {
 export function finishReason(p: ChatProvider, json: any): string {
   if (p.type === "gemini") return json?.candidates?.[0]?.finishReason || json?.promptFeedback?.blockReason || "";
   if (p.type === "anthropic") return json?.delta?.stop_reason || (json?.type === "message_stop" ? "stop" : "");
+  if (p.type === "responses") {
+    if (json?.type === "response.failed" || json?.type === "response.incomplete") {
+      return json?.response?.status || json?.type;
+    }
+    if (json?.type === "error") return json?.error?.message || "error";
+    return "";
+  }
   return json?.choices?.[0]?.finish_reason || "";
 }
