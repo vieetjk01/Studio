@@ -90,6 +90,7 @@ export default function DashboardHeader({
         { href: "/dashboard/studio/quotes", label: "Báo giá" },
         { href: "/dashboard/studio/clients", label: "Khách hàng" },
         { href: "/dashboard/studio/leads", label: "Lead website" },
+        { href: "/dashboard/studio/chatbox", label: "Cấu hình chatbox" },
         { href: "/dashboard/albums", label: "Thư viện album" },
       ],
     },

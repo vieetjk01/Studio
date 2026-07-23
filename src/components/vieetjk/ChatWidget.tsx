@@ -133,6 +133,23 @@ export default function ChatWidget({ lang }: { lang: Lang }) {
     return () => clearTimeout(t);
   }, []);
 
+  // Nạp lời chào tùy chỉnh (chủ studio đặt trong dashboard) — thay lời chào mặc
+  // định nếu khách chưa nhắn gì.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/vieetjk/chat")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const g = d?.greeting;
+        if (cancelled || !g || typeof g !== "string") return;
+        setMsgs((cur) => (cur.length === 1 && cur[0].role === "assistant" ? [{ role: "assistant", content: g }] : cur));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   /** Đóng khung chat + ghi nhớ để không tự bật lại trong phiên này. */
   function closeChat() {
     setOpen(false);

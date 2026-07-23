@@ -69,6 +69,7 @@ const GROUPS: Group[] = [
     items: [
       { href: "/dashboard/studio/clients", label: "Khách hàng", icon: Users, minTier: "booking" },
       { href: "/dashboard/studio/leads", label: "Lead website", icon: MessageSquare, minTier: "booking" },
+      { href: "/dashboard/studio/chatbox", label: "Cấu hình chatbox", icon: MessageSquare, minTier: "booking" },
       { href: "/dashboard/studio/drive-sync", label: "Đồng bộ Drive", icon: HardDrive, minTier: "full", roles: ["owner", "admin"] },
       { href: "/dashboard/albums", label: "Thư viện album", icon: ImageIcon, minTier: "booking" },
       { href: "/dashboard/studio/thiep", label: "Thiệp cưới", icon: Heart, minTier: "full" },
@@ -119,6 +120,7 @@ const TITLES: [string, string, string][] = [
   ["/dashboard/studio/production", "Xử lý hình ảnh", "Tiến độ sản xuất"],
   ["/dashboard/studio/clients", "Khách hàng", "Danh bạ khách hàng"],
   ["/dashboard/studio/leads", "Lead website", "Khách nhắn qua chatbox trên website"],
+  ["/dashboard/studio/chatbox", "Cấu hình chatbox", "Dạy trợ lý trả lời theo ý bạn"],
   ["/dashboard/studio/drive-sync", "Đồng bộ Drive", "Kết nối Google Drive & tự đồng bộ ảnh/video hợp đồng"],
   ["/dashboard/studio/album-designer", "Thiết kế Album", "Chọn khổ → chọn mẫu → chỉnh sửa → xuất file"],
   ["/dashboard/studio/slide", "Slide cưới", "Tự tạo video slide ảnh cưới"],

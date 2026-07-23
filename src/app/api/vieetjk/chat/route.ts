@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { buildSystemPrompt, MAX_TURNS, type ChatTurn } from "@/lib/vieetjk/assistant";
 import { loadProviders, requestProvider, extractDelta, finishReason } from "@/lib/vieetjk/providers";
+import { resolveVieetjkOwner } from "@/lib/vieetjk/data";
+import { loadChatConfig } from "@/lib/vieetjk/chat-config";
 import { CONTACT, type Lang } from "@/lib/vieetjk/content";
 
 /**
@@ -37,6 +39,17 @@ function sanitize(turns: unknown): ChatTurn[] {
   return trimmed;
 }
 
+/** Trả lời chào tùy chỉnh (nếu chủ studio đã đặt) cho widget hiển thị. */
+export async function GET() {
+  try {
+    const { ownerId } = await resolveVieetjkOwner();
+    const greeting = ownerId ? (await loadChatConfig(ownerId)).greeting : null;
+    return Response.json({ greeting }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return Response.json({ greeting: null });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const providers = loadProviders();
   if (providers.length === 0) {
@@ -56,7 +69,15 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "empty" }, { status: 400 });
   }
 
-  const systemText = buildSystemPrompt(lang);
+  // Ghép hướng dẫn/kiến thức riêng chủ studio nhập trong dashboard (nếu có).
+  let extra: string | null = null;
+  try {
+    const { ownerId } = await resolveVieetjkOwner();
+    if (ownerId) extra = (await loadChatConfig(ownerId)).instructions;
+  } catch {
+    /* không có cấu hình riêng → dùng mặc định */
+  }
+  const systemText = buildSystemPrompt(lang, extra);
 
   // Khi tất cả provider lỗi/hết hạn mức: mời khách để lại thông tin / liên hệ.
   // Ký tự LEAD_MARKER ở đầu để widget tự mở form "Để lại SĐT" (khách không thấy).
