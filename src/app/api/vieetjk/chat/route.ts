@@ -3,6 +3,15 @@ import { buildSystemPrompt, MAX_TURNS, type ChatTurn } from "@/lib/vieetjk/assis
 import { loadProviders, requestProvider, extractDelta, finishReason } from "@/lib/vieetjk/providers";
 import { resolveVieetjkOwner } from "@/lib/vieetjk/data";
 import { loadChatConfig } from "@/lib/vieetjk/chat-config";
+import {
+  looksLikeStatusQuery,
+  extractClientPhone,
+  lookupClientStatus,
+  buildStatusContext,
+  statusNeedsPhoneContext,
+  statusRateLimitedContext,
+} from "@/lib/vieetjk/lookup";
+import { limitByIpDurable } from "@/lib/rate-limit";
 import { CONTACT, type Lang } from "@/lib/vieetjk/content";
 
 /**
@@ -71,13 +80,39 @@ export async function POST(req: NextRequest) {
 
   // Ghép hướng dẫn/kiến thức riêng chủ studio nhập trong dashboard (nếu có).
   let extra: string | null = null;
+  let ownerId: string | null = null;
   try {
-    const { ownerId } = await resolveVieetjkOwner();
+    const owner = await resolveVieetjkOwner();
+    ownerId = owner.ownerId;
     if (ownerId) extra = (await loadChatConfig(ownerId)).instructions;
   } catch {
     /* không có cấu hình riêng → dùng mặc định */
   }
-  const systemText = buildSystemPrompt(lang, extra);
+
+  // Tra cứu trạng thái hợp đồng/album — CHỈ khi khách hỏi về hợp đồng/album VÀ đã
+  // cung cấp đúng SĐT (bảo mật: SĐT là mật khẩu xem như cổng /c/[token], /album).
+  let liveCtx: string | null = null;
+  try {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    if (ownerId && looksLikeStatusQuery(lastUser)) {
+      // Tìm SĐT trong toàn bộ lượt của khách (khách có thể đã nhắn số ở lượt trước).
+      const userText = messages.filter((m) => m.role === "user").map((m) => m.content).join("\n");
+      const phone = extractClientPhone(userText);
+      if (!phone) {
+        liveCtx = statusNeedsPhoneContext(lang);
+      } else if (await limitByIpDurable(req, "vjk-chat-lookup", 12, 60_000)) {
+        // Vượt hạn mức tra cứu (chống dò SĐT) → không truy vấn DB.
+        liveCtx = statusRateLimitedContext(lang);
+      } else {
+        const result = await lookupClientStatus(ownerId, phone);
+        liveCtx = buildStatusContext(lang, result);
+      }
+    }
+  } catch {
+    /* lỗi tra cứu → bỏ qua, bot trả lời như bình thường */
+  }
+
+  const systemText = buildSystemPrompt(lang, extra, liveCtx);
 
   // Khi tất cả provider lỗi/hết hạn mức: mời khách để lại thông tin / liên hệ.
   // Ký tự LEAD_MARKER ở đầu để widget tự mở form "Để lại SĐT" (khách không thấy).
