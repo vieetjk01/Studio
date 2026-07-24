@@ -83,9 +83,28 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "bad_id" }, { status: 400 });
   }
 
-  // Original-quality mode (album export): stream the full-resolution file as-is,
-  // no width clamp, no re-encode — preserves the original quality for print.
+  // Original-quality mode (album export, ZIP/download of originals): serve the
+  // full-resolution file as-is, no width clamp, no re-encode.
   if (searchParams.get("orig") === "1") {
+    // Durable offload: originals are the HEAVIEST bytes (full-res ZIP/download),
+    // and browsers can't fetch them cross-origin from Google (no CORS), so they
+    // otherwise stream through Vercel every time. When a Supabase bucket is set,
+    // cache the original once and 302 to Supabase's CDN thereafter → Vercel
+    // serves ~0 bytes on repeats. Inert (falls through) when no bucket is set.
+    if (BUCKET && SUPA_URL) {
+      const key = `${id}_orig`;
+      const pub = publicUrl(key);
+      try {
+        const head = await fetch(pub, { method: "HEAD" });
+        if (head.ok) return new NextResponse(null, { status: 302, headers: { Location: pub, "Cache-Control": CACHE_OK } });
+      } catch { /* fall through to proxy + cache */ }
+      const res = await fetchOriginal(id);
+      if (!res || !res.body) return NextResponse.json({ error: "fetch_failed" }, { status: 502, headers: { "Cache-Control": CACHE_ERR } });
+      const ct = res.headers.get("content-type") || "image/jpeg";
+      const buf = Buffer.from(await res.arrayBuffer());
+      createAdminClient().storage.from(BUCKET).upload(key, buf, { contentType: ct, upsert: true, cacheControl: "31536000" }).catch(() => {});
+      return new NextResponse(buf, { headers: { "Content-Type": ct, "Cache-Control": CACHE_OK } });
+    }
     const res = await fetchOriginal(id);
     if (!res || !res.body) return NextResponse.json({ error: "fetch_failed" }, { status: 502, headers: { "Cache-Control": CACHE_ERR } });
     return new NextResponse(res.body, { headers: { "Content-Type": res.headers.get("content-type") || "image/jpeg", "Cache-Control": CACHE_OK } });
