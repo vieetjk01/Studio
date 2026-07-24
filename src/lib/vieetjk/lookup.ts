@@ -211,7 +211,11 @@ Không tìm thấy hợp đồng hay album nào khớp với số điện thoạ
   if (lang === "en") {
     lines.push(`## Contract / album lookup (verified by phone)`);
     lines.push(
-      `The customer gave a phone number that matches the records below. Share ONLY the name, status and links shown here. NEVER reveal or guess deposits, line items, internal notes, crew or any other detail. Present it warmly and concisely; give the link so they can open it (the page still asks for their phone as the password).`
+      `The customer gave a phone number that matches the records below. Rules:\n` +
+        `- By DEFAULT reply with only the NAME + STATUS. Do NOT paste any link yet.\n` +
+        `- Send a link ONLY when the customer explicitly asks for it (e.g. "send me the contract link", "photo link") — then give the matching link below.\n` +
+        `- You MAY proactively offer, e.g. "Would you like the link to view your photos?" and send it if they say yes.\n` +
+        `- NEVER reveal or guess deposits, line items, internal notes, crew or any other detail. The linked pages still ask for the phone as the password.`
     );
     if (result.contracts.length) {
       lines.push(`\nContracts:`);
@@ -234,7 +238,11 @@ Không tìm thấy hợp đồng hay album nào khớp với số điện thoạ
 
   lines.push(`## Tra cứu hợp đồng / album (đã xác thực bằng SĐT)`);
   lines.push(
-    `Khách vừa cung cấp SĐT khớp với các hồ sơ dưới đây. CHỈ được chia sẻ TÊN, TRẠNG THÁI và ĐƯỜNG LINK ghi ở đây. TUYỆT ĐỐI không tiết lộ hay suy đoán tiền cọc, hạng mục, ghi chú nội bộ, ê-kíp hay bất kỳ chi tiết nào khác. Trả lời ấm áp, ngắn gọn; đưa link để khách tự mở (trang vẫn hỏi SĐT làm mật khẩu).`
+    `Khách vừa cung cấp SĐT khớp với các hồ sơ dưới đây. Quy tắc trả lời:\n` +
+      `- MẶC ĐỊNH chỉ báo TÊN + TRẠNG THÁI. CHƯA gửi đường link.\n` +
+      `- CHỈ gửi link khi khách chủ động hỏi xin (vd "cho xin link hợp đồng", "link xem ảnh", "gửi link ảnh") — khi đó mới đưa link tương ứng bên dưới.\n` +
+      `- Có thể CHỦ ĐỘNG hỏi, vd "Anh/chị có cần link xem ảnh không ạ?" và gửi link nếu khách đồng ý.\n` +
+      `- TUYỆT ĐỐI không tiết lộ hay suy đoán tiền cọc, hạng mục, ghi chú nội bộ, ê-kíp hay bất kỳ chi tiết nào khác. Trang mở qua link vẫn hỏi SĐT làm mật khẩu.`
   );
   if (result.contracts.length) {
     lines.push(`\nHợp đồng:`);
