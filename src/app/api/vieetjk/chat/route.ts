@@ -93,10 +93,17 @@ export async function POST(req: NextRequest) {
   // cung cấp đúng SĐT (bảo mật: SĐT là mật khẩu xem như cổng /c/[token], /album).
   let liveCtx: string | null = null;
   try {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-    if (ownerId && looksLikeStatusQuery(lastUser)) {
+    const userTurns = messages.filter((m) => m.role === "user");
+    const lastUser = userTurns[userTurns.length - 1]?.content ?? "";
+    // Ý định hỏi trạng thái tính trên vài lượt gần đây — để bắt được luồng khách
+    // hỏi trước rồi mới nhắn SĐT ở lượt sau (tin chỉ có số sẽ không khớp từ khoá).
+    const recentStatusIntent = userTurns.slice(-5).some((m) => looksLikeStatusQuery(m.content));
+    const lastHasPhone = !!extractClientPhone(lastUser);
+    const shouldLookup = looksLikeStatusQuery(lastUser) || (lastHasPhone && recentStatusIntent);
+
+    if (ownerId && shouldLookup) {
       // Tìm SĐT trong toàn bộ lượt của khách (khách có thể đã nhắn số ở lượt trước).
-      const userText = messages.filter((m) => m.role === "user").map((m) => m.content).join("\n");
+      const userText = userTurns.map((m) => m.content).join("\n");
       const phone = extractClientPhone(userText);
       if (!phone) {
         liveCtx = statusNeedsPhoneContext(lang);

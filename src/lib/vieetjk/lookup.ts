@@ -57,6 +57,7 @@ export function looksLikeStatusQuery(text: string): boolean {
     "hợp đồng", "hop dong", "contract", " hđ ", "hđ ", " hđ", "mã hđ", "ma hd",
     "album", "gallery", "thư viện ảnh", "thu vien anh",
     "trạng thái", "trang thai", "status",
+    "tình trạng", "tinh trang", "tình hình", "tinh hinh",
     "tiến độ", "tien do", "tiến trình", "tien trinh",
     "giao ảnh", "giao anh", "giao hình", "giao hinh", "nhận ảnh", "nhan anh",
     "lấy ảnh", "lay anh", "lấy hình", "lay hinh",
