@@ -78,12 +78,22 @@ export default function FilterPage() {
 
   useEffect(() => {
     setFsSupported(typeof window !== "undefined" && "showDirectoryPicker" in window);
-    supabase
-      .from("albums")
-      .select("id, title")
-      .eq("is_gallery", false)
-      .order("updated_at", { ascending: false })
-      .then(({ data }) => setAlbums(data ?? []));
+    // Chỉ lấy album CHỌN ẢNH của CHÍNH studio đang đăng nhập:
+    //  - eq owner_id: RLS cho admin đọc mọi album, nên phải tự giới hạn theo chủ
+    //    sở hữu để admin không thấy danh sách của studio khác.
+    //  - eq phase 'selection': album đã chuyển sang giai đoạn GIAO KHÁCH thì
+    //    không cần lọc nữa nên ẩn khỏi danh sách.
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("albums")
+        .select("id, title")
+        .eq("owner_id", user.id)
+        .eq("is_gallery", false)
+        .eq("phase", "selection")
+        .order("updated_at", { ascending: false })
+        .then(({ data }) => setAlbums(data ?? []));
+    });
     fetch("/api/filter/use")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setFilterQuota({ unlimited: d.unlimited, limit: d.limit, used: d.used, remaining: d.remaining }))

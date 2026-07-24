@@ -70,12 +70,50 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {albums.map((a) => (
-            <AlbumCard key={a.id} a={a} canDelivery={canDelivery} />
-          ))}
-        </div>
+        <AlbumSections albums={albums} canDelivery={canDelivery} />
       )}
+    </div>
+  );
+}
+
+// Tách thư viện thành 2 nhóm theo giai đoạn: ALBUM CHỌN ẢNH (phase 'selection')
+// và ALBUM GIAO KHÁCH (phase 'delivery'). Khi chỉ có một nhóm thì hiển thị lưới
+// gọn như cũ, không cần tiêu đề nhóm.
+function AlbumSections({ albums, canDelivery }: { albums: AlbumRow[]; canDelivery: boolean }) {
+  const deliveryAlbums = albums.filter((a) => (a.phase ?? "selection") === "delivery");
+  const selectionAlbums = albums.filter((a) => (a.phase ?? "selection") !== "delivery");
+
+  const grid = (rows: AlbumRow[]) => (
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {rows.map((a) => (
+        <AlbumCard key={a.id} a={a} canDelivery={canDelivery} />
+      ))}
+    </div>
+  );
+
+  // Không có album giao khách → hiển thị một lưới duy nhất như trước.
+  if (deliveryAlbums.length === 0) return grid(albums);
+
+  return (
+    <div className="space-y-8">
+      {selectionAlbums.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center gap-2">
+            <ImageIcon size={16} style={{ color: "var(--gold)" }} />
+            <h2 className="text-lg font-light text-accent">Album chọn ảnh</h2>
+            <span className="text-xs text-accent-muted">({selectionAlbums.length})</span>
+          </div>
+          {grid(selectionAlbums)}
+        </section>
+      )}
+      <section>
+        <div className="mb-3 flex items-center gap-2">
+          <CheckSquare size={16} style={{ color: "var(--success)" }} />
+          <h2 className="text-lg font-light text-accent">Album giao khách</h2>
+          <span className="text-xs text-accent-muted">({deliveryAlbums.length})</span>
+        </div>
+        {grid(deliveryAlbums)}
+      </section>
     </div>
   );
 }
