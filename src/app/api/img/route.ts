@@ -115,15 +115,21 @@ export async function GET(req: Request) {
   const width = Math.min(Math.max(Number(searchParams.get("w")) || 500, 16), 2560);
 
   // ── Display CDN redirect (default ON; opt-out with IMG_CDN_REDIRECT=0) ────
-  // For <img> DISPLAY loads, 302-redirect straight to Google's CDN so Vercel
-  // serves ~0 image bytes — the single biggest cut to Fast Origin Transfer +
-  // Active CPU, since a gallery loads hundreds of thumbnails. fetch()/ZIP/
-  // download/canvas (Sec-Fetch-Dest ≠ "image") keep the proxy path so
-  // same-origin byte reads still work. The on-screen watermark is a CSS
-  // overlay, so the image source doesn't affect it. No caller changes needed.
-  // Skipped when a durable Supabase bucket is set — that path (below) is just
-  // as cheap after warm-up and more reliable (multi-source fetch on miss).
-  if (process.env.IMG_CDN_REDIRECT !== "0" && !BUCKET && req.headers.get("sec-fetch-dest") === "image") {
+  // For PLAIN <img> DISPLAY loads, 302-redirect straight to Google's CDN so
+  // Vercel serves ~0 image bytes — the single biggest cut to Fast Origin
+  // Transfer + Active CPU, since a gallery loads hundreds of thumbnails.
+  // Google serves these for free, so this runs even when a Supabase bucket is
+  // configured (display bytes never touch — nor bill — Supabase).
+  //
+  // Guard on Sec-Fetch-Mode ≠ "cors": a crossOrigin <img> used for canvas
+  // watermarking (ZIP / single download) is also Sec-Fetch-Dest "image" but is
+  // mode "cors" — it must NOT go to Google (no CORS there → tainted canvas →
+  // toBlob() throws). Those, plus fetch()/ZIP (Dest ≠ "image"), fall through to
+  // the same-origin proxy / Supabase cache below so byte reads keep working.
+  // The on-screen watermark is a CSS overlay, so the display source is moot.
+  const dest = req.headers.get("sec-fetch-dest");
+  const mode = req.headers.get("sec-fetch-mode");
+  if (process.env.IMG_CDN_REDIRECT !== "0" && dest === "image" && mode !== "cors") {
     const target = width <= 1024
       ? `https://drive.google.com/thumbnail?id=${id}&sz=w${width}`
       : `https://lh3.googleusercontent.com/d/${id}=w${width}`;
