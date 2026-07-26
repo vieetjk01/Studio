@@ -13,7 +13,7 @@ export default async function IntakeFormPage({ params }: { params: { token: stri
   const db = createAdminClient();
   const { data: c } = await db
     .from("studio_contracts")
-    .select("owner_id, shoot_type, service_id, client_name, title, intake_submitted_at")
+    .select("owner_id, shoot_type, service_id, client_name, title, intake, intake_submitted_at")
     .eq("intake_token", params.token)
     .maybeSingle();
 
@@ -34,6 +34,7 @@ export default async function IntakeFormPage({ params }: { params: { token: stri
       title={c.title}
       studio={owner?.full_name ?? null}
       submitted={!!c.intake_submitted_at}
+      initial={(c.intake ?? null) as any}
     />
   );
 }

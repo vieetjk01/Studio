@@ -6,12 +6,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const str = (v: any, n = 200) => (typeof v === "string" ? v.trim().slice(0, n) : "");
-function loc(v: any): { lat: number; lng: number; mapUrl: string } | null {
+function loc(v: any): { lat: number | null; lng: number | null; mapUrl: string } | null {
   if (!v || typeof v !== "object") return null;
   const lat = Number(v.lat);
   const lng = Number(v.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng, mapUrl: `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}` };
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+  if (hasCoords) {
+    return { lat, lng, mapUrl: `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}` };
+  }
+  // Không có toạ độ → chấp nhận link Google Maps khách dán (chỉ http/https, chống chèn javascript:).
+  const url = typeof v.mapUrl === "string" ? v.mapUrl.trim().slice(0, 500) : "";
+  if (/^https?:\/\//i.test(url)) return { lat: null, lng: null, mapUrl: url };
+  return null;
 }
 
 /** Khách gửi form điền thông tin. Xác thực bằng intake_token (không mật khẩu). */

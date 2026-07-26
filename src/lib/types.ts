@@ -270,10 +270,14 @@ export interface StudioContract {
   updated_at: string;
 }
 
-/** Vị trí khách chọn trên bản đồ trong form điền thông tin. */
+/**
+ * Vị trí khách chọn trong form điền thông tin. Có thể là toạ độ (ghim trên
+ * bản đồ / GPS) hoặc chỉ là link Google Maps khách dán vào (khi đó lat/lng = null).
+ * mapUrl luôn có để studio bấm mở chỉ đường.
+ */
 export interface IntakeLocation {
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   mapUrl: string;
 }
 

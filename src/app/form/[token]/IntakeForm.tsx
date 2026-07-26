@@ -1,16 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Send } from "lucide-react";
-import LocationPicker, { type LatLng, mapsLink } from "@/components/LocationPicker";
+import { Check, Loader2, Send, Pencil } from "lucide-react";
+import LocationPicker from "@/components/LocationPicker";
+import type { ContractIntake, IntakeLocation } from "@/lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-type Loc = { lat: number; lng: number; mapUrl: string } | null;
-
-function locFrom(v: LatLng): Loc {
-  return v ? { lat: v.lat, lng: v.lng, mapUrl: mapsLink(v.lat, v.lng) } : null;
-}
 
 export default function IntakeForm({
   token,
@@ -19,6 +14,7 @@ export default function IntakeForm({
   title,
   studio,
   submitted,
+  initial,
 }: {
   token: string;
   isWedding: boolean;
@@ -26,33 +22,34 @@ export default function IntakeForm({
   title: string | null;
   studio: string | null;
   submitted: boolean;
+  initial: ContractIntake | null;
 }) {
   const isPsc = isWedding;
   const [done, setDone] = useState(submitted);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  // Nhà gái
-  const [brideName, setBrideName] = useState("");
-  const [bridePhone, setBridePhone] = useState("");
-  const [brideMakeup, setBrideMakeup] = useState("");
-  const [brideCeremony, setBrideCeremony] = useState("");
-  const [brideLoc, setBrideLoc] = useState<LatLng>(null);
+  // Nhà gái — điền sẵn nếu khách đã gửi trước đó (để sửa/bổ sung).
+  const [brideName, setBrideName] = useState(initial?.bride?.name ?? "");
+  const [bridePhone, setBridePhone] = useState(initial?.bride?.phone ?? "");
+  const [brideMakeup, setBrideMakeup] = useState(initial?.bride?.makeup_time ?? "");
+  const [brideCeremony, setBrideCeremony] = useState(initial?.bride?.ceremony_time ?? "");
+  const [brideLoc, setBrideLoc] = useState<IntakeLocation | null>(initial?.bride?.location ?? null);
   // Nhà trai
-  const [groomName, setGroomName] = useState("");
-  const [groomPhone, setGroomPhone] = useState("");
-  const [groomDepart, setGroomDepart] = useState("");
-  const [groomCeremony, setGroomCeremony] = useState("");
-  const [groomLoc, setGroomLoc] = useState<LatLng>(null);
+  const [groomName, setGroomName] = useState(initial?.groom?.name ?? "");
+  const [groomPhone, setGroomPhone] = useState(initial?.groom?.phone ?? "");
+  const [groomDepart, setGroomDepart] = useState(initial?.groom?.depart_time ?? "");
+  const [groomCeremony, setGroomCeremony] = useState(initial?.groom?.ceremony_time ?? "");
+  const [groomLoc, setGroomLoc] = useState<IntakeLocation | null>(initial?.groom?.location ?? null);
   // Tiệc cưới / địa điểm chung
-  const [receptionTime, setReceptionTime] = useState("");
-  const [receptionLoc, setReceptionLoc] = useState<LatLng>(null);
+  const [receptionTime, setReceptionTime] = useState(initial?.reception?.time ?? "");
+  const [receptionLoc, setReceptionLoc] = useState<IntakeLocation | null>(initial?.reception?.location ?? null);
   // Chung (loại khác)
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [genLoc, setGenLoc] = useState<LatLng>(null);
-  const [note, setNote] = useState("");
+  const [contactName, setContactName] = useState(initial?.contact_name ?? "");
+  const [contactPhone, setContactPhone] = useState(initial?.contact_phone ?? "");
+  const [startTime, setStartTime] = useState(initial?.start_time ?? "");
+  const [genLoc, setGenLoc] = useState<IntakeLocation | null>(initial?.location ?? null);
+  const [note, setNote] = useState(initial?.note ?? "");
 
   async function submit() {
     setBusy(true);
@@ -60,12 +57,12 @@ export default function IntakeForm({
     const payload: any = isPsc
       ? {
           type: "psc",
-          bride: { name: brideName, phone: bridePhone, makeup_time: brideMakeup, ceremony_time: brideCeremony, location: locFrom(brideLoc) },
-          groom: { name: groomName, phone: groomPhone, depart_time: groomDepart, ceremony_time: groomCeremony, location: locFrom(groomLoc) },
-          reception: { time: receptionTime, location: locFrom(receptionLoc) },
+          bride: { name: brideName, phone: bridePhone, makeup_time: brideMakeup, ceremony_time: brideCeremony, location: brideLoc },
+          groom: { name: groomName, phone: groomPhone, depart_time: groomDepart, ceremony_time: groomCeremony, location: groomLoc },
+          reception: { time: receptionTime, location: receptionLoc },
           note,
         }
-      : { type: "generic", contact_name: contactName, contact_phone: contactPhone, start_time: startTime, location: locFrom(genLoc), note };
+      : { type: "generic", contact_name: contactName, contact_phone: contactPhone, start_time: startTime, location: genLoc, note };
 
     try {
       const res = await fetch(`/api/form/${token}`, {
@@ -92,6 +89,10 @@ export default function IntakeForm({
         <p className="mt-2 text-sm opacity-70">
           Cảm ơn {clientName || "anh/chị"} đã cung cấp thông tin. Studio đã nhận và sẽ chuẩn bị chu đáo cho buổi chụp ạ!
         </p>
+        <p className="mt-4 text-sm opacity-70">Nếu điền chưa xong hoặc có sai sót, anh/chị có thể chỉnh sửa &amp; gửi lại:</p>
+        <button onClick={() => { setErr(""); setDone(false); }} className="btn-ghost mx-auto mt-3 px-4 py-2 text-sm">
+          <Pencil size={15} /> Chỉnh sửa / bổ sung thông tin
+        </button>
       </div>
     );
   }
@@ -203,7 +204,7 @@ export default function IntakeForm({
       {err && <p className="mt-3 text-sm" style={{ color: "var(--s-red)" }}>{err}</p>}
 
       <button onClick={submit} disabled={busy} className="btn-primary mt-4 w-full py-3">
-        {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Gửi thông tin cho studio
+        {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} {submitted ? "Cập nhật thông tin" : "Gửi thông tin cho studio"}
       </button>
       <p className="mt-2 text-center text-[11px] opacity-50">— {studio || "MStudo"} —</p>
     </div>

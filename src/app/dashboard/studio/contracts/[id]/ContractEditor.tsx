@@ -1002,13 +1002,17 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           {contract.intake_token &&
             (() => {
               const formUrl = studioUrl(studioHost, `/form/${contract.intake_token}`);
-              const msg = `Chào ${f.client_name || "anh/chị"}, anh/chị điền giúp studio một số thông tin cho buổi chụp tại: ${formUrl}`;
+              const submitted = !!contract.intake_submitted_at;
+              const msg = submitted
+                ? `Chào ${f.client_name || "anh/chị"}, anh/chị kiểm tra & bổ sung/sửa lại giúp studio thông tin buổi chụp tại: ${formUrl} (mở form rồi bấm "Chỉnh sửa / bổ sung").`
+                : `Chào ${f.client_name || "anh/chị"}, anh/chị điền giúp studio một số thông tin cho buổi chụp tại: ${formUrl}`;
+              const btnLabel = submitted ? "Yêu cầu nhập lại / bổ sung" : "Gửi cho khách";
               return (
                 <div className="flex flex-wrap items-center gap-2">
                   <a href={formUrl} target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1.5 text-xs">
                     <LinkIcon size={13} className="inline" /> Mở form
                   </a>
-                  <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={msg} />
+                  <MessengerButton link={f.client_messenger} label={btnLabel} message={msg} />
                   <ZaloSendButton phone={f.client_phone} name={f.client_name} audience="client" contractId={contract.id} kind="intake_form" message={msg} />
                 </div>
               );
@@ -1953,7 +1957,7 @@ function IntakeSide({
 }: {
   title: string;
   rows: [string, string | undefined | null][];
-  location?: { lat: number; lng: number; mapUrl: string } | null;
+  location?: { lat: number | null; lng: number | null; mapUrl: string } | null;
 }) {
   return (
     <div className="rounded-lg p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
