@@ -932,76 +932,84 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
       )}
 
       {/* Share link */}
-      <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">
-        <LinkIcon size={16} style={{ color: "var(--text3)" }} />
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
-            Cổng khách: xem HĐ · lịch · ảnh · thanh toán (mật khẩu = SĐT khách)
-          </p>
-          <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{shareUrl}</p>
-          <p className="text-[11px]" style={{ color: contract.client_viewed_at ? "var(--s-green)" : "var(--text3)" }}>
-            {contract.client_viewed_at
-              ? `Khách đã xem · ${new Date(contract.client_viewed_at).toLocaleString("vi-VN")}`
-              : "Khách chưa mở link"}
-          </p>
+      <div className="card mb-6 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <LinkIcon size={16} className="mt-0.5 shrink-0" style={{ color: "var(--text3)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>
+                Cổng khách: xem HĐ · lịch · ảnh · thanh toán (mật khẩu = SĐT khách)
+              </p>
+              <p className="truncate text-sm" style={{ color: "var(--text2)" }}>{shareUrl}</p>
+              <p className="text-[11px]" style={{ color: contract.client_viewed_at ? "var(--s-green)" : "var(--text3)" }}>
+                {contract.client_viewed_at
+                  ? `Khách đã xem · ${new Date(contract.client_viewed_at).toLocaleString("vi-VN")}`
+                  : "Khách chưa mở link"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <MessengerButton
+              link={f.client_messenger}
+              label="Gửi cho khách"
+              message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
+            />
+            <ZaloSendButton
+              phone={f.client_phone}
+              name={f.client_name}
+              audience="client"
+              contractId={contract.id}
+              kind="contract_share"
+              message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
+            />
+            <EmailButton
+              to={f.client_email}
+              label="Gửi email"
+              subject={`Hợp đồng dịch vụ — ${f.title}`}
+              message={`Xin chào ${f.client_name || "anh/chị"},\n\nĐây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại:\n${shareUrl}\n(Mật khẩu mở là số điện thoại của anh/chị.)\n\nCảm ơn ạ!\n— ${studioName}`}
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(shareUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="btn-ghost px-3 py-2 text-xs"
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Đã chép" : "Chép link"}
+            </button>
+          </div>
         </div>
-        <MessengerButton
-          link={f.client_messenger}
-          label="Gửi cho khách"
-          message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
-        />
-        <ZaloSendButton
-          phone={f.client_phone}
-          name={f.client_name}
-          audience="client"
-          contractId={contract.id}
-          kind="contract_share"
-          message={`Xin chào ${f.client_name || "anh/chị"}, đây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại: ${shareUrl} (mật khẩu là SĐT của anh/chị). Cảm ơn ạ!`}
-        />
-        <EmailButton
-          to={f.client_email}
-          label="Gửi email"
-          subject={`Hợp đồng dịch vụ — ${f.title}`}
-          message={`Xin chào ${f.client_name || "anh/chị"},\n\nĐây là hợp đồng dịch vụ của bên em. Anh/chị xem & xác nhận tại:\n${shareUrl}\n(Mật khẩu mở là số điện thoại của anh/chị.)\n\nCảm ơn ạ!\n— ${studioName}`}
-        />
-        <button
-          onClick={() => {
-            navigator.clipboard?.writeText(shareUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-          className="btn-ghost px-3 py-2 text-xs"
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Đã chép" : "Chép link"}
-        </button>
       </div>
 
       {/* Form điền thông tin buổi chụp — gửi khách qua Zalo (kèm tự động lúc nhắc lịch) */}
       <div className="card mb-6 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <ClipboardList size={16} style={{ color: "var(--brand)" }} />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Form thông tin buổi chụp</p>
-            <p className="text-[12px]" style={{ color: "var(--text3)" }}>
-              {contract.intake_submitted_at
-                ? `Khách đã điền · ${new Date(contract.intake_submitted_at).toLocaleString("vi-VN")}`
-                : contract.shoot_type === "psc" || contract.shoot_type === "wedding"
-                ? "Khách điền SĐT cô dâu/chú rể, giờ giấc & vị trí nhà gái/nhà trai (có bản đồ)."
-                : "Khách điền SĐT liên hệ, vị trí (có bản đồ) & ghi chú."}
-            </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <ClipboardList size={16} className="mt-0.5 shrink-0" style={{ color: "var(--brand)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">Form thông tin buổi chụp</p>
+              <p className="text-[12px]" style={{ color: "var(--text3)" }}>
+                {contract.intake_submitted_at
+                  ? `Khách đã điền · ${new Date(contract.intake_submitted_at).toLocaleString("vi-VN")}`
+                  : contract.shoot_type === "psc" || contract.shoot_type === "wedding"
+                  ? "Khách điền SĐT cô dâu/chú rể, giờ giấc & vị trí nhà gái/nhà trai (có bản đồ)."
+                  : "Khách điền SĐT liên hệ, vị trí (có bản đồ) & ghi chú."}
+              </p>
+            </div>
           </div>
           {contract.intake_token &&
             (() => {
               const formUrl = studioUrl(studioHost, `/form/${contract.intake_token}`);
               const msg = `Chào ${f.client_name || "anh/chị"}, anh/chị điền giúp studio một số thông tin cho buổi chụp tại: ${formUrl}`;
               return (
-                <>
+                <div className="flex flex-wrap items-center gap-2">
                   <a href={formUrl} target="_blank" rel="noreferrer" className="btn-ghost px-2.5 py-1.5 text-xs">
                     <LinkIcon size={13} className="inline" /> Mở form
                   </a>
                   <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={msg} />
                   <ZaloSendButton phone={f.client_phone} name={f.client_name} audience="client" contractId={contract.id} kind="intake_form" message={msg} />
-                </>
+                </div>
               );
             })()}
         </div>
@@ -1063,21 +1071,25 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
           />
 
           {/* Ask for a review */}
-          <div className="card mb-0 flex flex-wrap items-center gap-3 p-4">
-            <Star size={16} style={{ color: "var(--s-amber)" }} />
-            <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--text2)" }}>
-              Xin khách đánh giá sau khi giao ảnh (gửi kèm link cổng → mục “Đánh giá studio”).
-            </p>
-            {(() => {
-              const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
-              return (
-                <>
-                  <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
-                  <ZaloSendButton phone={f.client_phone} name={f.client_name} audience="client" contractId={contract.id} kind="review_request" message={reviewMsg} />
-                  <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
-                </>
-              );
-            })()}
+          <div className="card mb-0 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <Star size={16} className="mt-0.5 shrink-0" style={{ color: "var(--s-amber)" }} />
+                <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--text2)" }}>
+                  Xin khách đánh giá sau khi giao ảnh (gửi kèm link cổng → mục “Đánh giá studio”).
+                </p>
+              </div>
+              {(() => {
+                const reviewMsg = `Cảm ơn ${f.client_name || "anh/chị"} đã tin tưởng ${studioName}! Anh/chị đánh giá giúp em tại: ${shareUrl} (mục “Đánh giá studio”). Em cảm ơn ạ!`;
+                return (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <MessengerButton link={f.client_messenger} label="Gửi cho khách" message={reviewMsg} />
+                    <ZaloSendButton phone={f.client_phone} name={f.client_name} audience="client" contractId={contract.id} kind="review_request" message={reviewMsg} />
+                    <EmailButton to={f.client_email} label="Email" subject={`Xin đánh giá — ${studioName}`} message={reviewMsg} />
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
       </details>
