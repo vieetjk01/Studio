@@ -290,6 +290,21 @@ export interface ContractIntake {
   note?: string;
 }
 
+/**
+ * Buổi chụp có phải kiểu "cô dâu & chú rể" (cưới / phóng sự cưới) không, để
+ * quyết định form khách điền hiện 2 phần Nhà gái/Nhà trai hay bản thông thường.
+ *
+ * Nhận diện theo shoot_type LEGACY *và* tên dịch vụ studio tự đặt — vì khi chọn
+ * một "Loại dịch vụ" tùy biến thì shoot_type luôn bị đưa về "other", nên chỉ
+ * dựa vào shoot_type là không đủ (khách chọn dịch vụ tên "PSC" vẫn ra bản rút gọn).
+ * Prewedding là buổi chụp đôi một địa điểm → KHÔNG dùng form 2 nhà.
+ */
+export function intakeIsWedding(shootType?: string | null, serviceName?: string | null): boolean {
+  const hay = `${shootType || ""} ${serviceName || ""}`.toLowerCase();
+  if (/pre[\s-]?wedding|pre[\s-]?wed|prewedding|pre[\s-]?cư/.test(hay)) return false;
+  return /psc|cưới|wedding|đón dâu|rước dâu|vu quy|tân hôn|thành hôn|cô dâu|chú rể/.test(hay);
+}
+
 export const LEAD_SOURCE_LABEL: Record<string, string> = {
   facebook: "Facebook",
   referral: "Giới thiệu",

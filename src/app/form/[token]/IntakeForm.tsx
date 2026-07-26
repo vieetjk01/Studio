@@ -14,20 +14,20 @@ function locFrom(v: LatLng): Loc {
 
 export default function IntakeForm({
   token,
-  shootType,
+  isWedding,
   clientName,
   title,
   studio,
   submitted,
 }: {
   token: string;
-  shootType: string;
+  isWedding: boolean;
   clientName: string | null;
   title: string | null;
   studio: string | null;
   submitted: boolean;
 }) {
-  const isPsc = shootType === "psc" || shootType === "wedding";
+  const isPsc = isWedding;
   const [done, setDone] = useState(submitted);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");

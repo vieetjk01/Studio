@@ -49,6 +49,7 @@ import {
   CREW_STATUS_LABEL,
   PAYMENT_KIND_LABEL,
   LEAD_SOURCE_LABEL,
+  intakeIsWedding,
   type StudioContract,
   type ContractItem,
   type ContractCrew,
@@ -992,7 +993,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <p className="text-[12px]" style={{ color: "var(--text3)" }}>
                 {contract.intake_submitted_at
                   ? `Khách đã điền · ${new Date(contract.intake_submitted_at).toLocaleString("vi-VN")}`
-                  : contract.shoot_type === "psc" || contract.shoot_type === "wedding"
+                  : intakeIsWedding(contract.shoot_type, services.find((s) => s.id === f.service_id)?.name)
                   ? "Khách điền tên & SĐT cô dâu/chú rể, mốc giờ trong ngày, vị trí nhà gái/nhà trai & nơi đãi tiệc (có bản đồ)."
                   : "Khách điền tên người làm việc trực tiếp, SĐT, thời gian bắt đầu, vị trí (có bản đồ) & ghi chú."}
               </p>
