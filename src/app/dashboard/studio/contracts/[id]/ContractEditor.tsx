@@ -993,8 +993,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                 {contract.intake_submitted_at
                   ? `Khách đã điền · ${new Date(contract.intake_submitted_at).toLocaleString("vi-VN")}`
                   : contract.shoot_type === "psc" || contract.shoot_type === "wedding"
-                  ? "Khách điền SĐT cô dâu/chú rể, giờ giấc & vị trí nhà gái/nhà trai (có bản đồ)."
-                  : "Khách điền SĐT liên hệ, vị trí (có bản đồ) & ghi chú."}
+                  ? "Khách điền tên & SĐT cô dâu/chú rể, mốc giờ trong ngày, vị trí nhà gái/nhà trai & nơi đãi tiệc (có bản đồ)."
+                  : "Khách điền tên người làm việc trực tiếp, SĐT, thời gian bắt đầu, vị trí (có bản đồ) & ghi chú."}
               </p>
             </div>
           </div>
@@ -1019,18 +1019,29 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             {contract.intake.type === "psc" ? (
               <>
                 <IntakeSide title="Nhà gái (cô dâu)" rows={[
+                  ["Tên", contract.intake.bride?.name],
                   ["SĐT", contract.intake.bride?.phone],
                   ["Makeup", contract.intake.bride?.makeup_time],
                   ["Giờ lễ", contract.intake.bride?.ceremony_time],
                 ]} location={contract.intake.bride?.location} />
                 <IntakeSide title="Nhà trai (chú rể)" rows={[
+                  ["Tên", contract.intake.groom?.name],
                   ["SĐT", contract.intake.groom?.phone],
                   ["Xuất phát", contract.intake.groom?.depart_time],
                   ["Giờ lễ", contract.intake.groom?.ceremony_time],
                 ]} location={contract.intake.groom?.location} />
+                {(contract.intake.reception?.time || contract.intake.reception?.location) && (
+                  <IntakeSide title="Tiệc cưới / địa điểm khác" rows={[
+                    ["Giờ đãi tiệc", contract.intake.reception?.time],
+                  ]} location={contract.intake.reception?.location} />
+                )}
               </>
             ) : (
-              <IntakeSide title="Thông tin khách" rows={[["SĐT", contract.intake.contact_phone]]} location={contract.intake.location} />
+              <IntakeSide title="Thông tin khách" rows={[
+                ["Người làm việc trực tiếp", contract.intake.contact_name],
+                ["SĐT", contract.intake.contact_phone],
+                ["Thời gian bắt đầu", contract.intake.start_time],
+              ]} location={contract.intake.location} />
             )}
             {contract.intake.note && (
               <p className="sm:col-span-2 text-[12px]" style={{ color: "var(--text2)" }}>

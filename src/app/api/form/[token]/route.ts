@@ -32,23 +32,31 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     intake = {
       type,
       bride: {
+        name: str(b?.bride?.name, 100),
         phone: str(b?.bride?.phone, 30),
         makeup_time: str(b?.bride?.makeup_time, 20),
         ceremony_time: str(b?.bride?.ceremony_time, 20),
         location: loc(b?.bride?.location),
       },
       groom: {
+        name: str(b?.groom?.name, 100),
         phone: str(b?.groom?.phone, 30),
         depart_time: str(b?.groom?.depart_time, 20),
         ceremony_time: str(b?.groom?.ceremony_time, 20),
         location: loc(b?.groom?.location),
+      },
+      reception: {
+        time: str(b?.reception?.time, 20),
+        location: loc(b?.reception?.location),
       },
       note: str(b?.note, 1000),
     };
   } else {
     intake = {
       type,
+      contact_name: str(b?.contact_name, 100),
       contact_phone: str(b?.contact_phone, 30),
+      start_time: str(b?.start_time, 20),
       location: loc(b?.location),
       note: str(b?.note, 1000),
     };
@@ -64,17 +72,26 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const lines: string[] = [`Khách ${c.client_name || ""} đã điền thông tin buổi chụp "${c.title || ""}".`];
   if (type === "psc") {
     lines.push(
-      `Nhà gái: SĐT ${intake.bride.phone || "—"}, makeup ${intake.bride.makeup_time || "—"}, lễ ${intake.bride.ceremony_time || "—"}${
+      `Nhà gái${intake.bride.name ? ` (${intake.bride.name})` : ""}: SĐT ${intake.bride.phone || "—"}, makeup ${intake.bride.makeup_time || "—"}, lễ ${intake.bride.ceremony_time || "—"}${
         intake.bride.location ? `, vị trí: ${intake.bride.location.mapUrl}` : ""
       }`
     );
     lines.push(
-      `Nhà trai: SĐT ${intake.groom.phone || "—"}, xuất phát ${intake.groom.depart_time || "—"}, lễ ${intake.groom.ceremony_time || "—"}${
+      `Nhà trai${intake.groom.name ? ` (${intake.groom.name})` : ""}: SĐT ${intake.groom.phone || "—"}, xuất phát ${intake.groom.depart_time || "—"}, lễ ${intake.groom.ceremony_time || "—"}${
         intake.groom.location ? `, vị trí: ${intake.groom.location.mapUrl}` : ""
       }`
     );
+    if (intake.reception.time || intake.reception.location) {
+      lines.push(
+        `Tiệc: giờ ${intake.reception.time || "—"}${intake.reception.location ? `, vị trí: ${intake.reception.location.mapUrl}` : ""}`
+      );
+    }
   } else {
-    lines.push(`SĐT: ${intake.contact_phone || "—"}${intake.location ? `, vị trí: ${intake.location.mapUrl}` : ""}`);
+    lines.push(
+      `${intake.contact_name ? `Người liên hệ: ${intake.contact_name}, ` : ""}SĐT: ${intake.contact_phone || "—"}${
+        intake.start_time ? `, bắt đầu: ${intake.start_time}` : ""
+      }${intake.location ? `, vị trí: ${intake.location.mapUrl}` : ""}`
+    );
   }
   if (intake.note) lines.push(`Ghi chú: ${intake.note}`);
 

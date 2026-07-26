@@ -33,17 +33,24 @@ export default function IntakeForm({
   const [err, setErr] = useState("");
 
   // Nhà gái
+  const [brideName, setBrideName] = useState("");
   const [bridePhone, setBridePhone] = useState("");
   const [brideMakeup, setBrideMakeup] = useState("");
   const [brideCeremony, setBrideCeremony] = useState("");
   const [brideLoc, setBrideLoc] = useState<LatLng>(null);
   // Nhà trai
+  const [groomName, setGroomName] = useState("");
   const [groomPhone, setGroomPhone] = useState("");
   const [groomDepart, setGroomDepart] = useState("");
   const [groomCeremony, setGroomCeremony] = useState("");
   const [groomLoc, setGroomLoc] = useState<LatLng>(null);
-  // Chung
+  // Tiệc cưới / địa điểm chung
+  const [receptionTime, setReceptionTime] = useState("");
+  const [receptionLoc, setReceptionLoc] = useState<LatLng>(null);
+  // Chung (loại khác)
+  const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [startTime, setStartTime] = useState("");
   const [genLoc, setGenLoc] = useState<LatLng>(null);
   const [note, setNote] = useState("");
 
@@ -53,11 +60,12 @@ export default function IntakeForm({
     const payload: any = isPsc
       ? {
           type: "psc",
-          bride: { phone: bridePhone, makeup_time: brideMakeup, ceremony_time: brideCeremony, location: locFrom(brideLoc) },
-          groom: { phone: groomPhone, depart_time: groomDepart, ceremony_time: groomCeremony, location: locFrom(groomLoc) },
+          bride: { name: brideName, phone: bridePhone, makeup_time: brideMakeup, ceremony_time: brideCeremony, location: locFrom(brideLoc) },
+          groom: { name: groomName, phone: groomPhone, depart_time: groomDepart, ceremony_time: groomCeremony, location: locFrom(groomLoc) },
+          reception: { time: receptionTime, location: locFrom(receptionLoc) },
           note,
         }
-      : { type: "generic", contact_phone: contactPhone, location: locFrom(genLoc), note };
+      : { type: "generic", contact_name: contactName, contact_phone: contactPhone, start_time: startTime, location: locFrom(genLoc), note };
 
     try {
       const res = await fetch(`/api/form/${token}`, {
@@ -102,8 +110,12 @@ export default function IntakeForm({
         <>
           <section className="card mt-6 p-5">
             <h2 className="font-serif text-lg font-medium">Phần 1 · Nhà gái (cô dâu)</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <div className="sm:col-span-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={lbl}>Tên cô dâu</label>
+                <input className={field} value={brideName} onChange={(e) => setBrideName(e.target.value)} placeholder="Họ và tên cô dâu" />
+              </div>
+              <div>
                 <label className={lbl}>SĐT cô dâu</label>
                 <input className={field} inputMode="tel" value={bridePhone} onChange={(e) => setBridePhone(e.target.value)} placeholder="09xxxxxxxx" />
               </div>
@@ -124,8 +136,12 @@ export default function IntakeForm({
 
           <section className="card mt-4 p-5">
             <h2 className="font-serif text-lg font-medium">Phần 2 · Nhà trai (chú rể)</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <div className="sm:col-span-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={lbl}>Tên chú rể</label>
+                <input className={field} value={groomName} onChange={(e) => setGroomName(e.target.value)} placeholder="Họ và tên chú rể" />
+              </div>
+              <div>
                 <label className={lbl}>SĐT chú rể</label>
                 <input className={field} inputMode="tel" value={groomPhone} onChange={(e) => setGroomPhone(e.target.value)} placeholder="09xxxxxxxx" />
               </div>
@@ -143,12 +159,34 @@ export default function IntakeForm({
               <LocationPicker value={groomLoc} onChange={setGroomLoc} />
             </div>
           </section>
+
+          <section className="card mt-4 p-5">
+            <h2 className="font-serif text-lg font-medium">Phần 3 · Tiệc cưới / địa điểm khác</h2>
+            <div className="mt-3">
+              <label className={lbl}>Giờ đãi tiệc</label>
+              <input className={field} type="time" value={receptionTime} onChange={(e) => setReceptionTime(e.target.value)} />
+            </div>
+            <div className="mt-3">
+              <label className={lbl}>Vị trí nơi đãi tiệc</label>
+              <LocationPicker value={receptionLoc} onChange={setReceptionLoc} />
+            </div>
+          </section>
         </>
       ) : (
         <section className="card mt-6 p-5">
-          <div>
-            <label className={lbl}>Số điện thoại liên hệ</label>
-            <input className={field} inputMode="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="09xxxxxxxx" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={lbl}>Tên người làm việc trực tiếp</label>
+              <input className={field} value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Người studio liên hệ tại buổi chụp" />
+            </div>
+            <div>
+              <label className={lbl}>Số điện thoại liên hệ</label>
+              <input className={field} inputMode="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="09xxxxxxxx" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className={lbl}>Thời gian bắt đầu</label>
+            <input className={field} type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </div>
           <div className="mt-3">
             <label className={lbl}>Vị trí</label>

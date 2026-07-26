@@ -280,9 +280,12 @@ export interface IntakeLocation {
 /** Dữ liệu form điền thông tin trước buổi chụp (lưu ở studio_contracts.intake). */
 export interface ContractIntake {
   type: "psc" | "generic";
-  bride?: { phone?: string; makeup_time?: string; ceremony_time?: string; location?: IntakeLocation | null };
-  groom?: { phone?: string; depart_time?: string; ceremony_time?: string; location?: IntakeLocation | null };
+  bride?: { name?: string; phone?: string; makeup_time?: string; ceremony_time?: string; location?: IntakeLocation | null };
+  groom?: { name?: string; phone?: string; depart_time?: string; ceremony_time?: string; location?: IntakeLocation | null };
+  reception?: { time?: string; location?: IntakeLocation | null };
+  contact_name?: string;
   contact_phone?: string;
+  start_time?: string;
   location?: IntakeLocation | null;
   note?: string;
 }
