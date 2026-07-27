@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStudio } from "@/lib/auth-guards";
 import { getStudioHost } from "@/lib/studio-site";
 import { getFeatureFlags, storyComingSoon } from "@/lib/feature-flags";
@@ -91,7 +92,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
     { data: conflictUnavail },
     { data: sameDay },
   ] = await Promise.all([
-    canAssign ? supabase.from("profiles").select("id, full_name, email").eq("studio_owner_id", profile.id).order("full_name") : empty,
+    canAssign ? createAdminClient().from("profiles").select("id, full_name, email").eq("studio_owner_id", profile.id).order("full_name") : empty,
     supabase.from("contract_items").select("*").eq("contract_id", params.id).order("position"),
     supabase.from("contract_crew").select("*").eq("contract_id", params.id).order("position"),
     supabase.from("contract_edit_requests").select("*").eq("contract_id", params.id).order("created_at", { ascending: false }),

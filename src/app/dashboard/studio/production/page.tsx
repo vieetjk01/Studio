@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStudio } from "@/lib/auth-guards";
 import ProductionView, { type ProductRow } from "./ProductionView";
 
@@ -26,7 +27,9 @@ export default async function ProductionPage() {
   if (profile.actingRole === "staff") q = q.eq("contract.assigned_to", profile.actingUserId);
   const { data } = await q;
 
-  const { data: staff } = await supabase
+  // RLS bảng profiles chỉ cho đọc dòng của chính mình → dùng service-role để
+  // liệt kê nhân viên của studio (đã giới hạn theo studio_owner_id).
+  const { data: staff } = await createAdminClient()
     .from("profiles")
     .select("id, full_name, email")
     .eq("studio_owner_id", profile.id)

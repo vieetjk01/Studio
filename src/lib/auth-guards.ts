@@ -1,7 +1,20 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { effectivePlan, studioTier, STUDIO_TIER_RANK } from "@/lib/plans";
+
+/**
+ * Đọc hồ sơ theo id KHÔNG qua RLS (service-role). Dùng cho tra cứu hồ sơ CHỦ
+ * STUDIO khi user đang đăng nhập là nhân viên — vì policy SELECT của bảng
+ * profiles chỉ cho đọc dòng của chính mình (id = auth.uid()), nên nhân viên
+ * không đọc được dòng của chủ studio bằng client thường → tra cứu bị null →
+ * bị hiểu nhầm là "chưa có gói studio". Đây là tra cứu phía server tin cậy.
+ */
+const getProfileByIdAdmin = cache(async (id: string) => {
+  const { data } = await createAdminClient().from("profiles").select("*").eq("id", id).maybeSingle();
+  return data;
+});
 
 /**
  * Per-request cached auth lookups. React `cache()` dedupes by arguments within
@@ -56,7 +69,8 @@ export async function requireStudio(minTier: "booking" | "plus" | "full" = "full
 
   // Staff sub-account: act on the owner's studio (inherits the owner's tier).
   if (me.studio_owner_id) {
-    const owner = await getProfileById(me.studio_owner_id);
+    // Đọc hồ sơ chủ studio bằng service-role (RLS chặn nhân viên đọc dòng của chủ).
+    const owner = await getProfileByIdAdmin(me.studio_owner_id);
     if (!owner || !owner.is_active) return null;
     const tier = studioTier(effectivePlan(owner.plan, owner.plan_expires_at), owner.role === "admin");
     if (STUDIO_TIER_RANK[tier] < STUDIO_TIER_RANK[minTier]) return null;

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStudio } from "@/lib/auth-guards";
 import StaffManager, { type StaffRow } from "./StaffManager";
 
@@ -26,7 +26,10 @@ export default async function StaffPage() {
     );
   }
 
-  const supabase = createClient();
+  // Dùng service-role: RLS bảng profiles chỉ cho đọc dòng của chính mình, nên
+  // chủ studio (không phải admin) sẽ không liệt kê được nhân viên bằng client
+  // thường. Truy vấn đã giới hạn theo studio_owner_id = ctx.id nên an toàn.
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("profiles")
     .select("id, email, full_name, studio_role, is_active, created_at")
