@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ClipboardList,
   MapPin,
+  Tag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mainUrl, studioUrl } from "@/lib/hosts";
@@ -70,7 +71,31 @@ import {
   type CrewStatus,
 } from "@/lib/types";
 
-type ItemRow = { id?: string; name: string; qty: number; unit_price: number };
+// unit_price giữ ĐỘ LỚN (số dương khách nhập); is_discount đánh dấu đây là dòng
+// giảm giá — khi lưu sẽ ghi unit_price ÂM để trừ vào tổng (không cần cột DB mới).
+type ItemRow = { id?: string; name: string; qty: number; unit_price: number; is_discount?: boolean };
+
+/** Quy đổi hạng mục sang giá trị CÓ DẤU để tính tổng (giảm giá = âm). */
+function signedItems(items: ItemRow[]): { qty: number; unit_price: number }[] {
+  return items.map((i) => ({
+    qty: i.is_discount ? 1 : i.qty || 0,
+    unit_price: (i.is_discount ? -1 : 1) * Math.abs(i.unit_price || 0),
+  }));
+}
+
+/** Chuẩn hoá hạng mục để lưu DB: giảm giá lưu unit_price âm, còn lại dương. */
+function serializeItems(items: ItemRow[]): { name: string; qty: number; unit_price: number }[] {
+  return items
+    .map((i) => {
+      const mag = Math.max(0, Math.round(Number(i.unit_price) || 0));
+      return {
+        name: i.name.trim(),
+        qty: i.is_discount ? 1 : Math.max(0, Math.round(Number(i.qty) || 0)),
+        unit_price: i.is_discount ? -mag : mag,
+      };
+    })
+    .filter((i) => i.name);
+}
 type CrewRow = {
   id?: string;
   name: string;
@@ -223,7 +248,7 @@ export default function ContractEditor({
     });
 
   const [items, setItems] = useState<ItemRow[]>(
-    initialItems.map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price }))
+    initialItems.map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: Math.abs(i.unit_price), is_discount: i.unit_price < 0 }))
   );
   const [crew, setCrew] = useState<CrewRow[]>(
     initialCrew.map((c) => ({
@@ -286,7 +311,7 @@ export default function ContractEditor({
     setTimeout(() => setMsg(null), 2200);
   }
 
-  const total = contractTotal(items);
+  const total = contractTotal(signedItems(items));
   const collected = sumAmounts(payments);
   const balance = total - collected;
 
@@ -380,9 +405,7 @@ export default function ContractEditor({
   // ── Items ──────────────────────────────────────────────────────
   async function saveItems() {
     setBusy("items");
-    const clean = items
-      .map((i) => ({ name: i.name.trim(), qty: Math.max(0, Math.round(Number(i.qty) || 0)), unit_price: Math.max(0, Math.round(Number(i.unit_price) || 0)) }))
-      .filter((i) => i.name);
+    const clean = serializeItems(items);
     await supabase.from("contract_items").delete().eq("contract_id", contract.id);
     if (clean.length) {
       await supabase
@@ -394,7 +417,7 @@ export default function ContractEditor({
       .select("*")
       .eq("contract_id", contract.id)
       .order("position");
-    setItems((data ?? []).map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: i.unit_price })));
+    setItems((data ?? []).map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: Math.abs(i.unit_price), is_discount: i.unit_price < 0 })));
     setBusy(null);
     toast("Đã lưu hạng mục.");
   }
@@ -838,9 +861,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
       toast(`Lỗi: ${error?.message || "không nhân bản được"}`);
       return;
     }
-    const clean = items
-      .map((i) => ({ name: i.name.trim(), qty: Math.max(0, Math.round(Number(i.qty) || 0)), unit_price: Math.max(0, Math.round(Number(i.unit_price) || 0)) }))
-      .filter((i) => i.name);
+    const clean = serializeItems(items);
     if (clean.length) {
       await supabase.from("contract_items").insert(clean.map((i, idx) => ({ ...i, contract_id: data.id, position: idx })));
     }
@@ -1317,11 +1338,16 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
 
           {/* Items */}
           <div className="card p-6">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between gap-2">
               <h2 className="font-serif text-lg font-medium">Hạng mục &amp; báo giá</h2>
-              <button onClick={() => setItems((p) => [...p, { name: "", qty: 1, unit_price: 0 }])} className="btn-ghost px-2.5 py-1.5 text-xs">
-                <Plus size={14} /> Thêm hạng mục
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setItems((p) => [...p, { name: "", qty: 1, unit_price: 0 }])} className="btn-ghost px-2.5 py-1.5 text-xs">
+                  <Plus size={14} /> Thêm hạng mục
+                </button>
+                <button onClick={() => setItems((p) => [...p, { name: "Giảm giá", qty: 1, unit_price: 0, is_discount: true }])} className="btn-ghost px-2.5 py-1.5 text-xs" style={{ color: "var(--s-amber)" }}>
+                  <Tag size={14} /> Thêm giảm giá
+                </button>
+              </div>
             </div>
             {(pricelist.length > 0 || PRESET_ITEMS.length > 0) && (
               <div className="mb-4">
@@ -1350,19 +1376,34 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                   <span className="col-span-3 text-right">Đơn giá</span>
                   <span className="col-span-1" />
                 </div>
-                {items.map((it, idx) => (
-                  <div key={idx} className="grid grid-cols-12 items-center gap-2">
-                    <input className="input col-span-12 sm:col-span-6" placeholder="VD: Chụp phóng sự cả ngày" value={it.name}
-                      onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))} />
-                    <input type="number" className="input col-span-3 text-center sm:col-span-2" value={it.qty}
-                      onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, qty: Number(e.target.value) } : x)))} />
-                    <MoneyInput className="input col-span-7 text-right sm:col-span-3" value={it.unit_price}
-                      onChange={(n) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, unit_price: n } : x)))} />
-                    <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="col-span-2 flex justify-center sm:col-span-1" style={{ color: "var(--text3)" }} aria-label="Xoá">
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                ))}
+                {items.map((it, idx) =>
+                  it.is_discount ? (
+                    <div key={idx} className="grid grid-cols-12 items-center gap-2 rounded-lg p-1.5" style={{ background: "var(--s-amberS)" }}>
+                      <input className="input col-span-12 sm:col-span-6" placeholder="Tên khoản giảm giá" value={it.name}
+                        onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))} />
+                      <span className="col-span-3 hidden text-center text-xs sm:col-span-2 sm:inline" style={{ color: "var(--s-amber)" }}>
+                        <Tag size={12} className="inline" /> Giảm
+                      </span>
+                      <MoneyInput className="input col-span-7 text-right sm:col-span-3" value={it.unit_price}
+                        onChange={(n) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, unit_price: n } : x)))} />
+                      <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="col-span-2 flex justify-center sm:col-span-1" style={{ color: "var(--text3)" }} aria-label="Xoá">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div key={idx} className="grid grid-cols-12 items-center gap-2">
+                      <input className="input col-span-12 sm:col-span-6" placeholder="VD: Chụp phóng sự cả ngày" value={it.name}
+                        onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))} />
+                      <input type="number" className="input col-span-3 text-center sm:col-span-2" value={it.qty}
+                        onChange={(e) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, qty: Number(e.target.value) } : x)))} />
+                      <MoneyInput className="input col-span-7 text-right sm:col-span-3" value={it.unit_price}
+                        onChange={(n) => setItems((p) => p.map((x, i) => (i === idx ? { ...x, unit_price: n } : x)))} />
+                      <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="col-span-2 flex justify-center sm:col-span-1" style={{ color: "var(--text3)" }} aria-label="Xoá">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )
+                )}
               </div>
             )}
             <div className="mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border)" }}>

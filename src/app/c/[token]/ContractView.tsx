@@ -573,13 +573,18 @@ export default function ContractView({ token }: { token: string }) {
           ) : (
             <table className="w-full text-sm">
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
-                    <td className="py-2.5">{it.name}</td>
-                    <td className="py-2.5 text-center" style={{ color: "var(--text3)" }}>×{it.qty}</td>
-                    <td className="py-2.5 text-right">{vnd(it.qty * it.unit_price)}</td>
-                  </tr>
-                ))}
+                {items.map((it) => {
+                  const isDiscount = it.unit_price < 0;
+                  return (
+                    <tr key={it.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+                      <td className="py-2.5">{it.name}</td>
+                      <td className="py-2.5 text-center" style={{ color: "var(--text3)" }}>{isDiscount ? "" : `×${it.qty}`}</td>
+                      <td className="py-2.5 text-right" style={isDiscount ? { color: "var(--gold)" } : undefined}>
+                        {isDiscount ? `− ${vnd(Math.abs(it.qty * it.unit_price))}` : vnd(it.qty * it.unit_price)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
