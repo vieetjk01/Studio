@@ -19,10 +19,12 @@ import type {
   StudioExpense,
 } from "@/lib/types";
 import ContractEditor from "./ContractEditor";
+import StudioDenied from "@/components/StudioDenied";
 
 
 export default async function ContractPage({ params }: { params: { id: string } }) {
   const profile = await requireStudio("plus");
+  if (profile?.actingRole === "accountant") return <StudioDenied message="Kế toán chỉ truy cập mục Thu chi & Bảng lương." />;
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

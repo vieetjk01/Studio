@@ -1,4 +1,5 @@
 import { requireStudio } from "@/lib/auth-guards";
+import StudioDenied from "@/components/StudioDenied";
 import ContractsListView from "./ContractsListView";
 
 // Trang chỉ gác quyền; danh sách hợp đồng được tải client-side + cache trên máy
@@ -6,6 +7,7 @@ import ContractsListView from "./ContractsListView";
 // chờ server render lại mỗi lần mở trang.
 export default async function ContractsList() {
   const profile = await requireStudio("plus");
+  if (profile?.actingRole === "accountant") return <StudioDenied message="Kế toán chỉ truy cập mục Thu chi & Bảng lương." />;
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

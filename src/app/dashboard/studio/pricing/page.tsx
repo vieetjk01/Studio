@@ -6,10 +6,12 @@ import { STUDIO_TIER_RANK, type StudioTier } from "@/lib/plans";
 import { ALL_SEED } from "@/lib/pricelist-seeds";
 import type { PricelistItem } from "@/lib/types";
 import PricingManager from "./PricingManager";
+import StudioDenied from "@/components/StudioDenied";
 
 
 export default async function PricingPage() {
   const profile = await requireStudio("booking");
+  if (profile?.actingRole === "accountant") return <StudioDenied message="Kế toán chỉ truy cập mục Thu chi & Bảng lương." />;
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

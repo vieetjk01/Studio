@@ -3,11 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { getStudioHost } from "@/lib/studio-site";
 import QuoteEditor from "./QuoteEditor";
+import StudioDenied from "@/components/StudioDenied";
 import type { StudioQuote, QuoteItem, QuoteAdjustment } from "@/lib/types";
 
 
 export default async function QuoteDetailPage({ params }: { params: { id: string } }) {
   const profile = await requireStudio("plus");
+  if (profile?.actingRole === "accountant") return <StudioDenied message="Kế toán chỉ truy cập mục Thu chi & Bảng lương." />;
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">

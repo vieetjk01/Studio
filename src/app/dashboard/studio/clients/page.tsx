@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { contractTotal, sumAmounts } from "@/lib/types";
 import ClientsView, { type ClientAgg } from "./ClientsView";
+import StudioDenied from "@/components/StudioDenied";
 
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
@@ -18,6 +19,7 @@ type Row = {
 
 export default async function ClientsPage() {
   const profile = await requireStudio("booking");
+  if (profile?.actingRole === "accountant") return <StudioDenied message="Kế toán chỉ truy cập mục Thu chi & Bảng lương." />;
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg text-center">
