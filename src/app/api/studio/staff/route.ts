@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { effectivePlan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -22,23 +23,69 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad_input" }, { status: 400 });
   }
   const studioRole = ROLES.includes(role || "") ? role : "staff";
+  const emailNorm = email.trim().toLowerCase();
+  const fullName = full_name?.trim() || emailNorm;
 
   const db = createAdminClient();
+
+  // 1) Tạo tài khoản auth. Nếu email đã tồn tại → nhận tài khoản đó làm nhân viên
+  //    (nhưng KHÔNG chiếm tài khoản đang trả phí / admin / thuộc studio khác).
+  let userId: string;
   const { data: created, error } = await db.auth.admin.createUser({
-    email: email.trim(),
+    email: emailNorm,
     password,
     email_confirm: true,
-    user_metadata: { full_name: full_name?.trim() || email },
+    user_metadata: { full_name: fullName },
   });
-  if (error || !created.user) {
-    return NextResponse.json({ error: error?.message || "create_failed" }, { status: 500 });
+  if (created?.user) {
+    userId = created.user.id;
+  } else {
+    const { data: existing } = await db
+      .from("profiles")
+      .select("id, role, plan, plan_expires_at, studio_owner_id")
+      .eq("email", emailNorm)
+      .maybeSingle();
+    if (!existing) {
+      return NextResponse.json({ error: error?.message || "create_failed" }, { status: 500 });
+    }
+    const alreadyMine = existing.studio_owner_id === ctx.id;
+    const isFreeUnclaimed =
+      existing.role !== "admin" &&
+      !existing.studio_owner_id &&
+      effectivePlan(existing.plan, existing.plan_expires_at) === "free";
+    if (!alreadyMine && !isFreeUnclaimed) {
+      // Email đã thuộc một tài khoản trả phí / admin / studio khác.
+      return NextResponse.json({ error: "email_taken" }, { status: 409 });
+    }
+    userId = existing.id;
+    // Đặt lại mật khẩu theo mật khẩu chủ studio nhập để nhân viên đăng nhập được.
+    await db.auth.admin.updateUserById(userId, { password });
   }
-  // Link the new profile to this studio (the handle_new_user trigger created it).
+
+  // 2) Bảo đảm hồ sơ tồn tại VÀ đã gắn với studio này. Dùng upsert thay cho update
+  //    mù — không phụ thuộc thời điểm trigger handle_new_user tạo hàng profiles
+  //    (tránh trường hợp update trúng 0 hàng mà vẫn báo thành công → nhân viên
+  //    thành user tự do, bị bắt nâng cấp gói).
   const { error: upErr } = await db
     .from("profiles")
-    .update({ studio_owner_id: ctx.id, studio_role: studioRole, full_name: full_name?.trim() || email, is_active: true })
-    .eq("id", created.user.id);
+    .upsert(
+      {
+        id: userId,
+        email: emailNorm,
+        full_name: fullName,
+        studio_owner_id: ctx.id,
+        studio_role: studioRole,
+        is_active: true,
+      },
+      { onConflict: "id" }
+    );
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+
+  // 3) Xác nhận đã gắn thành công (nếu không, báo lỗi rõ thay vì im lặng).
+  const { data: check } = await db.from("profiles").select("studio_owner_id").eq("id", userId).maybeSingle();
+  if (!check || check.studio_owner_id !== ctx.id) {
+    return NextResponse.json({ error: "link_failed" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

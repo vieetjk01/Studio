@@ -44,7 +44,13 @@ export default function StaffManager({ initial }: { initial: StaffRow[] }) {
       router.refresh();
     } else {
       const j = await res.json().catch(() => ({}));
-      setErr(j.error === "bad_input" ? "Thông tin chưa hợp lệ." : "Không tạo được: " + (j.error || ""));
+      const msg =
+        j.error === "bad_input" ? "Thông tin chưa hợp lệ (email đúng định dạng, mật khẩu ≥ 6 ký tự)."
+        : j.error === "email_taken" ? "Email này đã thuộc một tài khoản trả phí hoặc studio khác. Dùng email khác cho nhân viên."
+        : j.error === "link_failed" ? "Tạo được tài khoản nhưng chưa gắn vào studio. Thử lại giúp mình."
+        : j.error === "forbidden" ? "Chỉ chủ studio mới tạo được nhân viên."
+        : "Không tạo được: " + (j.error || "");
+      setErr(msg);
     }
   }
 
