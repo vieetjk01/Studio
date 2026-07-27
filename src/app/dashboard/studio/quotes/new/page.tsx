@@ -18,12 +18,28 @@ export default async function NewQuotePage() {
   }
 
   const supabase = createClient();
-  const { data: services } = await supabase
-    .from("studio_services")
-    .select("id, name")
-    .eq("owner_id", profile.id)
-    .eq("active", true)
-    .order("position", { ascending: true });
+  const [{ data: services }, { data: pricelist }] = await Promise.all([
+    supabase
+      .from("studio_services")
+      .select("id, name")
+      .eq("owner_id", profile.id)
+      .eq("active", true)
+      .order("position", { ascending: true }),
+    supabase
+      .from("studio_pricelist")
+      .select("name, price, unit, description, category, list_key")
+      .eq("owner_id", profile.id)
+      .eq("active", true)
+      .gt("price", 0)
+      .order("list_key", { ascending: true })
+      .order("position", { ascending: true }),
+  ]);
 
-  return <NewQuoteForm ownerId={profile.id} services={(services ?? []) as { id: string; name: string }[]} />;
+  return (
+    <NewQuoteForm
+      ownerId={profile.id}
+      services={(services ?? []) as { id: string; name: string }[]}
+      pricelist={(pricelist ?? []) as { name: string; price: number; unit: string | null; description: string | null; category: string | null; list_key: string | null }[]}
+    />
+  );
 }

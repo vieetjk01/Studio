@@ -11,8 +11,9 @@ import { fmtDate } from "@/lib/date";
 import { vnd } from "@/lib/types";
 
 type Draft = { name: string; description: string; qty: number; unit_price: number; is_optional: boolean; is_discount: boolean; package_group: string };
+type PriceItem = { name: string; price: number; unit: string | null; description: string | null; category: string | null; list_key: string | null };
 
-export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: string; services?: { id: string; name: string }[] }) {
+export default function NewQuoteForm({ ownerId, services = [], pricelist = [] }: { ownerId: string; services?: { id: string; name: string }[]; pricelist?: PriceItem[] }) {
   const router = useRouter();
   const supabase = createClient();
   const [title, setTitle] = useState("");
@@ -50,6 +51,17 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
         : { name: "", description: "", qty: 1, unit_price: 0, is_optional: true, is_discount: false, package_group: "" },
     ]);
   }
+  // Thêm nhanh 1 gói từ bảng giá vào hạng mục báo giá.
+  function addFromPrice(p: PriceItem) {
+    setItems((arr) => {
+      // Nếu đang còn 1 dòng trống mặc định thì thay thế nó thay vì thêm dòng mới.
+      const onlyEmptyDefault = arr.length === 1 && !arr[0].name.trim() && !arr[0].unit_price && !arr[0].is_discount;
+      const row: Draft = { name: p.name, description: p.description || "", qty: 1, unit_price: p.price, is_optional: false, is_discount: false, package_group: "" };
+      return onlyEmptyDefault ? [row] : [...arr, row];
+    });
+  }
+  // Nhóm gói bảng giá theo "loại bảng giá" (list_key) để hiển thị gọn.
+  const priceGroups = Array.from(new Set(pricelist.map((p) => p.list_key || "cuoi")));
   function remove(idx: number) {
     setItems((arr) => arr.filter((_, i) => i !== idx));
   }
@@ -207,6 +219,34 @@ export default function NewQuoteForm({ ownerId, services = [] }: { ownerId: stri
         <p className="mt-1 text-xs" style={{ color: "var(--text3)" }}>
           Bấm <Lock size={10} className="inline" /> để khoá hạng mục bắt buộc (khách không bỏ chọn được), <LockOpen size={10} className="inline" /> cho hạng mục tuỳ chọn.
         </p>
+
+        {pricelist.length > 0 && (
+          <div className="mt-3 rounded-lg p-3" style={{ background: "var(--surface2)" }}>
+            <p className="mb-1.5 text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Thêm nhanh từ bảng giá</p>
+            {priceGroups.map((g) => (
+              <div key={g} className="mb-2 last:mb-0">
+                {priceGroups.length > 1 && (
+                  <p className="mb-1 text-[11px] font-medium" style={{ color: "var(--text2)" }}>{g}</p>
+                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {pricelist.filter((p) => (p.list_key || "cuoi") === g).map((p, i) => (
+                    <button
+                      key={`${g}-${i}`}
+                      type="button"
+                      onClick={() => addFromPrice(p)}
+                      className="rounded-full px-2.5 py-1 text-xs"
+                      style={{ border: "1px solid var(--border2)", color: "var(--text2)" }}
+                      title={p.description || undefined}
+                    >
+                      + {p.name} · {vnd(p.price)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mt-3 space-y-2">
           {items.map((it, idx) => (
             <div
