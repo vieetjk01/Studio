@@ -107,7 +107,7 @@ class SlideEngine {
 
   slideDur(t: string) {
     const b = this.state.perPhoto;
-    const m: Record<string, number> = { TITLE: 3.8, OUTRO: 4.2, QUOTE: 3.8, FULL: b, PANO: b + 0.2, FRAME: b + 0.3, POLAROID: b + 0.2, SPLIT: b + 1.1, DUO: b + 0.7, DUOV: b + 0.7, TRIPLE: b + 1.2, TRIPLE_R: b + 1.2, BANDS: b + 1.0, TRIO: b + 1.0, QUAD: b + 1.6, QUADL: b + 1.6, QUINT: b + 1.8, HEX: b + 2.0 };
+    const m: Record<string, number> = { TITLE: 3.8, OUTRO: 4.2, QUOTE: 3.8, FULL: b, FULLB: b, PANO: b + 0.2, FRAME: b + 0.3, POLAROID: b + 0.2, SPLIT: b + 1.1, DUO: b + 0.7, DUOV: b + 0.7, TRIPLE: b + 1.2, TRIPLE_R: b + 1.2, BANDS: b + 1.0, TRIO: b + 1.0, QUAD: b + 1.6, QUADL: b + 1.6, QUINT: b + 1.8, HEX: b + 2.0 };
     return (m[t] || b) * (this.getTheme().pace || 1);
   }
   // Chọn bố cục hợp với HƯỚNG ảnh của nhóm + khổ video: ảnh ngang → ô ngang,
@@ -127,11 +127,11 @@ class SlideEngine {
     if (portrait) {
       // Ảnh dọc trùng khổ dọc → full; ảnh ngang → khung ô ngang trên nền phẳng.
       if (o === "L") return pick(["FRAME", "FRAME", "PANO"]);
-      return pick(["FULL", "FULL", "FULL", "FRAME", "POLAROID"]);
+      return pick(["FULL", "FULL", "FULLB", "FRAME", "POLAROID"]);
     }
     // Ảnh ngang trùng khổ ngang → full; ảnh dọc → khung ô dọc trên nền phẳng.
     if (o === "P") return pick(["FRAME", "FRAME", "PANO"]);
-    return pick(["FULL", "FULL", "FULL", "FRAME", "POLAROID"]);
+    return pick(["FULL", "FULL", "FULLB", "FRAME", "POLAROID"]);
   }
   buildPlan(portrait: boolean): Slide[] {
     const P = this.state.photos, Q = this.quotes;
@@ -147,7 +147,9 @@ class SlideEngine {
     // Nhịp số ảnh mỗi cảnh theo phong cách: xen kẽ cảnh 1 ảnh ↔ cảnh ghép nhiều ảnh.
     const rhythm = th.rhythm || [1, 2, 3, 1, 2, 4];
     const slides: Slide[] = [{ type: "TITLE", photos: [P[0]], trans: "fade" }];
-    let i = 0, ri = 0, cnt = 0, qi = 0, side = 0, useSplit = true;
+    // Bắt đầu montage từ ảnh THỨ HAI: ảnh đầu đã dùng làm bìa (TITLE) nên không
+    // lặp lại ở cảnh nội dung đầu tiên. Chỉ 1 ảnh thì vẫn dùng lại cho montage.
+    let i = P.length > 1 ? 1 : 0, ri = 0, cnt = 0, qi = 0, side = 0, useSplit = true;
     while (i < P.length) {
       const rem = P.length - i;
       // Ưu tiên gom ảnh CÙNG HƯỚNG liên tiếp (ảnh vuông đi được với cả hai); nếu
@@ -218,7 +220,7 @@ class SlideEngine {
     if (k === 4) return ["QUAD", "QUADL"];
     if (k === 3) return ["TRIPLE", "TRIPLE_R", "BANDS", "TRIO"];
     if (k === 2) return ["DUO", "DUOV"];
-    return ["FULL", "PANO", "FRAME", "POLAROID"];
+    return ["FULL", "FULLB", "PANO", "FRAME", "POLAROID"];
   }
   // "Bố cục mới": đổi bố cục + hiệu ứng của RIÊNG slide đang xem (giữ nguyên slide khác).
   regenSlide() {
@@ -239,6 +241,42 @@ class SlideEngine {
     }
     this.drawAt(this.time);
     this.onChange();
+  }
+
+  // ——— Chỉnh RIÊNG slide đang xem: thêm ảnh, đổi ảnh, xoá ảnh, chọn bố cục ———
+  // (Áp dụng cho khổ đang xem; dựng lại toàn bộ — qua rebuild — sẽ đặt lại về mặc định.)
+  curSlideRef(): Slide | null { const i = this.curIndex(); return this.plan[i] || null; }
+  isPhotoGrid(sl: Slide | null): boolean { return !!sl && !["TITLE", "OUTRO", "QUOTE", "SPLIT"].includes(sl.type); }
+  // Đổi bố cục cho slide ảnh đang xem (giữ nguyên số ảnh).
+  setSlideLayout(type: string) {
+    const sl = this.curSlideRef(); if (!this.isPhotoGrid(sl) || !sl || sl.type === type) return;
+    sl.type = type;
+    this.retime(this.plan); this.syncDuration();
+    this.drawAt(this.time); this.onChange();
+  }
+  // Thêm 1 ảnh (từ thư viện) vào slide đang xem — tự chọn bố cục hợp số ảnh mới.
+  addPhotoToSlide(photoId: string) {
+    const sl = this.curSlideRef(); if (!this.isPhotoGrid(sl) || !sl || sl.photos.length >= 6) return;
+    const ph = this.state.photos.find((x) => x.id === photoId); if (!ph) return;
+    sl.photos = [...sl.photos, ph];
+    sl.type = this.layoutsFor(sl.photos.length)[0];
+    this.retime(this.plan); this.syncDuration();
+    this.drawAt(this.time); this.onChange();
+  }
+  // Xoá bớt 1 ảnh khỏi slide đang xem (luôn giữ ít nhất 1 ảnh).
+  removeSlidePhoto(idx: number) {
+    const sl = this.curSlideRef(); if (!this.isPhotoGrid(sl) || !sl || sl.photos.length <= 1) return;
+    sl.photos = sl.photos.filter((_, j) => j !== idx);
+    sl.type = this.layoutsFor(sl.photos.length)[0];
+    this.retime(this.plan); this.syncDuration();
+    this.drawAt(this.time); this.onChange();
+  }
+  // Đổi ảnh tại vị trí idx của slide đang xem (dùng được cho cả bìa & slide chữ+ảnh).
+  replaceSlidePhoto(idx: number, photoId: string) {
+    const sl = this.curSlideRef(); if (!sl || idx < 0 || idx >= sl.photos.length) return;
+    const ph = this.state.photos.find((x) => x.id === photoId); if (!ph) return;
+    sl.photos = sl.photos.map((x, j) => (j === idx ? ph : x));
+    this.drawAt(this.time); this.onChange();
   }
 
   roundRect(x: number, y: number, w: number, h: number, r: number) { const c = this.ctx!; r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -348,6 +386,7 @@ class SlideEngine {
       case "OUTRO": this.drawOutro(slide, p); break;
       case "QUOTE": this.drawQuote(slide, p); break;
       case "FULL": this.drawPhotoCell(0, 0, W, H, 0, p, 3, slide.photos[0]); break;
+      case "FULLB": this.drawFullBorder(slide, p); break;
       case "PANO": this.drawPhotoCell(0, 0, W, H, 0, p, 3, slide.photos[0], "contain"); break;
       case "FRAME": this.drawFrame(slide, p); break;
       case "POLAROID": this.drawPolaroid(slide, p); break;
@@ -419,6 +458,25 @@ class SlideEngine {
     this.drawPhotoCell(x, y, w, h, th.radius, p, 5, slide.photos[0]);
     this.text(this.coupleName(), x, y - 52, 26, th.sub, th.body, 600, "left", false, 2, 1);
     if (this.state.date) this.text(this.state.date, x + w, y + h + 18, 22, th.sub, th.body, 500, "right", false, 3, 1);
+  }
+  // FULL VIỀN: ảnh phủ đầy khung + đường viền trang trí lồng vào trong (khung
+  // kép mảnh) — giữ được cảm giác "full màn hình" nhưng có viền nhẹ nhàng, sang.
+  drawFullBorder(slide: Slide, p: number) {
+    const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
+    this.drawPhotoCell(0, 0, W, H, 0, p, 3, slide.photos[0]);
+    const m = Math.round(Math.min(W, H) * 0.05);
+    const iw = W - 2 * m, ih = H - 2 * m;
+    c.save();
+    // Viền ngoài đậm hơn (kèm bóng nhẹ để nổi trên cả ảnh sáng lẫn tối).
+    c.shadowColor = "rgba(0,0,0,0.35)"; c.shadowBlur = 12;
+    c.strokeStyle = "rgba(255,255,255,0.92)"; c.lineWidth = 3;
+    this.roundRect(m, m, iw, ih, th.radius); c.stroke();
+    c.shadowColor = "transparent";
+    // Viền trong mảnh, lồng vào — tạo khung kép thanh lịch.
+    c.strokeStyle = "rgba(255,255,255,0.5)"; c.lineWidth = 1;
+    const g2 = 9;
+    this.roundRect(m + g2, m + g2, iw - 2 * g2, ih - 2 * g2, Math.max(0, th.radius - 3)); c.stroke();
+    c.restore();
   }
   drawSplit(slide: Slide, p: number) {
     const c = this.ctx!, th = this.getTheme(), W = this.W, H = this.H;
@@ -644,7 +702,7 @@ class SlideEngine {
     this._last = null; this._raf = requestAnimationFrame(this.playTick);
   }
   pausePreview() { this.setState({ playing: false }); if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } this._last = null; this.pauseMusic(); }
-  onScrub(v: number) { this.time = v; this.drawAt(v); if (this.timeLabel) this.timeLabel.textContent = this.fmt(v); if (this.state.music === "upload" && this.audioEl) { try { this.audioEl.currentTime = this.audioEl.duration ? v % this.audioEl.duration : v; } catch { /* */ } } }
+  onScrub(v: number) { this.time = v; this.drawAt(v); if (this.timeLabel) this.timeLabel.textContent = this.fmt(v); if (this.state.music === "upload" && this.audioEl) { try { this.audioEl.currentTime = this.audioEl.duration ? v % this.audioEl.duration : v; } catch { /* */ } } this.onChange(); }
 
   ensureAudio() {
     if (this.actx) return;
@@ -820,6 +878,8 @@ export default function SlideStudio() {
   const [lib, setLib] = useState<string[]>([]);
   const [own, setOwn] = useState("");
   const [exportMenu, setExportMenu] = useState(false);
+  // Bộ chọn ảnh cho slide đang xem: { mode:"add"|"swap", idx } — mở lưới thư viện ảnh.
+  const [picker, setPicker] = useState<{ mode: "add" | "swap"; idx: number } | null>(null);
 
   useEffect(() => {
     try { const raw = localStorage.getItem("slide_phrases"); if (raw) setLib(JSON.parse(raw)); } catch { /* */ }
@@ -861,6 +921,24 @@ export default function SlideStudio() {
   const TABS = [["photos", "1", "Ảnh"], ["info", "2", "Thông tin"], ["story", "3", "Câu chuyện"], ["music", "4", "Nhạc"], ["style", "5", "Phong cách"]] as const;
   const MUSIC = [["none", "Không nhạc", "Chỉ hình ảnh, không âm thanh"], ["piano", "Piano nhẹ", "Nhẹ nhàng, du dương (mẫu)"], ["strings", "Dây đàn ấm", "Sâu lắng, tình cảm (mẫu)"], ["upload", "Nhạc của bạn", "Dùng file bạn đã tải lên"]] as const;
   const qn = eng.quotesNow().length;
+  // Nhãn tiếng Việt cho từng loại bố cục (hiển thị ở bảng chỉnh slide).
+  const LAYOUT_LABEL: Record<string, string> = {
+    FULL: "Full màn hình", FULLB: "Full viền", PANO: "Toàn cảnh", FRAME: "Khung ảnh", POLAROID: "Polaroid",
+    DUO: "2 ảnh ngang", DUOV: "2 ảnh dọc", TRIPLE: "3 ảnh", TRIPLE_R: "3 ảnh (ngược)", BANDS: "3 băng", TRIO: "3 cột",
+    QUAD: "4 ảnh", QUADL: "4 ảnh (1 lớn)", QUINT: "5 ảnh", HEX: "6 ảnh",
+    TITLE: "Bìa mở đầu", OUTRO: "Lời kết", QUOTE: "Câu chữ", SPLIT: "Chữ + ảnh",
+  };
+  // Slide đang xem (theo con trỏ thời gian) để chỉnh ảnh / bố cục riêng.
+  const curIdx = eng.plan.length ? eng.curIndex() : -1;
+  const curSlide = curIdx >= 0 ? eng.plan[curIdx] : null;
+  const curIsGrid = eng.isPhotoGrid(curSlide);
+  const curHasPhotos = !!curSlide && curSlide.photos.length > 0;
+  const applyPick = (photoId: string) => {
+    if (!picker) return;
+    if (picker.mode === "add") eng.addPhotoToSlide(photoId);
+    else eng.replaceSlidePhoto(picker.idx, photoId);
+    setPicker(null);
+  };
   const inp: React.CSSProperties = { width: "100%", height: 42, padding: "0 14px", border: "1px solid #e2dccf", borderRadius: 10, fontSize: 14, background: "#faf8f3", color: "#26241f" };
   const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, marginBottom: 6, color: "#6a6459" };
 
@@ -1042,6 +1120,50 @@ export default function SlideStudio() {
               </div>
             </div>
           </div>
+          {/* Bảng chỉnh RIÊNG slide đang xem: thêm / đổi / xoá ảnh + chọn bố cục */}
+          {curHasPhotos && (
+            <div style={{ flex: "none", padding: "12px 24px 0" }}>
+              <div style={{ background: "#232329", border: "1px solid #34343b", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "#e6e2da" }}>
+                    Cảnh {curIdx + 1}/{S.slideCount} · <span style={{ color: green }}>{LAYOUT_LABEL[curSlide!.type] || curSlide!.type}</span>
+                  </span>
+                  {/* Dải ảnh của slide: bấm để đổi, × để xoá bớt, ＋ để thêm */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {curSlide!.photos.map((ph, i) => (
+                      <div key={ph.id + "-" + i} style={{ position: "relative", width: 46, height: 46, borderRadius: 8, overflow: "hidden", background: "#111", border: "1px solid #44444c" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt="" onClick={() => setPicker({ mode: "swap", idx: i })} title="Đổi ảnh này" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer" }} />
+                        {curIsGrid && curSlide!.photos.length > 1 && (
+                          <button onClick={() => eng.removeSlidePhoto(i)} title="Xoá ảnh khỏi cảnh" style={{ position: "absolute", right: 2, top: 2, width: 17, height: 17, border: "none", borderRadius: 5, background: "rgba(15,15,18,.8)", color: "#fff", fontSize: 12, lineHeight: 1, cursor: "pointer", padding: 0 }}>×</button>
+                        )}
+                      </div>
+                    ))}
+                    {curIsGrid && curSlide!.photos.length < 6 && (
+                      <button onClick={() => setPicker({ mode: "add", idx: -1 })} title="Thêm ảnh vào cảnh" style={{ width: 46, height: 46, flex: "none", border: "1.5px dashed #4c4c55", borderRadius: 8, background: "transparent", color: "#b7b2a9", fontSize: 20, lineHeight: 1, cursor: "pointer" }}>＋</button>
+                    )}
+                  </div>
+                </div>
+                {/* Chọn bố cục cho slide ảnh (gồm Full viền) */}
+                {curIsGrid && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: "#9a958c", marginRight: 2 }}>Bố cục:</span>
+                    {eng.layoutsFor(curSlide!.photos.length).map((t) => {
+                      const on = curSlide!.type === t;
+                      return (
+                        <button key={t} onClick={() => eng.setSlideLayout(t)} style={{ height: 28, padding: "0 12px", border: on ? `1.5px solid ${green}` : "1px solid #3f3f46", borderRadius: 999, background: on ? "rgba(31,157,99,.16)" : "transparent", color: on ? "#8fe4b8" : "#cfcbc4", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{LAYOUT_LABEL[t] || t}</button>
+                      );
+                    })}
+                  </div>
+                )}
+                {!curIsGrid && (
+                  <div style={{ fontSize: 11.5, color: "#9a958c", marginTop: 8 }}>
+                    {curSlide!.type === "TITLE" ? "Bấm ảnh để đổi ảnh bìa." : "Cảnh chữ + ảnh — bấm ảnh để đổi ảnh minh hoạ."}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 14, padding: "14px 24px 20px" }}>
             <button onClick={() => eng.togglePlay()} style={{ width: 44, height: 44, flex: "none", border: "none", borderRadius: "50%", background: green, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 18px rgba(31,157,99,.35)" }}>{S.playing ? "❚❚" : "▶"}</button>
             <span ref={(el) => { eng.timeLabel = el; }} style={{ fontSize: 12.5, color: "#cfcbc4", fontVariantNumeric: "tabular-nums", minWidth: 36 }}>0:00</span>
@@ -1066,6 +1188,31 @@ export default function SlideStudio() {
       )}
       {S.exportError && (
         <div onClick={() => eng.setState({ exportError: "" })} style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", background: "#cc4b4b", color: "#fff", padding: "12px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 60, cursor: "pointer", maxWidth: 520 }}>{S.exportError}</div>
+      )}
+
+      {/* Chọn ảnh từ thư viện để thêm vào / đổi cho slide đang xem */}
+      {picker && (
+        <div onClick={() => setPicker(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,15,18,.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 640, maxHeight: "82vh", display: "flex", flexDirection: "column", background: "#fffdf9", borderRadius: 16, boxShadow: "0 30px 80px rgba(0,0,0,.4)", overflow: "hidden" }}>
+            <div style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #efe9df" }}>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#26241f" }}>{picker.mode === "add" ? "Thêm ảnh vào cảnh" : "Đổi ảnh"}</div>
+              <button onClick={() => setPicker(null)} style={{ width: 30, height: 30, border: "none", borderRadius: 8, background: "#f0ece3", color: "#6a6459", fontSize: 16, cursor: "pointer" }}>×</button>
+            </div>
+            {S.photos.length === 0 ? (
+              <div style={{ padding: 30, textAlign: "center", fontSize: 13, color: "#8a8378" }}>Chưa có ảnh nào trong thư viện — tải ảnh lên ở tab “Ảnh”.</div>
+            ) : (
+              <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8 }}>
+                {S.photos.map((ph, i) => (
+                  <button key={ph.id} onClick={() => applyPick(ph.id)} style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", border: "1px solid #e2dccf", background: "#eae5dc", cursor: "pointer", padding: 0 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ph.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <span style={{ position: "absolute", left: 5, top: 5, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 6, background: "rgba(20,18,15,.72)", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
