@@ -6,6 +6,7 @@ import {
   Music, LayoutTemplate, FolderOpen, X,
 } from "lucide-react";
 import { BANKS } from "@/lib/banks";
+import { createClient } from "@/lib/supabase/client";
 import { checkImageFile, compressToLimit } from "@/lib/image";
 import { thiepUrl } from "@/lib/hosts";
 import { WEDDING_TEMPLATE_LIST } from "../../[slug]/templates";
@@ -81,28 +82,40 @@ export default function WeddingEditor({ token }: { token: string }) {
     return ((await res.json()) as { url: string }).url;
   }
 
-  // Trả về { url } khi thành công hoặc { error } để hiện NGAY tại mục nhạc (thay
-  // vì chỉ hiện banner ở đầu trang — dễ bị bỏ lỡ khi đang cuộn ở dưới).
+  // Tải nhạc THẲNG lên Supabase Storage qua URL ký sẵn (không qua serverless →
+  // không vướng trần body ~4.5MB của Vercel, vốn là lý do file nhạc lớn báo lỗi).
+  // Trả về { url } hoặc { error } để hiện NGAY tại mục nhạc.
   async function uploadAudio(file: File): Promise<{ url?: string; error?: string }> {
     if (file.size > 10 * 1024 * 1024) return { error: "File nhạc quá lớn (tối đa 10MB)." };
-    const fd = new FormData();
-    fd.append("file", file);
-    let res: Response;
+    const ext = (file.name.split(".").pop() || "mp3").toLowerCase();
+    // 1) Xin URL ký sẵn (request nhỏ, không dính trần body).
+    let signed: { path: string; token: string; publicUrl: string };
     try {
-      res = await fetch(`/api/thiep/${token}/upload`, { method: "POST", body: fd });
+      const r = await fetch(`/api/thiep/${token}/audio-upload-url`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ext }),
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => null)) as { error?: string } | null;
+        if (j?.error === "not_found") return { error: "Phiên chỉnh sửa đã hết hạn, tải lại trang giúp mình nhé." };
+        return { error: "Không tạo được phiên tải nhạc" + (j?.error ? ` (${j.error})` : ".") };
+      }
+      signed = await r.json();
     } catch {
       return { error: "Mất kết nối khi tải nhạc, thử lại nhé." };
     }
-    if (!res.ok) {
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
-      const map: Record<string, string> = {
-        too_large: "File nhạc quá lớn (tối đa 10MB).",
-        bad_type: "Định dạng nhạc không hỗ trợ — hãy dùng .mp3, .m4a, .wav hoặc .ogg.",
-        not_found: "Phiên chỉnh sửa đã hết hạn, tải lại trang giúp mình nhé.",
-      };
-      return { error: map[j?.error ?? ""] || ("Tải nhạc thất bại" + (j?.error ? ` (${j.error})` : ".")) };
+    // 2) Đẩy file thẳng lên Storage bằng token ký sẵn.
+    const AUDIO_MIME: Record<string, string> = { mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg", flac: "audio/flac", weba: "audio/webm" };
+    const contentType = file.type || AUDIO_MIME[ext] || "audio/mpeg";
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.storage
+        .from("wedding-photos")
+        .uploadToSignedUrl(signed.path, signed.token, file, { contentType });
+      if (error) return { error: "Tải nhạc thất bại (" + error.message + ")" };
+    } catch (e) {
+      return { error: "Tải nhạc thất bại (" + ((e as Error)?.message || e) + ")" };
     }
-    return { url: ((await res.json()) as { url: string }).url };
+    return { url: signed.publicUrl };
   }
 
   if (status === "loading") {
