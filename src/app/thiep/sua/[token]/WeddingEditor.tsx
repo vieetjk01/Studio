@@ -31,6 +31,7 @@ export default function WeddingEditor({ token }: { token: string }) {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [albumOpen, setAlbumOpen] = useState(false);
+  const [responsesUnlocked, setResponsesUnlocked] = useState(false); // mở khoá xem danh sách phản hồi trong trang sửa
 
   useEffect(() => {
     (async () => {
@@ -297,21 +298,25 @@ export default function WeddingEditor({ token }: { token: string }) {
             <input className={inp} value={cfg.story_url ?? ""} onChange={(e) => patch({ story_url: e.target.value })} placeholder="https://…/story/… hoặc /story/ten-cua-ban" />
           </Field>
           <p className="text-xs text-stone-400">Nút “Xem Love Story” sẽ hiện ở cuối thiệp (cạnh phần xác nhận tham dự) khi có link.</p>
-          <div className="mt-3 rounded-lg bg-stone-100 p-3 text-sm">
-            <p className="mb-2 font-medium">{rsvps.length} phản hồi · {attendingCount} khách sẽ tham dự</p>
-            <div className="max-h-64 space-y-2 overflow-auto">
-              {rsvps.map((r) => (
-                <div key={r.id} className="rounded-md bg-white p-2 text-sm">
-                  <span className="font-medium">{r.guest_name}</span>{" "}
-                  <span className={r.attending ? "text-green-600" : "text-stone-400"}>
-                    {r.attending ? `· tham dự (${r.num_guests})` : "· không dự"}
-                  </span>
-                  {r.wish && <p className="mt-0.5 text-stone-600">“{r.wish}”</p>}
-                </div>
-              ))}
-              {rsvps.length === 0 && <p className="text-stone-400">Chưa có phản hồi nào.</p>}
+          {(cfg.guests_password ?? "").trim() && !responsesUnlocked ? (
+            <ResponsesLock expected={(cfg.guests_password ?? "").trim()} onUnlock={() => setResponsesUnlocked(true)} />
+          ) : (
+            <div className="mt-3 rounded-lg bg-stone-100 p-3 text-sm">
+              <p className="mb-2 font-medium">{rsvps.length} phản hồi · {attendingCount} khách sẽ tham dự</p>
+              <div className="max-h-64 space-y-2 overflow-auto">
+                {rsvps.map((r) => (
+                  <div key={r.id} className="rounded-md bg-white p-2 text-sm">
+                    <span className="font-medium">{r.guest_name}</span>{" "}
+                    <span className={r.attending ? "text-green-600" : "text-stone-400"}>
+                      {r.attending ? `· tham dự (${r.num_guests})` : "· không dự"}
+                    </span>
+                    {r.wish && <p className="mt-0.5 text-stone-600">“{r.wish}”</p>}
+                  </div>
+                ))}
+                {rsvps.length === 0 && <p className="text-stone-400">Chưa có phản hồi nào.</p>}
+              </div>
             </div>
-          </div>
+          )}
         </Section>
 
         {/* Khách mời — link + QR cá nhân hóa */}
@@ -494,6 +499,32 @@ function BankEditor({ title, bank, onChange }: { title: string; bank?: WeddingBa
         <input className={inp} value={b.account ?? ""} onChange={(e) => up({ account: e.target.value })} placeholder="Số tài khoản" />
       </div>
       <input className={`${inp} mt-2`} value={b.holder ?? ""} onChange={(e) => up({ holder: e.target.value })} placeholder="Tên chủ tài khoản" />
+    </div>
+  );
+}
+
+/**
+ * Khoá khối "danh sách phản hồi + lời chúc" NGAY trong trang chỉnh sửa: khi cặp
+ * đôi đã đặt mật khẩu, phải nhập đúng mới xem (mở khoá một lần cho phiên này).
+ */
+function ResponsesLock({ expected, onUnlock }: { expected: string; onUnlock: () => void }) {
+  const [entry, setEntry] = useState("");
+  const [wrong, setWrong] = useState(false);
+  const submit = () => (entry.trim() === expected ? onUnlock() : setWrong(true));
+  return (
+    <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-center">
+      <Lock size={18} className="mx-auto mb-2 text-stone-400" />
+      <p className="mx-auto max-w-xs text-sm" style={{ color: "#6a6459" }}>Danh sách phản hồi & lời chúc đang được bảo vệ. Nhập mật khẩu để xem.</p>
+      <div className="mx-auto mt-3 flex max-w-xs gap-2">
+        <input
+          type="password" value={entry} autoComplete="off"
+          onChange={(e) => { setEntry(e.target.value); setWrong(false); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+          placeholder="Mật khẩu" className={`${inp} flex-1`}
+        />
+        <button type="button" onClick={submit} className="flex-none rounded-lg bg-rose-600 px-4 text-sm font-medium text-white">Xem</button>
+      </div>
+      {wrong && <p className="mt-2 text-sm text-red-600">Mật khẩu chưa đúng.</p>}
     </div>
   );
 }
