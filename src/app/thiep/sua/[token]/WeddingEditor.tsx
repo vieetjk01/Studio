@@ -81,11 +81,18 @@ export default function WeddingEditor({ token }: { token: string }) {
     return ((await res.json()) as { url: string }).url;
   }
 
-  async function uploadAudio(file: File): Promise<string | null> {
-    if (file.size > 10 * 1024 * 1024) { setErr("File nhạc quá lớn (tối đa 10MB)."); return null; }
+  // Trả về { url } khi thành công hoặc { error } để hiện NGAY tại mục nhạc (thay
+  // vì chỉ hiện banner ở đầu trang — dễ bị bỏ lỡ khi đang cuộn ở dưới).
+  async function uploadAudio(file: File): Promise<{ url?: string; error?: string }> {
+    if (file.size > 10 * 1024 * 1024) return { error: "File nhạc quá lớn (tối đa 10MB)." };
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`/api/thiep/${token}/upload`, { method: "POST", body: fd });
+    let res: Response;
+    try {
+      res = await fetch(`/api/thiep/${token}/upload`, { method: "POST", body: fd });
+    } catch {
+      return { error: "Mất kết nối khi tải nhạc, thử lại nhé." };
+    }
     if (!res.ok) {
       const j = (await res.json().catch(() => null)) as { error?: string } | null;
       const map: Record<string, string> = {
@@ -93,10 +100,9 @@ export default function WeddingEditor({ token }: { token: string }) {
         bad_type: "Định dạng nhạc không hỗ trợ — hãy dùng .mp3, .m4a, .wav hoặc .ogg.",
         not_found: "Phiên chỉnh sửa đã hết hạn, tải lại trang giúp mình nhé.",
       };
-      setErr(map[j?.error ?? ""] || ("Tải nhạc thất bại" + (j?.error ? ` (${j.error})` : ".")));
-      return null;
+      return { error: map[j?.error ?? ""] || ("Tải nhạc thất bại" + (j?.error ? ` (${j.error})` : ".")) };
     }
-    return ((await res.json()) as { url: string }).url;
+    return { url: ((await res.json()) as { url: string }).url };
   }
 
   if (status === "loading") {
@@ -318,7 +324,7 @@ export default function WeddingEditor({ token }: { token: string }) {
           <Field label="Link nhạc (mp3) hoặc tải file nhạc lên">
             <input className={inp} value={cfg.music_url ?? ""} onChange={(e) => patch({ music_url: e.target.value || undefined })} placeholder="https://…/nhac.mp3" />
           </Field>
-          <AudioUpload onUpload={uploadAudio} onChange={(url) => patch({ music_url: url || undefined })} hasUrl={!!cfg.music_url} />
+          <AudioUpload onUpload={uploadAudio} onChange={(url) => patch({ music_url: url || undefined })} currentUrl={cfg.music_url} />
           {cfg.music_url && <Toggle checked={cfg.music_autoplay ?? false} onChange={(v) => patch({ music_autoplay: v })} label="Thử tự phát khi khách mở thiệp (trình duyệt có thể chặn)" />}
         </Section>
       </main>
@@ -464,21 +470,34 @@ function BankEditor({ title, bank, onChange }: { title: string; bank?: WeddingBa
   );
 }
 
-function AudioUpload({ onUpload, onChange, hasUrl }: { onUpload: (f: File) => Promise<string | null>; onChange: (url: string | null) => void; hasUrl: boolean }) {
+function AudioUpload({ onUpload, onChange, currentUrl }: { onUpload: (f: File) => Promise<{ url?: string; error?: string }>; onChange: (url: string | null) => void; currentUrl?: string }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [localErr, setLocalErr] = useState<string | null>(null);
   return (
-    <div className="flex items-center gap-3">
-      <input ref={ref} type="file" accept="audio/*" hidden onChange={async (e) => {
-        const f = e.target.files?.[0]; if (!f) return;
-        setBusy(true); const url = await onUpload(f); setBusy(false);
-        if (url) onChange(url);
-        if (ref.current) ref.current.value = "";
-      }} />
-      <button type="button" onClick={() => ref.current?.click()} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-stone-300 px-3 py-2 text-sm disabled:opacity-50">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Music size={14} />} Tải file nhạc (≤10MB)
-      </button>
-      {hasUrl && <button type="button" onClick={() => onChange(null)} className="text-stone-400 hover:text-red-500"><Trash2 size={16} /></button>}
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <input ref={ref} type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac" hidden onChange={async (e) => {
+          const f = e.target.files?.[0]; if (!f) return;
+          setLocalErr(null); setBusy(true);
+          const r = await onUpload(f); setBusy(false);
+          if (r.url) onChange(r.url); else setLocalErr(r.error || "Tải nhạc thất bại.");
+          if (ref.current) ref.current.value = "";
+        }} />
+        <button type="button" onClick={() => ref.current?.click()} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-stone-300 px-3 py-2 text-sm disabled:opacity-50">
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Music size={14} />} {busy ? "Đang tải nhạc…" : "Tải file nhạc (≤10MB)"}
+        </button>
+        {currentUrl && <button type="button" onClick={() => { setLocalErr(null); onChange(null); }} className="text-stone-400 hover:text-red-500"><Trash2 size={16} /></button>}
+      </div>
+      {/* Phản hồi NGAY tại đây để không phải cuộn lên đầu trang mới thấy. */}
+      {localErr && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{localErr}</p>}
+      {currentUrl && !localErr && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+          <p className="mb-1 text-xs font-medium text-green-700">Đã có nhạc nền — nghe thử:</p>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio src={currentUrl} controls preload="none" className="w-full" />
+        </div>
+      )}
     </div>
   );
 }
