@@ -86,7 +86,16 @@ export default function WeddingEditor({ token }: { token: string }) {
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`/api/thiep/${token}/upload`, { method: "POST", body: fd });
-    if (!res.ok) { setErr("Tải nhạc thất bại."); return null; }
+    if (!res.ok) {
+      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      const map: Record<string, string> = {
+        too_large: "File nhạc quá lớn (tối đa 10MB).",
+        bad_type: "Định dạng nhạc không hỗ trợ — hãy dùng .mp3, .m4a, .wav hoặc .ogg.",
+        not_found: "Phiên chỉnh sửa đã hết hạn, tải lại trang giúp mình nhé.",
+      };
+      setErr(map[j?.error ?? ""] || ("Tải nhạc thất bại" + (j?.error ? ` (${j.error})` : ".")));
+      return null;
+    }
     return ((await res.json()) as { url: string }).url;
   }
 

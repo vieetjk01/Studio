@@ -31,27 +31,38 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "no_file" }, { status: 400 });
-  const isAudio = file.type.startsWith("audio/");
-  const isImage = file.type.startsWith("image/");
+
+  // Suy ra kiểu tệp: ưu tiên MIME trình duyệt gửi lên; nhưng một số file .mp3
+  // (và .m4a…) bị báo type RỖNG → đoán theo phần mở rộng tên tệp để không chặn nhầm.
+  const nameExt = (file.name.split(".").pop() || "").toLowerCase();
+  const AUDIO_EXT: Record<string, string> = { mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg", flac: "audio/flac", weba: "audio/webm" };
+  const IMAGE_EXT: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", heic: "image/heic", heif: "image/heif" };
+  const mime = file.type || "";
+  // MIME "chung chung" (rỗng hoặc octet-stream) hay xảy ra với .mp3/.m4a → đoán
+  // theo phần mở rộng để không chặn nhầm audio.
+  const generic = !mime || mime === "application/octet-stream";
+  const isAudio = mime.startsWith("audio/") || (generic && nameExt in AUDIO_EXT);
+  const isImage = mime.startsWith("image/") || (generic && nameExt in IMAGE_EXT);
   if (!isImage && !isAudio) return NextResponse.json({ error: "bad_type" }, { status: 415 });
   if (file.size > (isAudio ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES)) {
     return NextResponse.json({ error: "too_large" }, { status: 413 });
   }
-
-  const ext = file.type === "image/webp" ? "webp" : (file.type.split("/")[1] || (isAudio ? "mp3" : "jpg"));
+  // Kiểu nội dung thật để lưu (điền lại khi MIME chung chung) — dùng cho contentType + đuôi.
+  const contentType = generic ? (isAudio ? (AUDIO_EXT[nameExt] || "audio/mpeg") : (IMAGE_EXT[nameExt] || "image/jpeg")) : mime;
+  const ext = contentType === "image/webp" ? "webp" : (nameExt || contentType.split("/")[1] || (isAudio ? "mp3" : "jpg"));
 
   // Ảnh → ưu tiên Drive admin (fallback Supabase). Audio (nhạc nền) → Supabase
   // (proxy ảnh /api/img không phục vụ audio).
   const buf = Buffer.from(await file.arrayBuffer());
   if (isImage) {
-    const driveUrl = await driveImageUrlOrNull(buf, `thiep-${inv.id}-${Date.now()}.${ext}`, file.type, false);
+    const driveUrl = await driveImageUrlOrNull(buf, `thiep-${inv.id}-${Date.now()}.${ext}`, contentType, false);
     if (driveUrl) return NextResponse.json({ url: driveUrl });
   }
 
   const path = `${inv.owner_id}/${inv.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
   const { error } = await db.storage
     .from("wedding-photos")
-    .upload(path, buf, { upsert: false, contentType: file.type });
+    .upload(path, buf, { upsert: false, contentType });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const url = db.storage.from("wedding-photos").getPublicUrl(path).data.publicUrl;

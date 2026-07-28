@@ -1703,9 +1703,15 @@ create policy wedding_rsvps_owner_read on public.wedding_rsvps
     where w.id = invitation_id and (w.owner_id = auth.uid() or public.is_admin())
   ));
 
-insert into storage.buckets (id, name, public)
-values ('wedding-photos', 'wedding-photos', true)
-on conflict (id) do nothing;
+-- Chứa cả ảnh bìa/album LẪN nhạc nền (.mp3…). Trần 12MB, không giới hạn MIME
+-- (allowed_mime_types = null) để không chặn nhầm audio. on conflict do update để
+-- chạy lại migration sửa được bucket cũ nếu trước đây lỡ đặt chỉ cho ảnh.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('wedding-photos', 'wedding-photos', true, 12582912, null)
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 12582912,
+      allowed_mime_types = null;
 
 drop policy if exists wedding_photos_read on storage.objects;
 create policy wedding_photos_read on storage.objects

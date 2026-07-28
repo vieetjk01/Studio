@@ -63,9 +63,16 @@ create policy wedding_rsvps_owner_read on public.wedding_rsvps
 -- STORAGE: wedding-photos bucket (ảnh bìa + album thiệp). Public read; writes
 -- go through the service-role API (token-gated), so no authenticated policy.
 -- ============================================================================
-insert into storage.buckets (id, name, public)
-values ('wedding-photos', 'wedding-photos', true)
-on conflict (id) do nothing;
+-- Chứa cả ảnh bìa/album LẪN nhạc nền (.mp3…). Trần 12MB (nhạc tối đa 10MB) và
+-- KHÔNG giới hạn MIME (allowed_mime_types = null) để không chặn nhầm audio.
+-- on conflict do update: chạy lại migration sẽ SỬA bucket cũ nếu trước đây lỡ
+-- bị đặt chỉ cho ảnh (nguyên nhân "tải mp3 không được").
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('wedding-photos', 'wedding-photos', true, 12582912, null)
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 12582912,
+      allowed_mime_types = null;
 
 drop policy if exists wedding_photos_read on storage.objects;
 create policy wedding_photos_read on storage.objects
