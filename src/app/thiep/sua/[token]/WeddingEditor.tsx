@@ -281,10 +281,15 @@ export default function WeddingEditor({ token }: { token: string }) {
           <Field label="Ảnh phần cảm ơn"><ImageUpload current={cfg.thanks_photo} onUpload={uploadImage} onChange={(url) => patch({ thanks_photo: url || undefined })} /></Field>
         </Section>
 
+        {/* Sổ lưu bút (lời chúc) — tuỳ chọn ẩn/hiện trên thiệp */}
+        <Section title="Sổ lưu bút (lời chúc)" icon={<Heart size={16} />}>
+          <Toggle checked={cfg.guestbook_enabled !== false} onChange={(v) => patch({ guestbook_enabled: v })} label="Hiện Sổ lưu bút (lời chúc của khách) trên thiệp" />
+          <p className="text-xs text-stone-400">Tắt để ẩn danh sách lời chúc khỏi thiệp; khách vẫn gửi được lời chúc (nếu bật RSVP) và bạn vẫn xem trong phần phản hồi bên dưới. Ngoài ra, khi đã đặt mật khẩu “Trang xem riêng”, Sổ lưu bút cũng tự ẩn khỏi thiệp công khai.</p>
+        </Section>
+
         {/* RSVP */}
         <Section title="Xác nhận tham dự (RSVP)" icon={<Users size={16} />}>
           <Toggle checked={cfg.rsvp_enabled !== false} onChange={(v) => patch({ rsvp_enabled: v })} label="Cho phép khách xác nhận & gửi lời chúc" />
-          <Toggle checked={cfg.guestbook_enabled !== false} onChange={(v) => patch({ guestbook_enabled: v })} label="Hiện Sổ lưu bút (lời chúc của khách) trên thiệp" />
           <Field label="Lời nhắn RSVP (không bắt buộc)">
             <input className={inp} value={cfg.rsvp_note ?? ""} onChange={(e) => patch({ rsvp_note: e.target.value })} placeholder="Vui lòng phản hồi trước ngày…" />
           </Field>
