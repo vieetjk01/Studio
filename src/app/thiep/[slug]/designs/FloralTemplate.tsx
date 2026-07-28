@@ -4,7 +4,7 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
+import { fmtDate, readConfig, GiftCard, ExtraSections, ThanksBlock, type TemplateProps } from "../shared";
 
 // Hoa: hồng pastel, cánh hoa bay, ảnh bìa khung VÒM, gallery POLAROID nghiêng.
 const PAL = { bg: "#fdf3f4", surface: "#ffffff", text: "#4a373c", muted: "rgba(74,55,60,0.6)", border: "rgba(215,122,147,0.24)", accent: "#d77a93" };
@@ -133,6 +133,8 @@ export default function FloralTemplate({ inv, wishes, guest }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ThanksBlock note={c.thanks_note} photo={c.thanks_photo} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       <footer className="px-6 py-14 text-center">
         {sprig}<p className="font-serif text-4xl italic" style={{ color: accent }}>{groom} &amp; {bride}</p>

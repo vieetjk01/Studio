@@ -4,7 +4,7 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtDate, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
+import { fmtDate, readConfig, GiftCard, ExtraSections, ThanksBlock, type TemplateProps } from "../shared";
 
 // Cổ điển: đối xứng, trang nhã, timeline DỌC, ảnh bìa zoom chậm (Ken Burns).
 const PAL = { bg: "#fbf7f2", surface: "#ffffff", text: "#3a3530", muted: "rgba(58,53,48,0.6)", border: "rgba(58,53,48,0.14)", accent: "#b08968" };
@@ -128,6 +128,8 @@ export default function ClassicTemplate({ inv, wishes, guest }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ThanksBlock note={c.thanks_note} photo={c.thanks_photo} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       <footer className="px-6 py-14 text-center">
         {line}<p className="font-serif text-3xl" style={{ color: accent }}>{groom} &amp; {bride}</p>

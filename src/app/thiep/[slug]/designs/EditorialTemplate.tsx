@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, ThanksBlock, type TemplateProps } from "../shared";
 
 // Editorial — tạp chí sáng, tông đất terracotta, tít Cormorant khổ lớn, băng ảnh
 // tự trôi. Port từ mẫu studio (thiep-1c).
@@ -122,7 +122,8 @@ export default function EditorialTemplate({ inv, wishes, guest }: TemplateProps)
       {/* GIFT + RSVP */}
       <section style={{ padding: "40px 34px" }}>
         {hasGift && (<>
-          <div style={{ fontFamily: cm, fontSize: 34, fontWeight: 600, textAlign: "center", marginBottom: 20 }}>Hộp mừng cưới</div>
+          <div style={{ fontFamily: cm, fontSize: 34, fontWeight: 600, textAlign: "center", marginBottom: c.gift_note ? 10 : 20 }}>Hộp mừng cưới</div>
+          {c.gift_note && <p style={{ textAlign: "center", fontSize: 13, fontStyle: "italic", color: PAL.muted, margin: "0 auto 18px", maxWidth: 420, whiteSpace: "pre-line" }}>{c.gift_note}</p>}
           <div style={{ display: "flex", gap: 12 }}>
             {[{ b: c.groom_bank, who: "Chú rể" }, { b: c.bride_bank, who: "Cô dâu" }].filter((x) => x.b?.account).map((x, i) => (
               <div key={i} style={{ flex: 1, background: PAL.panel, border: `1px solid ${PAL.line}`, borderRadius: 14, padding: 16, textAlign: "center" }}>
@@ -158,6 +159,8 @@ export default function EditorialTemplate({ inv, wishes, guest }: TemplateProps)
           </div>
         </section>
       )}
+
+      <ThanksBlock note={c.thanks_note} photo={c.thanks_photo} pal={{ accent, surface: PAL.panel, text: PAL.ink, muted: PAL.muted, border: PAL.line }} />
 
       <footer style={{ padding: "14px 34px 44px", textAlign: "center" }}>
         <div style={{ fontFamily: cm, fontSize: 40, fontWeight: 600 }}>{groom} <span style={{ fontStyle: "italic", color: accent }}>&amp;</span> {bride}</div>

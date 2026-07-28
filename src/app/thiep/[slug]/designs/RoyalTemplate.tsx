@@ -3,7 +3,7 @@ import Reveal from "../Reveal";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, ThanksBlock, type TemplateProps } from "../shared";
 
 // Royal — cột 480px, tông kem/vàng ấm sang trọng, chữ viết tay (Great Vibes →
 // var(--font-script)), cánh hoa rơi, bìa Ken Burns, cuộn hiện dần. Port mẫu
@@ -181,6 +181,8 @@ export default function RoyalTemplate({ inv, wishes, guest }: TemplateProps) {
             </div>
           </section>
         )}
+
+        <ThanksBlock note={c.thanks_note} photo={c.thanks_photo} pal={{ accent, surface: PAL.paper, text: PAL.ink, muted: PAL.muted, border: PAL.line }} />
 
         {/* THANK YOU */}
         <footer style={{ padding: "60px 30px 70px", background: PAL.bg, textAlign: "center" }}>

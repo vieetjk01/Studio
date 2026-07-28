@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
-import { fmtShort, readConfig, vietqrUrl, ExtraSections, type TemplateProps } from "../shared";
+import { fmtShort, readConfig, vietqrUrl, ExtraSections, ThanksBlock, type TemplateProps } from "../shared";
 
 // Cinematic — cột 430px, tông kem sang trọng, cánh hoa rơi, ảnh bìa Ken Burns +
 // light-leak, tên Cormorant lớn, chữ viết tay Dancing Script. Port từ mẫu studio.
@@ -151,6 +151,8 @@ export default function CinematicTemplate({ inv, wishes, guest }: TemplateProps)
           </div>
         </section>
       )}
+
+      <ThanksBlock note={c.thanks_note} photo={c.thanks_photo} pal={{ accent, surface: PAL.panel, text: PAL.ink, muted: PAL.muted, border: PAL.line }} />
 
       {/* RSVP + FOOTER */}
       <section style={{ padding: "26px 34px 40px", textAlign: "center", background: PAL.soft, position: "relative", zIndex: 2, borderTop: `1px solid ${PAL.line}` }}>

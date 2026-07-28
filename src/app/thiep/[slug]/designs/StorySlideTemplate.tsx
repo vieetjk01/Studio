@@ -191,7 +191,9 @@ export default function StorySlideTemplate({ inv, wishes, guest }: TemplateProps
             <ExtraSections c={c} groom={groom} bride={bride} guest={guest} dark pal={{ accent, surface: "rgba(255,255,255,.06)", text: "#f0e6e2", muted: "#b09aa0", border: "rgba(255,255,255,.16)" }} />
 
             {hasGift && (
-              <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+              <>
+                {c.gift_note && <p style={{ fontSize: 13, fontStyle: "italic", color: "#b09aa0", textAlign: "center", margin: "0 auto 12px", maxWidth: 420, whiteSpace: "pre-line" }}>{c.gift_note}</p>}
+                <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
                 {[{ b: c.groom_bank, who: "Chú rể" }, { b: c.bride_bank, who: "Cô dâu" }].filter((x) => x.b?.account).map((x, k) => (
                   <div key={k} style={{ flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14, padding: 14, fontSize: 12, color: "#f0e6e2", textAlign: "center" }}>
                     {vietqrUrl(x.b) && (
@@ -201,7 +203,8 @@ export default function StorySlideTemplate({ inv, wishes, guest }: TemplateProps
                     {x.who} · {x.b?.name}<br /><b style={{ fontSize: 14 }}>{x.b?.account?.replace(/\s/g, "")}</b>
                   </div>
                 ))}
-              </div>
+                </div>
+              </>
             )}
 
             {c.guestbook_enabled !== false && wishes.length > 0 && (
@@ -215,6 +218,17 @@ export default function StorySlideTemplate({ inv, wishes, guest }: TemplateProps
               </div>
             )}
 
+            {(c.thanks_note || c.thanks_photo) && (
+              <div style={{ marginTop: 24, textAlign: "center" }}>
+                {c.thanks_photo && (
+                  <div style={{ margin: "0 auto 14px", width: 150, height: 150, borderRadius: "50%", overflow: "hidden", border: `2px solid ${accent}` }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.thanks_photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                )}
+                {c.thanks_note && <p style={{ maxWidth: 420, margin: "0 auto", fontSize: 14, lineHeight: 1.7, fontStyle: "italic", color: "#b09aa0", whiteSpace: "pre-line" }}>{c.thanks_note}</p>}
+              </div>
+            )}
             <div style={{ fontFamily: sc, textAlign: "center", fontSize: 30, color: accent, marginTop: 22 }}>Cảm ơn bạn ❤</div>
           </div>
         </div>

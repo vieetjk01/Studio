@@ -5,7 +5,7 @@ import Countdown from "../Countdown";
 import RsvpForm from "../RsvpForm";
 import MusicPlayer from "../MusicPlayer";
 import StoryGallery from "../StoryGallery";
-import { fmtDate, fmtShort, readConfig, GiftCard, ExtraSections, type TemplateProps } from "../shared";
+import { fmtDate, fmtShort, readConfig, GiftCard, ExtraSections, ThanksBlock, type TemplateProps } from "../shared";
 
 // Hiện đại: tối giản, sans đậm, bố cục SPLIT, số mục cỡ lớn, gallery kiểu STORY.
 const PAL = { bg: "#ffffff", surface: "#f5f6f4", text: "#1c1d1b", muted: "rgba(28,29,27,0.55)", border: "rgba(28,29,27,0.12)", accent: "#2f7d77" };
@@ -127,6 +127,8 @@ export default function ModernTemplate({ inv, wishes, guest }: TemplateProps) {
           </div>
         </section>
       )}
+
+      <ThanksBlock note={c.thanks_note} photo={c.thanks_photo} pal={{ accent, surface: PAL.surface, text: PAL.text, muted: PAL.muted, border: PAL.border }} />
 
       <footer className="px-8 py-20 text-center" style={{ background: PAL.surface }}>
         <p className="font-sans text-4xl font-extrabold uppercase tracking-tight">{groom} &amp; {bride}</p>

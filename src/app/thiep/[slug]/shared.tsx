@@ -120,6 +120,27 @@ export function ExtraSections({ c, groom, bride, guest, pal, dark }: { c: Weddin
   );
 }
 
+/**
+ * Lời cảm ơn cuối thiệp (chữ + ảnh) — dùng chung cho MỌI mẫu, đặt gần cuối trang
+ * (trước footer). Chỉ hiện khi có nội dung; palette theo mẫu đang gọi.
+ */
+export function ThanksBlock({ note, photo, pal, dark }: { note?: string; photo?: string; pal: FullPal; dark?: boolean }) {
+  if (!note && !photo) return null;
+  const sub = dark ? "rgba(255,255,255,.85)" : pal.muted;
+  return (
+    <section style={{ padding: "52px 24px", textAlign: "center", background: dark ? "rgba(255,255,255,.05)" : `${pal.accent}0f`, borderTop: `1px solid ${pal.border}` }}>
+      <p style={{ fontSize: 11.5, letterSpacing: ".3em", textTransform: "uppercase", color: pal.accent }}>Lời cảm ơn</p>
+      {photo && (
+        <div style={{ margin: "20px auto 0", width: 190, height: 190, borderRadius: "50%", overflow: "hidden", border: `3px solid ${pal.accent}` }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+      )}
+      {note && <p style={{ margin: "18px auto 0", maxWidth: 460, fontSize: 15.5, lineHeight: 1.7, whiteSpace: "pre-line", fontStyle: "italic", color: sub }}>{note}</p>}
+    </section>
+  );
+}
+
 /** Normalised, render-ready view of a config (defaults + filtered lists). */
 export function readConfig(inv: WeddingInvitation) {
   const c = inv.config as WeddingConfig;
