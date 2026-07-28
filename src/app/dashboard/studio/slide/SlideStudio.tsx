@@ -11,6 +11,9 @@ import { useEffect, useRef, useState } from "react";
 
 type Photo = { id: string; name: string; url: string };
 type Slide = { type: string; photos: Photo[]; trans: string; text?: string; side?: number; t0?: number; dur?: number };
+// Ghi nhớ chỉnh sửa RIÊNG của một slide (theo vị trí) để khôi phục sau khi dựng
+// lại — mỗi slide độc lập, đổi thiết lập chung không xoá sạch chỉnh tay của bạn.
+type SlideOverride = { type: string; trans: string; side?: number; photoIds: string[] };
 type Theme = { name: string; bg: string; ink: string; sub: string; accent: string; title: string; body: string; radius: number; dark: boolean; letterbox: boolean; titleItalic: boolean; c1: string; c2: string; trans: string[]; rhythm: number[]; tr: number; kb: number; pace: number; bag: string[]; bagText: string[] };
 
 const THEMES: Record<string, Theme> = {
@@ -33,6 +36,10 @@ class SlideEngine {
   planL: Slide[] = []; // kế hoạch cảnh khổ ngang 16:9
   planP: Slide[] = []; // kế hoạch cảnh khổ dọc 9:16 — dựng & chỉnh riêng, không ảnh hưởng khổ ngang
   get plan(): Slide[] { return this.H > this.W ? this.planP : this.planL; }
+  // Chỉnh sửa từng slide (theo vị trí) — lưu riêng cho khổ ngang & khổ dọc.
+  ovL = new Map<number, SlideOverride>();
+  ovP = new Map<number, SlideOverride>();
+  get ov(): Map<number, SlideOverride> { return this.H > this.W ? this.ovP : this.ovL; }
   quotes: string[] = [];
   seed = 1;
   time = 0;
@@ -188,11 +195,36 @@ class SlideEngine {
   }
   rebuild() {
     this.quotes = this.state.showText ? this.quotesNow() : [];
-    // Dựng RIÊNG hai kế hoạch cảnh: khổ ngang & khổ dọc — mỗi khổ tối ưu bố cục riêng.
-    this.planL = this.buildPlan(false); this.retime(this.planL);
-    this.planP = this.buildPlan(true); this.retime(this.planP);
+    // Dựng RIÊNG hai kế hoạch cảnh: khổ ngang & khổ dọc — mỗi khổ tối ưu bố cục
+    // riêng. Áp lại chỉnh sửa từng slide đã lưu để không mất khi dựng lại.
+    this.planL = this.buildPlan(false); this.applyOverrides(this.planL, this.ovL); this.retime(this.planL);
+    this.planP = this.buildPlan(true); this.applyOverrides(this.planP, this.ovP); this.retime(this.planP);
     this.syncDuration();
     this.drawAt(this.time);
+  }
+  // Khôi phục chỉnh sửa từng slide lên kế hoạch vừa dựng (khớp theo vị trí slide).
+  // Ảnh đã bị xoá khỏi thư viện sẽ tự bỏ qua; bố cục không hợp số ảnh thì lấy mặc định.
+  applyOverrides(plan: Slide[], ov: Map<number, SlideOverride>) {
+    if (!ov.size) return;
+    const byId = new Map(this.state.photos.map((p) => [p.id, p] as const));
+    ov.forEach((o, idx) => {
+      const sl = plan[idx]; if (!sl) return;
+      if (o.trans) sl.trans = o.trans;
+      if (sl.type === "OUTRO" || sl.type === "QUOTE") return; // cảnh không có ảnh
+      const photos = o.photoIds.map((id) => byId.get(id)).filter(Boolean) as Photo[];
+      if (!photos.length) return;
+      if (sl.type === "TITLE") { sl.photos = [photos[0]]; return; }
+      if (sl.type === "SPLIT") { sl.photos = [photos[0]]; if (o.side != null) sl.side = o.side; return; }
+      // Slide ảnh: khôi phục đúng ảnh + bố cục đã chọn (nếu bố cục hợp số ảnh).
+      sl.photos = photos;
+      const opts = this.layoutsFor(photos.length);
+      sl.type = opts.includes(o.type) ? o.type : opts[0];
+    });
+  }
+  // Ghi nhớ chỉnh sửa của slide tại vị trí i (bố cục, hiệu ứng, ảnh, bên chữ).
+  recordOverride(i: number) {
+    const sl = this.plan[i]; if (!sl) return;
+    this.ov.set(i, { type: sl.type, trans: sl.trans, side: sl.side, photoIds: sl.photos.map((p) => p.id) });
   }
   // Đổi khổ xem trước (ngang 16:9 / dọc 9:16) — chỉnh bố cục ở khổ nào chỉ áp dụng cho khổ đó.
   setAspect(portrait: boolean) {
@@ -239,43 +271,52 @@ class SlideEngine {
       // Cập nhật lại thời lượng theo loại mới, dời mốc thời gian các slide sau.
       this.retime(this.plan); this.syncDuration();
     }
+    this.recordOverride(i);
     this.drawAt(this.time);
     this.onChange();
   }
 
   // ——— Chỉnh RIÊNG slide đang xem: thêm ảnh, đổi ảnh, xoá ảnh, chọn bố cục ———
-  // (Áp dụng cho khổ đang xem; dựng lại toàn bộ — qua rebuild — sẽ đặt lại về mặc định.)
-  curSlideRef(): Slide | null { const i = this.curIndex(); return this.plan[i] || null; }
+  // Mỗi chỉnh sửa được GHI NHỚ theo vị trí slide (recordOverride) nên khi dựng lại
+  // (đổi tên, thời lượng…) slide đó vẫn giữ chỉnh tay — độc lập với các slide khác.
   isPhotoGrid(sl: Slide | null): boolean { return !!sl && !["TITLE", "OUTRO", "QUOTE", "SPLIT"].includes(sl.type); }
   // Đổi bố cục cho slide ảnh đang xem (giữ nguyên số ảnh).
   setSlideLayout(type: string) {
-    const sl = this.curSlideRef(); if (!this.isPhotoGrid(sl) || !sl || sl.type === type) return;
+    const i = this.curIndex(); const sl = this.plan[i];
+    if (!this.isPhotoGrid(sl) || !sl || sl.type === type) return;
     sl.type = type;
     this.retime(this.plan); this.syncDuration();
+    this.recordOverride(i);
     this.drawAt(this.time); this.onChange();
   }
   // Thêm 1 ảnh (từ thư viện) vào slide đang xem — tự chọn bố cục hợp số ảnh mới.
   addPhotoToSlide(photoId: string) {
-    const sl = this.curSlideRef(); if (!this.isPhotoGrid(sl) || !sl || sl.photos.length >= 6) return;
+    const i = this.curIndex(); const sl = this.plan[i];
+    if (!this.isPhotoGrid(sl) || !sl || sl.photos.length >= 6) return;
     const ph = this.state.photos.find((x) => x.id === photoId); if (!ph) return;
     sl.photos = [...sl.photos, ph];
     sl.type = this.layoutsFor(sl.photos.length)[0];
     this.retime(this.plan); this.syncDuration();
+    this.recordOverride(i);
     this.drawAt(this.time); this.onChange();
   }
   // Xoá bớt 1 ảnh khỏi slide đang xem (luôn giữ ít nhất 1 ảnh).
   removeSlidePhoto(idx: number) {
-    const sl = this.curSlideRef(); if (!this.isPhotoGrid(sl) || !sl || sl.photos.length <= 1) return;
+    const i = this.curIndex(); const sl = this.plan[i];
+    if (!this.isPhotoGrid(sl) || !sl || sl.photos.length <= 1) return;
     sl.photos = sl.photos.filter((_, j) => j !== idx);
     sl.type = this.layoutsFor(sl.photos.length)[0];
     this.retime(this.plan); this.syncDuration();
+    this.recordOverride(i);
     this.drawAt(this.time); this.onChange();
   }
   // Đổi ảnh tại vị trí idx của slide đang xem (dùng được cho cả bìa & slide chữ+ảnh).
   replaceSlidePhoto(idx: number, photoId: string) {
-    const sl = this.curSlideRef(); if (!sl || idx < 0 || idx >= sl.photos.length) return;
+    const i = this.curIndex(); const sl = this.plan[i];
+    if (!sl || idx < 0 || idx >= sl.photos.length) return;
     const ph = this.state.photos.find((x) => x.id === photoId); if (!ph) return;
     sl.photos = sl.photos.map((x, j) => (j === idx ? ph : x));
+    this.recordOverride(i);
     this.drawAt(this.time); this.onChange();
   }
 
