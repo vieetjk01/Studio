@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart, Save, Eye, Plus, Trash2, Image as ImageIcon, Check, Loader2, ExternalLink, Gift, Users,
-  Music, LayoutTemplate, FolderOpen, X,
+  Music, LayoutTemplate, FolderOpen, X, Lock,
 } from "lucide-react";
 import { BANKS } from "@/lib/banks";
 import { createClient } from "@/lib/supabase/client";
@@ -130,6 +130,7 @@ export default function WeddingEditor({ token }: { token: string }) {
   }
 
   const publicUrl = thiepUrl(`/${slug}`);
+  const guestsUrl = thiepUrl(`/${slug}/khach`);
   // URL tuyệt đối để tạo QR (trên single-host thiepUrl trả về đường dẫn tương đối).
   const absBase = publicUrl.startsWith("http") ? publicUrl : (typeof window !== "undefined" ? window.location.origin + publicUrl : publicUrl);
   const attendingCount = rsvps.filter((r) => r.attending).reduce((s, r) => s + (r.num_guests || 0), 0);
@@ -339,6 +340,25 @@ export default function WeddingEditor({ token }: { token: string }) {
           </Field>
           <AudioUpload onUpload={uploadAudio} onChange={(url) => patch({ music_url: url || undefined })} currentUrl={cfg.music_url} />
           {cfg.music_url && <Toggle checked={cfg.music_autoplay ?? false} onChange={(v) => patch({ music_autoplay: v })} label="Thử tự phát khi khách mở thiệp (trình duyệt có thể chặn)" />}
+        </Section>
+
+        {/* Trang xem riêng cho gia đình (bảo mật danh sách khách + lời chúc) */}
+        <Section title="Trang xem riêng (danh sách & lời chúc)" icon={<Lock size={16} />}>
+          <p className="text-sm" style={{ color: "#6a6459" }}>
+            Đặt mật khẩu để mở một trang <b>chỉ đọc</b> gồm danh sách khách phản hồi (RSVP) và toàn bộ lời chúc.
+            Chia sẻ link + mật khẩu này cho người thân — họ xem được mà không cần link chỉnh sửa. Để trống nếu không dùng.
+          </p>
+          <Field label="Mật khẩu mở trang xem riêng">
+            <input className={inp} value={cfg.guests_password ?? ""} onChange={(e) => patch({ guests_password: e.target.value || undefined })} placeholder="VD: 20122025" autoComplete="off" />
+          </Field>
+          {cfg.guests_password?.trim() && (
+            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <div className="text-xs font-medium" style={{ color: "#6a6459" }}>Link trang xem riêng (nhớ bấm Lưu trước khi chia sẻ):</div>
+              <a href={guestsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-sm text-rose-600 underline">
+                {guestsUrl} <ExternalLink size={12} />
+              </a>
+            </div>
+          )}
         </Section>
       </main>
 

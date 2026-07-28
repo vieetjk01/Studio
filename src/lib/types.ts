@@ -845,6 +845,7 @@ export type WeddingConfig = {
   music_url?: string;        // URL nhạc nền (mp3/audio)
   music_autoplay?: boolean;  // thử tự phát (trình duyệt có thể chặn)
   guestbook_enabled?: boolean; // hiện sổ lưu bút (lời chúc của khách)
+  guests_password?: string;    // mật khẩu mở "trang xem riêng" (danh sách RSVP + lời chúc) cho gia đình; KHÔNG bao giờ gửi ra thiệp công khai
   guests?: string[];           // danh sách khách mời → link + QR cá nhân hóa cho từng người
   guest_greeting?: string;     // lời mời phía trên tên khách (mặc định "Trân trọng kính mời")
   location?: string;           // địa điểm ngắn hiện ở bìa (vd "Hà Nội, Việt Nam")

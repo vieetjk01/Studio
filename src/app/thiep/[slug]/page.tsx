@@ -93,5 +93,10 @@ export default async function WeddingInvitationPage({ params, searchParams }: { 
   // dẫn tương đối sẽ sai host → chuyển sang URL tuyệt đối trên host chính.
   if (storyUrl.startsWith("/")) storyUrl = mainUrl(storyUrl);
 
-  return <WeddingRenderer inv={inv} wishes={wishes} guest={guest} storyUrl={storyUrl} />;
+  // KHÔNG để mật khẩu "trang xem riêng" lọt xuống thiệp công khai (config được
+  // truyền vào component client) — lọc bỏ trước khi render.
+  const { guests_password: _pw, ...safeCfg } = inv.config as WeddingConfig;
+  const safeInv = { ...inv, config: safeCfg } as WeddingInvitation;
+
+  return <WeddingRenderer inv={safeInv} wishes={wishes} guest={guest} storyUrl={storyUrl} />;
 }
