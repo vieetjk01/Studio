@@ -373,7 +373,10 @@ class SlideEngine {
         // Nền: bản phủ đầy phóng to, làm MỜ MẠNH + tối, để không có viền đen.
         const cs = Math.max(w / img.naturalWidth, h / img.naturalHeight) * 1.15;
         const bw = img.naturalWidth * cs, bh = img.naturalHeight * cs;
-        c.save(); try { c.filter = "blur(60px) brightness(.55)"; } catch { /* */ } c.drawImage(img, x + (w - bw) / 2, y + (h - bh) / 2, bw, bh); c.restore();
+        // Blur nền rất tốn khi xuất (mỗi khung × 30fps) → giảm bán kính lúc xuất
+        // để giữ đủ 30fps, đỡ khựng/giật; xem trước vẫn dùng blur mạnh cho đẹp.
+        const bl = this.state.exporting ? 30 : 60;
+        c.save(); try { c.filter = "blur(" + bl + "px) brightness(.55)"; } catch { /* */ } c.drawImage(img, x + (w - bw) / 2, y + (h - bh) / 2, bw, bh); c.restore();
         // Tiền cảnh: nguyên ảnh (không cắt), phóng rất nhẹ.
         const z = 1 + kb * 0.4 * p;
         const fs = Math.min(w / img.naturalWidth, h / img.naturalHeight) * z;
@@ -817,7 +820,15 @@ class SlideEngine {
     await new Promise((r) => setTimeout(r, 80));
     try {
       const canvas = this.canvas!, fps = 30;
-      const vs = (canvas as HTMLCanvasElement & { captureStream: (f: number) => MediaStream }).captureStream(fps);
+      // Nộp frame THỦ CÔNG: captureStream(0) = recorder chỉ nhận khung khi ta gọi
+      // requestFrame() → mỗi khung vẽ ra được ghi đúng một lần, đều nhau, không bị
+      // chụp trùng khung cũ (nguyên nhân khựng/giật). Nếu trình duyệt không hỗ trợ
+      // thì quay lại chế độ tự lấy mẫu theo fps.
+      const capOf = (r: number) => (canvas as HTMLCanvasElement & { captureStream: (f?: number) => MediaStream }).captureStream(r);
+      let vs = capOf(0);
+      let vtrack = vs.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+      const manual = !!vtrack && typeof vtrack.requestFrame === "function";
+      if (!manual) { vs = capOf(fps); vtrack = vs.getVideoTracks()[0] as typeof vtrack; }
       const tracks: MediaStreamTrack[] = [...vs.getVideoTracks()];
       if (this.state.music !== "none") {
         this.ensureAudio();
@@ -826,18 +837,32 @@ class SlideEngine {
       const stream = new MediaStream(tracks);
       const mimes = ["video/mp4;codecs=h264,aac", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
       const mime = mimes.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 12000000, audioBitsPerSecond: 192000 } : {});
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 16000000, audioBitsPerSecond: 192000 } : {});
       const chunks: BlobPart[] = []; rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
       rec.start(120);
-      const total = this.total, t0 = performance.now();
+      const total = this.total, t0 = performance.now(), frameMs = 1000 / fps;
+      // Vẽ + nộp khung đầu ngay để stream có nội dung.
+      this.time = 0; this.drawAt(0); if (manual) vtrack.requestFrame!();
       await new Promise<void>((resolve) => {
+        let lastSub = performance.now();
         const tick = () => {
-          const el = (performance.now() - t0) / 1000;
-          this.time = Math.min(el, total); this.drawAt(this.time);
+          const now = performance.now();
+          const el = (now - t0) / 1000;
+          this.time = Math.min(el, total);
+          if (manual) {
+            // Nộp đúng nhịp ~fps (bám đồng hồ thực để đồng bộ nhạc); khi vẽ chậm thì
+            // nộp ngay khung mới nhất — luôn là khung tươi, không lặp khung cũ.
+            if (now - lastSub >= frameMs - 1) { this.drawAt(this.time); vtrack.requestFrame!(); lastSub = now; }
+          } else {
+            this.drawAt(this.time); // chế độ tự lấy mẫu: luôn vẽ để canvas mới nhất
+          }
           const pct = Math.max(1, Math.min(99, Math.round(el / total * 100)));
           if (pct !== this.state.exportPct) this.setState({ exportPct: pct });
-          if (this._cancelExport || el >= total) { resolve(); return; }
+          if (this._cancelExport || el >= total) {
+            this.time = total; this.drawAt(total); if (manual) vtrack.requestFrame!(); // khung cuối trọn vẹn
+            resolve(); return;
+          }
           this._expRaf = requestAnimationFrame(tick);
         };
         this._expRaf = requestAnimationFrame(tick);
