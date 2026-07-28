@@ -348,17 +348,7 @@ export default function WeddingEditor({ token }: { token: string }) {
             Đặt mật khẩu để mở một trang <b>chỉ đọc</b> gồm danh sách khách phản hồi (RSVP) và toàn bộ lời chúc.
             Chia sẻ link + mật khẩu này cho người thân — họ xem được mà không cần link chỉnh sửa. Để trống nếu không dùng.
           </p>
-          <Field label="Mật khẩu mở trang xem riêng">
-            <input className={inp} value={cfg.guests_password ?? ""} onChange={(e) => patch({ guests_password: e.target.value || undefined })} placeholder="VD: 20122025" autoComplete="off" />
-          </Field>
-          {cfg.guests_password?.trim() && (
-            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-              <div className="text-xs font-medium" style={{ color: "#6a6459" }}>Link trang xem riêng (nhớ bấm Lưu trước khi chia sẻ):</div>
-              <a href={guestsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-sm text-rose-600 underline">
-                {guestsUrl} <ExternalLink size={12} />
-              </a>
-            </div>
-          )}
+          <GuestsPasswordField value={cfg.guests_password} onChange={(v) => patch({ guests_password: v })} guestsUrl={guestsUrl} />
         </Section>
       </main>
 
@@ -499,6 +489,51 @@ function BankEditor({ title, bank, onChange }: { title: string; bank?: WeddingBa
         <input className={inp} value={b.account ?? ""} onChange={(e) => up({ account: e.target.value })} placeholder="Số tài khoản" />
       </div>
       <input className={`${inp} mt-2`} value={b.holder ?? ""} onChange={(e) => up({ holder: e.target.value })} placeholder="Tên chủ tài khoản" />
+    </div>
+  );
+}
+
+/**
+ * Mật khẩu "trang xem riêng". Nếu đã có mật khẩu từ trước → KHOÁ: muốn sửa/xoá
+ * phải nhập ĐÚNG mật khẩu hiện tại (mở khoá một lần cho phiên chỉnh sửa này).
+ */
+function GuestsPasswordField({ value, onChange, guestsUrl }: { value?: string; onChange: (v?: string) => void; guestsUrl: string }) {
+  const [initial] = useState((value ?? "").trim());        // mật khẩu lúc mở trình chỉnh sửa
+  const [locked, setLocked] = useState(!!(value ?? "").trim());
+  const [entry, setEntry] = useState("");
+  const [wrong, setWrong] = useState(false);
+
+  if (locked) {
+    return (
+      <div>
+        <p className="mb-2 text-sm" style={{ color: "#6a6459" }}>Đã đặt mật khẩu. Nhập đúng mật khẩu hiện tại để sửa hoặc xoá.</p>
+        <div className="flex gap-2">
+          <input
+            type="password" value={entry} autoComplete="off"
+            onChange={(e) => { setEntry(e.target.value); setWrong(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (entry.trim() === initial ? setLocked(false) : setWrong(true)); } }}
+            placeholder="Mật khẩu hiện tại" className={`${inp} flex-1`}
+          />
+          <button type="button" onClick={() => (entry.trim() === initial ? setLocked(false) : setWrong(true))} className="flex-none rounded-lg border border-stone-300 bg-white px-3 text-sm font-medium" style={{ color: "#6a6459" }}>Mở khoá để sửa</button>
+        </div>
+        {wrong && <p className="mt-2 text-sm text-red-600">Mật khẩu hiện tại chưa đúng.</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Field label="Mật khẩu mở trang xem riêng (để trống = tắt trang này)">
+        <input className={inp} value={value ?? ""} autoComplete="off" onChange={(e) => onChange(e.target.value || undefined)} placeholder="VD: 20122025" />
+      </Field>
+      {(value ?? "").trim() && (
+        <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+          <div className="text-xs font-medium" style={{ color: "#6a6459" }}>Link trang xem riêng (nhớ bấm Lưu trước khi chia sẻ):</div>
+          <a href={guestsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-sm text-rose-600 underline">
+            {guestsUrl} <ExternalLink size={12} />
+          </a>
+        </div>
+      )}
     </div>
   );
 }

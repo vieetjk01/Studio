@@ -72,7 +72,11 @@ export default async function WeddingInvitationPage({ params, searchParams }: { 
     .not("wish", "is", null)
     .order("created_at", { ascending: false })
     .limit(100);
-  const wishes = ((wishRows ?? []) as Wish[]).filter((w) => w.wish && w.guest_name);
+  let wishes = ((wishRows ?? []) as Wish[]).filter((w) => w.wish && w.guest_name);
+  // Khi cặp đôi đặt mật khẩu "trang xem riêng" → ẩn lời chúc khỏi thiệp công khai
+  // (danh sách + lời chúc chỉ xem được qua /khach có mật khẩu). Khách vẫn gửi
+  // RSVP/lời chúc bình thường; chỉ phần HIỂN THỊ danh sách lời chúc bị ẩn.
+  if (((inv.config as WeddingConfig).guests_password ?? "").trim()) wishes = [];
 
   // Link Love Story: ưu tiên link nhập tay; nếu trống thì tự lấy theo hợp đồng.
   const cfg = inv.config as WeddingConfig;
