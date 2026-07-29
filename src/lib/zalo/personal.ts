@@ -114,6 +114,37 @@ async function findUid(api: any, phone: string): Promise<string | null> {
   return String(found?.uid ?? "") || null;
 }
 
+/** Dò uid trong danh sách BẠN BÈ theo SĐT (bạn bè có kèm phoneNumber trong API,
+ *  nên gửi được kể cả khi họ TẮT "cho phép tìm bằng SĐT"). */
+async function findUidInFriends(api: any, phone: string): Promise<string | null> {
+  try {
+    const norm = normalizeZaloPhone(phone);
+    if (!norm) return null;
+    const friends = await api.getAllFriends(1000, 1);
+    const hit = (friends || []).find(
+      (u: any) => u?.phoneNumber && normalizeZaloPhone(String(u.phoneNumber)) === norm
+    );
+    return hit ? String(hit.userId ?? "") || null : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Liệt kê bạn bè Zalo của tài khoản studio (để chọn tay người nhận). */
+export async function listFriends(
+  session: PersonalSession
+): Promise<Array<{ uid: string; name: string; avatar: string }>> {
+  const { api } = await apiFromSession(session);
+  const friends = await api.getAllFriends(1000, 1);
+  return (friends || [])
+    .map((u: any) => ({
+      uid: String(u?.userId ?? ""),
+      name: u?.displayName || u?.zaloName || u?.username || "(không tên)",
+      avatar: u?.avatar || "",
+    }))
+    .filter((f: { uid: string }) => f.uid);
+}
+
 /** Khôi phục instance api từ phiên đã lưu. */
 async function apiFromSession(session: PersonalSession): Promise<any> {
   const mod = await loadZca();
@@ -156,12 +187,14 @@ export async function sendPersonalText(
 
   let uid = target.uid || null;
   if (!uid && target.phone) {
+    // 1) Tra theo SĐT (chỉ được nếu người đó cho phép tìm bằng SĐT).
     try {
       uid = await findUid(api, target.phone);
-    } catch (e: any) {
-      // findUser ném lỗi Zalo (vd chặn tìm theo SĐT) — nêu rõ thay vì "không tìm thấy".
-      return { ok: false, error: e?.message || "find_user_failed" };
+    } catch {
+      uid = null;
     }
+    // 2) Fallback: dò trong danh sách BẠN BÈ theo SĐT (gửi được dù tắt tìm-bằng-SĐT).
+    if (!uid) uid = await findUidInFriends(api, target.phone);
   }
   if (!uid) return { ok: false, error: "recipient_not_found" };
 
