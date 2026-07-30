@@ -781,7 +781,7 @@ export default function ContractView({ token }: { token: string }) {
             <p className="eyebrow mb-1">{lang === "vi" ? "Bên A · Studio" : "Party A · Studio"}</p>
             {contract.studio_signature ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={contract.studio_signature} alt="" className="h-14 rounded bg-white p-1" />
+              <img src={contract.studio_signature} alt="Chữ ký của studio" className="h-14 rounded bg-white p-1" />
             ) : (
               <p className="text-xs" style={{ color: "var(--text3)" }}>{lang === "vi" ? "Studio chưa ký" : "Not signed"}</p>
             )}
@@ -948,7 +948,7 @@ function PrintDoc({
       </p>
       {qr && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={qr} alt="QR" style={{ position: "absolute", top: 24, right: 24, width: 92, height: 92 }} />
+        <img src={qr} alt="Mã QR chuyển khoản đặt cọc" style={{ position: "absolute", top: 24, right: 24, width: 92, height: 92 }} />
       )}
 
       <table style={{ width: "100%", fontSize: 13, marginBottom: 16, borderCollapse: "collapse" }}>
@@ -1025,7 +1025,7 @@ function PrintDoc({
               <div style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {contract.studio_signature && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={contract.studio_signature} alt="" style={{ height: 64 }} />
+                  <img src={contract.studio_signature} alt="Chữ ký của studio" style={{ height: 64 }} />
                 )}
               </div>
               <div>{contract.studio_signed_name || studioName}</div>
@@ -1038,7 +1038,7 @@ function PrintDoc({
               <div style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {contract.client_signature && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={contract.client_signature} alt="" style={{ height: 64 }} />
+                  <img src={contract.client_signature} alt="Chữ ký của khách hàng" style={{ height: 64 }} />
                 )}
               </div>
               <div>{contract.client_signed_name || contract.client_name || ""}</div>

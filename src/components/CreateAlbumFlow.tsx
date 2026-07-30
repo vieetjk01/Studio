@@ -399,7 +399,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
           {qr ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="QR" className="rounded-xl bg-white p-3" width={180} height={180} />
+              <img src={qr} alt="Mã QR mở album của khách" className="rounded-xl bg-white p-3" width={180} height={180} />
               <span className="text-[12.5px]" style={{ color: "var(--text2)" }}>
                 Quét để mở trang chọn ảnh{result?.count ? ` · ${result.count} ảnh` : ""}
               </span>
