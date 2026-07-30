@@ -71,13 +71,15 @@ const nextConfig = {
     ].join("; ");
     return [
       {
-        // Ảnh/asset tĩnh trong public/ (logo, favicon, ảnh thương hiệu) gần như
-        // không đổi → cache immutable 1 năm để bỏ round-trip revalidation mỗi
-        // lượt truy cập. KHÔNG khớp sw.js (.js) hay offline.html (.html) nên
-        // service worker vẫn tự cập nhật bình thường.
+        // Asset tĩnh trong public/ (logo, favicon, ảnh thương hiệu). KHÔNG dùng
+        // 'immutable' vì các tệp này không băm-nội-dung — nếu thay ở cùng URL,
+        // immutable sẽ khiến trình duyệt/CDN phục vụ bản cũ tới 1 năm. Dùng
+        // max-age vừa phải + stale-while-revalidate: bỏ phần lớn round-trip
+        // revalidation nhưng bản thay mới lan trong ~1 giờ. KHÔNG khớp sw.js
+        // (.js) / offline.html (.html) nên service worker vẫn tự cập nhật.
         source: "/:file*.(svg|png|jpg|jpeg|webp|avif|ico|gif|woff2)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          { key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" },
         ],
       },
       {

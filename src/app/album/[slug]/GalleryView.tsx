@@ -113,19 +113,26 @@ export default function GalleryView({
   useEffect(() => {
     if (gallery.hasPassword || shareMode || totalPhotos == null) return;
     if (photos.length >= totalPhotos) return;
+    const total: number = totalPhotos;
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch(`/api/album/${gallery.slug}/photos?offset=${photos.length}&limit=${totalPhotos}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const more: P[] = data.photos ?? [];
+      // Lặp qua nhiều trang: API giới hạn limit ≤ 2000/lần nên album lớn cần vài
+      // lượt. Dừng khi đủ tổng, trang rỗng, hoặc chạm mốc an toàn.
+      let offset = photos.length;
+      for (let guard = 0; !cancelled && offset < total && guard < 50; guard++) {
+        let more: P[] = [];
+        try {
+          const res = await fetch(`/api/album/${gallery.slug}/photos?offset=${offset}&limit=${Math.min(2000, total - offset)}`);
+          if (!res.ok) return;
+          more = (await res.json()).photos ?? [];
+        } catch { return; /* giữ những gì đã có nếu mạng lỗi */ }
         if (cancelled || more.length === 0) return;
         setPhotos((prev) => {
           const seen = new Set(prev.map((p) => p.id));
           return [...prev, ...more.filter((p) => !seen.has(p.id))];
         });
-      } catch { /* giữ lô đầu nếu mạng lỗi */ }
+        offset += more.length;
+      }
     })();
     return () => { cancelled = true; };
     // Chạy một lần sau khi mount cho album hiện tại.
@@ -224,21 +231,25 @@ export default function GalleryView({
   const RENDER_BATCH = 250;
   const [renderLimit, setRenderLimit] = useState(RENDER_BATCH);
   useEffect(() => { setRenderLimit(RENDER_BATCH); }, [activeTab, shareSet, photos]);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || visible.length <= RENDER_BATCH) return;
-    const io = new IntersectionObserver(
+  // Dùng CALLBACK REF (không phải effect theo visible.length): quan sát lại mỗi khi
+  // sentinel gắn/mount lại — kể cả khi đổi sang tab CÙNG SỐ ẢNH (renderLimit reset
+  // làm sentinel mount lại nhưng visible.length không đổi → effect cũ không chạy lại).
+  const ioRef = useRef<IntersectionObserver | null>(null);
+  const visibleCountRef = useRef(visible.length);
+  visibleCountRef.current = visible.length;
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    ioRef.current?.disconnect();
+    if (!node) return;
+    ioRef.current = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setRenderLimit((n) => (n < visible.length ? n + RENDER_BATCH : n));
+          setRenderLimit((n) => (n < visibleCountRef.current ? n + RENDER_BATCH : n));
         }
       },
       { rootMargin: "800px 0px" }
     );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [visible.length]);
+    ioRef.current.observe(node);
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

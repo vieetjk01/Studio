@@ -81,8 +81,13 @@ async function durableAllowed(
     // (dò mật khẩu/PII) truyền failClosed=true để CHẶN khi không đo được —
     // thà chặn tạm còn hơn mở toang cửa brute-force khi Upstash gián đoạn.
     if (!res.ok) return !failClosed;
-    const data = (await res.json()) as Array<{ result?: number }>;
-    const count = Number(data?.[0]?.result ?? 0);
+    // /pipeline có thể trả HTTP 200 nhưng phần tử lệnh là {error} (vd WRONGTYPE).
+    // INCR thành công LUÔN trả về số đếm ≥ 1; nếu thiếu/không hữu hạn/<1 nghĩa là
+    // lệnh hỏng → coi như KHÔNG đo được (đừng để mặc định 0 làm count<=limit đúng
+    // rồi mở bucket dù failClosed).
+    const data = (await res.json()) as Array<{ result?: number; error?: string }>;
+    const count = Number(data?.[0]?.result);
+    if (!Number.isFinite(count) || count < 1) return !failClosed;
     return count <= limit;
   } catch {
     return !failClosed;

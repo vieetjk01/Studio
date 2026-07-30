@@ -948,7 +948,7 @@ function PrintDoc({
       </p>
       {qr && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={qr} alt="Mã QR chuyển khoản đặt cọc" style={{ position: "absolute", top: 24, right: 24, width: 92, height: 92 }} />
+        <img src={qr} alt="Mã QR mở trang hợp đồng" style={{ position: "absolute", top: 24, right: 24, width: 92, height: 92 }} />
       )}
 
       <table style={{ width: "100%", fontSize: 13, marginBottom: 16, borderCollapse: "collapse" }}>

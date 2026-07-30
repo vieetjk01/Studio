@@ -295,21 +295,24 @@ export default function CustomerAlbum({
   const RENDER_BATCH = 250;
   const [renderLimit, setRenderLimit] = useState(RENDER_BATCH);
   useEffect(() => { setRenderLimit(RENDER_BATCH); }, [activeTab, selectedOnly, shareSet, photos]);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || visiblePhotos.length <= RENDER_BATCH) return;
-    const io = new IntersectionObserver(
+  // Callback ref: quan sát lại sentinel mỗi khi nó mount lại (kể cả khi đổi sang
+  // tab CÙNG SỐ ẢNH sau khi renderLimit reset — effect theo visible.length sẽ bỏ sót).
+  const ioRef = useRef<IntersectionObserver | null>(null);
+  const visibleCountRef = useRef(visiblePhotos.length);
+  visibleCountRef.current = visiblePhotos.length;
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    ioRef.current?.disconnect();
+    if (!node) return;
+    ioRef.current = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setRenderLimit((n) => (n < visiblePhotos.length ? n + RENDER_BATCH : n));
+          setRenderLimit((n) => (n < visibleCountRef.current ? n + RENDER_BATCH : n));
         }
       },
       { rootMargin: "800px 0px" }
     );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [visiblePhotos.length]);
+    ioRef.current.observe(node);
+  }, []);
 
   function copyList() {
     navigator.clipboard.writeText(selectedPhotos.map((p) => stripExtension(p.name)).join("\n"));

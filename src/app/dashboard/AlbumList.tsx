@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe, Tag } from "lucide-react";
 import { useLang } from "@/lib/i18n";
@@ -126,6 +126,18 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
   const [watermark, setWatermark] = useState(a.watermark_enabled);
   const [download, setDownload] = useState(a.download_enabled);
   const [phase, setPhase] = useState<"selection" | "delivery">(a.phase ?? "selection");
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Đóng menu bật/tắt nhanh khi nhấp RA NGOÀI card (card khác hoặc vùng trang) —
+  // backdrop trong card chỉ chặn nhấp trong chính card này.
+  useEffect(() => {
+    if (!menu) return;
+    function onDown(e: PointerEvent) {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) setMenu(false);
+    }
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [menu]);
 
   const cover =
     a.cover_url || (a.coverFallback ? thumbnailUrl(a.coverFallback, 800) : null);
@@ -135,7 +147,7 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
   }
 
   return (
-    <div className="card group relative overflow-hidden">
+    <div ref={cardRef} className="card group relative overflow-hidden">
       {/* Cover → editor */}
       <Link href={`/dashboard/albums/${a.id}`} className="relative block aspect-[4/3] bg-ink-850">
         {cover ? (
