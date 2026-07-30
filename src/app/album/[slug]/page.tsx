@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchAllPhotos } from "@/lib/photos";
+import { fetchAllPhotos, filterDeliveryPhotos } from "@/lib/photos";
 import { getStudioBrand } from "@/lib/studio-brand";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -93,9 +93,14 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   const delSources = (s ?? []).filter((x) => x.stage === "delivery");
   const useStages = delSources.length > 0;
   const shownSources = useStages ? delSources : (s ?? []);
-  const delSourceIds = new Set(delSources.map((x) => x.id));
 
+  // Chỉ serialize LÔ ẢNH ĐẦU vào HTML SSR; phần còn lại client nạp qua
+  // GET /api/album/[slug]/photos (có CDN cache). Ở chế độ share (?s/?share) gửi
+  // đủ vì cần đúng các ảnh được chọn (có thể nằm ngoài lô đầu).
+  const INITIAL_PHOTOS = 300;
+  const shareMode = !!shareIds && shareIds.length > 0;
   let photos = null;
+  let totalPhotos: number | null = null;
   let sources = null;
   // Link Drive của các folder trong album — dùng cho nút "Tải album". Với album
   // có mật khẩu, KHÔNG lộ trước khi mở khoá; access route trả về sau khi đúng mk.
@@ -103,7 +108,10 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   // Link Drive file gốc ở giai đoạn chọn ảnh (JPG Goc) — hiện trong album hoàn thiện.
   let originalFolders: { name: string; url: string }[] = [];
   if (!hasPassword) {
-    photos = (allPhotos ?? []).filter((ph) => !useStages || !ph.source_id || delSourceIds.has(ph.source_id));
+    const filtered = filterDeliveryPhotos(allPhotos ?? [], s ?? []);
+    totalPhotos = filtered.length;
+    // Share: cần đủ ảnh để lọc theo shareIds. Ngược lại chỉ gửi lô đầu.
+    photos = shareMode ? filtered : filtered.slice(0, INITIAL_PHOTOS);
     sources = shownSources.map(({ id, name, position }) => ({ id, name, position }));
     driveFolders = shownSources
       .filter((x) => x.kind === "folder" && x.drive_url)
@@ -125,6 +133,7 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
         watermark: album.watermark_delivery ? (album.watermark_text || studioName) : null,
       }}
       initialPhotos={photos}
+      totalPhotos={totalPhotos}
       initialSources={sources}
       initialDriveFolders={driveFolders}
       initialOriginalFolders={originalFolders}

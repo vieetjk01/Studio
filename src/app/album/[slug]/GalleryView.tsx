@@ -72,10 +72,11 @@ interface DriveFolder { name: string; url: string; }
 interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; canZip?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
+  gallery, initialPhotos, totalPhotos = null, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
+  totalPhotos?: number | null;
   initialSources: S[] | null;
   initialDriveFolders?: DriveFolder[];
   initialOriginalFolders?: DriveFolder[];
@@ -105,6 +106,31 @@ export default function GalleryView({
   // Client-side photo selection → build a "share only these" link.
   const shareMode = shareIds != null && shareIds.length > 0;
   const shareSet = useMemo(() => (shareIds ? new Set(shareIds) : null), [shareIds]);
+
+  // Nạp nền phần ảnh CÒN LẠI: SSR chỉ gửi lô đầu để HTML nhẹ + nhanh; số còn lại
+  // lấy qua API có CDN cache. Bỏ qua khi có mật khẩu (access route trả đủ sau khi
+  // mở khoá) hoặc chế độ share (đã gửi đủ ảnh cần thiết).
+  useEffect(() => {
+    if (gallery.hasPassword || shareMode || totalPhotos == null) return;
+    if (photos.length >= totalPhotos) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/album/${gallery.slug}/photos?offset=${photos.length}&limit=${totalPhotos}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const more: P[] = data.photos ?? [];
+        if (cancelled || more.length === 0) return;
+        setPhotos((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          return [...prev, ...more.filter((p) => !seen.has(p.id))];
+        });
+      } catch { /* giữ lô đầu nếu mạng lỗi */ }
+    })();
+    return () => { cancelled = true; };
+    // Chạy một lần sau khi mount cho album hiện tại.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gallery.slug]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
@@ -348,7 +374,7 @@ export default function GalleryView({
         <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{gallery.title}</h1>
         <p className="mt-2 flex items-center gap-3 text-[13.5px]" style={{ color: "var(--text2)" }}>
           {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>)}
-          <span>{shareMode ? visible.length : photos.length} {tr.photoCount}</span>
+          <span>{shareMode ? visible.length : (totalPhotos ?? photos.length)} {tr.photoCount}</span>
         </p>
         {shareMode ? (
           <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--gold)" }}>

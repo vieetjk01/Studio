@@ -25,6 +25,21 @@ export async function fetchAllPhotos(
   return out;
 }
 
+/**
+ * Lọc ảnh hiển thị cho GALLERY GIAO KHÁCH: ưu tiên ảnh thuộc source giai đoạn
+ * "delivery"; nếu chưa gắn stage nào thì trả về tất cả (để gallery không trống).
+ * Dùng CHUNG giữa SSR (album/[slug]/page.tsx) và API phân trang để hai bên luôn
+ * cho ra cùng tập ảnh + cùng thứ tự.
+ */
+export function filterDeliveryPhotos<T extends { source_id?: string | null }>(
+  photos: T[],
+  sources: { id: string; stage?: string | null }[]
+): T[] {
+  const delSourceIds = new Set(sources.filter((s) => s.stage === "delivery").map((s) => s.id));
+  if (delSourceIds.size === 0) return photos;
+  return photos.filter((ph) => !ph.source_id || delSourceIds.has(ph.source_id));
+}
+
 /** Split an array into chunks of `size`. */
 export function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
