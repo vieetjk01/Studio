@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: { slug: string } }
 ) {
   // H7: chặn dò mật khẩu album (giới hạn theo IP + slug).
-  const limited = await limitByIpDurable(req, `album-pw:${params.slug}`, 10, 60_000);
+  const limited = await limitByIpDurable(req, `album-pw:${params.slug}`, 10, 60_000, { failClosed: true });
   if (limited) return limited;
 
   const { password } = (await req.json().catch(() => ({}))) as {

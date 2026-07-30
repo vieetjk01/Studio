@@ -18,13 +18,6 @@ import {
  * Model: Google Gemini (xem chat route). Không lưu bí mật ở đây.
  */
 
-/**
- * Model Gemini mặc định. Dùng alias "-latest" để luôn trỏ tới bản flash mới
- * nhất (Google hay ngừng các model có số cụ thể cho tài khoản mới). Đổi nhanh
- * qua biến môi trường GEMINI_MODEL mà không cần sửa code — vd "gemini-2.0-flash".
- */
-export const CHAT_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
-
 /** Giới hạn số lượt hội thoại nhận từ client (chống lạm dụng token). */
 export const MAX_TURNS = 24;
 

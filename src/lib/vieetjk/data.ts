@@ -58,11 +58,6 @@ export function itemsForList(priceByList: Record<string, VjkPriceItem[]>, key: s
   }));
 }
 
-/** Giá của gói khớp một trong các từ khoá (không phân biệt hoa thường). */
-export function priceForMatches(items: VjkPriceItem[], matches: string[]): number | null {
-  return itemForMatches(items, matches)?.price ?? null;
-}
-
 /** Gói (tên + giá + mô tả) khớp một trong các từ khoá — để hiện chi tiết & chọn khi đặt lịch. */
 export function itemForMatches(items: VjkPriceItem[], matches: string[]): VjkPriceItem | null {
   const low = matches.map((m) => m.toLowerCase());
@@ -77,37 +72,6 @@ export function itemForMatches(items: VjkPriceItem[], matches: string[]): VjkPri
 export function albumsForCategories(albums: VjkAlbum[], categories: string[]): VjkAlbum[] {
   const set = new Set(categories.map((c) => c.toLowerCase()));
   return albums.filter((a) => a.category && set.has(a.category.toLowerCase()));
-}
-
-/**
- * Bảng giá cho một dịch vụ. Ưu tiên dữ liệu thật từ studio_pricelist; nếu
- * studio chưa nhập bảng giá nào thì dùng mẫu mặc định (seed) để trang không trống.
- */
-export function priceItemsForLists(
-  priceByList: Record<string, VjkPriceItem[]>,
-  listKeys: string[],
-): VjkPriceItem[] {
-  const out: VjkPriceItem[] = [];
-  for (const key of listKeys) {
-    const items = priceByList[key];
-    if (items && items.length) {
-      out.push(...items);
-    } else {
-      // Fallback: dùng bảng giá mẫu của mstudo cho list này.
-      const seeds: SeedItem[] = key === "cuoi" ? WEDDING_SEED : key === "dinh-hon" ? ENGAGEMENT_SEED : [];
-      out.push(
-        ...seeds.map((s) => ({
-          name: s.name,
-          price: s.price,
-          unit: s.unit || null,
-          category: s.category,
-          description: s.description || null,
-          list_key: s.list_key,
-        })),
-      );
-    }
-  }
-  return out;
 }
 
 async function resolveOwner(

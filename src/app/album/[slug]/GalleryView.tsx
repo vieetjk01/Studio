@@ -72,10 +72,11 @@ interface DriveFolder { name: string; url: string; }
 interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; canZip?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
-  gallery, initialPhotos, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
+  gallery, initialPhotos, totalPhotos = null, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
 }: {
   gallery: G;
   initialPhotos: P[] | null;
+  totalPhotos?: number | null;
   initialSources: S[] | null;
   initialDriveFolders?: DriveFolder[];
   initialOriginalFolders?: DriveFolder[];
@@ -105,6 +106,38 @@ export default function GalleryView({
   // Client-side photo selection → build a "share only these" link.
   const shareMode = shareIds != null && shareIds.length > 0;
   const shareSet = useMemo(() => (shareIds ? new Set(shareIds) : null), [shareIds]);
+
+  // Nạp nền phần ảnh CÒN LẠI: SSR chỉ gửi lô đầu để HTML nhẹ + nhanh; số còn lại
+  // lấy qua API có CDN cache. Bỏ qua khi có mật khẩu (access route trả đủ sau khi
+  // mở khoá) hoặc chế độ share (đã gửi đủ ảnh cần thiết).
+  useEffect(() => {
+    if (gallery.hasPassword || shareMode || totalPhotos == null) return;
+    if (photos.length >= totalPhotos) return;
+    const total: number = totalPhotos;
+    let cancelled = false;
+    (async () => {
+      // Lặp qua nhiều trang: API giới hạn limit ≤ 2000/lần nên album lớn cần vài
+      // lượt. Dừng khi đủ tổng, trang rỗng, hoặc chạm mốc an toàn.
+      let offset = photos.length;
+      for (let guard = 0; !cancelled && offset < total && guard < 50; guard++) {
+        let more: P[] = [];
+        try {
+          const res = await fetch(`/api/album/${gallery.slug}/photos?offset=${offset}&limit=${Math.min(2000, total - offset)}`);
+          if (!res.ok) return;
+          more = (await res.json()).photos ?? [];
+        } catch { return; /* giữ những gì đã có nếu mạng lỗi */ }
+        if (cancelled || more.length === 0) return;
+        setPhotos((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          return [...prev, ...more.filter((p) => !seen.has(p.id))];
+        });
+        offset += more.length;
+      }
+    })();
+    return () => { cancelled = true; };
+    // Chạy một lần sau khi mount cho album hiện tại.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gallery.slug]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
@@ -190,6 +223,33 @@ export default function GalleryView({
     for (const [k, items] of m) out.push({ id: k, name: "", items });
     return out;
   }, [visible, sources, tabSources.length, activeTab]);
+
+  // Tải lũy tiến: album cưới thường 1500–3000 ảnh; mount tất cả cùng lúc làm
+  // nặng hydration + hàng nghìn DOM node. Chỉ dựng một "cửa sổ" ảnh và tăng dần
+  // khi cuộn tới đáy. Chỉ số `i` vẫn theo `visible` nên lightbox/chọn ảnh/điều
+  // hướng phím KHÔNG đổi — chỉ ít node hơn được render tại một thời điểm.
+  const RENDER_BATCH = 250;
+  const [renderLimit, setRenderLimit] = useState(RENDER_BATCH);
+  useEffect(() => { setRenderLimit(RENDER_BATCH); }, [activeTab, shareSet, photos]);
+  // Dùng CALLBACK REF (không phải effect theo visible.length): quan sát lại mỗi khi
+  // sentinel gắn/mount lại — kể cả khi đổi sang tab CÙNG SỐ ẢNH (renderLimit reset
+  // làm sentinel mount lại nhưng visible.length không đổi → effect cũ không chạy lại).
+  const ioRef = useRef<IntersectionObserver | null>(null);
+  const visibleCountRef = useRef(visible.length);
+  visibleCountRef.current = visible.length;
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    ioRef.current?.disconnect();
+    if (!node) return;
+    ioRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRenderLimit((n) => (n < visibleCountRef.current ? n + RENDER_BATCH : n));
+        }
+      },
+      { rootMargin: "800px 0px" }
+    );
+    ioRef.current.observe(node);
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -325,7 +385,7 @@ export default function GalleryView({
         <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{gallery.title}</h1>
         <p className="mt-2 flex items-center gap-3 text-[13.5px]" style={{ color: "var(--text2)" }}>
           {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>)}
-          <span>{shareMode ? visible.length : photos.length} {tr.photoCount}</span>
+          <span>{shareMode ? visible.length : (totalPhotos ?? photos.length)} {tr.photoCount}</span>
         </p>
         {shareMode ? (
           <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--gold)" }}>
@@ -347,11 +407,15 @@ export default function GalleryView({
 
         {/* sections */}
         <div className="mt-7 space-y-9">
-          {sections.map((sec) => (
+          {sections.map((sec) => {
+            // Chỉ dựng các ảnh nằm trong cửa sổ hiện tại (i < renderLimit).
+            const items = sec.items.filter((it) => it.i < renderLimit);
+            if (items.length === 0) return null;
+            return (
             <section key={sec.id}>
               {sec.name && <h2 className="mb-3 font-serif text-xl font-medium">{sec.name}</h2>}
               <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-                {sec.items.map(({ p, i }) => {
+                {items.map(({ p, i }) => {
                   const isSel = selected.has(p.id);
                   return (
                   <div key={p.id} className="group relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
@@ -402,7 +466,14 @@ export default function GalleryView({
                 })}
               </div>
             </section>
-          ))}
+            );
+          })}
+          {/* Sentinel: khi lọt vào tầm nhìn (kể cả trước 800px) sẽ nạp thêm ảnh. */}
+          {renderLimit < visible.length && (
+            <div ref={sentinelRef} className="flex justify-center py-6 text-[13px]" style={{ color: "var(--text3)" }}>
+              Đang tải thêm ảnh… ({renderLimit}/{visible.length})
+            </div>
+          )}
         </div>
 
         {/* Feedback */}

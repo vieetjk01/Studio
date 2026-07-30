@@ -293,22 +293,28 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
         </div>
         {splitMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--text2)" }}>{splitMsg}</p>}
 
-        <div className="mt-[18px] grid grid-cols-2 gap-3">
+        {/* Ở chế độ GIAO KHÁCH (delivery) không có giới hạn chọn ảnh nên ẩn ô
+            "số ảnh tối đa" (vốn bị ép null) để không hiện control chết. */}
+        <div className={isDelivery ? "mt-[18px]" : "mt-[18px] grid grid-cols-2 gap-3"}>
           <div>
             <label className="label flex items-center gap-1.5">
               <Lock size={12} /> Mật khẩu
             </label>
             <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tuỳ chọn" className="input" />
           </div>
-          <div>
-            <label className="label"># Số ảnh tối đa</label>
-            <input value={max} onChange={(e) => setMax(e.target.value.replace(/[^0-9]/g, ""))} placeholder="Ví dụ: 50" className="input" />
-          </div>
+          {!isDelivery && (
+            <div>
+              <label className="label"># Số ảnh tối đa</label>
+              <input value={max} onChange={(e) => setMax(e.target.value.replace(/[^0-9]/g, ""))} placeholder="Ví dụ: 50" className="input" />
+            </div>
+          )}
         </div>
 
         <label className="label mt-4">Watermark</label>
         <input value={watermark} onChange={(e) => setWatermark(e.target.value)} placeholder="Tên studio" className="input" />
 
+        {/* Ghi chú trên ảnh chỉ có nghĩa ở album CHỌN ẢNH, không áp dụng khi giao khách. */}
+        {!isDelivery && (
         <div className="mt-4 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: canNotes ? 1 : 0.55 }}>
           <span className="flex-1 text-[13.5px]">
             Cho phép ghi chú trên ảnh {!canNotes && <span style={{ color: "var(--text3)" }}>· nâng cấp để bật 🔒</span>}
@@ -325,6 +331,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
             />
           </button>
         </div>
+        )}
 
         <div className="mt-3 flex items-center gap-3 rounded-xl px-3.5 py-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)", opacity: canZip ? 1 : 0.55 }}>
           <span className="flex-1 text-[13.5px]">
@@ -392,7 +399,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
           {qr ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="QR" className="rounded-xl bg-white p-3" width={180} height={180} />
+              <img src={qr} alt="Mã QR mở album của khách" className="rounded-xl bg-white p-3" width={180} height={180} />
               <span className="text-[12.5px]" style={{ color: "var(--text2)" }}>
                 Quét để mở trang chọn ảnh{result?.count ? ` · ${result.count} ảnh` : ""}
               </span>

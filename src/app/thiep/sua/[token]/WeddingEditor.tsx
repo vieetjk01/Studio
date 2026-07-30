@@ -54,16 +54,22 @@ export default function WeddingEditor({ token }: { token: string }) {
     setSaving(true);
     setErr(null);
     const willPublish = nextPublished ?? published;
-    const res = await fetch(`/api/thiep/${token}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config: cfg, published: willPublish, template }),
-    });
-    setSaving(false);
-    if (!res.ok) { setErr("Lưu không thành công, thử lại nhé."); return; }
-    setPublished(willPublish);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const res = await fetch(`/api/thiep/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: cfg, published: willPublish, template }),
+      });
+      if (!res.ok) { setErr("Lưu không thành công, thử lại nhé."); return; }
+      setPublished(willPublish);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      // Mạng lỗi: báo lỗi thay vì kẹt nút Lưu/Xuất bản ở trạng thái disabled.
+      setErr("Lưu không thành công, thử lại nhé.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function uploadImage(file: File): Promise<string | null> {

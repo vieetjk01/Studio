@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if ((story.config as StoryConfig)?.wishes_enabled === false) return NextResponse.json({ error: "off" }, { status: 403 });
 
   const { error } = await db.from("story_wishes").insert({ story_id: story.id, guest_name: name, wish });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
 
   await sendPushToOwner(story.owner_id, {
     title: "Love Story", body: `${name} gửi lời chúc`,

@@ -19,7 +19,7 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   // F5: làm chậm dò SĐT theo từng token (SĐT là "mật khẩu" entropy thấp).
-  const rl = await limitByIpDurable(req, `c-portal:${params.token}`, 20, 60_000);
+  const rl = await limitByIpDurable(req, `c-portal:${params.token}`, 20, 60_000, { failClosed: true });
   if (rl) return rl;
   const body = (await req.json().catch(() => ({}))) as {
     phone?: string;
@@ -115,7 +115,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     const { error } = await db
       .from("contract_edit_requests")
       .insert({ contract_id: contract.id, message });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     await notify("edit_request", `${who} yêu cầu chỉnh sửa HĐ “${contract.title}”`, true);
     return NextResponse.json({ ok: true });
   }
@@ -131,7 +131,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       content: content || "",
       approved: true,
     });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     await notify("review", `${who} đã đánh giá ${rating ? `${rating}★` : ""} HĐ “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
@@ -148,7 +148,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
         brief_submitted_at: new Date().toISOString(),
       })
       .eq("id", contract.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     await notify("info", `${who} đã gửi brief buổi chụp “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
@@ -161,7 +161,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       .from("studio_contracts")
       .update({ chosen_quote_option_id: body.option_id, chosen_quote_at: new Date().toISOString() })
       .eq("id", contract.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     await notify("info", `${who} đã chọn gói “${opt.name}” cho HĐ “${contract.title}”`);
     return NextResponse.json({ ok: true });
   }
@@ -169,7 +169,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (body.action === "set_messenger") {
     const link = (body.link ?? "").trim().slice(0, 500);
     const { error } = await db.from("studio_contracts").update({ client_messenger: link || null }).eq("id", contract.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
 
@@ -197,7 +197,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
         status: contract.status === "draft" || contract.status === "sent" ? "approved" : contract.status,
       })
       .eq("id", contract.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     await notify("signed", `${name} đã ký hợp đồng “${contract.title}”`, true);
     // Tự tạo thư mục Drive + album ngay khi ký (nếu studio đã kết nối Drive).
     // Thư mục trên MÁY do app desktop tạo. Lỗi Drive không được chặn việc ký.

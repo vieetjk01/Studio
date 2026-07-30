@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     num_guests: num,
     wish: (body.wish ?? "").trim().slice(0, 1000) || null,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
 
   const msg = attending
     ? `${name} xác nhận tham dự lễ cưới (${num} người)`

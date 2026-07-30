@@ -29,7 +29,9 @@ export default async function ReportsPage() {
   }
 
   const supabase = createClient();
-  const [{ data: payments }, { data: salaries }, { data: expenses }] = await Promise.all([
+  // srcContracts độc lập với 3 truy vấn còn lại → gộp chung một Promise.all thay
+  // vì await nối tiếp sau đó (bớt một round-trip tuần tự).
+  const [{ data: payments }, { data: salaries }, { data: expenses }, { data: srcContracts }] = await Promise.all([
     supabase
       .from("contract_payments")
       .select("id, amount, kind, paid_at, contract:studio_contracts!inner(owner_id, title)")
@@ -40,14 +42,13 @@ export default async function ReportsPage() {
       .eq("contract.owner_id", profile.id)
       .eq("paid", true),
     supabase.from("studio_expenses").select("*").eq("owner_id", profile.id),
+    // Lead-source analytics: value & collected per acquisition channel (all-time).
+    supabase
+      .from("studio_contracts")
+      .select("source, contract_items(qty, unit_price), contract_payments(amount)")
+      .eq("owner_id", profile.id)
+      .neq("status", "cancelled"),
   ]);
-
-  // Lead-source analytics: value & collected per acquisition channel (all-time).
-  const { data: srcContracts } = await supabase
-    .from("studio_contracts")
-    .select("source, contract_items(qty, unit_price), contract_payments(amount)")
-    .eq("owner_id", profile.id)
-    .neq("status", "cancelled");
   const srcMap = new Map<string, { count: number; value: number; collected: number }>();
   for (const c of (srcContracts ?? []) as unknown as Array<{
     source: string | null;

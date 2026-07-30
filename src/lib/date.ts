@@ -32,13 +32,6 @@ export function fmtDate(v: string | number | Date | null | undefined): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-/** dd/mm/yyyy HH:mm. Returns "" for empty/invalid input. */
-export function fmtDateTime(v: string | number | Date | null | undefined): string {
-  const d = toDate(v);
-  if (!d) return "";
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 /** Lunar (âm lịch) date: "dd/mm/yyyy" (+ " nhuận" for a leap month). "" if invalid. */
 export function fmtLunar(v: string | number | Date | null | undefined): string {
   const d = toDate(v);

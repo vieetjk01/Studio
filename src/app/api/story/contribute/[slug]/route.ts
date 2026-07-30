@@ -49,7 +49,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const { error } = await db.from("story_uploads").insert({
     story_id: story.id, drive_file_id: up.id, name: file.name, is_video: up.isVideo, guest_name: guestName, approved: true,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
 
   await sendPushToOwner(story.owner_id, { title: "Love Story", body: `${guestName || "Một vị khách"} vừa đăng story`, url: "/dashboard/studio/story", tag: `story-up-${story.id}` }).catch(() => {});
   return NextResponse.json({ ok: true });

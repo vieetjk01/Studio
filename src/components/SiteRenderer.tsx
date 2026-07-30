@@ -50,7 +50,29 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
 
   // Advanced: user-authored CSS applied site-wide (scoped under the site root).
   // Bỏ '<'/'>' để chặn thoát khỏi <style> (vd "</style><img onerror=...>") → XSS.
-  const safeCss = t.customCss ? String(t.customCss).replace(/[<>]/g, "") : "";
+  // Ngoài ra siết thêm để chống rò rỉ dữ liệu / UI-redress bằng CSS:
+  //   • @import  → tải CSS ngoài (có thể chứa quy tắc theo dõi/exfil).
+  //   • url(...) trỏ ra host ngoài → gửi request kèm thông tin ra máy chủ lạ.
+  //   • expression(...) → thực thi mã trên IE cũ.
+  // url() nội bộ (data:, /, cùng origin) vẫn được giữ để ảnh nền hoạt động.
+  // Giải mã escape CSS trước khi lọc: nếu không, `@\69mport` / `u\72l(...)` /
+  // `\3c/style>` sẽ vượt qua các regex bên dưới. Giải mã ra ký tự tương đương
+  // (an toàn về ngữ nghĩa) rồi mới strip `<>` và loại at-rule/url ngoài.
+  const decodeCssEscapes = (css: string) =>
+    css
+      .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => {
+        const cp = parseInt(hex, 16);
+        if (!cp || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) return "";
+        return String.fromCodePoint(cp);
+      })
+      .replace(/\\(.)/g, "$1");
+  const stripCssThreats = (css: string) =>
+    css
+      .replace(/@import[^;]*;?/gi, "")
+      .replace(/expression\s*\(/gi, "(")
+      .replace(/url\(\s*(['"]?)\s*(?:https?:)?\/\/[^)]*\)/gi, "url()");
+  // Thứ tự: decode → bỏ `<>` (chặn thoát <style>) → loại threat.
+  const safeCss = t.customCss ? stripCssThreats(decodeCssEscapes(String(t.customCss)).replace(/[<>]/g, "")) : "";
   const customCssTag = safeCss ? <style dangerouslySetInnerHTML={{ __html: safeCss }} /> : null;
 
   const navPos = t.navPosition || "top";

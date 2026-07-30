@@ -3,8 +3,8 @@ import { PRICE_LISTS } from "@/lib/pricelist-seeds";
 import PricelistPoster from "@/components/PricelistPoster";
 import type { PricelistItem } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// Bảng giá công khai theo token — hiếm đổi → ISR + CDN cache 5' thay vì no-store.
+export const revalidate = 300;
 
 function buildLists(allItems: PricelistItem[], hidden: string[] = [], labels: Record<string, string> = {}) {
   const builtIn = PRICE_LISTS.filter(

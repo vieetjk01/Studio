@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
   const path = `${inv.owner_id}/${inv.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
   const { data, error } = await db.storage.from("wedding-photos").createSignedUploadUrl(path);
-  if (error || !data) return NextResponse.json({ error: error?.message || "sign_failed" }, { status: 500 });
+  if (error || !data) return NextResponse.json({ error: "sign_failed" }, { status: 500 });
 
   const publicUrl = db.storage.from("wedding-photos").getPublicUrl(path).data.publicUrl;
   return NextResponse.json({ path, token: data.token, publicUrl });

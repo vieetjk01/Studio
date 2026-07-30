@@ -140,7 +140,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Host-based routing ────────────────────────────────────────
-  if (MAIN_HOST && host) {
+  // Bỏ qua trên bản Preview của Vercel (*.vercel.app): nếu không, mở /dashboard,
+  // /a/, /start… trên preview sẽ bị hostForPath ép chuyển sang MAIN_HOST
+  // (domain production) → không test được preview sau khi đăng nhập.
+  if (MAIN_HOST && host && !host.endsWith(".vercel.app")) {
     // Per-host home pages.
     if (pathname === "/") {
       if (IMG_HOST && host === IMG_HOST) return NextResponse.redirect(new URL(COMPRESS_PATH, request.url));

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** Verify a gallery's phone password and return its photos + sources. */
 export async function POST(req: Request, { params }: { params: { slug: string } }) {
   // H7: mật khẩu gallery thường là SỐ ĐIỆN THOẠI (entropy thấp) — chặn dò mật khẩu.
-  const limited = await limitByIpDurable(req, `gallery-pw:${params.slug}`, 10, 60_000);
+  const limited = await limitByIpDurable(req, `gallery-pw:${params.slug}`, 10, 60_000, { failClosed: true });
   if (limited) return limited;
 
   const { password } = (await req.json().catch(() => ({}))) as { password?: string };

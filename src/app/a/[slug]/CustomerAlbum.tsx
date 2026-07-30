@@ -289,6 +289,31 @@ export default function CustomerAlbum({
     return ordered;
   }, [visiblePhotos, sources, selectedOnly, activeTab, tabSources.length]);
 
+  // Tải lũy tiến: chỉ dựng một "cửa sổ" ảnh và tăng dần khi cuộn tới đáy (album
+  // chọn ảnh có thể vài nghìn tấm). Chỉ số `idx` vẫn theo visiblePhotos nên
+  // lightbox/chọn ảnh không đổi.
+  const RENDER_BATCH = 250;
+  const [renderLimit, setRenderLimit] = useState(RENDER_BATCH);
+  useEffect(() => { setRenderLimit(RENDER_BATCH); }, [activeTab, selectedOnly, shareSet, photos]);
+  // Callback ref: quan sát lại sentinel mỗi khi nó mount lại (kể cả khi đổi sang
+  // tab CÙNG SỐ ẢNH sau khi renderLimit reset — effect theo visible.length sẽ bỏ sót).
+  const ioRef = useRef<IntersectionObserver | null>(null);
+  const visibleCountRef = useRef(visiblePhotos.length);
+  visibleCountRef.current = visiblePhotos.length;
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    ioRef.current?.disconnect();
+    if (!node) return;
+    ioRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRenderLimit((n) => (n < visibleCountRef.current ? n + RENDER_BATCH : n));
+        }
+      },
+      { rootMargin: "800px 0px" }
+    );
+    ioRef.current.observe(node);
+  }, []);
+
   function copyList() {
     navigator.clipboard.writeText(selectedPhotos.map((p) => stripExtension(p.name)).join("\n"));
     setCopied(true);
@@ -613,7 +638,11 @@ export default function CustomerAlbum({
         ) : (
           // Sections — each Drive source shown separately, left-to-right
           <div className="space-y-9">
-            {sections.map((sec) => (
+            {sections.map((sec) => {
+              // Chỉ dựng ảnh trong cửa sổ hiện tại (idx < renderLimit).
+              const items = sec.items.filter((it) => it.idx < renderLimit);
+              if (items.length === 0) return null;
+              return (
               <section key={sec.id}>
                 {sec.name && (
                   <h2 className="mb-3 font-serif text-xl font-medium">
@@ -624,7 +653,7 @@ export default function CustomerAlbum({
                   </h2>
                 )}
                 <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-            {sec.items.map(({ p, idx }) => {
+            {items.map(({ p, idx }) => {
               const isSel = selected.has(p.id);
               const note = notes[p.id];
               return (
@@ -712,7 +741,14 @@ export default function CustomerAlbum({
             })}
                 </div>
               </section>
-            ))}
+              );
+            })}
+            {/* Sentinel: nạp thêm ảnh khi cuộn gần tới đáy. */}
+            {renderLimit < visiblePhotos.length && (
+              <div ref={sentinelRef} className="flex justify-center py-6 text-[13px]" style={{ color: "var(--text3)" }}>
+                Đang tải thêm ảnh… ({renderLimit}/{visiblePhotos.length})
+              </div>
+            )}
           </div>
         )}
       </div>
