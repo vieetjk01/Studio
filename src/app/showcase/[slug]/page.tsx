@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ShowcaseAlbum from "./ShowcaseAlbum";
 
-export const dynamic = "force-dynamic";
+// Trang showcase công khai chỉ đổi khi studio publish lại → ISR + CDN cache 5'
+// thay vì SSR mọi lượt khách xem (giảm origin transfer, nhanh hơn).
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const db = createAdminClient();
