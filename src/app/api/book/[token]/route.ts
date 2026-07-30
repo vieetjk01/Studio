@@ -50,7 +50,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     package_price: body.package_price != null && Number.isFinite(body.package_price) ? Math.max(0, Math.round(body.package_price)) : null,
     facebook: body.facebook?.trim() || null,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
 
   const bookMsg = `Yêu cầu đặt lịch mới từ ${body.name.trim()}${pkgName ? ` · ${pkgName}` : ""}${body.preferred_date ? ` · ${body.preferred_date}` : ""}`;
   await db.from("studio_notifications").insert({

@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     const { error } = await db
       .from("crew_unavailable")
       .upsert({ phone, date: body.date, note: body.note?.trim() || null }, { onConflict: "phone,date" });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
 
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       .from("contract_crew")
       .update({ status: body.status, responded_at: new Date().toISOString() })
       .eq("id", body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     const ct = (row as unknown as { contract: { owner_id: string; title: string } | null }).contract;
     if (ct?.owner_id) {
       const crewMsg = `${row.name || phone} đã ${body.status === "accepted" ? "nhận" : "từ chối"} buổi “${ct.title}”`;

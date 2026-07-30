@@ -78,7 +78,7 @@ export async function POST(
 
   if (rows.length > 0) {
     const { error } = await admin.from("selections").insert(rows);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, count: rows.length });
