@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireDesktopOwner } from "@/lib/desktop/auth";
-import { autoCreateContractDeliveryOnComplete } from "@/lib/studio-drive";
+import { autoCreateContractDeliveryOnComplete, autoCreateContractSelectionOnProduction } from "@/lib/studio-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +112,16 @@ export async function POST(req: Request) {
       const { data, error } = await db.from(table).update(payload).eq("id", id).eq("owner_id", owner).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return NextResponse.json({ error: "not_found" }, { status: 404 });
-      // Hợp đồng chuyển sang "hoàn thành" từ desktop → tạo album giao khách.
+      // Hợp đồng chuyển trạng thái từ desktop:
+      //  - sang "đang thực hiện"/"hoàn thành" → giờ mới tạo album CHỌN ẢNH.
+      //  - sang "hoàn thành" → tạo thêm album GIAO KHÁCH.
+      if (table === "studio_contracts" && (payload.status === "in_progress" || payload.status === "completed")) {
+        try {
+          await autoCreateContractSelectionOnProduction(owner, id);
+        } catch {
+          /* studio chưa nối Drive / lỗi tạm — lần đồng bộ sau tạo bù */
+        }
+      }
       if (table === "studio_contracts" && payload.status === "completed") {
         try {
           await autoCreateContractDeliveryOnComplete(owner, id);

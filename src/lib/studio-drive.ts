@@ -441,7 +441,18 @@ export async function wireContractAlbums(
   opts?: { phases?: ("selection" | "delivery")[] }
 ): Promise<{ selectionAlbumId: string | null; galleryAlbumId: string | null }> {
   const db = createAdminClient();
-  const phases = opts?.phases ?? (contract.status === "completed" ? ["selection", "delivery"] : ["selection"]);
+  // Mặc định theo trạng thái hợp đồng — theo đúng quy trình:
+  //   - Album CHỌN ẢNH: chỉ tạo khi HĐ đã sang "đang thực hiện" (in_progress)
+  //     hoặc "hoàn thành". HĐ mới ký (approved) mà CHƯA tới giai đoạn thực hiện
+  //     thì CHƯA tạo album (yêu cầu: ẩn/không tạo album cho tới khi thực hiện).
+  //   - Album GIAO KHÁCH: chỉ tạo khi HĐ "hoàn thành".
+  const inProduction = contract.status === "in_progress" || contract.status === "completed";
+  const phases =
+    opts?.phases ??
+    ([
+      ...(inProduction ? ["selection"] : []),
+      ...(contract.status === "completed" ? ["delivery"] : []),
+    ] as ("selection" | "delivery")[]);
   const wantSel = phases.includes("selection");
   const wantDel = phases.includes("delivery");
   const sel = wantSel ? tree.find((n) => n.role === "selection") : undefined;
@@ -499,9 +510,32 @@ export async function autoCreateContractDriveOnSign(ownerId: string, contractId:
   if (!c) return;
   const tree = await ensureContractDriveTree(ownerId, c as ContractForDrive);
   if ("error" in tree) return; // not_connected → studio chưa nối Drive
-  // Khi ký: CHỈ tạo album chọn ảnh. Album giao khách để dành tới khi hợp đồng
-  // được đánh dấu "hoàn thành" (autoCreateContractDeliveryOnComplete).
-  await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree, { phases: ["selection"] });
+  // Khi ký: chỉ dựng sẵn cây thư mục Drive, CHƯA tạo album nào. Album chọn ảnh
+  // để dành tới khi hợp đồng chuyển sang "đang thực hiện" (in_progress) —
+  // autoCreateContractSelectionOnProduction; album giao khách để dành tới khi
+  // "hoàn thành" — autoCreateContractDeliveryOnComplete.
+}
+
+/**
+ * Tự tạo album CHỌN ẢNH (phase "selection") khi hợp đồng chuyển sang "đang thực
+ * hiện" (in_progress). Trước mốc này album được giữ CHƯA tạo để không hiện trong
+ * thư viện/danh sách. Idempotent (đã có selection_album_id thì bỏ qua). Studio
+ * chưa nối Drive → bỏ qua im lặng (desktop sẽ tạo bù khi đồng bộ). Trả về true
+ * nếu vừa tạo hoặc đã có album chọn ảnh.
+ */
+export async function autoCreateContractSelectionOnProduction(ownerId: string, contractId: string): Promise<boolean> {
+  const db = createAdminClient();
+  const { data: c } = await db
+    .from("studio_contracts")
+    .select(CONTRACT_DRIVE_COLS)
+    .eq("id", contractId)
+    .maybeSingle();
+  if (!c) return false;
+  if ((c as ContractForDrive).selection_album_id) return true; // đã có album chọn ảnh
+  const tree = await ensureContractDriveTree(ownerId, c as ContractForDrive);
+  if ("error" in tree) return false; // not_connected → studio chưa nối Drive
+  const { selectionAlbumId } = await wireContractAlbums(ownerId, c as ContractForDrive, tree.tree, { phases: ["selection"] });
+  return !!selectionAlbumId;
 }
 
 /**

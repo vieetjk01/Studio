@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { autoCreateContractSelectionOnProduction } from "@/lib/studio-drive";
 
 // Trạng thái được phép TỰ chuyển sang 'in_progress' khi tới ngày. Chỉ những HĐ
 // đang hoạt động (đã gửi/đã duyệt) — KHÔNG đụng bản nháp (draft), đã hoàn tất
@@ -28,7 +29,7 @@ export async function autoAdvanceContracts(db: SupabaseClient, ownerId?: string)
   // 1) Ứng viên: HĐ đang hoạt động, chưa đang thực hiện/hoàn tất/huỷ.
   let q = db
     .from("studio_contracts")
-    .select("id, event_date, status")
+    .select("id, owner_id, event_date, status")
     .in("status", ADVANCEABLE as unknown as string[]);
   if (ownerId) q = q.eq("owner_id", ownerId);
   const { data: contracts } = await q;
@@ -63,5 +64,18 @@ export async function autoAdvanceContracts(db: SupabaseClient, ownerId?: string)
   if (!toAdvance.length) return [];
 
   await db.from("studio_contracts").update({ status: "in_progress" }).in("id", toAdvance);
+
+  // Vừa sang "đang thực hiện" → giờ mới tạo album CHỌN ẢNH (trước mốc này album
+  // được giữ chưa tạo). Idempotent, lỗi Drive không chặn việc chuyển trạng thái.
+  const ownerById = new Map(contracts.map((c) => [c.id as string, c.owner_id as string]));
+  for (const id of toAdvance) {
+    const oid = ownerById.get(id);
+    if (!oid) continue;
+    try {
+      await autoCreateContractSelectionOnProduction(oid, id);
+    } catch {
+      /* studio chưa nối Drive / lỗi tạm — desktop sẽ tạo bù khi đồng bộ */
+    }
+  }
   return toAdvance;
 }
