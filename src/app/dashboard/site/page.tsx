@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { effectivePlan, planAllowsCustomDomain } from "@/lib/plans";
-import { PRICE_LISTS } from "@/lib/pricelist-seeds";
+import { availableLists } from "@/lib/site-pricing";
 import CanvasBuilder, { type PriceItem } from "./builder/CanvasBuilder";
 import type { Site, SiteBlock } from "@/lib/types";
 
@@ -34,16 +34,15 @@ export default async function SiteBuilderPage() {
   const [{ data: blocks }, { data: albums }, { data: pricelist }] = await Promise.all([
     supabase.from("site_blocks").select("*").eq("site_id", (site as Site).id).order("position"),
     supabase.from("albums").select("id, slug, title, cover_url").eq("owner_id", user.id).eq("status", "published").order("created_at", { ascending: false }).limit(48),
-    supabase.from("studio_pricelist").select("id, name, price, unit, category, description, list_key").eq("owner_id", user.id).eq("active", true).gt("price", 0).order("position"),
+    // Lấy cả dòng 0đ (ghi chú "Phát sinh thêm", "Lưu ý"…) — khối bảng giá xếp
+    // chúng xuống phần ghi chú, giống trang bảng giá công khai.
+    supabase.from("studio_pricelist").select("id, name, price, unit, category, description, list_key").eq("owner_id", user.id).eq("active", true).order("position"),
   ]);
 
-  // Price-list options (loại bảng giá) for the pricing block selector.
-  const labels = (profile?.pl_list_labels as Record<string, string> | null) ?? {};
+  // Các loại bảng giá (list_key) để studio chọn loại nào hiện trên website.
+  const priceLabels = (profile?.pl_list_labels as Record<string, string> | null) ?? {};
   const plItems = (pricelist ?? []) as PriceItem[];
-  const priceLists = [...new Set(plItems.map((p) => p.list_key || "cuoi"))].map((key) => ({
-    key,
-    label: labels[key] || PRICE_LISTS.find((l) => l.key === key)?.label || key,
-  }));
+  const priceLists = availableLists(plItems, priceLabels);
 
   return (
     <CanvasBuilder
@@ -52,6 +51,7 @@ export default async function SiteBuilderPage() {
       albums={(albums ?? []) as { id: string; slug: string; title: string; cover_url: string | null }[]}
       pricelist={plItems}
       priceLists={priceLists}
+      priceLabels={priceLabels}
       canPublish={canPublish}
       canCustomDomain={canCustomDomain}
       mainHost={process.env.NEXT_PUBLIC_MAIN_HOST || ""}

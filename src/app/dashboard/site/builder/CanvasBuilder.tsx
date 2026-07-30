@@ -11,13 +11,19 @@ import { createClient } from "@/lib/supabase/client";
 import { MAIN_HOST } from "@/lib/hosts";
 import {
   SITE_BLOCK_LABEL,
-  vnd,
   type Site,
   type SiteBlock,
   type SiteBlockType,
   type SiteTheme,
 } from "@/lib/types";
 import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
+import SitePricing from "@/components/site/SitePricing";
+import {
+  buildPriceView,
+  hasListSelection,
+  selectedListKeys,
+  type SitePriceItem,
+} from "@/lib/site-pricing";
 import HtmlEmbed from "@/components/HtmlEmbed";
 import CustomDomain from "@/components/CustomDomain";
 import { compressImage, checkImageFile, MAX_IMAGE_UPLOAD_MB } from "@/lib/image";
@@ -50,7 +56,7 @@ const DEFAULTS: Partial<Record<SiteBlockType, Record<string, unknown>>> = {
   gallery: { heading: "Bộ sưu tập" },
   services: { heading: "Dịch vụ", items: "Chụp cưới | Phóng sự trọn ngày\nPre-wedding | Concept theo yêu cầu\nGia đình | Studio & ngoại cảnh" },
   stats: { items: "8 năm | Kinh nghiệm\n300+ | Album\n100% | Khách hài lòng" },
-  pricing: { heading: "Bảng giá" },
+  pricing: { heading: "Bảng giá", layout: "card", grouping: "tabs" },
   testimonials: { heading: "Khách hàng nói gì" },
   quote: { text: "Chúng tôi không chỉ chụp ảnh — chúng tôi kể lại câu chuyện của bạn.", author: "Studio" },
   cta: { heading: "Sẵn sàng cho buổi chụp của bạn?", text: "Liên hệ ngay để giữ ngày đẹp.", button: "Đặt lịch ngay" },
@@ -81,7 +87,8 @@ function contrastInk(hex: string): string {
 
 const lines = (v: unknown) => String(v ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
 
-export type PriceItem = { id: string; name: string; price: number; unit: string | null; category: string | null; description: string | null; list_key: string | null };
+export type PriceItem = SitePriceItem;
+export type PriceListOption = { key: string; label: string; count: number };
 
 export default function CanvasBuilder({
   site,
@@ -89,6 +96,7 @@ export default function CanvasBuilder({
   albums,
   pricelist = [],
   priceLists = [],
+  priceLabels = {},
   canPublish,
   canCustomDomain = false,
   mainHost,
@@ -97,7 +105,8 @@ export default function CanvasBuilder({
   initialBlocks: SiteBlock[];
   albums: AlbumLite[];
   pricelist?: PriceItem[];
-  priceLists?: { key: string; label: string }[];
+  priceLists?: PriceListOption[];
+  priceLabels?: Record<string, string>;
   canPublish: boolean;
   canCustomDomain?: boolean;
   mainHost: string;
@@ -359,6 +368,7 @@ export default function CanvasBuilder({
     "--s-bg": theme.bg || "#FBFAF8",
     "--s-text": theme.text || "#1A1815",
     "--s-accent": accent,
+    "--s-accentInk": contrastInk(accent),
     "--s-border": dark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)",
     "--s-card": dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.03)",
     "--s-radius": theme.radius === "sharp" ? "0px" : "14px",
@@ -508,6 +518,7 @@ export default function CanvasBuilder({
                           accent={accent}
                           albums={albums}
                           pricelist={pricelist}
+                          priceLabels={priceLabels}
                           onSelect={() => setSelId(b.id)}
                           onDragStart={() => { setDragId(b.id); setDragType(null); }}
                           onDragEnd={() => { setDragId(null); setDropIndex(null); }}
@@ -596,10 +607,38 @@ export default function CanvasBuilder({
                   ))}
                 </div>
 
+                <label style={insLabel}>Bo góc</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {([["rounded", "Bo tròn"], ["sharp", "Vuông"]] as const).map(([r, lbl]) => (
+                    <button key={r} onClick={() => patchTheme({ radius: r })} style={segWide((theme.radius || "rounded") === r)}>{lbl}</button>
+                  ))}
+                </div>
+
                 <label style={insLabel}>Vị trí menu</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                   {([["top", "Trên"], ["left", "Trái"], ["bottom", "Dưới"]] as const).map(([np, lbl]) => (
                     <button key={np} onClick={() => patchTheme({ navPosition: np })} style={segWide((theme.navPosition || "top") === np)}>{lbl}</button>
+                  ))}
+                </div>
+
+                <label style={insLabel}>Ảnh bìa — chiều cao</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {([["small", "Thấp"], ["medium", "Vừa"], ["large", "Cao"]] as const).map(([h, lbl]) => (
+                    <button key={h} onClick={() => patchTheme({ heroSize: h })} style={segWide((theme.heroSize || "medium") === h)}>{lbl}</button>
+                  ))}
+                </div>
+
+                <label style={insLabel}>Ảnh bìa — căn chữ</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {([["center", "Giữa"], ["left", "Trái"]] as const).map(([a, lbl]) => (
+                    <button key={a} onClick={() => patchTheme({ heroAlign: a })} style={segWide((theme.heroAlign || "center") === a)}>{lbl}</button>
+                  ))}
+                </div>
+
+                <label style={insLabel}>Bộ sưu tập — số cột</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {([2, 3, 4] as const).map((n) => (
+                    <button key={n} onClick={() => patchTheme({ galleryCols: n })} style={segWide((Number(theme.galleryCols) || 3) === n)}>{n} cột</button>
                   ))}
                 </div>
 
@@ -679,7 +718,7 @@ function DropZone({ dragging, active, onOver, onDrop, tall }: { dragging: boolea
 
 /* ── Block shell: floating toolbar + selection border + editable content ── */
 function BlockShell({
-  block, selected, preview, first, last, fontHead, accent, albums, pricelist,
+  block, selected, preview, first, last, fontHead, accent, albums, pricelist, priceLabels,
   onSelect, onDragStart, onDragEnd, onMove, onDup, onDel, onEdit, onBeforeEdit,
 }: {
   block: SiteBlock;
@@ -691,6 +730,7 @@ function BlockShell({
   accent: string;
   albums: AlbumLite[];
   pricelist: PriceItem[];
+  priceLabels: Record<string, string>;
   onSelect: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -729,7 +769,7 @@ function BlockShell({
           {SITE_BLOCK_LABEL[block.type]}
         </span>
       )}
-      <BlockBody block={block} fontHead={fontHead} accent={accent} albums={albums} pricelist={pricelist} preview={preview} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
+      <BlockBody block={block} fontHead={fontHead} accent={accent} albums={albums} pricelist={pricelist} priceLabels={priceLabels} preview={preview} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
     </div>
   );
 }
@@ -762,12 +802,13 @@ function Editable({ value, onCommit, onBeforeEdit, preview, style, placeholder, 
 }
 
 /* ── Block body: WYSIWYG canvas render of each block type ──────────────── */
-function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit, onBeforeEdit }: {
+function BlockBody({ block, fontHead, accent, albums, pricelist, priceLabels, preview, onEdit, onBeforeEdit }: {
   block: SiteBlock;
   fontHead: string;
   accent: string;
   albums: AlbumLite[];
   pricelist: PriceItem[];
+  priceLabels: Record<string, string>;
   preview: boolean;
   onEdit: (k: string, v: unknown, commit?: boolean) => void;
   onBeforeEdit: () => void;
@@ -775,20 +816,39 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
   const c = block.config || {};
   const S = (k: string) => String(c[k] ?? "");
   const ed = (k: string, v: string) => onEdit(k, v, true);
-  const sec: React.CSSProperties = { maxWidth: 1040, margin: "0 auto", padding: "clamp(40px,7vw,80px) clamp(20px,5vw,64px)" };
+  const sec: React.CSSProperties = { maxWidth: 1040, margin: "0 auto", padding: "clamp(44px,7vw,84px) clamp(20px,5vw,40px)" };
+  const center = c.align === "center";
+  // Đầu đề khối: nhãn nhỏ (eyebrow) + tiêu đề — sửa trực tiếp trên canvas, hiện
+  // đúng như trang xuất bản (cùng class .s-sec-head/.s-eyebrow/.s-h2).
   const heading = (k = "heading", fallback = "") => (
-    <Editable value={S(k) || (preview ? "" : "")} placeholder={fallback} preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed(k, v)} style={{ fontFamily: fontHead, fontSize: "clamp(26px,3.4vw,40px)", marginBottom: 24 }} />
+    <div className={`s-sec-head${center ? " is-center" : ""}`}>
+      {(S("eyebrow") || !preview) && (
+        <Editable
+          value={S("eyebrow")}
+          placeholder="Nhãn nhỏ (không bắt buộc)"
+          preview={preview}
+          onBeforeEdit={onBeforeEdit}
+          onCommit={(v) => ed("eyebrow", v)}
+          style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: accent, opacity: S("eyebrow") ? 1 : 0.45 }}
+        />
+      )}
+      <Editable value={S(k)} placeholder={fallback} preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed(k, v)} style={{ fontFamily: fontHead, fontSize: "clamp(26px,3.4vw,40px)", lineHeight: 1.12, marginTop: 10 }} />
+    </div>
   );
 
   switch (block.type) {
     case "hero": {
       const img = S("image");
       return (
-        <section style={{ position: "relative", minHeight: 360, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 32, backgroundImage: img ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.5)),url(${img})` : undefined, backgroundSize: "cover", backgroundPosition: S("imagePos") || "center", color: img ? "#fff" : "var(--s-text)" }}>
+        <section style={{ position: "relative", minHeight: 380, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "clamp(40px,8vw,80px) 24px", backgroundImage: img ? `linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.58)),url(${img})` : undefined, backgroundSize: "cover", backgroundPosition: S("imagePos") || "center", color: img ? "#fff" : "var(--s-text)" }}>
           <div style={{ maxWidth: 760 }}>
+            {(S("eyebrow") || !preview) && (
+              <Editable value={S("eyebrow")} placeholder="Nhãn nhỏ (không bắt buộc)" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("eyebrow", v)}
+                style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: img ? "#fff" : accent, opacity: S("eyebrow") ? 0.9 : 0.45, marginBottom: 12 }} />
+            )}
             <Editable value={S("heading")} placeholder="Tiêu đề lớn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("heading", v)} style={{ fontFamily: fontHead, fontSize: "clamp(34px,5.4vw,68px)", lineHeight: 1.05 }} />
-            <Editable value={S("subheading")} placeholder="Mô tả ngắn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("subheading", v)} style={{ marginTop: 14, fontSize: 18, opacity: 0.9 }} />
-            <span style={ctaPill(accent)}>Đặt lịch</span>
+            <Editable value={S("subheading")} placeholder="Mô tả ngắn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("subheading", v)} style={{ marginTop: 16, fontSize: 18, opacity: 0.9 }} />
+            <span style={ctaPill(accent)}>{S("button") || "Đặt lịch"}</span>
           </div>
         </section>
       );
@@ -798,9 +858,9 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       return (
         <section style={sec}>
           {heading("heading", "Giới thiệu")}
-          <div style={{ display: "grid", gap: 28, gridTemplateColumns: img ? "1fr 1fr" : "1fr", alignItems: "center" }}>
-            <Editable multiline value={S("text")} placeholder="Nội dung giới thiệu…" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("text", v)} style={{ lineHeight: 1.7, opacity: 0.9 }} />
-            {img && <img src={img} alt="" style={{ width: "100%", borderRadius: "var(--s-radius)", objectFit: "cover" }} />}
+          <div style={{ display: "grid", gap: 30, gridTemplateColumns: img ? "repeat(auto-fit,minmax(260px,1fr))" : "1fr", alignItems: "center" }}>
+            <Editable multiline value={S("text")} placeholder="Nội dung giới thiệu…" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("text", v)} style={{ lineHeight: 1.75, opacity: 0.88 }} />
+            {img && <img src={img} alt="" style={{ width: "100%", borderRadius: "var(--s-radius)", objectFit: "cover", aspectRatio: "4/5", maxHeight: 520 }} />}
           </div>
         </section>
       );
@@ -810,11 +870,12 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       return (
         <section style={sec}>
           {heading("heading", "Bộ sưu tập")}
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))" }}>
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
             {(covers.length ? covers : Array.from({ length: 6 })).map((a, i) => (
-              <div key={i} style={{ aspectRatio: "4/3", borderRadius: "var(--s-radius)", overflow: "hidden", background: "var(--s-card)" }}>
+              <div key={i} className="s-tile">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={(a as AlbumLite)?.cover_url || `https://picsum.photos/seed/g${i}/600/450`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={(a as AlbumLite)?.cover_url || `https://picsum.photos/seed/g${i}/600/450`} alt="" />
+                <span className="s-tile-cap">{(a as AlbumLite)?.title || `Album mẫu ${i + 1}`}</span>
               </div>
             ))}
           </div>
@@ -827,12 +888,12 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       return (
         <section style={sec}>
           {heading("heading", "Dịch vụ")}
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+          <div className="s-grid s-grid--3">
             {items.map((it, i) => (
-              <div key={i} style={cardBox}>
-                <span style={{ color: accent, fontFamily: fontHead, fontSize: 22 }}>{String(i + 1).padStart(2, "0")}</span>
-                <p style={{ fontFamily: fontHead, fontSize: 19, marginTop: 4 }}>{it.t}</p>
-                {it.d && <p style={{ marginTop: 6, opacity: 0.85, lineHeight: 1.6, fontSize: 14 }}>{it.d}</p>}
+              <div key={i} className="s-card">
+                <span style={{ color: accent, fontFamily: fontHead, fontSize: 22, fontWeight: 600 }}>{String(i + 1).padStart(2, "0")}</span>
+                <p style={{ fontFamily: fontHead, fontSize: 19, marginTop: 6 }}>{it.t}</p>
+                {it.d && <p style={{ marginTop: 8, opacity: 0.82, lineHeight: 1.65, fontSize: 14 }}>{it.d}</p>}
               </div>
             ))}
           </div>
@@ -844,11 +905,11 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       const items = lines(c.items).map((l) => { const [v, ...x] = l.split("|"); return { v: v.trim(), l: x.join("|").trim() }; });
       return (
         <section style={sec}>
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: `repeat(${Math.min(items.length || 1, 4)},1fr)`, textAlign: "center" }}>
+          <div className="s-stats">
             {items.map((it, i) => (
               <div key={i}>
-                <p style={{ fontFamily: fontHead, fontSize: "clamp(28px,5vw,48px)", color: accent }}>{it.v}</p>
-                {it.l && <p style={{ opacity: 0.8, fontSize: 14 }}>{it.l}</p>}
+                <p className="s-stat-v" style={{ fontFamily: fontHead }}>{it.v}</p>
+                {it.l && <p className="s-stat-l">{it.l}</p>}
               </div>
             ))}
           </div>
@@ -857,24 +918,20 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       );
     }
     case "pricing": {
-      const plKey = S("list_key");
-      const shown = plKey ? pricelist.filter((p) => (p.list_key || "cuoi") === plKey) : pricelist;
+      // Dùng đúng component của trang xuất bản → xem trước giống trang thật 100%.
+      const views = buildPriceView(pricelist, c, priceLabels);
+      const noneSelected = hasListSelection(c) && selectedListKeys(c).length === 0;
       return (
         <section style={sec}>
           {heading("heading", "Bảng giá")}
-          {shown.length > 0 ? (
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-              {shown.map((p) => (
-                <div key={p.id} style={cardBox}>
-                  {p.category && <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1, opacity: 0.6 }}>{p.category}</p>}
-                  <p style={{ fontFamily: fontHead, fontSize: 20, marginTop: 2 }}>{p.name}</p>
-                  <p style={{ fontFamily: fontHead, fontSize: 24, color: accent, marginTop: 4 }}>{vnd(p.price)}{p.unit ? ` ${p.unit}` : ""}</p>
-                  {p.description && <ul style={{ marginTop: 10, paddingLeft: 16, fontSize: 13, opacity: 0.85 }}>{lines(p.description).map((l, i) => <li key={i}>{l}</li>)}</ul>}
-                </div>
-              ))}
-            </div>
+          {views.length > 0 ? (
+            <SitePricing items={pricelist} config={c} labels={priceLabels} bookingHref="#" fontVar={fontHead} editable />
           ) : (
-            <p style={{ opacity: 0.6, fontSize: 14 }}>Chưa có gói nào trong bảng giá này. Thêm ở trang Bảng giá.</p>
+            <p className="sp-empty">
+              {noneSelected
+                ? "Chưa chọn bảng giá nào để hiện. Chọn ở bảng bên phải →"
+                : "Chưa có gói nào trong bảng giá. Thêm ở trang Bảng giá của studio."}
+            </p>
           )}
         </section>
       );
@@ -883,11 +940,11 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       return (
         <section style={sec}>
           {heading("heading", "Khách hàng nói gì")}
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
+          <div className="s-grid s-grid--2">
             {[0, 1].map((i) => (
-              <div key={i} style={cardBox}>
-                <p style={{ color: accent }}>★★★★★</p>
-                <p style={{ marginTop: 6, fontSize: 14, opacity: 0.85 }}>Đánh giá khách hàng…</p>
+              <div key={i} className="s-card">
+                <p style={{ color: accent, letterSpacing: 2 }}>★★★★★</p>
+                <p style={{ marginTop: 8, fontSize: 14.5, lineHeight: 1.7, opacity: 0.85 }}>Đánh giá khách hàng…</p>
               </div>
             ))}
           </div>
@@ -897,16 +954,20 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
     case "quote":
       return (
         <section style={{ maxWidth: 1040, margin: "0 auto", padding: "56px 24px", textAlign: "center" }}>
-          <Editable multiline value={S("text")} placeholder="Câu trích dẫn nổi bật…" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("text", v)} style={{ fontFamily: fontHead, fontSize: "clamp(22px,3.4vw,34px)", lineHeight: 1.4, fontStyle: "italic" }} />
-          <Editable value={S("author")} placeholder="— Tác giả" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("author", v)} style={{ marginTop: 16, color: accent, fontWeight: 600 }} />
+          <Editable multiline value={S("text")} placeholder="Câu trích dẫn nổi bật…" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("text", v)} style={{ fontFamily: fontHead, fontSize: "clamp(22px,3.4vw,34px)", lineHeight: 1.45, fontStyle: "italic", maxWidth: "34ch", marginLeft: "auto", marginRight: "auto" }} />
+          <Editable value={S("author")} placeholder="— Tác giả" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("author", v)} style={{ marginTop: 18, color: accent, fontWeight: 600, fontSize: 13.5, letterSpacing: ".06em", textTransform: "uppercase" }} />
         </section>
       );
     case "cta":
       return (
         <section style={{ maxWidth: 1040, margin: "0 auto", padding: 24 }}>
-          <div style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: "clamp(28px,6vw,56px)", textAlign: "center", background: `color-mix(in srgb, ${accent} 8%, transparent)` }}>
+          <div style={{ borderRadius: "var(--s-radius)", border: "1px solid var(--s-border)", padding: "clamp(30px,6vw,60px)", textAlign: "center", background: `color-mix(in srgb, ${accent} 8%, transparent)` }}>
+            {(S("eyebrow") || !preview) && (
+              <Editable value={S("eyebrow")} placeholder="Nhãn nhỏ (không bắt buộc)" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("eyebrow", v)}
+                style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: accent, opacity: S("eyebrow") ? 1 : 0.45, marginBottom: 10 }} />
+            )}
             <Editable value={S("heading")} placeholder="Tiêu đề kêu gọi" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("heading", v)} style={{ fontFamily: fontHead, fontSize: "clamp(26px,4vw,40px)" }} />
-            <Editable value={S("text")} placeholder="Mô tả ngắn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("text", v)} style={{ marginTop: 10, opacity: 0.85 }} />
+            <Editable value={S("text")} placeholder="Mô tả ngắn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("text", v)} style={{ marginTop: 12, opacity: 0.85, maxWidth: "52ch", marginLeft: "auto", marginRight: "auto" }} />
             <span style={ctaPill(accent)}>{S("button") || "Đặt lịch"}</span>
           </div>
         </section>
@@ -957,7 +1018,7 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
           {heading("heading", "Theo dõi")}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {["Facebook", "Instagram", "TikTok", "YouTube"].map((l) => (
-              <span key={l} style={{ padding: "10px 20px", borderRadius: 999, border: `1px solid ${accent}` }}>{l}</span>
+              <span key={l} style={{ padding: "10px 22px", borderRadius: 999, border: "1px solid var(--s-border)", fontSize: 14, fontWeight: 500 }}>{l}</span>
             ))}
           </div>
         </section>
@@ -967,12 +1028,12 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       return (
         <section style={sec}>
           {heading("heading", "Câu hỏi thường gặp")}
-          <div style={{ display: "grid", gap: 12 }}>
+          <div>
             {items.map((it, i) => (
-              <div key={i} style={{ ...cardBox, padding: 18 }}>
-                <p style={{ fontWeight: 600 }}>{it.q}</p>
-                {it.a && <p style={{ marginTop: 6, opacity: 0.85 }}>{it.a}</p>}
-              </div>
+              <details key={i} className="s-faq" open={i === 0}>
+                <summary>{it.q}</summary>
+                {it.a && <p className="s-faq-a">{it.a}</p>}
+              </details>
             ))}
           </div>
           {!preview && <p style={editHint}>Sửa câu hỏi ở bảng bên phải →</p>}
@@ -991,11 +1052,22 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, preview, onEdit
       return (
         <section style={sec}>
           {heading("heading", "Liên hệ & đặt lịch")}
-          <div style={{ fontSize: 16, lineHeight: 2, opacity: 0.9 }}>
-            <Editable value={S("email")} placeholder="Email liên hệ" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("email", v)} />
-            <Editable value={S("address")} placeholder="Địa chỉ" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("address", v)} />
+          <div style={{ display: "grid", gap: "clamp(20px,3vw,36px)", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", alignItems: "start" }}>
+            <div style={{ display: "grid", gap: 2 }}>
+              {([["Email", "email", "Email liên hệ"], ["Địa chỉ", "address", "Địa chỉ studio"]] as const).map(([lbl, key, ph]) => (
+                <div key={key} style={{ display: "flex", gap: 14, padding: "11px 0", borderBottom: "1px solid var(--s-border)", fontSize: 15 }}>
+                  <span style={{ width: 92, flexShrink: 0, fontSize: 12.5, opacity: 0.6, textTransform: "uppercase", letterSpacing: ".08em", paddingTop: 2 }}>{lbl}</span>
+                  <Editable value={S(key)} placeholder={ph} preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed(key, v)} style={{ fontWeight: 500 }} />
+                </div>
+              ))}
+              {!preview && <p style={editHint}>Điện thoại &amp; Facebook lấy tự động từ thông tin studio.</p>}
+            </div>
+            <div className="s-card" style={{ textAlign: "center" }}>
+              <Editable value={S("bookHeading")} placeholder="Giữ ngày đẹp của bạn" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("bookHeading", v)} style={{ fontFamily: fontHead, fontSize: 20 }} />
+              <Editable multiline value={S("bookText")} placeholder="Gửi yêu cầu đặt lịch, studio sẽ liên hệ xác nhận sớm nhất." preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("bookText", v)} style={{ marginTop: 8, fontSize: 13.5, opacity: 0.75, lineHeight: 1.6 }} />
+              <span style={ctaPill(accent)}>Đặt lịch ngay</span>
+            </div>
           </div>
-          <span style={ctaPill(accent)}>Đặt lịch ngay</span>
         </section>
       );
     case "html": {
@@ -1027,7 +1099,7 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
   blocks?: SiteBlock[];
   siteUrl?: string;
   albums: AlbumLite[];
-  priceLists?: { key: string; label: string }[];
+  priceLists?: PriceListOption[];
   accent: string;
   onEdit: (k: string, v: unknown, commit?: boolean) => void;
   onBeforeEdit: () => void;
@@ -1057,6 +1129,8 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
 
   const hasImage = ["hero", "about"].includes(block.type);
   const hasItems = ["services", "stats", "team", "faq", "logos"].includes(block.type);
+  // Khối có đầu đề (nhãn nhỏ + tiêu đề) → cho chỉnh eyebrow / căn lề.
+  const hasHead = !["quote", "html"].includes(block.type);
   const itemHint: Record<string, string> = {
     services: "Mỗi dòng: Tên dịch vụ | Mô tả",
     stats: "Mỗi dòng: Con số | Nhãn",
@@ -1076,15 +1150,44 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
         <Field label="Tiêu đề"><input style={insInput} value={S("heading")} onFocus={onBeforeEdit} onChange={(e) => onEdit("heading", e.target.value)} onBlur={(e) => onEdit("heading", e.target.value, true)} /></Field>
       ) : null}
 
-      {/* Tên hiển thị trên MENU (rút gọn), riêng cho từng khối — trừ hero. */}
-      {block.type !== "hero" && (
-        <Field label="Tên trên menu (để trống = dùng tiêu đề)">
-          <input style={insInput} value={S("navLabel")} placeholder={S("heading") || SITE_BLOCK_LABEL[block.type]} onFocus={onBeforeEdit} onChange={(e) => onEdit("navLabel", e.target.value)} onBlur={(e) => onEdit("navLabel", e.target.value, true)} />
+      {/* Nhãn nhỏ phía trên tiêu đề (eyebrow) — làm đầu khối trông có gu hơn. */}
+      {hasHead && (
+        <Field label="Nhãn nhỏ trên tiêu đề">
+          <input style={insInput} value={S("eyebrow")} placeholder="vd: Dịch vụ · Bảng giá · Câu chuyện" onFocus={onBeforeEdit} onChange={(e) => onEdit("eyebrow", e.target.value)} onBlur={(e) => onEdit("eyebrow", e.target.value, true)} />
         </Field>
       )}
 
+      {/* Căn đầu khối: trái (mặc định) hoặc giữa. */}
+      {hasHead && block.type !== "hero" && (
+        <Field label="Căn đầu khối">
+          <div style={{ display: "flex", gap: 8 }}>
+            {([["left", "Căn trái"], ["center", "Căn giữa"]] as const).map(([v, lbl]) => (
+              <button key={v} onClick={() => { onBeforeEdit(); onEdit("align", v, true); }} style={segWide((c.align === "center" ? "center" : "left") === v)}>{lbl}</button>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      {/* Tên hiển thị trên MENU (rút gọn), riêng cho từng khối — trừ hero. */}
+      {block.type !== "hero" && (
+        <>
+          <Field label="Tên trên menu (để trống = dùng tiêu đề)">
+            <input style={insInput} value={S("navLabel")} placeholder={S("heading") || SITE_BLOCK_LABEL[block.type]} onFocus={onBeforeEdit} onChange={(e) => onEdit("navLabel", e.target.value)} onBlur={(e) => onEdit("navLabel", e.target.value, true)} />
+          </Field>
+          <Toggle
+            label="Hiện mục này trên menu"
+            hint="Tắt nếu khối vẫn ở trên trang nhưng không cần link trong menu."
+            on={c.navHidden !== true}
+            onChange={(v) => { onBeforeEdit(); onEdit("navHidden", !v, true); }}
+          />
+        </>
+      )}
+
       {block.type === "hero" && (
-        <Field label="Mô tả ngắn"><input style={insInput} value={S("subheading")} onFocus={onBeforeEdit} onChange={(e) => onEdit("subheading", e.target.value)} onBlur={(e) => onEdit("subheading", e.target.value, true)} /></Field>
+        <>
+          <Field label="Mô tả ngắn"><input style={insInput} value={S("subheading")} onFocus={onBeforeEdit} onChange={(e) => onEdit("subheading", e.target.value)} onBlur={(e) => onEdit("subheading", e.target.value, true)} /></Field>
+          <Field label="Chữ trên nút"><input style={insInput} value={S("button")} placeholder="Đặt lịch" onFocus={onBeforeEdit} onChange={(e) => onEdit("button", e.target.value)} onBlur={(e) => onEdit("button", e.target.value, true)} /></Field>
+        </>
       )}
       {block.type === "hero" && (
         <Field label="Vị trí ảnh bìa (chỉnh nếu chủ thể bị lệch)">
@@ -1191,20 +1294,9 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
         </Field>
       )}
 
-      {/* Pricing: choose which price list (loại bảng giá) to show */}
+      {/* Bảng giá: chọn loại nào hiện lên website + cách trình bày. */}
       {block.type === "pricing" && (
-        <Field label="Hiển thị bảng giá">
-          <select
-            style={insInput}
-            value={S("list_key")}
-            onChange={(e) => { onBeforeEdit(); onEdit("list_key", e.target.value, true); }}
-          >
-            <option value="">Tất cả bảng giá</option>
-            {priceLists.map((l) => (
-              <option key={l.key} value={l.key}>{l.label}</option>
-            ))}
-          </select>
-        </Field>
+        <PricingFields block={block} priceLists={priceLists} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
       )}
 
       {/* Layout: width (half/full) for non-hero, non-html blocks
@@ -1226,7 +1318,7 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
 
       {(block.type === "pricing" || block.type === "testimonials") && (
         <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 8, lineHeight: 1.5 }}>
-          {block.type === "pricing" ? "Khối này tự lấy bảng giá đang bật của bạn khi xuất bản." : "Khối này tự lấy đánh giá khách đã duyệt khi xuất bản."}
+          {block.type === "pricing" ? "Nội dung giá lấy từ trang Bảng giá của studio — sửa giá ở đó, website tự cập nhật." : "Khối này tự lấy đánh giá khách đã duyệt khi xuất bản."}
         </p>
       )}
     </div>
@@ -1239,6 +1331,135 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label style={insLabel}>{label}</label>
       {children}
     </div>
+  );
+}
+
+/* Công tắc bật/tắt gọn cho các tuỳ chọn hiển thị. */
+function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <button
+        type="button"
+        onClick={() => onChange(!on)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", textAlign: "left" }}
+      >
+        <span style={{ width: 34, height: 20, borderRadius: 999, background: on ? "var(--brand)" : "var(--border)", position: "relative", flexShrink: 0, transition: "background .15s ease" }}>
+          <span style={{ position: "absolute", top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: 999, background: "#fff", transition: "left .15s ease" }} />
+        </span>
+        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</span>
+      </button>
+      {hint && <p style={{ marginTop: 5, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{hint}</p>}
+    </div>
+  );
+}
+
+/* ── Bảng giá: chọn loại nào hiện + cách trình bày ─────────────────────────── */
+function PricingFields({ block, priceLists, onEdit, onBeforeEdit }: {
+  block: SiteBlock;
+  priceLists: PriceListOption[];
+  onEdit: (k: string, v: unknown, commit?: boolean) => void;
+  onBeforeEdit: () => void;
+}) {
+  const c = block.config || {};
+  const chosen = selectedListKeys(c);
+  const explicit = hasListSelection(c);
+  const showAll = !explicit;
+  const isOn = (key: string) => showAll || chosen.includes(key);
+
+  // Ghi ra `list_keys` (mảng) và dọn `list_key` cũ để không còn hai nguồn sự thật.
+  function setKeys(keys: string[]) {
+    onBeforeEdit();
+    onEdit("list_key", "", false);
+    onEdit("list_keys", keys, true);
+  }
+  function toggleKey(key: string) {
+    const base = showAll ? priceLists.map((l) => l.key) : chosen;
+    setKeys(base.includes(key) ? base.filter((k) => k !== key) : [...base, key]);
+  }
+
+  const multi = priceLists.length > 1;
+  const activeCount = priceLists.filter((l) => isOn(l.key)).length;
+
+  return (
+    <>
+      <Field label="Bảng giá hiện trên website">
+        {priceLists.length === 0 ? (
+          <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.5 }}>
+            Chưa có dòng giá nào. Thêm ở <b>Studio → Bảng giá</b>, rồi quay lại chọn loại muốn hiện.
+          </p>
+        ) : (
+          <>
+            <div style={{ display: "grid", gap: 6 }}>
+              {priceLists.map((l) => {
+                const on = isOn(l.key);
+                return (
+                  <button
+                    key={l.key}
+                    type="button"
+                    onClick={() => toggleKey(l.key)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 10, cursor: "pointer", textAlign: "left",
+                      border: `1px solid ${on ? "var(--brand)" : "var(--border)"}`,
+                      background: on ? "var(--brandSoft)" : "var(--surface)",
+                      color: "var(--text)",
+                    }}
+                  >
+                    <span style={{ width: 17, height: 17, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? "var(--brand)" : "var(--border)"}`, background: on ? "var(--brand)" : "transparent", color: "var(--brandFg)" }}>
+                      {on && <Check size={12} />}
+                    </span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>{l.label}</span>
+                    <span style={{ fontSize: 11, color: "var(--text3)" }}>{l.count} dòng</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="button" onClick={() => setKeys(priceLists.map((l) => l.key))} style={{ ...segWide(false), height: 30, fontSize: 12 }}>Chọn tất cả</button>
+              <button type="button" onClick={() => setKeys([])} style={{ ...segWide(false), height: 30, fontSize: 12 }}>Bỏ chọn hết</button>
+            </div>
+            <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>
+              {activeCount === 0
+                ? "Đang không hiện bảng giá nào — khối này sẽ bị ẩn trên trang."
+                : `Đang hiện ${activeCount}/${priceLists.length} loại bảng giá.`}
+            </p>
+          </>
+        )}
+      </Field>
+
+      {multi && activeCount > 1 && (
+        <Field label="Nhiều loại bảng giá thì">
+          <div style={{ display: "flex", gap: 8 }}>
+            {([["tabs", "Tab chuyển"], ["stack", "Xếp dọc"]] as const).map(([v, lbl]) => (
+              <button key={v} onClick={() => { onBeforeEdit(); onEdit("grouping", v, true); }} style={segWide((c.grouping === "stack" ? "stack" : "tabs") === v)}>{lbl}</button>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      <Field label="Kiểu trình bày gói">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          {([["card", "Thẻ"], ["compact", "Gọn"], ["table", "Bảng"]] as const).map(([v, lbl]) => (
+            <button key={v} onClick={() => { onBeforeEdit(); onEdit("layout", v, true); }} style={{ ...segWide((c.layout === "compact" || c.layout === "table" ? c.layout : "card") === v), fontSize: 12 }}>{lbl}</button>
+          ))}
+        </div>
+        <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>
+          Thẻ = đầy đủ nhất · Gọn = ít chỗ hơn · Bảng = mỗi gói một dòng, gọn nhất.
+        </p>
+      </Field>
+
+      <Toggle
+        label="Hiện nút đặt lịch ở từng gói"
+        hint="Khách bấm là mở form đặt lịch, điền sẵn loại bảng giá và tên gói."
+        on={c.showBook !== false}
+        onChange={(v) => { onBeforeEdit(); onEdit("showBook", v, true); }}
+      />
+      <Toggle
+        label="Hiện phần ghi chú"
+        hint='Các dòng giá 0đ ("Phát sinh thêm", "Lưu ý"…) xếp gọn xuống cuối bảng giá.'
+        on={c.showNotes !== false}
+        onChange={(v) => { onBeforeEdit(); onEdit("showNotes", v, true); }}
+      />
+    </>
   );
 }
 
