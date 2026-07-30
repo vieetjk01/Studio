@@ -3,6 +3,7 @@ import SiteNav from "@/components/SiteNav";
 import SitePricing from "@/components/site/SitePricing";
 import { SITE_BLOCK_LABEL, type SiteBlock } from "@/lib/types";
 import { buildPriceView } from "@/lib/site-pricing";
+import { mapEmbedSrc, mapOpenHref } from "@/lib/site-map";
 import type { SiteData } from "@/lib/site-loader";
 
 const str = (v: unknown, fallback = "") => (typeof v === "string" && v.trim() ? v : fallback);
@@ -533,16 +534,30 @@ function Block({ block, data, fontVar, demo = false }: { block: SiteBlock; data:
     }
     case "map": {
       const addr = str(c.address);
-      if (!addr) return null;
+      // Ưu tiên link Google Maps studio dán (ghim đúng vị trí); nếu chưa có thì
+      // vẫn tìm theo địa chỉ chữ như trước.
+      const src = mapEmbedSrc(str(c.mapUrl), addr);
+      if (!src) return null;
+      const open = mapOpenHref(str(c.mapUrl), addr);
       return (
         <Section fontVar={fontVar} heading={str(c.heading, "Địa chỉ")} eyebrow={eyebrow} center={center}>
-          <p style={{ marginBottom: 16, opacity: 0.75 }}>{addr}</p>
+          {(addr || open) && (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 14, marginBottom: 16, justifyContent: center ? "center" : "flex-start" }}>
+              {addr && <p style={{ opacity: 0.78 }}>{addr}</p>}
+              {open && (
+                <a href={open} target="_blank" rel="noreferrer" style={{ color: "var(--s-accent)", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}>
+                  Chỉ đường →
+                </a>
+              )}
+            </div>
+          )}
           <div style={{ borderRadius: "var(--s-radius)", overflow: "hidden", border: "1px solid var(--s-border)" }}>
             <iframe
-              title="map"
-              src={`https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`}
-              style={{ width: "100%", height: 360, border: 0, display: "block" }}
+              title={addr || "Bản đồ"}
+              src={src}
+              style={{ width: "100%", height: Number(c.height) || 360, border: 0, display: "block" }}
               loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
             />
           </div>
         </Section>

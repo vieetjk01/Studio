@@ -24,6 +24,7 @@ import {
   selectedListKeys,
   type SitePriceItem,
 } from "@/lib/site-pricing";
+import { isShortMapLink, mapEmbedSrc } from "@/lib/site-map";
 import HtmlEmbed from "@/components/HtmlEmbed";
 import CustomDomain from "@/components/CustomDomain";
 import { compressImage, checkImageFile, MAX_IMAGE_UPLOAD_MB } from "@/lib/image";
@@ -65,7 +66,7 @@ const DEFAULTS: Partial<Record<SiteBlockType, Record<string, unknown>>> = {
   video: { heading: "Video highlight", url: "" },
   social: { heading: "Theo dõi", facebook: "", instagram: "" },
   faq: { heading: "Câu hỏi thường gặp", items: "Đặt cọc bao nhiêu? | Studio giữ lịch khi cọc 30%.\nKhi nào nhận ảnh? | Trong 15–20 ngày." },
-  map: { heading: "Ghé studio", address: "" },
+  map: { heading: "Ghé studio", address: "", mapUrl: "" },
   contact: { heading: "Liên hệ & đặt lịch", email: "", address: "" },
   html: { heading: "", html: "<!-- Dán mã HTML / nhúng của bạn vào đây -->" },
 };
@@ -1040,14 +1041,29 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, priceLabels, pr
         </section>
       );
     }
-    case "map":
+    case "map": {
+      // Bản đồ thật ngay trong khung soạn để studio kiểm được ghim đúng chỗ.
+      // Khi đang soạn thì chặn chuột trên iframe để bấm vào vẫn chọn được khối.
+      const src = mapEmbedSrc(S("mapUrl"), S("address"));
+      const shortPending = isShortMapLink(S("mapUrl"));
       return (
         <section style={sec}>
           {heading("heading", "Địa chỉ")}
-          <Editable value={S("address")} placeholder="Nhập địa chỉ studio…" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("address", v)} style={{ opacity: 0.85 }} />
-          <div style={{ marginTop: 12, height: 240, borderRadius: "var(--s-radius)", background: "var(--s-card)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>🗺 Bản đồ</div>
+          <Editable value={S("address")} placeholder="Nhập địa chỉ studio…" preview={preview} onBeforeEdit={onBeforeEdit} onCommit={(v) => ed("address", v)} style={{ opacity: 0.85, marginBottom: 12 }} />
+          {src ? (
+            <div style={{ borderRadius: "var(--s-radius)", overflow: "hidden", border: "1px solid var(--s-border)", position: "relative" }}>
+              <iframe title="Bản đồ" src={src} loading="lazy" style={{ width: "100%", height: 300, border: 0, display: "block", pointerEvents: preview ? "auto" : "none" }} />
+            </div>
+          ) : (
+            <div style={{ height: 240, borderRadius: "var(--s-radius)", background: "var(--s-card)", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 20, opacity: 0.65, fontSize: 13 }}>
+              {shortPending
+                ? "🗺 Link rút gọn — bấm “Lấy vị trí từ link” ở bảng bên phải →"
+                : "🗺 Dán link Google Maps hoặc nhập địa chỉ ở bảng bên phải →"}
+            </div>
+          )}
         </section>
       );
+    }
     case "contact":
       return (
         <section style={sec}>
@@ -1230,7 +1246,12 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
         </>
       )}
       {block.type === "map" && (
-        <Field label="Địa chỉ (hiện bản đồ)"><input style={insInput} value={S("address")} onFocus={onBeforeEdit} onChange={(e) => onEdit("address", e.target.value)} onBlur={(e) => onEdit("address", e.target.value, true)} /></Field>
+        <>
+          <Field label="Địa chỉ (chữ hiện trên trang)">
+            <input style={insInput} value={S("address")} placeholder="24 Lê Lợi, Quận 1, TP.HCM" onFocus={onBeforeEdit} onChange={(e) => onEdit("address", e.target.value)} onBlur={(e) => onEdit("address", e.target.value, true)} />
+          </Field>
+          <MapUrlField block={block} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
+        </>
       )}
 
       {block.type === "html" && (
@@ -1350,6 +1371,76 @@ function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; o
       </button>
       {hint && <p style={{ marginTop: 5, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{hint}</p>}
     </div>
+  );
+}
+
+/* ── Bản đồ: dán link Google Maps → ghim đúng vị trí ───────────────────────── */
+function MapUrlField({ block, onEdit, onBeforeEdit }: {
+  block: SiteBlock;
+  onEdit: (k: string, v: unknown, commit?: boolean) => void;
+  onBeforeEdit: () => void;
+}) {
+  const c = block.config || {};
+  const value = String(c.mapUrl ?? "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const short = isShortMapLink(value);
+  const ok = !!mapEmbedSrc(value);
+
+  // Link "Chia sẻ" trên điện thoại (maps.app.goo.gl) không nhúng được — nhờ
+  // server mở ra link đầy đủ rồi lưu lại link đó.
+  const resolve = useCallback(async (raw: string) => {
+    setBusy(true); setMsg(null);
+    try {
+      const res = await fetch("/api/maps/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: raw }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setMsg(data.error || "Không lấy được vị trí từ link này.");
+        return;
+      }
+      onBeforeEdit();
+      onEdit("mapUrl", data.url, true);
+      setMsg("Đã lấy đúng vị trí từ link.");
+    } catch {
+      setMsg("Lỗi mạng — thử lại.");
+    } finally {
+      setBusy(false);
+    }
+  }, [onEdit, onBeforeEdit]);
+
+  return (
+    <Field label="Link Google Maps (ghim đúng vị trí)">
+      <textarea
+        style={{ ...insInput, minHeight: 62, fontSize: 12 }}
+        placeholder="Dán link từ nút Chia sẻ của Google Maps, hoặc toạ độ 10.7769,106.7009"
+        value={value}
+        onFocus={onBeforeEdit}
+        onChange={(e) => { setMsg(null); onEdit("mapUrl", e.target.value); }}
+        onBlur={(e) => {
+          const v = e.target.value.trim();
+          onEdit("mapUrl", v, true);
+          if (isShortMapLink(v)) resolve(v);
+        }}
+      />
+      {short && (
+        <button type="button" onClick={() => resolve(value)} disabled={busy} style={{ ...insInput, marginTop: 6, cursor: busy ? "wait" : "pointer", background: "var(--surface2)", fontWeight: 600 }}>
+          {busy ? "Đang lấy vị trí…" : "Lấy vị trí từ link"}
+        </button>
+      )}
+      {msg && <p style={{ marginTop: 5, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{msg}</p>}
+      <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>
+        {ok
+          ? "✓ Bản đồ đang ghim theo link này."
+          : short
+            ? "Link rút gọn — bấm nút trên để lấy vị trí."
+            : "Để trống thì bản đồ tìm theo địa chỉ chữ ở trên (có thể lệch). Dán link Google Maps để ghim đúng chỗ."}
+      </p>
+    </Field>
   );
 }
 
