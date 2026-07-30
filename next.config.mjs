@@ -71,6 +71,16 @@ const nextConfig = {
     ].join("; ");
     return [
       {
+        // Ảnh/asset tĩnh trong public/ (logo, favicon, ảnh thương hiệu) gần như
+        // không đổi → cache immutable 1 năm để bỏ round-trip revalidation mỗi
+        // lượt truy cập. KHÔNG khớp sw.js (.js) hay offline.html (.html) nên
+        // service worker vẫn tự cập nhật bình thường.
+        source: "/:file*.(svg|png|jpg|jpeg|webp|avif|ico|gif|woff2)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           // Allow the Google Identity Services / Picker popup to work
