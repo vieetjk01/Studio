@@ -19,7 +19,7 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
   // F5: làm chậm dò SĐT theo từng token (SĐT là "mật khẩu" entropy thấp).
-  const rl = await limitByIpDurable(req, `c-portal:${params.token}`, 20, 60_000);
+  const rl = await limitByIpDurable(req, `c-portal:${params.token}`, 20, 60_000, { failClosed: true });
   if (rl) return rl;
   const body = (await req.json().catch(() => ({}))) as {
     phone?: string;

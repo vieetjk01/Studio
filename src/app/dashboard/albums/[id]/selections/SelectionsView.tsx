@@ -179,7 +179,7 @@ export default function SelectionsView({
                   </h3>
                   <p className="text-xs text-accent-muted">
                     {g.items.length} {t("photos")} ·{" "}
-                    {new Date(g.createdAt).toLocaleString()}
+                    {new Date(g.createdAt).toLocaleString("vi-VN")}
                   </p>
                 </div>
                 <div className="flex gap-2">

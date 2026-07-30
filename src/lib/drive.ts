@@ -55,11 +55,6 @@ export function fullImageUrl(fileId: string, width = 1600): string {
   return `/api/img?id=${fileId}&w=${width}`;
 }
 
-/** Direct Google thumbnail (used only where an absolute Google URL is needed). */
-export function googleThumb(fileId: string, width = 600): string {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${width}`;
-}
-
 /** Direct download URL for an original file. */
 export function downloadUrl(fileId: string): string {
   return `https://drive.google.com/uc?export=download&id=${fileId}`;

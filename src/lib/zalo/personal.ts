@@ -158,16 +158,6 @@ async function apiFromSession(session: PersonalSession): Promise<any> {
   return { api, ThreadType: mod.ThreadType ?? { User: 0 } };
 }
 
-/** Phân giải SĐT → Zalo user id (uid). Chỉ được nếu tìm thấy (thường là bạn bè). */
-export async function resolveUidByPhone(session: PersonalSession, phone: string): Promise<string | null> {
-  try {
-    const { api } = await apiFromSession(session);
-    return await findUid(api, phone);
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Gửi tin văn bản tới một người. `target.uid` nếu biết, hoặc `target.phone`
  * (tự tìm uid — chỉ được nếu người đó tìm thấy/đã kết bạn).

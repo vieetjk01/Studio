@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToOwner } from "@/lib/push";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { limitByIpDurable } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,13 @@ export async function POST(req: Request) {
   };
   const phone = digits(body.phone);
   if (!phone) return NextResponse.json({ error: "no_phone" }, { status: 400 });
+
+  // Chống lạm dụng: cổng thợ chỉ nhận diện bằng SĐT (không token/đăng nhập), nên
+  // các action GHI (respond/busy_add/busy_remove) không có captcha là bề mặt phá
+  // hoại (đánh dấu bận, từ chối buổi của người khác nếu biết SĐT). Giới hạn theo
+  // IP+SĐT để chặn dò/spam hàng loạt. Lookup vẫn có Turnstile (token dùng-một-lần).
+  const rl = await limitByIpDurable(req, `crew:${phone}`, 30, 60_000);
+  if (rl) return rl;
 
   // Require CAPTCHA on initial phone lookup (not on follow-up actions that already have id)
   if (!body.action || body.action === "lookup") {

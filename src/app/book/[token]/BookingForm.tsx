@@ -94,14 +94,20 @@ export default function BookingForm({
     const packageName = pkg === "__custom__" ? customPkg.trim() || null : chosen?.name || null;
     const packagePrice = pkg === "__custom__" ? null : chosen?.price ?? null;
     setBusy(true);
-    const res = await fetch(`/api/book/${token}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...f, package_name: packageName, package_price: packagePrice, captcha: captchaToken }),
-    });
-    setBusy(false);
-    if (res.ok) setSent(true);
-    else setErr(tr.errGeneric);
+    try {
+      const res = await fetch(`/api/book/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...f, package_name: packageName, package_price: packagePrice, captcha: captchaToken }),
+      });
+      if (res.ok) setSent(true);
+      else setErr(tr.errGeneric);
+    } catch {
+      // Mạng chập chờn/timeout: hiện lỗi thay vì kẹt nút "Đang gửi…" vĩnh viễn.
+      setErr(tr.errGeneric);
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (sent) {
@@ -129,11 +135,11 @@ export default function BookingForm({
       <form onSubmit={submit} className="card mt-6 space-y-4 p-6">
         <label className="block">
           <span className="label">{tr.fullName}</span>
-          <input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} />
+          <input className="input" required aria-required="true" value={f.name} onChange={(e) => set("name", e.target.value)} />
         </label>
         <label className="block">
           <span className="label">{tr.phone}</span>
-          <input className="input" inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
+          <input className="input" inputMode="tel" required aria-required="true" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
         </label>
         <label className="block">
           <span className="label">{tr.package}</span>

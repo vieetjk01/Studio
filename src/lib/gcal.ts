@@ -128,10 +128,3 @@ export async function deleteGCalEvent(userId: string, gcalEventId: string) {
     // Ignore if already gone.
   }
 }
-
-/** Check whether a user has Google Calendar connected. */
-export async function isGCalConnected(userId: string): Promise<boolean> {
-  const db = createAdminClient();
-  const { data } = await db.from("profiles").select("google_refresh_token").eq("id", userId).maybeSingle();
-  return !!data?.google_refresh_token;
-}

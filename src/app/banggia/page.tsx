@@ -4,9 +4,9 @@ import { resolveStudioOwner } from "@/lib/studio-owner";
 import PricelistPoster from "@/components/PricelistPoster";
 import type { PricelistItem } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
+// Bảng giá công khai hiếm khi đổi: cho phép ISR + CDN cache 5 phút thay vì SSR
+// no-store mọi lượt truy cập ẩn danh (giảm tải origin + tăng tốc trang).
+export const revalidate = 300;
 
 // Build all available price lists: built-in types + any custom list_keys in the DB.
 function buildLists(allItems: PricelistItem[], hidden: string[] = []) {
@@ -35,19 +35,21 @@ export default async function BangGiaPage({ searchParams }: { searchParams?: { l
     );
   }
 
-  const { data } = await db
-    .from("studio_pricelist")
-    .select("*")
-    .eq("owner_id", owner.id)
-    .eq("active", true)
-    .order("position");
+  // Hai truy vấn độc lập → chạy song song để bớt một vòng round-trip nối tiếp.
+  const [{ data }, { data: th }] = await Promise.all([
+    db
+      .from("studio_pricelist")
+      .select("*")
+      .eq("owner_id", owner.id)
+      .eq("active", true)
+      .order("position"),
+    db
+      .from("profiles")
+      .select("pl_bg, pl_text, pl_accent, pl_logo_url, pl_hidden_lists")
+      .eq("id", owner.id)
+      .maybeSingle(),
+  ]);
   const allItems = (data ?? []) as PricelistItem[];
-
-  const { data: th } = await db
-    .from("profiles")
-    .select("pl_bg, pl_text, pl_accent, pl_logo_url, pl_hidden_lists")
-    .eq("id", owner.id)
-    .maybeSingle();
   const hidden = ((th?.pl_hidden_lists as string[] | null) ?? []);
 
   const lists = buildLists(allItems, hidden);

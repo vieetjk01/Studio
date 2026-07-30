@@ -177,13 +177,13 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
           </span>
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <Link href={`/dashboard/albums/${a.id}/selections`} className="btn-primary flex-1 py-1.5 text-xs">
+          <Link href={`/dashboard/albums/${a.id}/selections`} className="btn-primary flex-1 min-h-[44px] py-2.5 text-xs">
             <CheckSquare size={13} /> {t("customerSelections")}
           </Link>
-          <button onClick={() => setMenu((v) => !v)} className="btn-ghost py-1.5 text-xs" title="Bật/tắt nhanh">
+          <button onClick={() => setMenu((v) => !v)} className="btn-ghost min-h-[44px] py-2.5 text-xs" title="Bật/tắt nhanh">
             <Settings2 size={13} /> {t("edit")}
           </button>
-          <Link href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" aria-label="Mở trang album (tab mới)" title="Mở trang album" className="btn-ghost py-1.5 text-xs">
+          <Link href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" aria-label="Mở trang album (tab mới)" title="Mở trang album" className="btn-ghost min-h-[44px] py-2.5 text-xs">
             <ExternalLink size={13} />
           </Link>
         </div>
@@ -191,6 +191,14 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
 
       {/* Quick toggles */}
       {menu && (
+        <>
+        {/* Backdrop: chạm/nhấp ra ngoài để đóng popover (trước đây chỉ đóng bằng nút "Đóng"). */}
+        <button
+          type="button"
+          aria-label="Đóng bảng cài đặt nhanh"
+          onClick={() => setMenu(false)}
+          className="absolute inset-0 z-10 cursor-default"
+        />
         <div className="absolute inset-x-3 bottom-3 z-20 rounded-xl p-3 shadow-xl" style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}>
           <Toggle label="Đã xuất bản" on={status === "published"} onChange={(v) => { setStatus(v ? "published" : "draft"); patch({ status: v ? "published" : "draft" }); }} />
           {canDelivery && (
@@ -203,6 +211,7 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
             <button onClick={() => setMenu(false)} className="btn-ghost py-1.5 text-xs">Đóng</button>
           </div>
         </div>
+        </>
       )}
     </div>
   );

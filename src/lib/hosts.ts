@@ -49,11 +49,6 @@ export function imgUrl(path: string): string {
   return IMG_HOST ? `https://${IMG_HOST}${path}` : path;
 }
 
-/** URL to a route on the admin subdomain (admin.mstudo.com). */
-export function adminUrl(path: string): string {
-  return ADMIN_HOST ? `https://${ADMIN_HOST}${path}` : path;
-}
-
 /**
  * Customer-facing URL for a studio. `host` is the studio's own full customer
  * host — a custom domain (studio.com) or its subdomain (sub.mstudo.com), as

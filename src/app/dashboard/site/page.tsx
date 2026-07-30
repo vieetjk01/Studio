@@ -15,14 +15,18 @@ export default async function SiteBuilderPage() {
   } = await supabase.auth.getUser();
   if (!user) return null; // middleware redirects unauthenticated users
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  // profile và site đều tra theo user.id, độc lập nhau → chạy song song (bớt 1 round-trip).
+  const [{ data: profile }, { data: existingSite }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("sites").select("*").eq("owner_id", user.id).maybeSingle(),
+  ]);
   const plan = profile ? effectivePlan(profile.plan, profile.plan_expires_at) : "free";
   const isAdmin = profile?.role === "admin";
   const canPublish = isAdmin || plan === "photographer" || plan === "photographer_plus" || plan === "studio";
   // Tên miền riêng: Photographer Plus & Studio.
   const canCustomDomain = planAllowsCustomDomain(plan, isAdmin);
 
-  let { data: site } = await supabase.from("sites").select("*").eq("owner_id", user.id).maybeSingle();
+  let site = existingSite;
   if (!site) {
     const { data: created } = await supabase.from("sites").insert({ owner_id: user.id }).select("*").single();
     site = created;

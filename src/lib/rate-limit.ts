@@ -57,10 +57,15 @@ export function limitByIp(req: Request, bucket: string, limit: number, windowMs:
  * đếm in-memory (như limitByIp). Lỗi kho → fail-open (không khóa oan người dùng).
  * Cần env: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.
  */
-async function durableAllowed(key: string, limit: number, windowMs: number): Promise<boolean> {
+async function durableAllowed(
+  key: string,
+  limit: number,
+  windowMs: number,
+  failClosed = false
+): Promise<boolean> {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const tok = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !tok) return rateLimit(key, limit, windowMs); // fallback in-memory
+  if (!url || !tok) return rateLimit(key, limit, windowMs); // fallback in-memory (deterministic)
   const ttl = Math.max(1, Math.ceil(windowMs / 1000));
   try {
     const res = await fetch(`${url}/pipeline`, {
@@ -72,12 +77,15 @@ async function durableAllowed(key: string, limit: number, windowMs: number): Pro
       ]),
       cache: "no-store",
     });
-    if (!res.ok) return true; // kho lỗi → không chặn
+    // Kho lỗi: mặc định fail-open (không khóa oan). Với bucket nhạy cảm
+    // (dò mật khẩu/PII) truyền failClosed=true để CHẶN khi không đo được —
+    // thà chặn tạm còn hơn mở toang cửa brute-force khi Upstash gián đoạn.
+    if (!res.ok) return !failClosed;
     const data = (await res.json()) as Array<{ result?: number }>;
     const count = Number(data?.[0]?.result ?? 0);
     return count <= limit;
   } catch {
-    return true;
+    return !failClosed;
   }
 }
 
@@ -85,8 +93,9 @@ export async function limitByIpDurable(
   req: Request,
   bucket: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
+  opts?: { failClosed?: boolean }
 ): Promise<NextResponse | null> {
-  const ok = await durableAllowed(`${bucket}:${clientIp(req)}`, limit, windowMs);
+  const ok = await durableAllowed(`${bucket}:${clientIp(req)}`, limit, windowMs, opts?.failClosed);
   return ok ? null : NextResponse.json({ error: "rate_limited" }, { status: 429 });
 }
