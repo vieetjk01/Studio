@@ -191,6 +191,29 @@ export default function GalleryView({
     return out;
   }, [visible, sources, tabSources.length, activeTab]);
 
+  // Tải lũy tiến: album cưới thường 1500–3000 ảnh; mount tất cả cùng lúc làm
+  // nặng hydration + hàng nghìn DOM node. Chỉ dựng một "cửa sổ" ảnh và tăng dần
+  // khi cuộn tới đáy. Chỉ số `i` vẫn theo `visible` nên lightbox/chọn ảnh/điều
+  // hướng phím KHÔNG đổi — chỉ ít node hơn được render tại một thời điểm.
+  const RENDER_BATCH = 250;
+  const [renderLimit, setRenderLimit] = useState(RENDER_BATCH);
+  useEffect(() => { setRenderLimit(RENDER_BATCH); }, [activeTab, shareSet, photos]);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || visible.length <= RENDER_BATCH) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRenderLimit((n) => (n < visible.length ? n + RENDER_BATCH : n));
+        }
+      },
+      { rootMargin: "800px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visible.length]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (lbIdx === null) return;
@@ -347,11 +370,15 @@ export default function GalleryView({
 
         {/* sections */}
         <div className="mt-7 space-y-9">
-          {sections.map((sec) => (
+          {sections.map((sec) => {
+            // Chỉ dựng các ảnh nằm trong cửa sổ hiện tại (i < renderLimit).
+            const items = sec.items.filter((it) => it.i < renderLimit);
+            if (items.length === 0) return null;
+            return (
             <section key={sec.id}>
               {sec.name && <h2 className="mb-3 font-serif text-xl font-medium">{sec.name}</h2>}
               <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-                {sec.items.map(({ p, i }) => {
+                {items.map(({ p, i }) => {
                   const isSel = selected.has(p.id);
                   return (
                   <div key={p.id} className="group relative aspect-square cursor-pointer overflow-hidden rounded-xl" style={{ background: "var(--surface)" }}>
@@ -402,7 +429,14 @@ export default function GalleryView({
                 })}
               </div>
             </section>
-          ))}
+            );
+          })}
+          {/* Sentinel: khi lọt vào tầm nhìn (kể cả trước 800px) sẽ nạp thêm ảnh. */}
+          {renderLimit < visible.length && (
+            <div ref={sentinelRef} className="flex justify-center py-6 text-[13px]" style={{ color: "var(--text3)" }}>
+              Đang tải thêm ảnh… ({renderLimit}/{visible.length})
+            </div>
+          )}
         </div>
 
         {/* Feedback */}
