@@ -58,6 +58,23 @@ export async function disconnectAdminDrive(): Promise<void> {
   await db.from("admin_drive").upsert({ id: 1, refresh_token: null, folder_id: null, updated_at: new Date().toISOString() }, { onConflict: "id" });
 }
 
+type Drive = ReturnType<typeof google.drive>;
+
+/** Tạo thư mục lưu trữ và ghi nhớ id. */
+async function createFolder(drive: Drive): Promise<string | null> {
+  const res = await drive.files.create({
+    requestBody: { name: FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" },
+    fields: "id",
+  });
+  const id = res.data.id || null;
+  if (id) {
+    await createAdminClient()
+      .from("admin_drive")
+      .upsert({ id: 1, folder_id: id, updated_at: new Date().toISOString() }, { onConflict: "id" });
+  }
+  return id;
+}
+
 /** Client Drive đã xác thực + thư mục lưu (tạo 1 lần). */
 async function driveCtx() {
   const s = await loadSettings();
@@ -66,35 +83,86 @@ async function driveCtx() {
   o.setCredentials({ refresh_token: s.refresh_token });
   const drive = google.drive({ version: "v3", auth: o });
   let folderId = s.folder_id;
-  if (!folderId) {
-    const res = await drive.files.create({
-      requestBody: { name: FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" },
-      fields: "id",
-    });
-    folderId = res.data.id || null;
-    if (folderId) {
-      await createAdminClient().from("admin_drive").upsert({ id: 1, folder_id: folderId, updated_at: new Date().toISOString() }, { onConflict: "id" });
-    }
+  if (folderId) {
+    // Thư mục có thể đã bị xoá/đổi chủ trong Drive. Nếu vậy mọi upload sẽ hỏng
+    // vĩnh viễn vì folder_id cũ được lưu lại mãi — kiểm tra rồi tạo lại.
+    const alive = await drive.files
+      .get({ fileId: folderId, fields: "id, trashed" })
+      .then((r) => !!r.data.id && !r.data.trashed)
+      .catch(() => false);
+    if (!alive) folderId = null;
   }
+  if (!folderId) folderId = await createFolder(drive);
   return folderId ? { drive, folderId } : null;
 }
 
+/** Lý do lần upload gần nhất không vào được Drive (đọc ở trang trạng thái admin). */
+let lastDriveError: string | null = null;
+export function lastAdminDriveError(): string | null {
+  return lastDriveError;
+}
+
 /**
- * Upload file vào Drive admin, đặt công khai (anyone reader) để /api/img phục vụ.
- * Trả về file id, hoặc null nếu chưa kết nối / lỗi.
+ * Upload file vào Drive admin, đặt công khai (anyone reader) để /api/img và
+ * /api/file phục vụ. Trả về file id, hoặc null nếu chưa kết nối / lỗi.
+ *
+ * Lỗi được GHI LẠI chứ không nuốt im lặng: trước đây một kết nối Drive hỏng
+ * (token bị thu hồi, thư mục bị xoá, thiếu biến môi trường) khiến mọi upload âm
+ * thầm rơi về Supabase mà không ai biết — đúng cách dung lượng Supabase phình
+ * lên trong khi trang admin vẫn báo "đã kết nối".
  */
 export async function uploadToAdminDrive(buf: Buffer, name: string, mime: string): Promise<string | null> {
-  const ctx = await driveCtx();
-  if (!ctx) return null;
-  const res = await ctx.drive.files.create({
-    requestBody: { name: name || "upload", parents: [ctx.folderId] },
-    media: { mimeType: mime || "application/octet-stream", body: Readable.from(buf) },
-    fields: "id",
-  });
-  const id = res.data.id;
-  if (!id) return null;
-  await ctx.drive.permissions.create({ fileId: id, requestBody: { role: "reader", type: "anyone" } }).catch(() => {});
-  return id;
+  try {
+    const ctx = await driveCtx();
+    if (!ctx) {
+      lastDriveError = adminDriveConfigured() ? "chưa kết nối Drive admin" : "thiếu biến môi trường Google OAuth";
+      return null;
+    }
+    const res = await ctx.drive.files.create({
+      requestBody: { name: name || "upload", parents: [ctx.folderId] },
+      media: { mimeType: mime || "application/octet-stream", body: Readable.from(buf) },
+      fields: "id",
+    });
+    const id = res.data.id;
+    if (!id) {
+      lastDriveError = "Drive không trả về file id";
+      return null;
+    }
+    await ctx.drive.permissions.create({ fileId: id, requestBody: { role: "reader", type: "anyone" } }).catch(() => {});
+    lastDriveError = null;
+    return id;
+  } catch (e) {
+    lastDriveError = (e as Error)?.message || String(e);
+    console.error("[admin-drive] upload failed, rơi về Supabase Storage:", lastDriveError);
+    return null;
+  }
+}
+
+/**
+ * Thử lưu file BẤT KỲ (nhạc nền…) vào Drive admin → trả URL phục vụ qua
+ * /api/file, hoặc null để caller fallback Supabase.
+ */
+export async function driveFileUrlOrNull(buf: Buffer, name: string, mime: string): Promise<string | null> {
+  const id = await uploadToAdminDrive(buf, name, mime);
+  return id ? `/api/file?id=${id}` : null;
+}
+
+/**
+ * Kiểm tra THẬT xem Drive admin còn dùng được không (gọi API, không chỉ xem có
+ * token trong DB). Trang trạng thái dùng cái này để không báo "đã kết nối" khi
+ * thực tế mọi upload đang rơi về Supabase.
+ */
+export async function adminDriveHealth(): Promise<{ configured: boolean; connected: boolean; ok: boolean; error: string | null }> {
+  const configured = adminDriveConfigured();
+  const connected = await adminDriveConnected();
+  if (!configured || !connected) return { configured, connected, ok: false, error: null };
+  try {
+    const ctx = await driveCtx();
+    if (!ctx) return { configured, connected, ok: false, error: "không tạo được thư mục lưu trữ trên Drive" };
+    return { configured, connected, ok: true, error: null };
+  } catch (e) {
+    return { configured, connected, ok: false, error: (e as Error)?.message || String(e) };
+  }
 }
 
 /**

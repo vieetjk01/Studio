@@ -122,6 +122,17 @@ export default function WeddingEditor({ token }: { token: string }) {
     } catch (e) {
       return { error: "Tải nhạc thất bại (" + ((e as Error)?.message || e) + ")" };
     }
+    // 3) Nhờ server chuyển file sang Drive admin rồi xoá bản trên Supabase (đỡ
+    //    tốn dung lượng). Hỏng thì thôi — URL Supabase ở trên vẫn dùng tốt.
+    try {
+      const r = await fetch(`/api/thiep/${token}/audio-finalize`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ path: signed.path }),
+      });
+      if (r.ok) {
+        const j = (await r.json()) as { url?: string | null };
+        if (j.url) return { url: j.url };
+      }
+    } catch { /* giữ URL Supabase */ }
     return { url: signed.publicUrl };
   }
 

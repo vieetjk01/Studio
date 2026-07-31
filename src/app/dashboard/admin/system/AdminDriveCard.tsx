@@ -5,14 +5,15 @@ import { HardDrive, Check, Loader2, AlertTriangle } from "lucide-react";
 
 /** Kết nối Google Drive của admin để lưu nội dung người dùng (thay Supabase). */
 export default function AdminDriveCard() {
-  const [state, setState] = useState<{ configured: boolean; connected: boolean } | null>(null);
+  type Status = { configured: boolean; connected: boolean; ok: boolean; error: string | null; lastUploadError: string | null };
+  const [state, setState] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/drive/status")
       .then((r) => r.json())
-      .then((d) => setState({ configured: !!d.configured, connected: !!d.connected }))
-      .catch(() => setState({ configured: false, connected: false }));
+      .then((d) => setState({ configured: !!d.configured, connected: !!d.connected, ok: !!d.ok, error: d.error ?? null, lastUploadError: d.lastUploadError ?? null }))
+      .catch(() => setState({ configured: false, connected: false, ok: false, error: null, lastUploadError: null }));
   }, []);
 
   async function disconnect() {
@@ -20,7 +21,7 @@ export default function AdminDriveCard() {
     setBusy(true);
     await fetch("/api/admin/drive/status", { method: "DELETE" }).catch(() => {});
     setBusy(false);
-    setState((s) => (s ? { ...s, connected: false } : s));
+    setState((s) => (s ? { ...s, connected: false, ok: false } : s));
   }
 
   return (
@@ -47,9 +48,28 @@ export default function AdminDriveCard() {
             </span>
           </div>
         ) : state.connected ? (
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-sm" style={{ color: "#4caf72" }}><Check size={16} /> Đã kết nối Drive</span>
-            <button onClick={disconnect} disabled={busy} className="btn-ghost text-xs">Ngắt kết nối</button>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              {state.ok ? (
+                <span className="inline-flex items-center gap-1.5 text-sm" style={{ color: "#4caf72" }}><Check size={16} /> Đã kết nối Drive · file mới đang vào Drive</span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-sm" style={{ color: "#e0a34f" }}><AlertTriangle size={16} /> Có token nhưng Drive KHÔNG dùng được</span>
+              )}
+              <button onClick={disconnect} disabled={busy} className="btn-ghost text-xs">Ngắt kết nối</button>
+            </div>
+            {/* Kết nối hỏng mà vẫn báo xanh chính là cách dung lượng Supabase âm
+                thầm phình lên — nói thẳng lỗi ra đây. */}
+            {!state.ok && (
+              <div className="rounded-md border border-ink-800 p-3 text-xs" style={{ color: "var(--text2)" }}>
+                Mọi upload đang rơi về Supabase Storage. Bấm <b>Ngắt kết nối</b> rồi kết nối lại.
+                {state.error && <div className="mt-1 font-mono" style={{ color: "var(--text3)" }}>{state.error}</div>}
+              </div>
+            )}
+            {state.lastUploadError && (
+              <div className="rounded-md border border-ink-800 p-3 text-xs" style={{ color: "var(--text3)" }}>
+                Lỗi upload gần nhất: <span className="font-mono">{state.lastUploadError}</span>
+              </div>
+            )}
           </div>
         ) : (
           <a href="/api/admin/drive/connect" className="btn-primary inline-flex gap-2">
