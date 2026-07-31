@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.5"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.6"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -686,6 +686,8 @@ async function checkAccount() {
     };
     const el = $("stAccount");
     if (el) el.textContent = cfg.acct || "—";
+    // Đưa luôn sang màn dữ liệu để Tổng quan tự cảnh báo (chỗ người dùng nhìn).
+    if (window.setServerInfo) window.setServerInfo(w);
     const el2 = $("stCompare");
     if (el2) {
       const lech = local.contracts !== w.counts.contracts || local.events !== w.counts.events;

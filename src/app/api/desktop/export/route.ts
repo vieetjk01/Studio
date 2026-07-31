@@ -27,10 +27,19 @@ const N = (v: unknown): number => Number(v) || 0;
 // Phân trang đến hết thay vì cắt cứng ở 10.000 dòng — studio lớn mà bị cắt thì
 // bản backup JSON thiếu dữ liệu và restore sẽ MẤT dữ liệu một cách im lặng.
 const PAGE = 1000;
+
+// Truy vấn lỗi mà nuốt đi thì bản backup thiếu dữ liệu một cách im lặng — đúng
+// thứ đã khiến "web một đằng, app một nẻo" không ai truy được. Ném ra để route
+// trả 500 thay vì trả một bản backup cụt.
+function orThrow(table: string, error: { message: string } | null) {
+  if (error) throw new Error(`${table}: ${error.message}`);
+}
+
 async function all(db: Db, table: string, select: string, owner: string, ownerCol = "owner_id"): Promise<Row[]> {
   const out: Row[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data } = await db.from(table).select(select).eq(ownerCol, owner).order("id").range(from, from + PAGE - 1);
+    const { data, error } = await db.from(table).select(select).eq(ownerCol, owner).order("id").range(from, from + PAGE - 1);
+    orThrow(table, error);
     const rows = (data as Row[] | null) ?? [];
     out.push(...rows);
     if (rows.length < PAGE) break;
@@ -43,7 +52,8 @@ async function byIds(db: Db, table: string, col: string, ids: string[]): Promise
   for (let i = 0; i < ids.length; i += 200) {
     const slice = ids.slice(i, i + 200);
     for (let from = 0; ; from += PAGE) {
-      const { data } = await db.from(table).select("*").in(col, slice).order("id").range(from, from + PAGE - 1);
+      const { data, error } = await db.from(table).select("*").in(col, slice).order("id").range(from, from + PAGE - 1);
+      orThrow(table, error);
       const rows = (data as Row[] | null) ?? [];
       out.push(...rows);
       if (rows.length < PAGE) break;

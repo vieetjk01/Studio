@@ -7,6 +7,14 @@
 let DB = { tables: {} };
 let dataTab = "overview";
 let dataQuery = "";
+// Máy chủ đang thấy gì (GET /api/desktop/whoami) — để đối chiếu ngay trên màn
+// Tổng quan. app.js gọi setServerInfo() sau mỗi lần tải dữ liệu.
+let SRV = null;
+function setServerInfo(info) {
+  SRV = info;
+  if (typeof renderData === "function") renderData();
+}
+window.setServerInfo = setServerInfo;
 
 // app.js gọi khi có dữ liệu mới (từ cache đĩa lúc mở, hoặc sau mỗi lần đồng bộ).
 function setData(backup) {
@@ -233,9 +241,31 @@ function renderOverview() {
   const bookingsHtml = newBookings.length ? `<div class="osec"><div class="osec-h">Đặt lịch mới cần xử lý</div><table class="dtable"><tbody>${
     newBookings.slice(0, 6).map((b) => `<tr><td style="width:110px">${D(b.preferred_date)}</td><td>${esc(b.name || "")} · ${esc(b.service || "")}</td><td class="r" style="color:var(--muted)">${esc(b.phone || "")}</td></tr>`).join("")}</tbody></table></div>` : "";
 
-  return statsHtml +
+  return serverDiffBanner() + statsHtml +
     `<div class="ogrid">${upcomingHtml}${recentHtml}</div>${bookingsHtml}` +
     `<p class="dnote">Dữ liệu cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}. Tất cả tính từ dữ liệu đã lưu trên máy.</p>`;
+}
+
+/**
+ * Cảnh báo khi dữ liệu trên máy KHÁC dữ liệu máy chủ, kèm luôn tài khoản đang gắn.
+ *
+ * Đặt ngay trên màn Tổng quan chứ không giấu trong tab Sao lưu: đây chính là chỗ
+ * người dùng nhìn thấy số sai, nên câu trả lời phải ở cùng chỗ. Số máy chủ đếm
+ * TOÀN BỘ hợp đồng (kể cả đã huỷ) nên so với T("studio_contracts") chưa lọc.
+ */
+function serverDiffBanner() {
+  if (!SRV || !SRV.counts) return "";
+  const local = T("studio_contracts").length;
+  const server = SRV.counts.contracts;
+  if (local === server) return "";
+  const acct = esc(SRV.account?.name || SRV.account?.email || "(không rõ)");
+  return `<div class="dwarn">
+    <b>Dữ liệu trên máy không khớp máy chủ:</b> máy này có ${local} hợp đồng, máy chủ có ${server}.
+    <br>Máy đang đồng bộ với tài khoản: <b>${acct}</b> · <code>${esc(String(SRV.ownerId || "").slice(0, 8))}…</code>
+    <br>Nếu tên tài khoản này KHÔNG phải studio bạn đang mở trên web ⇒ máy đăng ký nhầm tài khoản: vào mstudo (web) ›
+    Cài đặt › Thiết bị, thu hồi máy cũ rồi đăng ký lại bằng mã mới.
+    Nếu đúng tài khoản mà số vẫn lệch ⇒ bấm <b>↻ Tải dữ liệu mới</b>; còn lệch nữa thì báo lại kèm hai con số này.
+  </div>`;
 }
 
 function renderContracts() {

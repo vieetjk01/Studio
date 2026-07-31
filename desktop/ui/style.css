@@ -96,6 +96,10 @@ input[type="url"], input[type="text"] {
 .stat { padding: 16px 18px; }
 .stat-label { font-size: 12px; font-weight: 700; color: var(--muted); }
 .stat-value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+/* Cảnh báo lệch dữ liệu ngay trên Tổng quan — chỗ người dùng nhìn thấy số sai. */
+.dwarn { margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; line-height: 1.6;
+  background: #fdf0ec; border: 1px solid #f0cabd; color: #8a2d16; font-size: 13px; }
+.dwarn code { background: rgba(0,0,0,.05); padding: 1px 5px; border-radius: 4px; }
 /* Số liệu trên máy lệch với máy chủ — phải đập vào mắt, không nằm im. */
 .stat-value.bad { color: #b4341f; }
 
