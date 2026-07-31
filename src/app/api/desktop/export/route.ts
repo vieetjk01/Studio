@@ -191,6 +191,11 @@ export async function GET(req: Request) {
       contract_products: await byIds(db, "contract_products", "contract_id", cIds),
       contract_quote_options: await byIds(db, "contract_quote_options", "contract_id", cIds),
       contract_tasks: await byIds(db, "contract_tasks", "contract_id", cIds),
+      // Cần cho màn Tổng quan của desktop tính GIỐNG HỆT web (thẻ "Yêu cầu sửa
+      // đang chờ" và "Album đang được khách chọn"). Thiếu hai bảng này thì
+      // desktop buộc phải bịa ra bộ chỉ số khác — và số liệu hai bên lệch nhau.
+      contract_edit_requests: await byIds(db, "contract_edit_requests", "contract_id", cIds),
+      albums: await all(db, "albums", "id, phase, status, is_gallery", owner),
       studio_quotes: quotes,
       quote_items: await byIds(db, "quote_items", "quote_id", quotes.map((q) => S(q.id))),
       studio_expenses: await all(db, "studio_expenses", "*", owner),

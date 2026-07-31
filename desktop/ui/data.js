@@ -28,7 +28,10 @@ const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").
 const digits = (s) => String(s ?? "").replace(/\D/g, "");
 const norm = (s) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const monthKey = (s) => (s ? String(s).slice(0, 7) : "");
-const thisMonth = () => new Date().toISOString().slice(0, 7);
+// Hôm nay theo giờ Việt Nam (UTC+7) — khớp todayVN() bên web. Dùng thẳng
+// toISOString() là giờ UTC, buổi tối sẽ lệch một ngày so với web.
+const todayVN = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+const thisMonth = () => todayVN().slice(0, 7);
 
 const CONTRACT_STATUS = { draft: "Nháp", sent: "Đã gửi", approved: "Đã duyệt", in_progress: "Đang thực hiện", completed: "Hoàn thành", cancelled: "Đã hủy" };
 const QUOTE_STATUS = { draft: "Nháp", sent: "Đã gửi", viewed: "Đã xem", adjust_requested: "Xin chỉnh", accepted: "Đã chốt", converted: "Đã chuyển HĐ", expired: "Hết hạn", cancelled: "Đã hủy" };
@@ -106,8 +109,8 @@ function bindRowClicks() {
   const addS = document.getElementById("addService"); if (addS) addS.onclick = () => openService();
   // Lịch tháng: chuyển tháng
   const prev = document.getElementById("calPrev"), next = document.getElementById("calNext");
-  if (prev) prev.onclick = () => { _calMonth = shiftMonth(_calMonth || new Date().toISOString().slice(0, 7), -1); renderData(); };
-  if (next) next.onclick = () => { _calMonth = shiftMonth(_calMonth || new Date().toISOString().slice(0, 7), 1); renderData(); };
+  if (prev) prev.onclick = () => { _calMonth = shiftMonth(_calMonth || thisMonth(), -1); renderData(); };
+  if (next) next.onclick = () => { _calMonth = shiftMonth(_calMonth || thisMonth(), 1); renderData(); };
   const tod = document.getElementById("calToday"); if (tod) tod.onclick = () => { _calMonth = null; renderData(); };
 }
 function shiftMonth(ym, delta) {
@@ -125,7 +128,7 @@ function match(row, fields) {
 function empty(msg) { return `<div class="dempty">${msg}</div>`; }
 
 function renderTab() {
-  if (!DB.tables || !Object.keys(DB.tables).length) return empty("Chưa có dữ liệu offline. Bấm “Xuất Excel ngay” để tải dữ liệu về máy.");
+  if (!DB.tables || !Object.keys(DB.tables).length) return empty("Chưa có dữ liệu offline. Bấm “↻ Tải dữ liệu mới” ở góc trên để tải về máy.");
   switch (dataTab) {
     case "overview": return renderOverview();
     case "contracts": return renderContracts();
@@ -145,36 +148,79 @@ function stat(label, value, sub) {
   return `<div class="dstat"><div class="dstat-l">${label}</div><div class="dstat-v">${value}</div>${sub ? `<div class="dstat-s">${sub}</div>` : ""}</div>`;
 }
 
+/**
+ * Tổng quan — CÙNG MỘT CÔNG THỨC với trang Tổng quan trên web
+ * (src/app/dashboard/studio/page.tsx).
+ *
+ * Trước đây màn này tự nghĩ ra bộ chỉ số riêng ("Doanh thu tổng HĐ", "Lãi tháng
+ * này", "Lương chưa trả" — web không có thẻ nào như vậy) và tính theo cách khác:
+ * gộp cả hợp đồng đã huỷ, lấy ngày theo giờ UTC thay vì giờ VN, bù trừ công nợ
+ * giữa các hợp đồng. Kết quả là hai bên không bao giờ khớp, kể cả khi dữ liệu đã
+ * đồng bộ đúng. Sửa số liệu lệch phải bắt đầu từ chỗ này chứ không phải ở đồng bộ.
+ *
+ * Mọi thay đổi ở đây phải soi lại page.tsx để hai bên không lệch nhau lần nữa.
+ */
 function renderOverview() {
-  const contracts = T("studio_contracts");
-  const mk = thisMonth();
-  const today0 = new Date().toISOString().slice(0, 10);
-  const revenue = contracts.reduce((s, c) => s + contractTotal(c.id), 0);
-  const paid = contracts.reduce((s, c) => s + contractPaid(c.id), 0);
-  const expMonth = T("studio_expenses").filter((e) => monthKey(e.spent_at) === mk).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  // Thu tháng này = các khoản thanh toán hợp đồng có ngày trong tháng.
-  const incomeMonth = T("contract_payments").filter((p) => monthKey(p.paid_at) === mk).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  const contractsMonth = contracts.filter((c) => monthKey(c.event_date || c.created_at) === mk).length;
-  const active = contracts.filter((c) => !["completed", "cancelled"].includes(c.status)).length;
-  const newBookings = T("studio_bookings").filter((b) => b.status === "new");
-  const unpaidSalary = T("contract_crew").filter((w) => !w.paid).reduce((s, w) => s + (Number(w.salary) || 0), 0);
+  // Web lọc `.neq("status","cancelled")` NGAY Ở TRUY VẤN, nên mọi con số dưới
+  // đây đều không tính hợp đồng đã huỷ.
+  const list = T("studio_contracts").filter((c) => c.status !== "cancelled");
+  const liveIds = new Set(list.map((c) => c.id));
+  const today0 = todayVN();
+  const monthStart = today0.slice(0, 7) + "-01";
 
-  // Lịch sắp tới: hợp đồng có ngày chụp >= hôm nay + mục lịch tương lai.
-  const upShoots = contracts.filter((c) => (c.event_date || "") >= today0 && c.status !== "cancelled")
-    .map((c) => ({ d: c.event_date, title: c.title, who: c.client_name, id: c.id }));
-  const upEvents = T("studio_events").filter((e) => (e.event_date || "") >= today0)
-    .map((e) => ({ d: e.event_date, title: e.title, who: e.event_time || "", id: null }));
-  const upcoming = [...upShoots, ...upEvents].sort((a, b) => String(a.d).localeCompare(String(b.d))).slice(0, 6);
-  const recent = contracts.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 6);
+  // "Doanh thu tháng này" = tiền ĐÃ THU trong tháng (contract_payments.paid_at),
+  // không phải tổng giá trị hợp đồng. Web dùng `gte monthStart` (không chặn trên)
+  // nên khoản trả trước ngày tương lai cũng được tính — giữ y hệt.
+  const revenueMonth = T("contract_payments")
+    .filter((p) => (p.paid_at || "") >= monthStart)
+    .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+  const active = list.filter((c) => c.status !== "completed").length;
+  const upcomingShoots = list
+    .filter((c) => c.event_date && c.event_date >= today0 && ["approved", "in_progress", "completed"].includes(c.status))
+    .slice(0, 6);
+  const selectingAlbums = T("albums").filter((a) => a.phase === "selection" && a.status === "published" && !a.is_gallery).length;
+  // Web đếm từ `list` (đã bỏ hợp đồng huỷ) — bám theo để không đếm dư.
+  const openRequests = T("contract_edit_requests").filter((r) => r.status === "open" && liveIds.has(r.contract_id)).length;
+
+  const totalValue = list.reduce((s, c) => s + contractTotal(c.id), 0);
+  const avgValue = list.length ? Math.round(totalValue / list.length) : 0;
+  // Công nợ: kẹp ở 0 THEO TỪNG hợp đồng — hợp đồng trả dư không bù cho hợp đồng
+  // khác (web làm vậy; gộp tổng rồi mới kẹp sẽ ra số nhỏ hơn).
+  const totalDue = list
+    .map((c) => contractTotal(c.id) - contractPaid(c.id))
+    .filter((d) => d > 0)
+    .reduce((s, d) => s + d, 0);
+
+  const bookings = T("studio_bookings");
+  const newBookings = bookings.filter((b) => b.status === "new");
+  const closeRate = bookings.length ? Math.min(100, Math.round((list.length / bookings.length) * 100)) : null;
+
+  const uniqueClients = new Set(
+    list.map((c) => digits(c.client_phone) || String(c.client_name || "").trim().toLowerCase()).filter(Boolean),
+  ).size;
+
+  const recent = list.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 6);
 
   const statsHtml = `<div class="dstats">
-    ${stat("Doanh thu (tổng HĐ)", vnd(revenue), `${contracts.length} hợp đồng · ${active} đang làm`)}
-    ${stat("Đã thu", vnd(paid), `Còn phải thu ${vnd(Math.max(0, revenue - paid))}`)}
-    ${stat("Thu tháng này", vnd(incomeMonth), `Chi ${vnd(expMonth)}`)}
-    ${stat("Lãi tháng này (tạm)", vnd(incomeMonth - expMonth), "thu − chi")}
-    ${stat("Lương chưa trả", vnd(unpaidSalary), "")}
-    ${stat("HĐ / Đặt lịch mới", `${contractsMonth} / ${newBookings.length}`, "tháng này / chờ xử lý")}
+    ${stat("Doanh thu tháng này", vnd(revenueMonth), "đã thu trong tháng")}
+    ${stat("Hợp đồng đang hoạt động", String(active), `${list.length} tổng hợp đồng`)}
+    ${stat("Album đang được khách chọn", String(selectingAlbums), "")}
+    ${stat("Lịch sắp tới", String(upcomingShoots.length), `${uniqueClients} khách hàng`)}
+    ${stat("Yêu cầu sửa đang chờ", String(openRequests), "")}
+    ${stat("Giá trị HĐ trung bình", vnd(avgValue), "")}
+    ${stat("Công nợ cần thu", vnd(totalDue), "")}
+    ${closeRate != null ? stat("Tỉ lệ chốt (HĐ/đặt lịch)", `${closeRate}%`, "") : stat("Đặt lịch mới", String(newBookings.length), "")}
   </div>`;
+
+  // Danh sách "Lịch sắp tới" gộp thêm ghi chú lịch — web không có bảng này nhưng
+  // đây là danh sách, không phải con số đối chiếu.
+  const upEvents = T("studio_events").filter((e) => (e.event_date || "") >= today0)
+    .map((e) => ({ d: e.event_date, title: e.title, who: e.event_time || "", id: null }));
+  const upcoming = [
+    ...upcomingShoots.map((c) => ({ d: c.event_date, title: c.title, who: c.client_name, id: c.id })),
+    ...upEvents,
+  ].sort((a, b) => String(a.d).localeCompare(String(b.d))).slice(0, 6);
 
   const upcomingHtml = `<div class="osec"><div class="osec-h">Lịch sắp tới</div>${
     upcoming.length ? `<table class="dtable"><tbody>${upcoming.map((u) => `<tr${u.id ? ` data-open-contract="${u.id}" class="clickable"` : ""}><td style="width:110px">${D(u.d)}</td><td>${esc(u.title || "")}</td><td class="r" style="color:var(--muted)">${esc(u.who || "")}</td></tr>`).join("")}</tbody></table>`
@@ -478,7 +524,7 @@ function renderExpenses() {
 // Form tạo/sửa khoản chi — chạy cục bộ, lưu tức thì + đồng bộ ngầm.
 function openExpense(id) {
   const e = id ? T("studio_expenses").find((x) => x.id === id) : null;
-  const v = e || { spent_at: new Date().toISOString().slice(0, 10), title: "", amount: "", category: "", note: "" };
+  const v = e || { spent_at: todayVN(), title: "", amount: "", category: "", note: "" };
   const ov = document.getElementById("dataModal");
   ov.querySelector(".dmodal").innerHTML = `
     <div class="dmodal-head">
@@ -509,7 +555,7 @@ function openExpense(id) {
       title,
       amount,
       category: document.getElementById("exCat").value.trim(),
-      spent_at: document.getElementById("exDate").value || new Date().toISOString().slice(0, 10),
+      spent_at: document.getElementById("exDate").value || todayVN(),
       note: document.getElementById("exNote").value.trim(),
     };
     await window.localMutate("studio_expenses", id ? "update" : "insert", row);
@@ -556,7 +602,7 @@ function openCrew(id) {
   ov.onclick = (e) => { if (e.target === ov) close(); };
   document.getElementById("crSave").onclick = async () => {
     const paid = document.getElementById("crPaid").checked;
-    const row = { id, contract_id: w.contract_id, salary: Math.round(Number(document.getElementById("crSalary").value) || 0), paid, paid_at: paid ? (w.paid_at || new Date().toISOString().slice(0, 10)) : null };
+    const row = { id, contract_id: w.contract_id, salary: Math.round(Number(document.getElementById("crSalary").value) || 0), paid, paid_at: paid ? (w.paid_at || todayVN()) : null };
     await window.localMutate("contract_crew", "update", row);
     close();
   };
@@ -571,7 +617,7 @@ function monthGridHtml(byDate, ym) {
   const first = new Date(y, m - 1, 1);
   const startDow = (first.getDay() + 6) % 7; // T2=0
   const days = new Date(y, m, 0).getDate();
-  const todayS = new Date().toISOString().slice(0, 10);
+  const todayS = todayVN();
   const wk = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
   let cells = "";
   for (let i = 0; i < startDow; i++) cells += `<div class="mcell empty"></div>`;
@@ -593,7 +639,7 @@ function renderCalendar() {
   const bk = T("studio_bookings").map((b) => ({ id: b.id, d: b.preferred_date, t: "", title: `${b.name || ""} · ${b.service || ""}`, status: b.status, kind: "booking" }));
   const sh = T("studio_contracts").filter((c) => c.event_date && c.status !== "cancelled").map((c) => ({ id: c.id, d: c.event_date, t: c.event_time, title: c.title, kind: "shoot" }));
   const all = [...ev, ...bk, ...sh].filter((r) => r.d);
-  const ym = _calMonth || new Date().toISOString().slice(0, 7);
+  const ym = _calMonth || thisMonth();
   const byDate = {};
   all.forEach((r) => { const k = String(r.d).slice(0, 10); (byDate[k] = byDate[k] || []).push(r); });
   Object.values(byDate).forEach((list) => list.sort((a, b) => (a.kind === "shoot" ? -1 : 1) - (b.kind === "shoot" ? -1 : 1)));
@@ -617,7 +663,7 @@ function renderCalendar() {
 // Thêm/sửa mục lịch (studio_events) — chạy cục bộ.
 function openEvent(id) {
   const e = id ? T("studio_events").find((x) => x.id === id) : null;
-  const v = e || { event_date: new Date().toISOString().slice(0, 10), title: "", event_time: "", note: "" };
+  const v = e || { event_date: todayVN(), title: "", event_time: "", note: "" };
   const ov = document.getElementById("dataModal");
   ov.querySelector(".dmodal").innerHTML = `
     <div class="dmodal-head">
@@ -641,7 +687,7 @@ function openEvent(id) {
   document.getElementById("evSave").onclick = async () => {
     const title = document.getElementById("evTitle").value.trim();
     if (!title) { document.getElementById("evTitle").focus(); return; }
-    const row = { id: id || uuid(), title, event_date: document.getElementById("evDate").value || new Date().toISOString().slice(0, 10), event_time: document.getElementById("evTime").value.trim(), note: document.getElementById("evNote").value.trim(), remind: true };
+    const row = { id: id || uuid(), title, event_date: document.getElementById("evDate").value || todayVN(), event_time: document.getElementById("evTime").value.trim(), note: document.getElementById("evNote").value.trim(), remind: true };
     await window.localMutate("studio_events", id ? "update" : "insert", row);
     close();
   };
