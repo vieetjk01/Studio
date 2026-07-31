@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.3"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.4"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -18,6 +18,7 @@ const saveCfg = () => localStorage.setItem("cfg", JSON.stringify(cfg));
 const syncRoots = () => invoke("set_roots", { paths: [cfg.dir, cfg.mediaDir].filter(Boolean) }).catch(() => {});
 
 const SYNC_EVERY_MS = 20 * 1000;         // đồng bộ hợp đồng mỗi 20 giây (gần như tức thì)
+const DATA_REFRESH_MS = 5 * 60 * 1000;    // tải lại dữ liệu offline mỗi 5 phút
 const KEEP_DAYS = 30;                     // giữ file xuất 30 ngày
 const EXPORTS = [
   ["customers", "KhachHang"], ["quotes", "BaoGia"], ["expenses", "ChiTieu"],
@@ -179,7 +180,7 @@ function showSub(sub) {
 }
 document.querySelectorAll("#sideNav .side-item").forEach((b) => b.onclick = () => gotoNav(b.dataset.nav));
 // "Tải dữ liệu mới": làm mới cache offline (dùng lại luồng xuất/sao lưu).
-$("btnRefreshData").onclick = () => runExports(true);
+$("btnRefreshData").onclick = () => refreshData(true).then(checkAccount);
 // Kiểm tra cập nhật thủ công (phòng khi app chưa tự báo).
 { const b = $("btnCheckUpdate"); if (b) b.onclick = () => checkUpdate(true); }
 { const v = $("appVer"); if (v) v.textContent = "Phiên bản " + APP_VERSION + " (beta)"; }
@@ -643,30 +644,81 @@ async function runDriveWatch() {
   }
 }
 
-// ─── Xuất Excel + sao lưu JSON ───────────────────────────────────────────────
+// ─── Tải lại dữ liệu offline ─────────────────────────────────────────────────
+// TÁCH RIÊNG khỏi việc xuất Excel. Trước đây hai việc này nằm chung trong
+// runExports() và bị khoá bởi `lastExportDate !== today()`, nên bản cache offline
+// (thứ nuôi Tổng quan / Hợp đồng / Lịch) chỉ được làm mới MỖI NGÀY MỘT LẦN — mọi
+// thay đổi trên web sau lần đó đều không hiện ra, dù "Đồng bộ ngay" vẫn báo vừa
+// chạy (runSync chỉ tải file hợp đồng, không đụng tới cache). Tệ hơn: một lỗi khi
+// xuất Excel sẽ ném ra trước và cache không bao giờ được ghi.
+let refreshingData = false;
+async function refreshData(manual = false) {
+  if (refreshingData || !cfg.token || !cfg.dir) return false;
+  refreshingData = true;
+  try {
+    const backup = await apiB64(`/api/desktop/export?type=backup`);
+    await invoke("write_file_b64", { path: cachePath(), contentsB64: backup });
+    setData(JSON.parse(b64ToText(backup)));
+    cfg.lastCache = new Date().toISOString(); saveCfg(); refreshStats();
+    if (manual) log("Đã tải dữ liệu mới từ máy chủ.");
+    return true;
+  } catch (e) {
+    // Báo cả khi TỰ ĐỘNG: cache cũ mà im lặng chính là thứ khiến số liệu lệch
+    // với web mà không ai biết.
+    log("Không tải được dữ liệu mới: " + (e.message || e), "err");
+    return false;
+  } finally {
+    refreshingData = false;
+  }
+}
+
+// So dữ liệu trên máy với máy chủ và nói thẳng ra chỗ lệch (và tài khoản đang
+// gắn). Đây là câu trả lời cho "web một đằng, app một nẻo".
+async function checkAccount() {
+  try {
+    const w = await apiJson("/api/desktop/whoami");
+    cfg.acct = w.account?.name || w.account?.email || "";
+    cfg.acctCounts = w.counts; saveCfg();
+    const t = (typeof DB !== "undefined" && DB.tables) || {};
+    const local = {
+      contracts: (t.studio_contracts || []).length,
+      events: (t.studio_events || []).length,
+    };
+    const el = $("stAccount");
+    if (el) el.textContent = cfg.acct || "—";
+    const el2 = $("stCompare");
+    if (el2) {
+      const lech = local.contracts !== w.counts.contracts || local.events !== w.counts.events;
+      el2.textContent = `${local.contracts}/${w.counts.contracts} HĐ · ${local.events}/${w.counts.events} lịch`;
+      el2.classList.toggle("bad", lech);
+    }
+    return w;
+  } catch { return null; }
+}
+
+// ─── Xuất Excel ──────────────────────────────────────────────────────────────
 let exporting = false;
 async function runExports(manual = false) {
   if (exporting || !cfg.token || !cfg.dir) return;
   exporting = true;
   try {
+    // Dữ liệu offline trước, Excel sau: Excel hỏng thì cũng không được kéo theo
+    // cache (cái quan trọng hơn nhiều).
+    await refreshData(manual);
+    const backup = await apiB64(`/api/desktop/export?type=backup`);
+    await invoke("write_file_b64", { path: join(cfg.dir, "SaoLuu", `mstudo-backup-${today()}.json`), contentsB64: backup });
     for (const [type, folder] of EXPORTS) {
       const b64 = await apiB64(`/api/desktop/export?type=${type}`);
       await invoke("write_file_b64", { path: join(cfg.dir, folder, `${folder}_${today()}.xlsx`), contentsB64: b64 });
     }
-    const backup = await apiB64(`/api/desktop/export?type=backup`);
-    await invoke("write_file_b64", { path: join(cfg.dir, "SaoLuu", `mstudo-backup-${today()}.json`), contentsB64: backup });
-    // Cache ổn định để trình duyệt dữ liệu offline đọc + nạp vào bộ nhớ ngay.
-    await invoke("write_file_b64", { path: cachePath(), contentsB64: backup });
-    setData(JSON.parse(b64ToText(backup)));
-    cfg.lastCache = new Date().toISOString(); saveCfg();
     // Dọn file cũ hơn 30 ngày (KHÔNG đụng thư mục HopDong).
     for (const [, folder] of [...EXPORTS, ["", "SaoLuu"]]) {
       await invoke("cleanup_old", { dir: join(cfg.dir, folder), days: KEEP_DAYS }).catch(() => {});
     }
     cfg.lastExportDate = today(); saveCfg(); refreshStats();
-    log("Đã xuất Excel + cập nhật dữ liệu offline.");
+    log("Đã xuất Excel + sao lưu JSON.");
   } catch (e) {
-    if (manual) log("Không xuất được dữ liệu: " + (e.message || e), "err");
+    if (manual) log("Không xuất được Excel: " + (e.message || e), "err");
   }
   exporting = false;
 }
@@ -837,6 +889,7 @@ window.__mstudoTick = () => {
   if (_tickCount % 5 === 1) {
     try { runSync(false); } catch { /* nhịp sau thử lại */ }
     try { runDriveSync(false); } catch { /* nhịp sau thử lại */ }
+    try { refreshData(false).then(checkAccount); } catch { /* nhịp sau thử lại */ }
   }
 };
 
@@ -857,12 +910,15 @@ function bootSync(first = false) {
   syncRoots(); // đặt thư mục gốc được phép cho Rust trước khi thao tác file
   hookFocusSync();
   runSync(first);
+  refreshData(false).then(checkAccount); // dữ liệu offline mới ngay khi mở app
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
   flushQueue(); // đẩy các thay đổi cục bộ còn tồn khi mở app
   checkUpdate();
   runDriveSync(false); // tải ảnh/video hợp đồng lên Drive (nếu đã kết nối)
   setInterval(() => runSync(false), SYNC_EVERY_MS);
   setInterval(flushQueue, 60 * 1000); // thử đồng bộ thay đổi cục bộ mỗi phút
+  // Dữ liệu offline làm mới mỗi 5 phút — KHÔNG chờ tới ngày hôm sau như trước.
+  setInterval(() => refreshData(false).then(checkAccount), DATA_REFRESH_MS);
   setInterval(() => { if (cfg.lastExportDate !== today()) runExports(); }, 10 * 60 * 1000);
   setInterval(() => runDriveSync(false), DRIVE_FULL_SYNC_MS); // vòng chậm: toàn bộ HĐ đã ký
   setInterval(runDriveWatch, DRIVE_WATCH_MS);                 // vòng nhanh: HĐ đang thực hiện

@@ -96,6 +96,8 @@ input[type="url"], input[type="text"] {
 .stat { padding: 16px 18px; }
 .stat-label { font-size: 12px; font-weight: 700; color: var(--muted); }
 .stat-value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+/* Số liệu trên máy lệch với máy chủ — phải đập vào mắt, không nằm im. */
+.stat-value.bad { color: #b4341f; }
 
 .row-between { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .row-gap { display: flex; gap: 8px; }
