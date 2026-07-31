@@ -137,25 +137,21 @@ export async function POST(req: Request) {
       position: idx,
     };
 
-    // Trước khi migration crew_profile_show.sql chạy thì chưa có task/side/giờ.
-    // Ghi hỏng thì lùi về bộ cột cũ để việc LƯU NHÂN SỰ không chết theo — phần
-    // thông tin show đơn giản là chưa lưu được cho tới khi migration chạy.
-    const { task: _t, side: _s, start_time: _st, end_time: _et, ...legacy } = row;
-
+    // Trước đây chỗ này âm thầm lùi về bộ cột cũ khi ghi hỏng, nên thiếu cột
+    // task/side lại báo "đã lưu" và studio không hiểu vì sao mất dữ liệu. Nay
+    // lỗi được trả thẳng ra: thà báo hỏng còn hơn nuốt mất thông tin.
     let assignId = c.id ?? null;
     const isNew = !assignId;
     if (assignId) {
       const { error } = await db.from("contract_crew").update(row).eq("id", assignId).eq("contract_id", contract.id);
-      if (error) await db.from("contract_crew").update(legacy).eq("id", assignId).eq("contract_id", contract.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
-      let { data, error } = await db
+      const { data, error } = await db
         .from("contract_crew")
         .insert({ ...row, contract_id: contract.id })
         .select("id")
         .single();
-      if (error) {
-        ({ data } = await db.from("contract_crew").insert({ ...legacy, contract_id: contract.id }).select("id").single());
-      }
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       assignId = (data?.id as string) ?? null;
     }
     if (!assignId) continue;
@@ -178,17 +174,16 @@ export async function POST(req: Request) {
         created_by: "studio",
         contract_crew_id: assignId,
       };
-      // Cột contract_crew_id cũng đến từ migration; thiếu nó thì bỏ qua phần
-      // ghi lịch chứ không làm hỏng cả lượt lưu.
       const { data: existing, error: findErr } = await db
         .from("crew_unavailable")
         .select("id")
         .eq("contract_crew_id", assignId)
         .maybeSingle();
-      if (!findErr) {
-        if (existing?.id) await db.from("crew_unavailable").update(entry).eq("id", existing.id);
-        else await db.from("crew_unavailable").insert(entry);
-      }
+      if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 });
+      const { error: wErr } = existing?.id
+        ? await db.from("crew_unavailable").update(entry).eq("id", existing.id)
+        : await db.from("crew_unavailable").insert(entry);
+      if (wErr) return NextResponse.json({ error: wErr.message }, { status: 500 });
 
       // ── Báo Zalo cho thợ (chỉ lần gán ĐẦU) ─────────────────────────────
       // autoNotify tự bỏ qua nếu studio chưa kết nối Zalo hoặc chưa bật mốc

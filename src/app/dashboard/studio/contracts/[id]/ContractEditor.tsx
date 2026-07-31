@@ -113,6 +113,28 @@ type CrewRow = {
   end?: string;
 };
 
+/** Một nguồn duy nhất để đổi dòng contract_crew → CrewRow. */
+function toCrewRow(c: {
+  id?: string; name: string; phone: string | null; role: CrewRole; salary: number;
+  note: string | null; status?: string; paid?: boolean;
+  task?: string | null; side?: string | null; start_time?: string | null; end_time?: string | null;
+}): CrewRow {
+  return {
+    id: c.id,
+    name: c.name,
+    phone: c.phone ?? "",
+    role: c.role,
+    salary: c.salary,
+    note: c.note ?? "",
+    status: c.status,
+    paid: c.paid,
+    task: c.task ?? "",
+    side: c.side ?? "",
+    start: (c.start_time ?? "").slice(0, 5),
+    end: (c.end_time ?? "").slice(0, 5),
+  };
+}
+
 const CREW_STATUS_TONE: Record<string, string> = {
   pending: "var(--text3)",
   accepted: "var(--s-green)",
@@ -256,18 +278,10 @@ export default function ContractEditor({
   const [items, setItems] = useState<ItemRow[]>(
     initialItems.map((i) => ({ id: i.id, name: i.name, qty: i.qty, unit_price: Math.abs(i.unit_price), is_discount: i.unit_price < 0 }))
   );
-  const [crew, setCrew] = useState<CrewRow[]>(
-    initialCrew.map((c) => ({
-      id: c.id,
-      name: c.name,
-      phone: c.phone ?? "",
-      role: c.role,
-      salary: c.salary,
-      note: c.note ?? "",
-      status: c.status,
-      paid: c.paid,
-    }))
-  );
+  // Phải map ĐÚNG BẰNG refetchCrew. Thiếu trường nào ở đây thì sau khi tải lại
+  // trang ô đó trắng, và lần lưu kế tiếp ghi đè trắng lên giá trị đã lưu —
+  // trông y như "bấm lưu không ăn".
+  const [crew, setCrew] = useState<CrewRow[]>(initialCrew.map(toCrewRow));
   const [requests, setRequests] = useState<ContractEditRequest[]>(initialRequests);
   const [payments, setPayments] = useState<ContractPayment[]>(initialPayments);
   const [milestones, setMilestones] = useState<StudioEvent[]>(initialMilestones);
@@ -435,22 +449,7 @@ export default function ContractEditor({
       .select("*")
       .eq("contract_id", contract.id)
       .order("position");
-    setCrew(
-      (data ?? []).map((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone ?? "",
-        role: c.role,
-        salary: c.salary,
-        note: c.note ?? "",
-        status: c.status,
-        paid: c.paid,
-        task: c.task ?? "",
-        side: c.side ?? "",
-        start: (c.start_time ?? "").slice(0, 5),
-        end: (c.end_time ?? "").slice(0, 5),
-      }))
-    );
+    setCrew((data ?? []).map(toCrewRow));
   }
 
   async function saveCrew() {
@@ -467,7 +466,7 @@ export default function ContractEditor({
     await refetchCrew();
     setBusy(null);
     if (!res.ok) {
-      toast(j.error === "forbidden" ? "Không có quyền." : "Lưu nhân sự thất bại.");
+      toast(j.error === "forbidden" ? "Không có quyền." : `Lưu nhân sự thất bại: ${j.error ?? "lỗi không rõ"}`);
       return;
     }
     toast(

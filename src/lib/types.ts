@@ -394,6 +394,11 @@ export interface ContractCrew {
   paid_at: string | null;
   position: number;
   created_at: string;
+  /** Thông tin show studio gán cho người này. */
+  task: string | null;
+  side: string | null;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 export type PaymentKind = "deposit" | "installment" | "final" | "other";
