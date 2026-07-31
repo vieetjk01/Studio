@@ -69,7 +69,14 @@ export async function GET(req: Request) {
   if (!phones.length) return NextResponse.json({ busy: {} });
 
   const [{ data: marks }, { data: assigns }] = await Promise.all([
-    db.from("crew_unavailable").select("phone, start_time, end_time, title, note").eq("date", date).in("phone", phones),
+    // Cách ly: mốc của chính studio này + mốc thợ tự báo. Studio khác xếp gì
+    // cho thợ là việc của họ, không lộ sang đây.
+    db
+      .from("crew_unavailable")
+      .select("phone, start_time, end_time, title, note")
+      .eq("date", date)
+      .in("phone", phones)
+      .or(`owner_id.is.null,owner_id.eq.${profile.id}`),
     db
       .from("contract_crew")
       .select("phone, contract:studio_contracts!inner(id, owner_id, title, event_date, status)")

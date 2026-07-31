@@ -9,25 +9,21 @@ export type CrewProfile = {
   owner_id: string;
   studio_name: string;
   name: string | null;
-  email: string | null;
   address: string | null;
-  birthday: string | null;
-  id_number: string | null;
-  bank_name: string | null;
   bank_account: string | null;
   skills: string | null;
   status: string | null;
   self_filled_at: string | null;
 };
 
+/**
+ * Hồ sơ thợ gọn đúng những gì studio cần để xếp việc và trả lương. SĐT không
+ * nằm trong danh sách này vì nó là danh tính của thợ — hiện ra để đối chiếu chứ
+ * không sửa được.
+ */
 const FIELDS: { key: keyof CrewProfile; label: string; type?: string }[] = [
-  { key: "name", label: "Họ tên" },
-  { key: "email", label: "Email", type: "email" },
-  { key: "birthday", label: "Ngày sinh", type: "date" },
   { key: "address", label: "Địa chỉ" },
-  { key: "id_number", label: "Số CCCD" },
-  { key: "bank_name", label: "Ngân hàng" },
-  { key: "bank_account", label: "Số tài khoản" },
+  { key: "bank_account", label: "Số tài khoản ngân hàng" },
   { key: "skills", label: "Kỹ năng / thiết bị" },
 ];
 
@@ -86,6 +82,7 @@ export function CrewProfileCard({ profiles, phone, onSaved }: { profiles: CrewPr
 
               {openId === p.id && (
                 <div className="mt-3 space-y-2">
+                  <input className="input" readOnly value={phone} aria-label="Số điện thoại" title="Số điện thoại là danh tính của bạn, không sửa được ở đây" />
                   {FIELDS.map((f) => (
                     <input
                       key={f.key as string}
@@ -146,6 +143,7 @@ export function CrewRegisterCard({ studioName, crewToken, phone }: { studioName:
         Điền thông tin để studio thêm bạn vào sổ thợ. Studio duyệt xong bạn sẽ nhận được lịch tại đây.
       </p>
       <div className="space-y-2">
+        <input className="input" readOnly value={phone} aria-label="Số điện thoại" />
         {FIELDS.map((f) => (
           <input
             key={f.key as string}
