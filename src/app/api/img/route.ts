@@ -99,6 +99,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "bad_id" }, { status: 400 });
   }
 
+  // ── Direct-from-Drive download (dl=1) ─────────────────────────────────────
+  // Hand the browser straight to Google for "save the original": Drive serves
+  // the file, so ZERO bytes cross Vercel or Supabase — originals average ~11 MB
+  // each, so this is the whole ballgame for download-heavy albums.
+  //
+  // Only valid when the download is the UNTOUCHED original. A watermarked save
+  // needs the pixels in a canvas, and Drive sends no CORS headers, so those
+  // still take the proxy path below. Callers decide; see lib/download.ts.
+  if (searchParams.get("dl") === "1") {
+    return NextResponse.redirect(
+      `https://drive.usercontent.google.com/download?id=${id}&export=download`,
+      { status: 302, headers: { "Cache-Control": CACHE_OK } },
+    );
+  }
+
   // Original-quality mode (album export, ZIP/download of originals): serve the
   // full-resolution file as-is, no width clamp, no re-encode.
   if (searchParams.get("orig") === "1") {

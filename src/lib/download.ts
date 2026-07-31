@@ -71,6 +71,10 @@ export async function buildZip(
   for (const item of items) {
     try {
       // Originals: pull the untouched file from Drive (no resize, no watermark).
+      // These CANNOT go direct like downloadImage() does — a ZIP needs the bytes
+      // inside JS, and Drive serves no CORS headers, so the fetch would fail.
+      // The zero-bandwidth bulk path is the Drive FOLDER link (DriveDownload in
+      // the gallery), which lets Google zip and serve the whole set itself.
       const url = opts.original
         ? `/api/img?id=${encodeURIComponent(item.fileId)}&orig=1`
         : `/api/img?id=${encodeURIComponent(item.fileId)}&w=${width}`;
@@ -99,17 +103,25 @@ function ensureExt(name: string, fallback: string): string {
 
 /**
  * Tải một ảnh Drive lẻ. Nếu có `watermark` → đóng watermark bằng canvas (ảnh
- * ~2560px) để ảnh tải về vẫn được bảo vệ; nếu không → tải thẳng bản GỐC full-size.
+ * ~2560px) để ảnh tải về vẫn được bảo vệ; nếu không → tải THẲNG từ Drive.
  */
 export async function downloadImage(fileId: string, name: string, watermark?: string | null): Promise<void> {
   if (watermark) {
     const img = await loadImage(`/api/img?id=${encodeURIComponent(fileId)}&w=2560`);
     const blob = await watermarkImage(img, watermark);
     triggerDownload(blob, ensureExt(name, "jpg"));
-  } else {
-    const res = await fetch(`/api/img?id=${encodeURIComponent(fileId)}&orig=1`);
-    triggerDownload(await res.blob(), name);
+    return;
   }
+  // Không watermark ⇒ khách nhận đúng file gốc, nên để Google phục vụ luôn.
+  // /api/img?dl=1 chỉ 302 sang Drive: không byte nào đi qua Vercel/Supabase
+  // (ảnh gốc trung bình ~11 MB — tải thẳng là khác biệt lớn nhất về băng thông).
+  // Drive trả Content-Disposition: attachment nên trình duyệt tải xuống mà
+  // không rời trang. Đánh đổi: tên file là tên trên Drive, vì thuộc tính
+  // `download` không có hiệu lực sau khi chuyển hướng sang miền khác.
+  const a = document.createElement("a");
+  a.href = `/api/img?id=${encodeURIComponent(fileId)}&dl=1`;
+  a.rel = "noopener";
+  a.click();
 }
 
 export function triggerDownload(blob: Blob, filename: string) {
