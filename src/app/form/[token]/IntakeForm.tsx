@@ -1,5 +1,7 @@
 "use client";
 
+import TimeInput from "@/components/TimeInput";
+
 import { useState } from "react";
 import { Check, Loader2, Send, Pencil } from "lucide-react";
 import LocationPicker from "@/components/LocationPicker";
@@ -122,11 +124,11 @@ export default function IntakeForm({
               </div>
               <div>
                 <label className={lbl}>Giờ makeup</label>
-                <input className={field} type="time" value={brideMakeup} onChange={(e) => setBrideMakeup(e.target.value)} />
+                <TimeInput className={field} value={brideMakeup} onChange={setBrideMakeup} />
               </div>
               <div>
                 <label className={lbl}>Giờ làm lễ nhà gái</label>
-                <input className={field} type="time" value={brideCeremony} onChange={(e) => setBrideCeremony(e.target.value)} />
+                <TimeInput className={field} value={brideCeremony} onChange={setBrideCeremony} />
               </div>
             </div>
             <div className="mt-3">
@@ -148,11 +150,11 @@ export default function IntakeForm({
               </div>
               <div>
                 <label className={lbl}>Giờ nhà trai xuất phát</label>
-                <input className={field} type="time" value={groomDepart} onChange={(e) => setGroomDepart(e.target.value)} />
+                <TimeInput className={field} value={groomDepart} onChange={setGroomDepart} />
               </div>
               <div>
                 <label className={lbl}>Giờ làm lễ nhà trai</label>
-                <input className={field} type="time" value={groomCeremony} onChange={(e) => setGroomCeremony(e.target.value)} />
+                <TimeInput className={field} value={groomCeremony} onChange={setGroomCeremony} />
               </div>
             </div>
             <div className="mt-3">
@@ -165,7 +167,7 @@ export default function IntakeForm({
             <h2 className="font-serif text-lg font-medium">Phần 3 · Tiệc cưới / địa điểm khác</h2>
             <div className="mt-3">
               <label className={lbl}>Giờ đãi tiệc</label>
-              <input className={field} type="time" value={receptionTime} onChange={(e) => setReceptionTime(e.target.value)} />
+              <TimeInput className={field} value={receptionTime} onChange={setReceptionTime} />
             </div>
             <div className="mt-3">
               <label className={lbl}>Vị trí nơi đãi tiệc</label>
@@ -187,7 +189,7 @@ export default function IntakeForm({
           </div>
           <div className="mt-3">
             <label className={lbl}>Thời gian bắt đầu</label>
-            <input className={field} type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            <TimeInput className={field} value={startTime} onChange={setStartTime} />
           </div>
           <div className="mt-3">
             <label className={lbl}>Vị trí</label>

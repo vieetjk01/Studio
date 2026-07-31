@@ -71,6 +71,7 @@ import {
   type CrewStatus,
 } from "@/lib/types";
 import { CREW_TASK_LABEL, CREW_SIDE_LABEL, CREW_TASKS, CREW_SIDES } from "@/lib/crew-show";
+import TimeInput from "@/components/TimeInput";
 
 // unit_price giữ ĐỘ LỚN (số dương khách nhập); is_discount đánh dấu đây là dòng
 // giảm giá — khi lưu sẽ ghi unit_price ÂM để trừ vào tổng (không cần cột DB mới).
@@ -486,7 +487,9 @@ export default function ContractEditor({
 
       // Bảng CỐ ĐỊNH thay vì toast 2,2 giây: dòng truy vết dài, tắt trước khi
       // đọc xong thì vô dụng.
-      const trace = j.timeTrace ?? [];
+      // Chỉ báo khi giá trị gửi lên KHÁC giá trị đọc lại từ DB — chạy đúng thì
+      // im lặng, hỏng thì vẫn bắt được ngay lần đầu.
+      const trace = (j.timeTrace ?? []).filter((t) => t.sent !== t.db);
       if (trace.length) {
         setCrewDebug(
           trace
@@ -1823,8 +1826,8 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           <option value="">— Nhà trai/gái —</option>
                           {CREW_SIDES.map((k) => (<option key={k} value={k}>{CREW_SIDE_LABEL[k]}</option>))}
                         </select>
-                        <input type="time" className="input sm:col-span-3" value={c.start ?? ""} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, start: e.target.value } : x)))} aria-label="Từ giờ" />
-                        <input type="time" className="input sm:col-span-3" value={c.end ?? ""} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, end: e.target.value } : x)))} aria-label="Đến giờ" />
+                        <TimeInput className="input sm:col-span-3" value={c.start ?? ""} onChange={(v) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, start: v } : x)))} ariaLabel="Từ giờ" placeholder="Từ 08:00" />
+                        <TimeInput className="input sm:col-span-3" value={c.end ?? ""} onChange={(v) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, end: v } : x)))} ariaLabel="Đến giờ" placeholder="Đến 17:00" />
                       </div>
                       <input className="input mt-2" placeholder="Yêu cầu riêng gửi cho người này (vd: mang lens 35mm, có mặt 7:30)…" value={c.note} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, note: e.target.value } : x)))} />
                       {c.phone && conflictFor(c.phone) && (

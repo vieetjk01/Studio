@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Lock } from "lucide-react";
 import { todayVN } from "@/lib/date";
+import TimeInput from "@/components/TimeInput";
 import { lunarCellLabel } from "@/lib/lunar";
 import { SHIFT_LETTERS, SHIFT_COMPANY_LABEL, shiftBlockFor, type ShiftLetter } from "@/lib/crew-shift";
 
@@ -298,9 +299,9 @@ export default function CrewSchedule({
         <div className="flex flex-wrap items-center gap-2">
           {!allDay && (
             <>
-              <input type="time" className="input w-auto" value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} aria-label="Từ giờ" />
+              <TimeInput className="input w-auto" value={form.start} onChange={(v) => setForm((f) => ({ ...f, start: v }))} ariaLabel="Từ giờ" />
               <span className="text-sm" style={{ color: "var(--text3)" }}>→</span>
-              <input type="time" className="input w-auto" value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} aria-label="Đến giờ" />
+              <TimeInput className="input w-auto" value={form.end} onChange={(v) => setForm((f) => ({ ...f, end: v }))} ariaLabel="Đến giờ" />
             </>
           )}
           <input className="input flex-1" placeholder="Nội dung (tuỳ chọn)" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />

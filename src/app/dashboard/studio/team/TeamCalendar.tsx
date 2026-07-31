@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, Lock, ChevronDown, Sear
 import { CREW_ROLE_LABEL, CREW_STATUS_LABEL, type CrewRole, type CrewStatus } from "@/lib/types";
 import { lunarCellLabel } from "@/lib/lunar";
 import { todayVN } from "@/lib/date";
+import TimeInput from "@/components/TimeInput";
 import { SHIFT_COMPANY_LABEL, shiftBlockFor, type ShiftLetter } from "@/lib/crew-shift";
 
 export type TeamAssignment = {
@@ -406,9 +407,9 @@ export default function TeamCalendar({
                 </label>
                 {!form.allDay && (
                   <div className="flex items-center gap-2">
-                    <input type="time" className="input w-auto" value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} aria-label="Từ giờ" />
+                    <TimeInput className="input w-auto" value={form.start} onChange={(v) => setForm((f) => ({ ...f, start: v }))} ariaLabel="Từ giờ" />
                     <span className="text-sm" style={{ color: "var(--text3)" }}>→</span>
-                    <input type="time" className="input w-auto" value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} aria-label="Đến giờ" />
+                    <TimeInput className="input w-auto" value={form.end} onChange={(v) => setForm((f) => ({ ...f, end: v }))} ariaLabel="Đến giờ" />
                   </div>
                 )}
                 <input className="input" placeholder="Nội dung (tuỳ chọn)" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
