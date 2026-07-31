@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { limitByIp } from "@/lib/rate-limit";
-import { driveImageUrlOrNull } from "@/lib/mstudo-drive";
+import { driveImageUrlOrNull, driveFileUrlOrNull } from "@/lib/mstudo-drive";
 import { sniffImageType } from "@/lib/upload-guard";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +52,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const contentType = generic ? (isAudio ? (AUDIO_EXT[nameExt] || "audio/mpeg") : (IMAGE_EXT[nameExt] || "image/jpeg")) : mime;
   const ext = contentType === "image/webp" ? "webp" : (nameExt || contentType.split("/")[1] || (isAudio ? "mp3" : "jpg"));
 
-  // Ảnh → ưu tiên Drive admin (fallback Supabase). Audio (nhạc nền) → Supabase
-  // (proxy ảnh /api/img không phục vụ audio).
+  // Ảnh và nhạc đều ưu tiên Drive admin, chỉ fallback Supabase khi Drive hỏng.
   const buf = Buffer.from(await file.arrayBuffer());
   // Với ảnh: xác thực magic-byte thay vì tin MIME/đuôi client gửi (chống nhồi
   // tệp không-phải-ảnh vào bucket công khai). Audio giữ nguyên (không phải vector
@@ -61,10 +60,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const realImage = isImage ? sniffImageType(buf) : null;
   if (isImage && !realImage) return NextResponse.json({ error: "bad_type" }, { status: 415 });
   const storeType = realImage || contentType;
-  if (isImage) {
-    const driveUrl = await driveImageUrlOrNull(buf, `thiep-${inv.id}-${Date.now()}.${ext}`, storeType, false);
-    if (driveUrl) return NextResponse.json({ url: driveUrl });
-  }
+  const driveUrl = isImage
+    ? await driveImageUrlOrNull(buf, `thiep-${inv.id}-${Date.now()}.${ext}`, storeType, false)
+    // Nhạc đi qua route này (file nhỏ, lọt trần body) cũng vào Drive luôn —
+    // /api/file phục vụ được, không cần ở lại Supabase.
+    : await driveFileUrlOrNull(buf, `thiep-${inv.id}-${Date.now()}.${ext}`, storeType);
+  if (driveUrl) return NextResponse.json({ url: driveUrl });
 
   const path = `${inv.owner_id}/${inv.id}/${crypto.randomUUID?.() ?? Date.now()}.${ext}`;
   const { error } = await db.storage

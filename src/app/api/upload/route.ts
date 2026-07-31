@@ -34,22 +34,14 @@ export async function POST(req: Request) {
   if (!sniffed) return NextResponse.json({ error: "not_image" }, { status: 400 });
   const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
 
-  // Nội dung của tài khoản ADMIN (nội dung app) vẫn dùng Supabase; chỉ nội dung
-  // của studio/khách mới đẩy lên Drive admin.
-  const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  const isAdmin = prof?.role === "admin";
-
-  // 1) Drive admin (nếu đã kết nối & không phải admin).
-  if (!isAdmin) {
-    try {
-      const id = await uploadToAdminDrive(buf, `${user.id}-${Date.now()}.${ext}`, sniffed);
-      if (id) {
-        const url = `/api/img?id=${id}${original ? "&orig=1" : "&w=800"}`;
-        return NextResponse.json({ url, id, storage: "drive" });
-      }
-    } catch {
-      /* rơi xuống fallback Supabase */
-    }
+  // 1) Drive admin — cho MỌI tài khoản, kể cả admin. Trước đây nội dung của
+  // admin (logo, ảnh của app) cố tình ở lại Supabase; nay không còn lý do giữ
+  // ngoại lệ đó, mà mỗi byte ở lại đều ăn vào hạn mức 1 GB. Bỏ luôn truy vấn
+  // role kèm theo — không còn ai đọc tới nó.
+  const id = await uploadToAdminDrive(buf, `${user.id}-${Date.now()}.${ext}`, sniffed);
+  if (id) {
+    const url = `/api/img?id=${id}${original ? "&orig=1" : "&w=800"}`;
+    return NextResponse.json({ url, id, storage: "drive" });
   }
 
   // 2) Fallback: Supabase Storage (dùng client của user + RLS, như luồng cũ).
