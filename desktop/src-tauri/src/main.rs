@@ -784,10 +784,45 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Đổi chú thích (tooltip) của biểu tượng khay.
+///
+/// Chạy ngầm nghĩa là studio không mở bảng điều khiển, nên mọi thứ ghi ra nhật ký
+/// trong bảng đó đều vô hình. Khay là chỗ DUY NHẤT nhìn thấy được — đưa trạng thái
+/// đồng bộ (và lỗi thiếu thư mục gốc) lên đây thì mới có cách biết vì sao im lặng.
+#[tauri::command]
+fn set_tray_tooltip(app: tauri::AppHandle, text: String) {
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let _ = tray.set_tooltip(Some(text));
+    }
+}
+
+/// Nhịp nền do RUST phát, thay cho setInterval trong webview.
+///
+/// Bảng điều khiển ẩn xuống khay nghĩa là WebView2 bị che, và Chromium bóp nghẹt
+/// (có lúc dừng hẳn) mọi bộ đếm giờ của trang bị che. Hệ quả: studio dùng desktop
+/// như app studio thì engine đồng bộ gần như không chạy — thư mục trên máy không
+/// bao giờ được tạo. Luồng Rust không bị bóp, nên nó tự gọi hàm đồng bộ bên
+/// trong webview theo nhịp cố định, kể cả khi cửa sổ đang ẩn.
+fn start_background_tick(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        // Chờ webview nạp xong app.js trước nhịp đầu tiên.
+        std::thread::sleep(std::time::Duration::from_secs(20));
+        loop {
+            if let Some(w) = handle.get_webview_window("main") {
+                let _ = w.eval("window.__mstudoTick && window.__mstudoTick()");
+            }
+            std::thread::sleep(std::time::Duration::from_secs(60));
+        }
+    });
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
             setup_tray(app.handle())?;
+            start_background_tick(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -825,7 +860,8 @@ fn main() {
             create_dir,
             list_dir,
             drive_upload,
-            set_roots
+            set_roots,
+            set_tray_tooltip
         ])
         .run(tauri::generate_context!())
         .expect("Không khởi động được MStudo Desktop");

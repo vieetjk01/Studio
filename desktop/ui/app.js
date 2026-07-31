@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.2"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.3"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -819,6 +819,37 @@ function hookFocusSync() {
   _focusHooked = true;
   window.addEventListener("focus", focusSync);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) focusSync(); });
+}
+
+// ─── Nhịp do Rust phát (chạy cả khi cửa sổ ẩn) ───────────────────────────────
+// setInterval bên dưới bị Chromium bóp nghẹt khi cửa sổ bị ẩn xuống khay, nên
+// KHÔNG tin được ở chế độ chạy ngầm. Rust gọi hàm này mỗi 60 giây; nó lo phần
+// việc quan trọng nhất: tạo thư mục + tải ảnh cho hợp đồng đang thực hiện.
+let _tickCount = 0;
+window.__mstudoTick = () => {
+  trayStatus();
+  if (!cfg.token) return;
+  _tickCount++;
+  // Mỗi nhịp: hợp đồng ĐANG THỰC HIỆN (rẻ, chỉ vài hợp đồng).
+  try { runDriveWatch(); } catch { /* nhịp sau thử lại */ }
+  // Mỗi 5 nhịp (~5 phút): quét TOÀN BỘ hợp đồng đã chốt để bắt hợp đồng mới ký
+  // và hợp đồng chưa có thư mục.
+  if (_tickCount % 5 === 1) {
+    try { runSync(false); } catch { /* nhịp sau thử lại */ }
+    try { runDriveSync(false); } catch { /* nhịp sau thử lại */ }
+  }
+};
+
+// Trạng thái đưa lên tooltip khay — cái duy nhất nhìn được khi bảng điều khiển
+// đang ẩn. Thiếu đăng nhập hoặc thiếu thư mục gốc thì đồng bộ đứng im hoàn toàn,
+// và đây là chỗ duy nhất nói ra điều đó.
+function trayStatus() {
+  let s;
+  if (!cfg.token) s = "⚠ Chưa đăng nhập — mở bảng điều khiển để đăng nhập";
+  else if (!cfg.mediaDir) s = "⚠ Chưa chọn thư mục gốc ảnh/video — thư mục hợp đồng KHÔNG được tạo";
+  else if (cfg.lastDriveSync) s = "Đang chạy ngầm · Drive lần cuối " + new Date(cfg.lastDriveSync).toLocaleString("vi-VN");
+  else s = "Đang chạy ngầm · chưa đồng bộ Drive lần nào";
+  invoke("set_tray_tooltip", { text: "MStudo Desktop — " + s }).catch(() => {});
 }
 
 // ─── Lịch chạy ───────────────────────────────────────────────────────────────
