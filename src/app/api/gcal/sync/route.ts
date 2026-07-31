@@ -11,7 +11,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { upsertGCalEvent, deleteGCalEvent } from "@/lib/gcal";
+import { upsertGCalEvent, deleteGCalEvent, contractToGCal, GCAL_CONTRACT_STATUSES } from "@/lib/gcal";
 import { SHOOT_TYPE_LABEL } from "@/lib/types";
 import type { ShootType } from "@/lib/types";
 
@@ -83,7 +83,7 @@ async function handle(req: Request) {
     // Draft/sent (unsigned) contracts don't go on the calendar yet — only once
     // confirmed/signed. If a previously-synced contract drops back to draft,
     // remove its calendar event.
-    const onCalendar = ["approved", "in_progress", "completed"].includes(ct.status as string);
+    const onCalendar = GCAL_CONTRACT_STATUSES.includes(ct.status as string);
     if (action === "upsert" && !onCalendar) {
       if (ct.gcal_event_id) await deleteGCalEvent(user.id, ct.gcal_event_id);
       return NextResponse.json({ ok: true, synced: false, reason: "hợp đồng chưa xác nhận/ký — chỉ lịch đã chốt mới lên Google" });
@@ -94,18 +94,9 @@ async function handle(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    const typeLabel = SHOOT_TYPE_LABEL[ct.shoot_type as ShootType] ?? ct.shoot_type ?? "";
-    const summary = ct.client_name
-      ? `${ct.client_name}${typeLabel ? ` · ${typeLabel}` : ""}${ct.title ? ` — ${ct.title}` : ""}`
-      : ct.title || "Lịch chụp";
-    const description = [
-      ct.client_name ? `Khách: ${ct.client_name}` : null,
-      typeLabel ? `Loại: ${typeLabel}` : null,
-    ].filter(Boolean).join("\n");
-
     const gcalId = await upsertGCalEvent(
       user.id,
-      { summary, description, location: ct.location ?? undefined, date: ct.event_date, time: ct.event_time, duration: 180 },
+      contractToGCal(ct, SHOOT_TYPE_LABEL[ct.shoot_type as ShootType] ?? ""),
       ct.gcal_event_id,
     );
     if (gcalId) await db.from("studio_contracts").update({ gcal_event_id: gcalId }).eq("id", id);

@@ -60,6 +60,38 @@ async function calendarFor(userId: string) {
  * DB có token. Token bị thu hồi ở phía Google vẫn nằm nguyên trong DB, nên chỉ
  * kiểm tra sự tồn tại là báo "đã kết nối" trong khi mọi lượt đồng bộ đều trượt.
  */
+/**
+ * Dựng nội dung sự kiện Google Lịch từ một hợp đồng.
+ *
+ * Tách ra dùng chung cho cả lúc lưu lẻ lẫn lúc đồng bộ hàng loạt — hai bản sao
+ * trôi dạt khỏi nhau đúng là kiểu lỗi đã tốn của dự án này cả buổi.
+ */
+export function contractToGCal(ct: {
+  title?: string | null;
+  client_name?: string | null;
+  shoot_type?: string | null;
+  event_date: string;
+  event_time?: string | null;
+  location?: string | null;
+}, typeLabel: string): GCalEventInput {
+  const summary = ct.client_name
+    ? `${ct.client_name}${typeLabel ? ` · ${typeLabel}` : ""}${ct.title ? ` — ${ct.title}` : ""}`
+    : ct.title || "Lịch chụp";
+  return {
+    summary,
+    description: [ct.client_name ? `Khách: ${ct.client_name}` : null, typeLabel ? `Loại: ${typeLabel}` : null]
+      .filter(Boolean)
+      .join("\n"),
+    location: ct.location ?? undefined,
+    date: ct.event_date,
+    time: ct.event_time,
+    duration: 180,
+  };
+}
+
+/** Hợp đồng ở trạng thái nào thì được lên lịch Google. */
+export const GCAL_CONTRACT_STATUSES = ["approved", "in_progress", "completed"];
+
 export async function gcalHealth(userId: string): Promise<{ connected: boolean; ok: boolean; error: string | null }> {
   const db = createAdminClient();
   const { data } = await db.from("profiles").select("google_refresh_token").eq("id", userId).maybeSingle();

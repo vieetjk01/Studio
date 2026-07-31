@@ -66,6 +66,32 @@ export default function CalendarView({
 }) {
   const [feedCopied, setFeedCopied] = useState(false);
   const [gcalMsg, setGcalMsg] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+
+  /** Đẩy toàn bộ lịch ĐÃ CÓ lên Google — dành cho lịch tạo trước khi kết nối. */
+  async function backfillGcal() {
+    setBackfilling(true);
+    setGcalMsg(null);
+    try {
+      const r = await fetch("/api/gcal/backfill", { method: "POST" });
+      const j = (await r.json().catch(() => ({}))) as {
+        ok?: boolean; reason?: string; contracts?: number; events?: number; failed?: number; done?: boolean; firstError?: string | null;
+      };
+      if (!r.ok || !j.ok) {
+        setGcalMsg(`Không đồng bộ được: ${j.reason ?? "lỗi không rõ"}`);
+        return;
+      }
+      setGcalMsg(
+        `Đã đẩy ${j.contracts ?? 0} hợp đồng và ${j.events ?? 0} ghi chú lên Google Lịch` +
+          (j.failed ? ` · ${j.failed} mục lỗi (${j.firstError ?? ""})` : "") +
+          (j.done === false ? " · còn dở, bấm lại để chạy tiếp" : "."),
+      );
+    } catch (e) {
+      setGcalMsg(`Không đồng bộ được: ${(e as Error)?.message || e}`);
+    } finally {
+      setBackfilling(false);
+    }
+  }
   const supabase = createClient();
   const todayStr = todayVN();
   const [y, mIdx] = todayStr.split("-").map(Number);
@@ -238,6 +264,7 @@ export default function CalendarView({
           ) : gcal.ok ? (
             <p className="text-[13px]" style={{ color: "var(--s-green)" }}>
               Google Lịch: đã kết nối và hoạt động. Chỉ hợp đồng ĐÃ XÁC NHẬN/KÝ và có ngày chụp mới được đẩy lên.
+              Lịch tạo TRƯỚC khi kết nối không tự lên — dùng nút bên dưới.
             </p>
           ) : (
             <div className="text-[13px]" style={{ color: "var(--s-amber)" }}>
@@ -245,6 +272,11 @@ export default function CalendarView({
               <div className="mt-1 font-mono text-[11px]" style={{ color: "var(--text3)" }}>{gcal.error}</div>
               <a href="/dashboard/connections" className="mt-1 inline-block" style={{ color: "var(--gold)" }}>Ngắt rồi kết nối lại</a>
             </div>
+          )}
+          {gcal.ok && (
+            <button onClick={backfillGcal} disabled={backfilling} className="btn-ghost mt-2 px-3 py-1.5 text-xs">
+              {backfilling ? "Đang đẩy…" : "Đồng bộ toàn bộ lịch cũ lên Google"}
+            </button>
           )}
           {gcalMsg && (
             <p className="mt-2 rounded-lg px-2.5 py-1.5 font-mono text-[11px]" style={{ background: "var(--surface2)", color: "var(--s-amber)" }}>{gcalMsg}</p>
