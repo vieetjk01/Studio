@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteFromAdminDrive, driveIdFromUrl } from "@/lib/mstudo-drive";
 
 export const dynamic = "force-dynamic";
+// Xoá từng file trên Drive là một lệnh gọi API mỗi file — cần thời gian.
+export const maxDuration = 300;
 
 const BUCKET = "payment-proofs";
 const MARKER = `/${BUCKET}/`;
@@ -42,13 +45,21 @@ export async function GET(req: NextRequest) {
       db.from("contract_payments").select("id, proof_url").eq("contract_id", c.id).not("proof_url", "is", null),
     ]);
 
-    const paths = [
-      ...(clientProofs ?? []).map((r) => pathFromUrl(r.url)),
-      ...(payments ?? []).map((r) => pathFromUrl(r.proof_url)),
-    ].filter((p): p is string => !!p);
+    // Ảnh chuyển khoản nằm ở MỘT TRONG HAI nơi: Drive admin (đường ưu tiên) hoặc
+    // bucket Supabase (fallback khi Drive hỏng). Trước đây job chỉ dọn phía
+    // Supabase nên ảnh trên Drive tồn tại vĩnh viễn — dọn cả hai.
+    const urls = [
+      ...(clientProofs ?? []).map((r) => r.url as string | null),
+      ...(payments ?? []).map((r) => r.proof_url as string | null),
+    ];
+    const paths = urls.map(pathFromUrl).filter((p): p is string => !!p);
+    const driveIds = urls.map(driveIdFromUrl).filter((d): d is string => !!d);
 
     if (paths.length > 0) {
       await db.storage.from(BUCKET).remove(paths);
+    }
+    for (const id of driveIds) {
+      await deleteFromAdminDrive(id);
     }
     // Drop the records / references that pointed at the deleted files.
     await db.from("contract_client_proofs").delete().eq("contract_id", c.id);
@@ -58,12 +69,12 @@ export async function GET(req: NextRequest) {
 
     await db.from("studio_contracts").update({ proofs_purged_at: new Date().toISOString() }).eq("id", c.id);
 
-    if (paths.length > 0) {
+    if (paths.length + driveIds.length > 0) {
       await db.from("studio_notifications").insert({
         owner_id: c.owner_id,
         contract_id: c.id,
         kind: "info",
-        message: `Đã tự động xoá ${paths.length} ảnh chuyển khoản của hợp đồng "${c.title || c.code || ""}" (sau 1 tháng hoàn thành) để tiết kiệm dung lượng.`,
+        message: `Đã tự động xoá ${paths.length + driveIds.length} ảnh chuyển khoản của hợp đồng "${c.title || c.code || ""}" (sau 1 tháng hoàn thành) để tiết kiệm dung lượng.`,
       });
     }
     purged++;

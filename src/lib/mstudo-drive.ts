@@ -139,6 +139,32 @@ export async function uploadToAdminDrive(buf: Buffer, name: string, mime: string
 }
 
 /**
+ * Rút file id Drive ra khỏi một URL do chính mình sinh (/api/img?id=… hoặc
+ * /api/file?id=…). Trả null nếu là URL khác (vd public URL của Supabase).
+ */
+export function driveIdFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/^\/api\/(?:img|file)\?id=([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+/** Xoá một file khỏi Drive admin. true nếu đã xoá (hoặc vốn không còn). */
+export async function deleteFromAdminDrive(fileId: string): Promise<boolean> {
+  try {
+    const ctx = await driveCtx();
+    if (!ctx) return false;
+    await ctx.drive.files.delete({ fileId });
+    return true;
+  } catch (e) {
+    // 404 = đã bị xoá từ trước → coi như xong, đừng thử lại mãi.
+    const status = (e as { code?: number })?.code;
+    if (status === 404) return true;
+    console.error("[admin-drive] delete failed:", (e as Error)?.message || e);
+    return false;
+  }
+}
+
+/**
  * Thử lưu file BẤT KỲ (nhạc nền…) vào Drive admin → trả URL phục vụ qua
  * /api/file, hoặc null để caller fallback Supabase.
  */

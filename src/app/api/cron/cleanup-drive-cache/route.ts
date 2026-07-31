@@ -45,6 +45,30 @@ function sizeOf(o: StorageObject) {
   return Number(o.metadata?.size ?? 0);
 }
 
+// Bucket mà /api/upload/large dùng làm chỗ trung chuyển (mặc định của client).
+const TMP_BUCKET = "logos";
+// Chỉ xoá bản tạm đã quá cũ so với một phiên upload — đừng cắt ngang file mà
+// finalize đang xử lý dở.
+const TMP_MAX_AGE_MS = 6 * 3600 * 1000;
+
+/** Dọn bản tạm bị bỏ rơi dưới `tmp/<user_id>/` của luồng tải ảnh lớn. */
+async function sweepTmp(db: ReturnType<typeof createAdminClient>): Promise<number> {
+  const cutoff = Date.now() - TMP_MAX_AGE_MS;
+  let removed = 0;
+  const { data: users } = await db.storage.from(TMP_BUCKET).list("tmp", { limit: PAGE });
+  for (const u of (users ?? []) as StorageObject[]) {
+    if (u.id) continue; // chỉ đi vào thư mục user, bỏ qua file lạc
+    const { data: files } = await db.storage.from(TMP_BUCKET).list(`tmp/${u.name}`, { limit: PAGE });
+    const stale = ((files ?? []) as StorageObject[])
+      .filter((f) => f.id && f.created_at && new Date(f.created_at).getTime() < cutoff)
+      .map((f) => `tmp/${u.name}/${f.name}`);
+    if (stale.length === 0) continue;
+    const { error } = await db.storage.from(TMP_BUCKET).remove(stale);
+    if (!error) removed += stale.length;
+  }
+  return removed;
+}
+
 /**
  * Daily job: prune the drive-image cache bucket so Supabase storage doesn't grow
  * unbounded as new albums are viewed. Scheduled via vercel.json crons.
@@ -58,9 +82,12 @@ export async function GET(req: NextRequest) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!BUCKET) return NextResponse.json({ ok: true, skipped: "no cache bucket configured" });
-
   const db = createAdminClient();
+  // Rác `tmp/` là của luồng tải ảnh lớn, KHÔNG liên quan tới bucket cache — phải
+  // dọn kể cả khi cache đã tắt (cấu hình khuyến nghị ở gói Free).
+  const tmpRemoved = await sweepTmp(db);
+  if (!BUCKET) return NextResponse.json({ ok: true, tmpRemoved, skipped: "no cache bucket configured" });
+
   const purge = req.nextUrl.searchParams.get("purge") === "1";
   const startedAt = Date.now();
   const outOfTime = () => Date.now() - startedAt > TIME_BUDGET_MS;
@@ -142,6 +169,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     bucket: BUCKET,
+    tmpRemoved,
     mode: purge ? "purge" : "prune",
     maxAgeDays: MAX_AGE_DAYS,
     maxBytes: MAX_BYTES,
