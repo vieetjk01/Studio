@@ -69,14 +69,15 @@ export async function GET(req: Request) {
   if (!phones.length) return NextResponse.json({ busy: {} });
 
   const [{ data: marks }, { data: assigns }] = await Promise.all([
-    // Cách ly: mốc của chính studio này + mốc thợ tự báo. Studio khác xếp gì
-    // cho thợ là việc của họ, không lộ sang đây.
+    // Cách ly: chỉ mốc thuộc studio này. Thợ bận vì studio khác là việc của họ,
+    // không lộ sang đây — đổi lại studio này chỉ được cảnh báo dựa trên những
+    // gì thợ đã báo RIÊNG cho mình.
     db
       .from("crew_unavailable")
       .select("phone, start_time, end_time, title, note")
       .eq("date", date)
       .in("phone", phones)
-      .or(`owner_id.is.null,owner_id.eq.${profile.id}`),
+      .eq("owner_id", profile.id),
     db
       .from("contract_crew")
       .select("phone, contract:studio_contracts!inner(id, owner_id, title, event_date, status)")
@@ -174,6 +175,7 @@ export async function POST(req: Request) {
         overnight: !!(start && end && end <= start),
         title: label,
         owner_id: ownerId,
+        created_by: "studio",
         contract_crew_id: assignId,
       };
       // Cột contract_crew_id cũng đến từ migration; thiếu nó thì bỏ qua phần

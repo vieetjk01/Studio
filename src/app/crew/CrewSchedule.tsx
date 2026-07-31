@@ -14,9 +14,13 @@ export type ScheduleEntry = {
   end_time: string | null;
   overnight: boolean;
   title: string | null;
-  /** Có giá trị ⇒ studio xếp hộ; thợ không tự gỡ được. */
+  /** Mốc này báo cho studio nào — lịch bận tách riêng theo từng studio. */
   owner_id: string | null;
+  /** "studio" ⇒ studio xếp, thợ không tự gỡ được. */
+  created_by?: string | null;
 };
+
+export type StudioOption = { id: string; name: string };
 
 export type ShiftPlan = { company: string; shift: ShiftLetter } | null;
 
@@ -44,6 +48,7 @@ export function entryTimeLabel(e: ScheduleEntry): string {
  */
 export default function CrewSchedule({
   entries,
+  studios,
   shiftPlan,
   busy,
   onAdd,
@@ -51,9 +56,11 @@ export default function CrewSchedule({
   onShift,
 }: {
   entries: ScheduleEntry[];
+  /** Các studio đã nhận thợ này vào sổ. */
+  studios: StudioOption[];
   shiftPlan: ShiftPlan;
   busy: boolean;
-  onAdd: (v: { date: string; start: string; end: string; title: string }) => Promise<void>;
+  onAdd: (v: { date: string; start: string; end: string; title: string; studioId: string }) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onShift: (shift: ShiftLetter | "") => Promise<void>;
 }) {
@@ -63,12 +70,20 @@ export default function CrewSchedule({
   const [selected, setSelected] = useState<string>(todayStr);
   const [form, setForm] = useState({ start: "08:00", end: "17:00", title: "" });
   const [allDay, setAllDay] = useState(false);
+  // Lịch bận tách riêng theo studio: xem và báo bận cho ĐÚNG studio đang chọn.
+  // Thợ chạy nhiều nơi thì mỗi nơi một lịch, không nơi nào thấy lịch của nơi kia.
+  const [studioId, setStudioId] = useState(studios[0]?.id ?? "");
+
+  const visible = useMemo(
+    () => entries.filter((e) => (e.owner_id ?? "") === studioId),
+    [entries, studioId],
+  );
 
   const byDate = useMemo(() => {
     const map: Record<string, ScheduleEntry[]> = {};
-    for (const e of entries) (map[e.date] ||= []).push(e);
+    for (const e of visible) (map[e.date] ||= []).push(e);
     return map;
-  }, [entries]);
+  }, [visible]);
 
   const grid = useMemo(() => {
     const first = new Date(cursor.year, cursor.month, 1);
@@ -92,11 +107,13 @@ export default function CrewSchedule({
   const selShift = shiftPlan ? shiftBlockFor(selected, shiftPlan.shift) : null;
 
   async function submit() {
+    if (!studioId) return;
     await onAdd({
       date: selected,
       start: allDay ? "" : form.start,
       end: allDay ? "" : form.end,
       title: form.title,
+      studioId,
     });
     setForm((f) => ({ ...f, title: "" }));
   }
@@ -104,9 +121,32 @@ export default function CrewSchedule({
   return (
     <div className="card p-5">
       <h2 className="mb-1 font-serif text-lg font-medium">Lịch của tôi</h2>
-      <p className="mb-4 text-xs" style={{ color: "var(--text3)" }}>
+      <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
         Bấm vào một ngày rồi thêm giờ bạn đã nhận việc. Ngày không có mốc nào là ngày trống.
       </p>
+
+      {studios.length === 0 ? (
+        <p className="mb-4 rounded-xl px-3 py-2 text-xs" style={{ background: "var(--surface2)", color: "var(--text3)" }}>
+          Chưa studio nào nhận bạn vào sổ thợ, nên chưa có lịch để báo.
+        </p>
+      ) : (
+        <div className="mb-4">
+          <p className="mb-1.5 text-[11px]" style={{ color: "var(--text3)" }}>
+            Báo lịch cho studio nào? Mỗi studio một lịch riêng — nơi này không thấy lịch bạn báo cho nơi kia.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {studios.map((st) => (
+              <button
+                key={st.id}
+                onClick={() => setStudioId(st.id)}
+                className={studioId === st.id ? "btn-primary px-3 py-1.5 text-xs" : "btn-ghost px-3 py-1.5 text-xs"}
+              >
+                {st.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Ca công ty (freelancer làm ca ở nhà máy) */}
       <div className="mb-4 rounded-xl p-3" style={{ background: "var(--surface2)" }}>
@@ -202,7 +242,7 @@ export default function CrewSchedule({
               <li key={e.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm" style={{ background: "var(--surface2)" }}>
                 <span className="min-w-0">
                   <span className="block truncate">{entryTimeLabel(e)}{e.title ? ` · ${e.title}` : ""}</span>
-                  {e.owner_id && (
+                  {e.created_by === "studio" && (
                     <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text3)" }}>
                       <Lock size={10} /> studio xếp
                     </span>
@@ -210,7 +250,7 @@ export default function CrewSchedule({
                 </span>
                 {/* Mốc studio xếp hộ thì thợ không gỡ được — API cũng chặn, nút
                     này chỉ để khỏi bấm nhầm. */}
-                {!e.owner_id && (
+                {e.created_by !== "studio" && (
                   <button onClick={() => onRemove(e.id)} aria-label="Xoá mốc lịch" title="Xoá mốc lịch" className="shrink-0 rounded-md p-1.5" style={{ color: "var(--text3)" }}>
                     <Trash2 size={14} />
                   </button>
@@ -234,7 +274,7 @@ export default function CrewSchedule({
             </>
           )}
           <input className="input flex-1" placeholder="Nội dung (tuỳ chọn)" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <button onClick={submit} disabled={busy} className="btn-primary shrink-0">
+          <button onClick={submit} disabled={busy || !studioId} className="btn-primary shrink-0">
             <Plus size={15} /> Thêm
           </button>
         </div>

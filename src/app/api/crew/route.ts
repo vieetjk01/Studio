@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     title?: string;
     company?: string;
     shift?: string;
+    studioId?: string;
     captcha?: string;
   };
   const phone = digits(body.phone);
@@ -68,6 +69,15 @@ export async function POST(req: Request) {
 
   if (body.action === "busy_add") {
     if (!DATE_RE.test(body.date ?? "")) return NextResponse.json({ error: "no_date" }, { status: 400 });
+    // Mốc bận thuộc về ĐÚNG MỘT studio: thợ chạy nhiều nơi thì báo riêng cho
+    // từng nơi. Phải là studio đã nhận thợ này vào sổ, nếu không ai cầm SĐT
+    // người khác cũng nhét được lịch vào studio bất kỳ.
+    const studioId = (body.studioId || "").trim();
+    if (!studioId) return NextResponse.json({ error: "no_studio" }, { status: 400 });
+    const { data: roster } = await db.from("studio_crew").select("phone").eq("owner_id", studioId);
+    if (!(roster ?? []).some((r) => digits(r.phone as string) === phone)) {
+      return NextResponse.json({ error: "not_in_roster" }, { status: 403 });
+    }
     const start = normTime(body.start);
     const end = normTime(body.end);
     // Chỉ nhận CẢ HAI giờ hoặc KHÔNG giờ nào. Một đầu giờ lửng thì không biểu
@@ -86,6 +96,8 @@ export async function POST(req: Request) {
       overnight: !!(start && end && end <= start),
       title: body.title?.trim() || null,
       note: body.note?.trim() || null,
+      owner_id: studioId,
+      created_by: "crew",
     });
     if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     return NextResponse.json({ ok: true });
@@ -93,9 +105,10 @@ export async function POST(req: Request) {
 
   if (body.action === "busy_remove") {
     if (!body.id) return NextResponse.json({ error: "bad_request" }, { status: 400 });
-    // Chỉ xoá được mốc của chính SĐT này, và chỉ mốc do THỢ tự thêm — mốc studio
-    // xếp hộ (owner_id khác null) thì studio mới được gỡ.
-    await db.from("crew_unavailable").delete().eq("id", body.id).eq("phone", phone).is("owner_id", null);
+    // Chỉ xoá mốc của chính SĐT này và do CHÍNH THỢ thêm — mốc studio xếp thì
+    // studio mới được gỡ. Phân biệt bằng created_by chứ không bằng owner_id
+    // nữa, vì giờ mốc nào cũng có owner_id.
+    await db.from("crew_unavailable").delete().eq("id", body.id).eq("phone", phone).eq("created_by", "crew");
     return NextResponse.json({ ok: true });
   }
 

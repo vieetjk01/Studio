@@ -60,8 +60,9 @@ export async function POST(req: Request) {
     end_time: end,
     overnight: !!(start && end && end <= start),
     title: body?.title?.trim() || null,
-    // Đánh dấu studio xếp hộ → thợ thấy được nhưng không tự gỡ.
+    // Studio xếp → thợ thấy được nhưng không tự gỡ.
     owner_id: g.ownerId,
+    created_by: "studio",
   });
   if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
   return NextResponse.json({ ok: true });
@@ -74,6 +75,12 @@ export async function DELETE(req: Request) {
   if (!body?.id) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
   // Chỉ gỡ được mốc do CHÍNH studio này xếp — mốc thợ tự thêm là của thợ.
-  await g.db!.from("crew_unavailable").delete().eq("id", body.id).eq("phone", g.phone).eq("owner_id", g.ownerId);
+  await g.db!
+    .from("crew_unavailable")
+    .delete()
+    .eq("id", body.id)
+    .eq("phone", g.phone)
+    .eq("owner_id", g.ownerId)
+    .eq("created_by", "studio");
   return NextResponse.json({ ok: true });
 }

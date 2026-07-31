@@ -68,17 +68,10 @@ export default async function TeamPage() {
       // select("*") chứ không liệt kê cột: chạy được cả TRƯỚC khi migration
       // crew_schedule.sql chạy (lúc đó chưa có start_time/overnight/…). Thiếu cột
       // thì mốc cũ hiện thành "cả ngày", thay vì cả truy vấn hỏng và mất sạch.
-      // CÁCH LY GIỮA CÁC STUDIO: bảng này khoá theo SĐT nên một thợ chạy nhiều
-      // nơi sẽ có mốc của nhiều studio. Chỉ lấy mốc do CHÍNH studio này xếp
-      // (owner_id = mình) cộng với mốc THỢ TỰ BÁO (owner_id null) — cái sau là
-      // thợ chủ động công bố mình bận, và cũng là thứ khiến "ngày đó còn trống
-      // không" có nghĩa. Việc studio khác xếp thì tuyệt đối không hiện ra đây.
-      supabase
-        .from("crew_unavailable")
-        .select("*")
-        .in("phone", phones)
-        .or(`owner_id.is.null,owner_id.eq.${profile.id}`)
-        .order("date"),
+      // CÁCH LY TOÀN BỘ: mỗi mốc bận thuộc đúng MỘT studio, kể cả mốc thợ tự
+      // báo (thợ chạy nhiều nơi thì báo riêng cho từng nơi). Nên chỉ lọc
+      // owner_id = studio này; không còn nhánh "mốc chung".
+      supabase.from("crew_unavailable").select("*").in("phone", phones).eq("owner_id", profile.id).order("date"),
       supabase.from("crew_shift_plan").select("phone, company, shift").in("phone", phones),
     ]);
     schedule = ((rows ?? []) as CrewScheduleRow[]).map((r) => ({ ...r, phone: digits(r.phone) }));

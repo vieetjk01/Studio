@@ -110,9 +110,8 @@ export default async function ContractPage({ params }: { params: { id: string } 
     supabase.from("studio_pricelist").select("name, price, unit").eq("owner_id", profile.id).eq("active", true).gt("price", 0).order("position"),
     supabase.from("contract_client_proofs").select("id, url, note, uploaded_at, plan_id").eq("contract_id", params.id).order("uploaded_at", { ascending: false }),
     ed ? supabase.from("contract_crew").select("phone, contract:studio_contracts!inner(id, owner_id, event_date, title)").eq("contract.owner_id", profile.id).eq("contract.event_date", ed).not("phone", "is", null) : empty,
-    // Chỉ mốc của studio này + mốc thợ tự báo — xem ghi chú cách ly ở
-    // dashboard/studio/team/page.tsx.
-    ed ? supabase.from("crew_unavailable").select("*").eq("date", ed).or(`owner_id.is.null,owner_id.eq.${profile.id}`) : empty,
+    // Chỉ mốc thuộc studio này — xem ghi chú cách ly ở team/page.tsx.
+    ed ? supabase.from("crew_unavailable").select("*").eq("date", ed).eq("owner_id", profile.id) : empty,
     ed ? supabase.from("studio_contracts").select("id, title, client_name").eq("owner_id", profile.id).eq("event_date", ed).neq("id", params.id).neq("status", "cancelled") : empty,
   ]);
 

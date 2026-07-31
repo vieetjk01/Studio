@@ -133,7 +133,7 @@ export default function CrewPortal({ studio }: { studio?: { name: string; crewTo
     if (res.ok) await load();
   }
 
-  async function addEntry(v: { date: string; start: string; end: string; title: string }) {
+  async function addEntry(v: { date: string; start: string; end: string; title: string; studioId: string }) {
     await post({ action: "busy_add", ...v });
   }
 
@@ -264,6 +264,11 @@ export default function CrewPortal({ studio }: { studio?: { name: string; crewTo
 
           <CrewSchedule
             entries={schedule}
+            studios={profiles
+              // Chỉ studio đã NHẬN vào sổ mới báo lịch được; hồ sơ đang chờ
+              // duyệt thì chưa có chỗ để gắn mốc.
+              .filter((p) => p.status !== "pending")
+              .map((p) => ({ id: p.owner_id, name: p.studio_name }))}
             shiftPlan={shiftPlan}
             busy={busy === "sched"}
             onAdd={addEntry}

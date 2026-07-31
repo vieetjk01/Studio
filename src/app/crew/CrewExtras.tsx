@@ -9,7 +9,9 @@ export type CrewProfile = {
   owner_id: string;
   studio_name: string;
   name: string | null;
+  email: string | null;
   address: string | null;
+  bank_name: string | null;
   bank_account: string | null;
   skills: string | null;
   status: string | null;
@@ -22,8 +24,10 @@ export type CrewProfile = {
  * không sửa được.
  */
 const FIELDS: { key: keyof CrewProfile; label: string; type?: string }[] = [
+  { key: "email", label: "Email", type: "email" },
   { key: "address", label: "Địa chỉ" },
-  { key: "bank_account", label: "Số tài khoản ngân hàng" },
+  { key: "bank_name", label: "Tên ngân hàng" },
+  { key: "bank_account", label: "Số tài khoản" },
   { key: "skills", label: "Kỹ năng / thiết bị" },
 ];
 

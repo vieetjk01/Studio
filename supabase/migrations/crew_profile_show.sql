@@ -7,7 +7,9 @@
 -- 1) Hồ sơ thợ — studio nhập, hoặc thợ tự điền nếu studio để trống.
 --    Gọn đúng những gì cần để xếp việc và trả lương; SĐT đã có sẵn trong bảng
 --    và là danh tính của thợ nên không thêm gì cho nó.
+alter table public.studio_crew add column if not exists email        text;
 alter table public.studio_crew add column if not exists address      text;
+alter table public.studio_crew add column if not exists bank_name    text;   -- tên ngân hàng của STK
 alter table public.studio_crew add column if not exists bank_account text;
 alter table public.studio_crew add column if not exists skills       text;
 -- Thợ tự điền lúc nào (để studio biết dòng nào do thợ khai).
@@ -46,3 +48,27 @@ alter table public.crew_account enable row level security;
 drop policy if exists crew_account_read on public.crew_account;
 create policy crew_account_read on public.crew_account
   for select using (auth.role() = 'authenticated');
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 6) Cách ly HOÀN TOÀN lịch bận theo studio.
+--
+-- crew_unavailable khoá theo SĐT nên một mốc vốn hiện với MỌI studio mà thợ đó
+-- thuộc về. Nay mỗi mốc phải thuộc đúng một studio (owner_id), kể cả mốc thợ tự
+-- báo — thợ chạy cho ba nơi thì báo bận riêng cho từng nơi.
+--
+-- owner_id đã có sẵn nhưng trước đây mang nghĩa "studio xếp hộ" (null = thợ tự
+-- thêm), nên cần cột riêng để biết AI viết ra mốc đó — dùng cho quyền xoá: thợ
+-- chỉ gỡ được mốc mình tự thêm, studio chỉ gỡ được mốc mình xếp.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'crew_unavailable' and column_name = 'created_by'
+  ) then
+    alter table public.crew_unavailable add column created_by text not null default 'crew';
+    -- Dữ liệu cũ: có owner_id nghĩa là studio đã xếp hộ.
+    update public.crew_unavailable set created_by = 'studio' where owner_id is not null;
+  end if;
+end $$;
+
+create index if not exists crew_unavailable_owner_idx on public.crew_unavailable (owner_id, date);

@@ -11,7 +11,7 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
  * Các trường thợ được tự khai. SĐT không nằm ở đây — nó là DANH TÍNH của thợ
  * (khoá tra cứu mọi bảng), sửa được thì thành mạo danh người khác.
  */
-const SELF_FIELDS = ["address", "bank_account", "skills"] as const;
+const SELF_FIELDS = ["email", "address", "bank_name", "bank_account", "skills"] as const;
 type SelfField = (typeof SELF_FIELDS)[number];
 
 function clean(v: unknown): string | null {
