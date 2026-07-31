@@ -132,6 +132,10 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
         cover_url: album.cover_url,
         hasPassword,
         allowDownload: album.download_enabled !== false,
+        // Nguồn có gắn giai đoạn "giao khách" ⇒ thư mục Drive đúng là FILE
+        // CHỈNH SỬA. Album chưa gắn giai đoạn thì shownSources rơi về TẤT CẢ
+        // nguồn (kể cả thư mục ảnh chọn), lúc đó không được gọi là file chỉnh sửa.
+        driveIsEdited: useStages,
         watermark: canWatermark && album.watermark_delivery ? (album.watermark_text || studioName) : null,
       }}
       initialPhotos={photos}

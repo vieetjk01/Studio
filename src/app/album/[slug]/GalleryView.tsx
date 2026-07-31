@@ -13,8 +13,9 @@ const TR = {
     pwOpening: "Đang mở…",
     pwEnter: "Vào xem",
     downloadAll: "Tải cả album",
-    driveDownload: "Tải album (Drive)",
-    driveDownloadOne: "Tải từ Drive",
+    driveAlbum: "Tải album (Drive)",
+    driveDownload: "Tải file chỉnh sửa",
+    driveDownloadOne: "Tải file chỉnh sửa",
     dlPhoto: "Tải ảnh",
     photoCount: "ảnh",
     tabAll: "Tất cả",
@@ -35,8 +36,9 @@ const TR = {
     pwOpening: "Opening…",
     pwEnter: "Enter",
     downloadAll: "Download album",
-    driveDownload: "Download album (Drive)",
-    driveDownloadOne: "Download from Drive",
+    driveAlbum: "Download album (Drive)",
+    driveDownload: "Download edited files",
+    driveDownloadOne: "Download edited files",
     dlPhoto: "Download",
     photoCount: "photos",
     tabAll: "All",
@@ -67,7 +69,7 @@ interface P { id: string; drive_file_id: string; name: string; source_id: string
 const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
 interface DriveFolder { name: string; url: string; }
-interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; watermark?: string | null; }
+interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; driveIsEdited?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
   gallery, initialPhotos, totalPhotos = null, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
@@ -337,11 +339,18 @@ export default function GalleryView({
               {shareBusy ? "Đang tạo link…" : `Chia sẻ ${selected.size} ảnh đã chọn`}
             </button>
           )}
-          {/* Tải cả album = link Drive: Google tự nén và phục vụ, không tốn byte nào
-              của Vercel/Supabase. Ẩn ở chế độ chia sẻ chọn lọc vì link Drive trỏ cả
-              thư mục → sẽ lộ toàn album. */}
+          {/* Nút chính của album giao khách: mở thẳng thư mục FILE CHỈNH SỬA trên
+              Drive (nguồn giai đoạn "delivery", AlbumEditor đặt tên "File ChinhSua").
+              Google tự nén và phục vụ nên không tốn byte nào của Vercel/Supabase.
+              Ẩn ở chế độ chia sẻ chọn lọc vì link Drive trỏ CẢ thư mục → sẽ lộ
+              toàn album chứ không riêng mấy ảnh được chia sẻ. */}
           {!shareMode && allowDownload && driveFolders.length > 0 && (
-            <DriveDownload folders={driveFolders} label={tr.driveDownload} labelOne={tr.driveDownloadOne} />
+            <DriveDownload
+              folders={driveFolders}
+              label={gallery.driveIsEdited ? tr.driveDownload : tr.driveAlbum}
+              labelOne={gallery.driveIsEdited ? tr.driveDownloadOne : tr.driveAlbum}
+              accent={!!gallery.driveIsEdited}
+            />
           )}
           {/* File gốc ở giai đoạn chọn ảnh (JPG gốc) — cho khách muốn lấy file gốc. */}
           {!shareMode && originalFolders.length > 0 && (
@@ -571,18 +580,21 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
  * xuống liệt kê từng thư mục. Khách tải trực tiếp từ Google Drive (giữ nguyên
  * chất lượng gốc), không qua ZIP nén.
  */
-function DriveDownload({ folders, label, labelOne }: { folders: DriveFolder[]; label: string; labelOne: string }) {
+function DriveDownload({ folders, label, labelOne, accent = false }: { folders: DriveFolder[]; label: string; labelOne: string; accent?: boolean }) {
   const [open, setOpen] = useState(false);
+  // File chỉnh sửa là thứ khách vào album để lấy → nút chính. "File gốc" là
+  // phụ, để nguyên kiểu chìm cho khỏi tranh chỗ.
+  const cls = `${accent ? "btn-primary" : "btn-ghost"} px-3 py-1.5 text-[13px]`;
   if (folders.length === 1) {
     return (
-      <a href={folders[0].url} target="_blank" rel="noopener noreferrer" className="btn-ghost px-3 py-1.5 text-[13px]">
+      <a href={folders[0].url} target="_blank" rel="noopener noreferrer" className={cls}>
         <Download size={14} /> {labelOne}
       </a>
     );
   }
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} className="btn-ghost px-3 py-1.5 text-[13px]">
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} className={cls}>
         <Download size={14} /> {label}
         <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
