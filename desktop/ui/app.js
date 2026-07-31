@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.8"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.9"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -42,6 +42,19 @@ window.cacheStamp = () => (cfg.lastCache ? fmtTime(cfg.lastCache) : "chưa tải
 // con số, thay vì chỉ nằm trong nhật ký ở tab khác.
 window.cacheError = () => (cfg.lastCacheErr ? { ...cfg.lastCacheErr, atText: fmtTime(cfg.lastCacheErr.at) } : null);
 const today = () => new Date().toISOString().slice(0, 10);
+
+// ─── Cờ "đang chạy" TỰ HẾT HẠN ───────────────────────────────────────────────
+// Cửa sổ bị ẩn xuống khay GIỮA LÚC đang gọi mạng thì WebView2 có thể treo lời
+// gọi đó vĩnh viễn: promise không bao giờ settle nên khối finally không chạy, và
+// một cờ boolean thường sẽ kẹt ở true MÃI MÃI. Từ đó mọi lần chạy sau đều lặng
+// lẽ thoát ngay ở dòng đầu — không lỗi, không nhật ký, dữ liệu đứng im y như
+// đang chạy bình thường. Cho cờ một hạn sống để hệ thống tự gỡ kẹt.
+const BUSY_TTL_MS = 3 * 60 * 1000;
+const _busy = {};
+const busy = (k) => !!_busy[k] && Date.now() - _busy[k] < BUSY_TTL_MS;
+const busyOn = (k) => { _busy[k] = Date.now(); };
+const busyOff = (k) => { delete _busy[k]; };
+
 const fmtTime = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -169,7 +182,16 @@ async function openStudioApp() {
     // Ẩn BẢNG ĐIỀU KHIỂN xuống khay → người dùng chỉ thấy giao diện studio đầy đủ
     // (engine đồng bộ vẫn chạy ngầm trong webview ẩn). Mở lại bảng điều khiển ở
     // menu khay "Bảng điều khiển & đồng bộ".
-    setTimeout(() => { invoke("hide_main").catch(() => {}); }, 600);
+    //
+    // CHỜ lần tải dữ liệu ĐẦU TIÊN xong rồi mới ẩn. Ẩn sau đúng 600ms như trước
+    // là cắt ngang lời gọi đang bay: webview bị che có thể không bao giờ nhận
+    // được hồi đáp, nên bản dữ liệu offline không lần nào ghi được — dữ liệu
+    // càng nhiều thì càng chắc chắn trượt.
+    await Promise.race([
+      window.__firstData || Promise.resolve(),
+      new Promise((r) => setTimeout(r, 20000)),
+    ]);
+    invoke("hide_main").catch(() => {});
   } catch (e) {
     log("Không mở được ứng dụng: " + e, "err");
   }
@@ -248,10 +270,9 @@ function onRevoked() {
 }
 
 // ─── Đồng bộ hợp đồng ────────────────────────────────────────────────────────
-let syncing = false;
 async function runSync(manual = false) {
-  if (syncing || !cfg.token || !cfg.dir) return;
-  syncing = true;
+  if (busy("sync") || !cfg.token || !cfg.dir) return;
+  busyOn("sync");
   try {
     const since = cfg.lastSync ? `?since=${encodeURIComponent(cfg.lastSync)}` : "";
     const r = await apiJson(`/api/desktop/contracts${since}`);
@@ -269,8 +290,9 @@ async function runSync(manual = false) {
     if (r.contracts.length) runDriveSync(false);
   } catch (e) {
     if (manual) log("Không đồng bộ được: " + (e.message || e), "err");
+  } finally {
+    busyOff("sync");
   }
-  syncing = false;
 }
 
 async function saveContract(c) {
@@ -334,7 +356,6 @@ const THUMB_MAX_BYTES = 16 * 1024 * 1024;   // ảnh lớn hơn → không tạo
 // 10 luồng chạy rất nhanh mà vẫn nhẹ RAM.
 const DRIVE_CONCURRENCY_DEFAULT = 10;
 const DRIVE_UPLOAD_RETRIES = 2;             // thử lại file lỗi (tạm mạng) trước khi bỏ qua
-let driveSyncing = false;
 let driveTok = { v: null, exp: 0 };
 let driveWarned = false;
 const planCache = new Map();                 // contractId → { tree, folderId, folderName, at }
@@ -601,7 +622,7 @@ let mediaDirWarned = false;
 
 // Vòng CHẬM + nút bấm tay: quét toàn bộ hợp đồng đã ký.
 async function runDriveSync(manual = false) {
-  if (driveSyncing || !cfg.token) return;
+  if (busy("drive") || !cfg.token) return;
   if (!cfg.mediaDir) {
     // Cảnh báo cả ở vòng TỰ ĐỘNG (một lần), không chỉ khi bấm tay. Studio bỏ qua
     // bước chọn thư mục gốc rồi dùng desktop như app studio sẽ không bao giờ có
@@ -612,7 +633,7 @@ async function runDriveSync(manual = false) {
     }
     return;
   }
-  driveSyncing = true;
+  busyOn("drive");
   try {
     let token;
     try { token = await getDriveToken(); } catch { token = null; }
@@ -631,7 +652,7 @@ async function runDriveSync(manual = false) {
   } catch (e) {
     if (manual) log("Không đồng bộ được Drive: " + (e.message || e), "err");
   } finally {
-    driveSyncing = false;
+    busyOff("drive");
   }
 }
 
@@ -646,13 +667,13 @@ async function getInProgress() {
   return _ipCache.list;
 }
 async function runDriveWatch() {
-  if (driveSyncing || !cfg.token || !cfg.mediaDir) return;
+  if (busy("drive") || !cfg.token || !cfg.mediaDir) return;
   let token;
   try { token = await getDriveToken(); } catch { token = null; }
   if (!token) return;                       // chưa nối Drive → im lặng (vòng chậm đã cảnh báo)
   const list = await getInProgress();
   if (!list.length) return;                 // không có hợp đồng đang thực hiện → khỏi quét
-  driveSyncing = true;
+  busyOn("drive");
   try {
     const uploaded = await driveSyncRun(list, false);
     if (uploaded) {
@@ -660,7 +681,7 @@ async function runDriveWatch() {
       log(`Tự tải ${uploaded} ảnh mới (hợp đồng đang thực hiện) lên Drive.`);
     }
   } catch { /* thử lại vòng sau */ } finally {
-    driveSyncing = false;
+    busyOff("drive");
   }
 }
 
@@ -671,10 +692,9 @@ async function runDriveWatch() {
 // thay đổi trên web sau lần đó đều không hiện ra, dù "Đồng bộ ngay" vẫn báo vừa
 // chạy (runSync chỉ tải file hợp đồng, không đụng tới cache). Tệ hơn: một lỗi khi
 // xuất Excel sẽ ném ra trước và cache không bao giờ được ghi.
-let refreshingData = false;
 async function refreshData(manual = false) {
-  if (refreshingData || !cfg.token || !cfg.dir) return false;
-  refreshingData = true;
+  if (busy("data") || !cfg.token || !cfg.dir) return false;
+  busyOn("data");
   try {
     const backup = await apiB64(`/api/desktop/export?type=backup`);
     await invoke("write_file_b64", { path: cachePath(), contentsB64: backup });
@@ -694,7 +714,7 @@ async function refreshData(manual = false) {
     if (typeof renderData === "function") renderData();
     return false;
   } finally {
-    refreshingData = false;
+    busyOff("data");
   }
 }
 
@@ -725,10 +745,9 @@ async function checkAccount() {
 }
 
 // ─── Xuất Excel ──────────────────────────────────────────────────────────────
-let exporting = false;
 async function runExports(manual = false) {
-  if (exporting || !cfg.token || !cfg.dir) return;
-  exporting = true;
+  if (busy("export") || !cfg.token || !cfg.dir) return;
+  busyOn("export");
   try {
     // Dữ liệu offline trước, Excel sau: Excel hỏng thì cũng không được kéo theo
     // cache (cái quan trọng hơn nhiều).
@@ -747,8 +766,9 @@ async function runExports(manual = false) {
     log("Đã xuất Excel + sao lưu JSON.");
   } catch (e) {
     if (manual) log("Không xuất được Excel: " + (e.message || e), "err");
+  } finally {
+    busyOff("export");
   }
-  exporting = false;
 }
 
 // ─── Ghi cục bộ + đồng bộ ngầm (các module chạy local trong client) ──────────
@@ -772,10 +792,9 @@ window.localMutate = async function (table, op, row) {
   flushQueue();
 };
 
-let flushing = false;
 async function flushQueue() {
-  if (flushing || !cfg.server || !cfg.token) return;
-  flushing = true;
+  if (busy("flush") || !cfg.server || !cfg.token) return;
+  busyOn("flush");
   let q = loadQueue();
   while (q.length) {
     const item = q[0];
@@ -792,7 +811,7 @@ async function flushQueue() {
   }
   const left = loadQueue().length;
   if (left) log(`Còn ${left} thay đổi chờ đồng bộ.`, "warn");
-  flushing = false;
+  busyOff("flush");
 }
 
 // ─── In hợp đồng PDF (dùng bản in A4 chuẩn từ server: logo, chữ ký, định dạng) ──
@@ -864,7 +883,7 @@ async function checkUpdate(manual = false) {
 }
 // App có đang bận không (chặn tự cập nhật giữa chừng để không hỏng việc đang chạy).
 function appBusy() {
-  return syncing || exporting || driveSyncing || loadQueue().length > 0;
+  return busy("sync") || busy("export") || busy("drive") || busy("data") || loadQueue().length > 0;
 }
 async function runSelfUpdate(auto = false) {
   if (!_updateUrl) return;
@@ -938,7 +957,8 @@ function bootSync(first = false) {
   syncRoots(); // đặt thư mục gốc được phép cho Rust trước khi thao tác file
   hookFocusSync();
   runSync(first);
-  refreshData(false).then(checkAccount); // dữ liệu offline mới ngay khi mở app
+  // Giữ lại promise để openStudioApp() chờ xong rồi mới ẩn cửa sổ (xem lý do ở đó).
+  window.__firstData = refreshData(false).then(checkAccount).catch(() => {});
   if (cfg.lastExportDate !== today()) runExports(); // xuất bù khi mở app
   flushQueue(); // đẩy các thay đổi cục bộ còn tồn khi mở app
   checkUpdate();
