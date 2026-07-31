@@ -14,9 +14,20 @@ wedding-photos   42        9820 kB
 logos            3         410 kB
 ```
 
-Bucket cache là toàn bộ vấn đề; ba bucket còn lại cộng lại 36 MB. Trung bình
-1,3 MB/file — thumbnail w≤1024 chỉ tầm 100–200 KB, nên phần lớn bucket là ảnh
-gốc `_orig`.
+Bucket cache là toàn bộ vấn đề; ba bucket còn lại cộng lại 36 MB. Bóc tách tiếp:
+
+```
+loai              count   size
+orig (full-res)   950     10 GB     ← 8,9% số file, 77% dung lượng
+thumbnail         9720    2451 MB
+```
+
+Ảnh gốc trung bình **10,8 MB/file** — tắt cache ảnh gốc cắt ngay 10 GB.
+
+Nhưng riêng thumbnail đã là **2,4 GB, vẫn gấp 2,4 lần hạn mức 1 GB**, và ở mức
+258 KB/ảnh thì chỉ ~19.000 lượt xem ảnh/tháng là chạm trần egress 5 GB. Tức là
+với gói Free, KHÔNG có cấu hình nào của bucket này là bền vững — xem mục 4 phần
+"Cần làm ngay".
 
 Dashboard lúc đó báo 1.53 GB: metering storage của Supabase cập nhật theo chu kỳ
 nên số trên dashboard trễ hơn thực tế khá nhiều. Tin `storage.objects`.
@@ -92,14 +103,18 @@ group by bucket_id
 order by sum((metadata->>'size')::bigint) desc;
 ```
 
-**4. Cân nhắc tắt hẳn bucket cache** — đặt `DRIVE_IMG_CACHE_BUCKET=` (để trống) trên
-Vercel. `/api/img` quay về chế độ proxy thuần: storage và egress Supabase cho ảnh về
-**0**, Vercel gánh băng thông (Free 100 GB/tháng, rộng hơn 5 GB của Supabase 20 lần).
+**4. Tắt hẳn bucket cache khi còn ở gói Free** — đặt `DRIVE_IMG_CACHE_BUCKET=`
+(để trống) trên Vercel. `/api/img` quay về chế độ proxy thuần: storage và egress
+Supabase cho ảnh về **0**, Vercel gánh băng thông (Free 100 GB/tháng, rộng gấp 20
+lần 5 GB của Supabase).
 
-Với gói Supabase Free thì đây gần như luôn là lựa chọn đúng. Ngay cả sau khi đã chặn
-ảnh gốc và đặt trần 500 MB, bucket vẫn ăn một nửa hạn mức storage, và mỗi thumbnail
-nó phục vụ vẫn tính egress — ~150 KB/ảnh nghĩa là chỉ khoảng 33.000 lượt xem ảnh mỗi
-tháng là chạm trần 5 GB. Chỉ nên bật lại bucket khi đã lên gói Pro.
+Số đo ở trên cho thấy đây không phải lựa chọn "tuỳ khẩu vị": chỉ riêng thumbnail đã
+2,4 GB trên hạn mức 1 GB, nên mọi cấu hình còn lại chỉ là chọn hy sinh cái gì. Trần
+500 MB, hạn tuổi và chặn ảnh gốc là lưới an toàn cho ngày lên gói Pro và bật lại
+bucket — không phải cách sống được với gói Free.
+
+Khách hàng không thấy khác biệt: ảnh HIỂN THỊ vốn đã 302 thẳng sang CDN Google từ
+trước và không hề đụng Supabase. Chỉ ZIP/watermark chuyển sang chảy qua Vercel.
 
 ## Vài điều cần biết
 
