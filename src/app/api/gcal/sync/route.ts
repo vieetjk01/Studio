@@ -18,6 +18,17 @@ import type { ShootType } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (e) {
+    // Lỗi từ Google (token bị thu hồi, quota, sai redirect URI) trước đây bay
+    // thẳng thành 500 không nội dung, mà mọi nơi gọi lại bỏ qua phản hồi — nên
+    // đồng bộ hỏng hàng tuần cũng không ai biết.
+    return NextResponse.json({ ok: false, reason: (e as Error)?.message || String(e) }, { status: 500 });
+  }
+}
+
+async function handle(req: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -51,7 +62,10 @@ export async function POST(req: Request) {
       ev.gcal_event_id,
     );
     if (gcalId) await db.from("studio_events").update({ gcal_event_id: gcalId }).eq("id", id);
-    return NextResponse.json({ ok: true, gcal_event_id: gcalId });
+    // gcalId rỗng ⇒ chưa nối Google Lịch. Nói ra thay vì trả ok trơn.
+    return gcalId
+      ? NextResponse.json({ ok: true, synced: true, gcal_event_id: gcalId })
+      : NextResponse.json({ ok: true, synced: false, reason: "chưa kết nối Google Lịch" });
   }
 
   if (kind === "contract") {
@@ -64,7 +78,7 @@ export async function POST(req: Request) {
     if (!ct) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     // Only sync if the contract has a scheduled date.
-    if (!ct.event_date) return NextResponse.json({ ok: true, skipped: "no date" });
+    if (!ct.event_date) return NextResponse.json({ ok: true, synced: false, reason: "hợp đồng chưa có ngày chụp" });
 
     // Draft/sent (unsigned) contracts don't go on the calendar yet — only once
     // confirmed/signed. If a previously-synced contract drops back to draft,
@@ -72,7 +86,7 @@ export async function POST(req: Request) {
     const onCalendar = ["approved", "in_progress", "completed"].includes(ct.status as string);
     if (action === "upsert" && !onCalendar) {
       if (ct.gcal_event_id) await deleteGCalEvent(user.id, ct.gcal_event_id);
-      return NextResponse.json({ ok: true, skipped: "not confirmed" });
+      return NextResponse.json({ ok: true, synced: false, reason: "hợp đồng chưa xác nhận/ký — chỉ lịch đã chốt mới lên Google" });
     }
 
     if (action === "delete") {
@@ -95,7 +109,9 @@ export async function POST(req: Request) {
       ct.gcal_event_id,
     );
     if (gcalId) await db.from("studio_contracts").update({ gcal_event_id: gcalId }).eq("id", id);
-    return NextResponse.json({ ok: true, gcal_event_id: gcalId });
+    return gcalId
+      ? NextResponse.json({ ok: true, synced: true, gcal_event_id: gcalId })
+      : NextResponse.json({ ok: true, synced: false, reason: "chưa kết nối Google Lịch" });
   }
 
   return NextResponse.json({ error: "unknown kind" }, { status: 400 });

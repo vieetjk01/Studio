@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { mainUrl } from "@/lib/hosts";
+import { gcalHealth } from "@/lib/gcal";
 import CalendarView, { type ContractMarker, type EventRow } from "./CalendarView";
 
 
@@ -47,6 +48,7 @@ export default async function CalendarPage() {
       initialEvents={(events ?? []) as unknown as EventRow[]}
       contracts={(contracts ?? []) as ContractMarker[]}
       feedUrl={feedUrl}
+      gcal={await gcalHealth(profile.id)}
     />
   );
 }

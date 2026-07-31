@@ -55,13 +55,17 @@ export default function CalendarView({
   initialEvents,
   contracts,
   feedUrl,
+  gcal,
 }: {
   ownerId: string;
   initialEvents: EventRow[];
   contracts: ContractMarker[];
   feedUrl: string;
+  /** Trạng thái THẬT của kết nối Google Lịch (đã gọi thử API). */
+  gcal?: { connected: boolean; ok: boolean; error: string | null };
 }) {
   const [feedCopied, setFeedCopied] = useState(false);
+  const [gcalMsg, setGcalMsg] = useState<string | null>(null);
   const supabase = createClient();
   const todayStr = todayVN();
   const [y, mIdx] = todayStr.split("-").map(Number);
@@ -167,7 +171,12 @@ export default function CalendarView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind: "event", id: data.id, action: "upsert" }),
-      }).catch(() => {});
+      })
+        .then(async (r) => {
+          const j = (await r.json().catch(() => ({}))) as { synced?: boolean; reason?: string };
+          if (!r.ok || j.synced === false) setGcalMsg(`Chưa lên Google Lịch: ${j.reason ?? "lỗi không rõ"}`);
+        })
+        .catch((e) => setGcalMsg(`Chưa lên Google Lịch: ${(e as Error)?.message || e}`));
     }
   }
 
@@ -216,6 +225,32 @@ export default function CalendarView({
           ))}
         </div>
       </div>
+
+      {/* Trạng thái Google Lịch: nói rõ đang nối được hay không, và lỗi gì.
+          Trước đây mọi lượt đồng bộ đều fire-and-forget nên hỏng cũng im. */}
+      {gcal && (
+        <div className="card mb-4 p-4">
+          {!gcal.connected ? (
+            <p className="text-[13px]" style={{ color: "var(--text2)" }}>
+              Chưa kết nối Google Lịch.{" "}
+              <a href="/dashboard/connections" style={{ color: "var(--gold)" }}>Kết nối ngay</a> để lịch chụp tự lên Google.
+            </p>
+          ) : gcal.ok ? (
+            <p className="text-[13px]" style={{ color: "var(--s-green)" }}>
+              Google Lịch: đã kết nối và hoạt động. Chỉ hợp đồng ĐÃ XÁC NHẬN/KÝ và có ngày chụp mới được đẩy lên.
+            </p>
+          ) : (
+            <div className="text-[13px]" style={{ color: "var(--s-amber)" }}>
+              Google Lịch: có token nhưng gọi API KHÔNG được — lịch đang không lên Google.
+              <div className="mt-1 font-mono text-[11px]" style={{ color: "var(--text3)" }}>{gcal.error}</div>
+              <a href="/dashboard/connections" className="mt-1 inline-block" style={{ color: "var(--gold)" }}>Ngắt rồi kết nối lại</a>
+            </div>
+          )}
+          {gcalMsg && (
+            <p className="mt-2 rounded-lg px-2.5 py-1.5 font-mono text-[11px]" style={{ background: "var(--surface2)", color: "var(--s-amber)" }}>{gcalMsg}</p>
+          )}
+        </div>
+      )}
 
       {feedUrl && (
         <div className="card mb-6 flex flex-wrap items-center gap-3 p-4">

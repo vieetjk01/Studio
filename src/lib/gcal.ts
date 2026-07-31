@@ -55,6 +55,25 @@ async function calendarFor(userId: string) {
   };
 }
 
+/**
+ * Kiểm tra THẬT xem Google Lịch còn dùng được không — gọi API chứ không chỉ xem
+ * DB có token. Token bị thu hồi ở phía Google vẫn nằm nguyên trong DB, nên chỉ
+ * kiểm tra sự tồn tại là báo "đã kết nối" trong khi mọi lượt đồng bộ đều trượt.
+ */
+export async function gcalHealth(userId: string): Promise<{ connected: boolean; ok: boolean; error: string | null }> {
+  const db = createAdminClient();
+  const { data } = await db.from("profiles").select("google_refresh_token").eq("id", userId).maybeSingle();
+  if (!data?.google_refresh_token) return { connected: false, ok: false, error: null };
+  try {
+    const ctx = await calendarFor(userId);
+    if (!ctx) return { connected: true, ok: false, error: "không dựng được client" };
+    await ctx.cal.events.list({ calendarId: ctx.calendarId, maxResults: 1 });
+    return { connected: true, ok: true, error: null };
+  } catch (e) {
+    return { connected: true, ok: false, error: (e as Error)?.message || String(e) };
+  }
+}
+
 export interface GCalEventInput {
   summary: string;
   description?: string;

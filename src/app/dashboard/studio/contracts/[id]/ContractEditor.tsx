@@ -265,11 +265,18 @@ export default function ContractEditor({
     setTimeout(() => setContractSaved("idle"), 1500);
     // Sync to Google Calendar if a shoot date is set (fire-and-forget).
     if (data.event_date) {
+      // Không còn fire-and-forget: đồng bộ trượt thì phải nói, nếu không studio
+      // đinh ninh lịch đã lên Google trong khi chẳng có gì cả.
       fetch("/api/gcal/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind: "contract", id: contract.id, action: "upsert" }),
-      }).catch(() => {});
+      })
+        .then(async (r) => {
+          const j = (await r.json().catch(() => ({}))) as { synced?: boolean; reason?: string };
+          if (!r.ok || j.synced === false) toast(`Chưa lên Google Lịch: ${j.reason ?? "lỗi không rõ"}`);
+        })
+        .catch((e) => toast(`Chưa lên Google Lịch: ${(e as Error)?.message || e}`));
     }
   }
 
