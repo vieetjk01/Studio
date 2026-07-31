@@ -110,7 +110,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
     supabase.from("studio_pricelist").select("name, price, unit").eq("owner_id", profile.id).eq("active", true).gt("price", 0).order("position"),
     supabase.from("contract_client_proofs").select("id, url, note, uploaded_at, plan_id").eq("contract_id", params.id).order("uploaded_at", { ascending: false }),
     ed ? supabase.from("contract_crew").select("phone, contract:studio_contracts!inner(id, owner_id, event_date, title)").eq("contract.owner_id", profile.id).eq("contract.event_date", ed).not("phone", "is", null) : empty,
-    ed ? supabase.from("crew_unavailable").select("phone, note").eq("date", ed) : empty,
+    ed ? supabase.from("crew_unavailable").select("*").eq("date", ed) : empty,
     ed ? supabase.from("studio_contracts").select("id, title, client_name").eq("owner_id", profile.id).eq("event_date", ed).neq("id", params.id).neq("status", "cancelled") : empty,
   ]);
 
@@ -122,9 +122,15 @@ export default async function ContractPage({ params }: { params: { id: string } 
     const p = digits(r.phone);
     if (p) conflictByPhone[p] = `Trùng lịch: ${r.contract?.title || "HĐ khác"}`;
   }
-  for (const r of (conflictUnavail ?? []) as unknown as Array<{ phone: string; note: string | null }>) {
+  // Kèm KHUNG GIỜ nếu thợ có báo — "bận 08:00–12:00" khác hẳn "bận cả ngày" khi
+  // studio cân nhắc có gán chồng hay không.
+  type Unavail = { phone: string; note: string | null; title?: string | null; start_time?: string | null; end_time?: string | null };
+  for (const r of (conflictUnavail ?? []) as unknown as Unavail[]) {
     const p = digits(r.phone);
-    if (p && !conflictByPhone[p]) conflictByPhone[p] = r.note ? `Đã báo bận: ${r.note}` : "Đã báo bận ngày này";
+    if (!p || conflictByPhone[p]) continue;
+    const when = r.start_time && r.end_time ? `${r.start_time.slice(0, 5)}–${r.end_time.slice(0, 5)}` : "cả ngày";
+    const what = r.title || r.note;
+    conflictByPhone[p] = `Đã có lịch ${when}${what ? `: ${what}` : ""}`;
   }
   const sameDayContracts = (sameDay ?? []) as { id: string; title: string; client_name: string | null }[];
 

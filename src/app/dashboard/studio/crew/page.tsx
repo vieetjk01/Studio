@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
+import { mainUrl } from "@/lib/hosts";
 import type { StudioCrew } from "@/lib/types";
 import CrewManager from "./CrewManager";
 
@@ -21,6 +22,13 @@ export default async function CrewPage() {
   }
 
   const supabase = createClient();
+  // Link đăng ký riêng của studio (/crew/<crew_token>) — cấp một lần rồi dùng mãi.
+  let crewToken = profile.crew_token as string | null;
+  if (!crewToken && profile.actingRole !== "staff") {
+    crewToken = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "");
+    await supabase.from("profiles").update({ crew_token: crewToken }).eq("id", profile.id);
+  }
+
   const [{ data }, { data: assignments }] = await Promise.all([
     supabase.from("studio_crew").select("*").eq("owner_id", profile.id).order("name"),
     supabase
@@ -42,5 +50,12 @@ export default async function CrewPage() {
     else if (a.status === "declined") stats[p].declined += 1;
   }
 
-  return <CrewManager ownerId={profile.id} initial={(data ?? []) as StudioCrew[]} stats={stats} />;
+  return (
+    <CrewManager
+      ownerId={profile.id}
+      initial={(data ?? []) as StudioCrew[]}
+      stats={stats}
+      registerUrl={crewToken ? mainUrl(`/crew/${crewToken}`) : ""}
+    />
+  );
 }

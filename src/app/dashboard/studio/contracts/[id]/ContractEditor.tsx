@@ -70,6 +70,7 @@ import {
   type CrewRole,
   type CrewStatus,
 } from "@/lib/types";
+import { CREW_TASK_LABEL, CREW_SIDE_LABEL, CREW_TASKS, CREW_SIDES } from "@/lib/crew-show";
 
 // unit_price giữ ĐỘ LỚN (số dương khách nhập); is_discount đánh dấu đây là dòng
 // giảm giá — khi lưu sẽ ghi unit_price ÂM để trừ vào tổng (không cần cột DB mới).
@@ -105,6 +106,11 @@ type CrewRow = {
   note: string;
   status?: string;
   paid?: boolean;
+  /** Thông tin show studio gán — thợ thấy đúng thế trên lịch và trong tin Zalo. */
+  task?: string;
+  side?: string;
+  start?: string;
+  end?: string;
 };
 
 const CREW_STATUS_TONE: Record<string, string> = {
@@ -439,29 +445,36 @@ export default function ContractEditor({
         note: c.note ?? "",
         status: c.status,
         paid: c.paid,
+        task: c.task ?? "",
+        side: c.side ?? "",
+        start: (c.start_time ?? "").slice(0, 5),
+        end: (c.end_time ?? "").slice(0, 5),
       }))
     );
   }
 
   async function saveCrew() {
     setBusy("crew");
-    for (let idx = 0; idx < crew.length; idx++) {
-      const c = crew[idx];
-      if (!c.name.trim() && !c.phone.trim()) continue;
-      const row = {
-        name: c.name.trim(),
-        phone: c.phone.trim() || null,
-        role: c.role,
-        salary: Math.max(0, Math.round(Number(c.salary) || 0)),
-        note: c.note.trim() || null,
-        position: idx,
-      };
-      if (c.id) await supabase.from("contract_crew").update(row).eq("id", c.id);
-      else await supabase.from("contract_crew").insert({ ...row, contract_id: contract.id });
-    }
+    // Qua route server chứ không ghi thẳng: mỗi lần lưu còn kéo theo ghi mốc vào
+    // LỊCH CỦA THỢ (bảng chỉ mở policy đọc, ghi phải qua service role) và gửi
+    // Zalo báo thợ — hai việc client không làm được.
+    const res = await fetch("/api/studio/contract-crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contractId: contract.id, crew }),
+    });
+    const j = (await res.json().catch(() => ({}))) as { notified?: number; error?: string };
     await refetchCrew();
     setBusy(null);
-    toast("Đã lưu nhân sự & lương.");
+    if (!res.ok) {
+      toast(j.error === "forbidden" ? "Không có quyền." : "Lưu nhân sự thất bại.");
+      return;
+    }
+    toast(
+      j.notified
+        ? `Đã lưu nhân sự & lương · đã báo Zalo ${j.notified} thợ.`
+        : "Đã lưu nhân sự & lương.",
+    );
   }
 
   async function togglePaid(c: CrewRow, idx: number) {
@@ -1739,7 +1752,19 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
               <div className="mb-4 flex flex-wrap gap-2">
                 <span className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text3)" }}>Chọn nhanh từ sổ thợ:</span>
                 {roster.map((r) => (
-                  <button key={r.id} onClick={() => setCrew((p) => [...p, { name: r.name, phone: r.phone, role: r.role, salary: 0, note: "" }])} className="rounded-full px-2.5 py-1 text-xs" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                  <button
+                    key={r.id}
+                    onClick={() => {
+                      // Đã bận ngày đó thì HỎI trước khi gán — studio vẫn được
+                      // quyền chồng lịch, chỉ là phải biết mình đang làm thế.
+                      const clash = conflictFor(r.phone);
+                      if (clash && !confirm(`${r.name || r.phone} ${clash.toLowerCase()} ngày ${f.event_date}.\n\nVẫn gán người này?`)) return;
+                      setCrew((p) => [...p, { name: r.name, phone: r.phone, role: r.role, salary: 0, note: "" }]);
+                    }}
+                    className="rounded-full px-2.5 py-1 text-xs"
+                    style={{ background: "var(--surface2)", border: conflictFor(r.phone) ? "1px solid var(--s-red)" : "1px solid var(--border)" }}
+                    title={conflictFor(r.phone) ?? undefined}
+                  >
                     + {r.name || r.phone}
                   </button>
                 ))}
@@ -1763,6 +1788,18 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                           ))}
                         </select>
                         <MoneyInput className="input text-right sm:col-span-2" placeholder="Lương" value={c.salary} onChange={(n) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, salary: n } : x)))} />
+                      </div>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-12">
+                        <select className="input sm:col-span-3" value={c.task ?? ""} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, task: e.target.value } : x)))} aria-label="Chụp hay quay">
+                          <option value="">— Chụp/Quay —</option>
+                          {CREW_TASKS.map((k) => (<option key={k} value={k}>{CREW_TASK_LABEL[k]}</option>))}
+                        </select>
+                        <select className="input sm:col-span-3" value={c.side ?? ""} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, side: e.target.value } : x)))} aria-label="Nhà trai hay nhà gái">
+                          <option value="">— Nhà trai/gái —</option>
+                          {CREW_SIDES.map((k) => (<option key={k} value={k}>{CREW_SIDE_LABEL[k]}</option>))}
+                        </select>
+                        <input type="time" className="input sm:col-span-3" value={c.start ?? ""} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, start: e.target.value } : x)))} aria-label="Từ giờ" />
+                        <input type="time" className="input sm:col-span-3" value={c.end ?? ""} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, end: e.target.value } : x)))} aria-label="Đến giờ" />
                       </div>
                       <input className="input mt-2" placeholder="Yêu cầu riêng gửi cho người này (vd: mang lens 35mm, có mặt 7:30)…" value={c.note} onChange={(e) => setCrew((p) => p.map((x, i) => (i === idx ? { ...x, note: e.target.value } : x)))} />
                       {c.phone && conflictFor(c.phone) && (

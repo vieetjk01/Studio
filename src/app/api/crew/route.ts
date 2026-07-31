@@ -99,6 +99,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (body.action === "calendar_token") {
+    // Cấp một lần rồi dùng mãi — token nằm trong URL feed nên đổi token là mọi
+    // lịch đã đăng ký ở máy thợ chết theo.
+    const { data: existing } = await db.from("crew_account").select("calendar_token").eq("phone", phone).maybeSingle();
+    let token = existing?.calendar_token as string | undefined;
+    if (!token) {
+      token = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "");
+      await db.from("crew_account").upsert({ phone, calendar_token: token }, { onConflict: "phone" });
+    }
+    return NextResponse.json({ token });
+  }
+
   if (body.action === "shift_set") {
     const shift = (body.shift || "").toUpperCase();
     if (!shift) {
@@ -162,6 +174,12 @@ export async function POST(req: Request) {
     db.from("crew_unavailable").select("*").eq("phone", phone).order("date"),
     db.from("crew_shift_plan").select("company, shift").eq("phone", phone).maybeSingle(),
   ]);
+  const { data: acc } = await db.from("crew_account").select("calendar_token").eq("phone", phone).maybeSingle();
 
-  return NextResponse.json({ assignments: mine, busy: busy ?? [], shift: shiftPlan ?? null });
+  return NextResponse.json({
+    assignments: mine,
+    busy: busy ?? [],
+    shift: shiftPlan ?? null,
+    calendarToken: acc?.calendar_token ?? null,
+  });
 }

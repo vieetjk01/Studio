@@ -6,6 +6,7 @@ import { fmtDate } from "@/lib/date";
 import { Phone, MapPin, Calendar, Check, X, Camera } from "lucide-react";
 import Turnstile from "@/components/Turnstile";
 import CrewSchedule, { type ScheduleEntry, type ShiftPlan } from "./CrewSchedule";
+import { CrewProfileCard, CrewRegisterCard, CrewCalendarSync, type CrewProfile } from "./CrewExtras";
 import type { ShiftLetter } from "@/lib/crew-shift";
 import {
   vnd,
@@ -77,7 +78,7 @@ const STATUS_TONE: Record<string, string> = {
   declined: "#c77b7b",
 };
 
-export default function CrewPortal() {
+export default function CrewPortal({ studio }: { studio?: { name: string; crewToken: string } } = {}) {
   const [lang, setLang] = useState<Lang>("vi");
   useEffect(() => {
     const stored = localStorage.getItem("vk_lang") as Lang | null;
@@ -89,6 +90,8 @@ export default function CrewPortal() {
   const [list, setList] = useState<Assignment[] | null>(null);
   const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
   const [shiftPlan, setShiftPlan] = useState<ShiftPlan>(null);
+  const [calToken, setCalToken] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<CrewProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -107,6 +110,14 @@ export default function CrewPortal() {
     setList(j.assignments ?? []);
     setSchedule(j.busy ?? []);
     setShiftPlan(j.shift ?? null);
+    setCalToken(j.calendarToken ?? null);
+    // Hồ sơ nạp riêng: không chặn danh sách việc nếu route này lỗi.
+    fetch("/api/crew/profile", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }),
+    })
+      .then((r) => r.json())
+      .then((d) => setProfiles(d.profiles ?? []))
+      .catch(() => setProfiles([]));
   }
 
   // Mọi thao tác ghi đều nạp lại: server là nơi chốt giờ (chuẩn hoá, cờ ca đêm),
@@ -169,6 +180,12 @@ export default function CrewPortal() {
           onError={() => setCaptchaToken(null)}
         />
       </form>
+
+      {studio && (
+        <div className="mt-6">
+          <CrewRegisterCard studioName={studio.name} crewToken={studio.crewToken} phone={phone} />
+        </div>
+      )}
 
       {list !== null && (
         <div className="mt-6 space-y-3">
@@ -243,6 +260,8 @@ export default function CrewPortal() {
             ))
           )}
 
+          <CrewProfileCard profiles={profiles} phone={phone} onSaved={load} />
+
           <CrewSchedule
             entries={schedule}
             shiftPlan={shiftPlan}
@@ -251,6 +270,8 @@ export default function CrewPortal() {
             onRemove={removeEntry}
             onShift={setShift}
           />
+
+          <CrewCalendarSync phone={phone} token={calToken} onToken={setCalToken} />
         </div>
       )}
     </div>

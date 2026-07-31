@@ -10,10 +10,13 @@ export default function CrewManager({
   ownerId,
   initial,
   stats,
+  registerUrl = "",
 }: {
   ownerId: string;
   initial: StudioCrew[];
   stats: Record<string, { total: number; accepted: number; declined: number }>;
+  /** Link riêng của studio để thợ tự đăng ký vào sổ. */
+  registerUrl?: string;
 }) {
   const supabase = createClient();
   const statFor = (phone: string) => stats[(phone || "").replace(/\D/g, "")] || null;
@@ -24,6 +27,8 @@ export default function CrewManager({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Thợ tự đăng ký qua link riêng — chờ studio nhận vào sổ.
+  const pending = list.filter((c) => (c as StudioCrew & { status?: string }).status === "pending");
 
   async function add() {
     setErr(null);
@@ -57,6 +62,12 @@ export default function CrewManager({
     }
   }
 
+  /** Nhận thợ tự đăng ký vào sổ chính thức. */
+  async function approve(id: string) {
+    await supabase.from("studio_crew").update({ status: "active" }).eq("id", id);
+    setList((p) => p.map((c) => (c.id === id ? { ...c, status: "active" } : c)));
+  }
+
   async function remove(id: string) {
     await supabase.from("studio_crew").delete().eq("id", id);
     setList((p) => p.filter((c) => c.id !== id));
@@ -73,6 +84,39 @@ export default function CrewManager({
           Xem lịch cả đội ở <a href="/dashboard/studio/team" style={{ color: "var(--text)" }}>Lịch đội ngũ</a>.
         </p>
       </div>
+
+      {registerUrl && (
+        <div className="card mb-4 p-4">
+          <p className="text-[13px] font-medium">Link đăng ký cho thợ</p>
+          <p className="mb-2 text-[11px]" style={{ color: "var(--text3)" }}>
+            Gửi link này cho thợ để họ tự khai thông tin và xin vào sổ. Link mang mã riêng của studio bạn —
+            trang /crew chung không biết thợ thuộc studio nào.
+          </p>
+          <input className="input text-[12px]" readOnly value={registerUrl} aria-label="Link đăng ký thợ" onFocus={(e) => e.currentTarget.select()} />
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div className="card mb-4 p-4">
+          <p className="mb-2 text-[13px] font-medium" style={{ color: "var(--s-amber)" }}>
+            {pending.length} thợ xin vào sổ
+          </p>
+          <ul className="space-y-2">
+            {pending.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "var(--surface2)" }}>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm">{c.name || c.phone}</span>
+                  <span className="block text-[11px]" style={{ color: "var(--text3)" }}>{c.phone}</span>
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  <button onClick={() => approve(c.id)} className="btn-primary px-3 py-1.5 text-xs">Nhận</button>
+                  <button onClick={() => remove(c.id)} className="btn-ghost px-3 py-1.5 text-xs">Từ chối</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Add form */}
