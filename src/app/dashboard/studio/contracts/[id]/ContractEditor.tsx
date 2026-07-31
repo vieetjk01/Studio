@@ -465,11 +465,23 @@ export default function ContractEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contractId: contract.id, crew }),
     });
-    const j = (await res.json().catch(() => ({}))) as { notified?: number; error?: string };
+    const j = (await res.json().catch(() => ({}))) as {
+      notified?: number;
+      error?: string;
+      timeTrace?: { name: string; sent: string; norm: string; db: string }[];
+    };
     await refetchCrew();
     setBusy(null);
     if (!res.ok) {
       toast(j.error === "forbidden" ? "Không có quyền." : `Lưu nhân sự thất bại: ${j.error ?? "lỗi không rõ"}`);
+      return;
+    }
+    // Nếu có dòng nào GỬI giờ mà DB không nhận (hoặc client gửi rỗng dù ô có
+    // giá trị), nói thẳng ba giá trị ra thay vì báo "đã lưu" chung chung.
+    const odd = (j.timeTrace ?? []).filter((t) => t.sent !== t.db);
+    if (odd.length) {
+      const t = odd[0];
+      toast(`${t.name}: ô nhập "${t.sent || "(trống)"}" → chuẩn hoá "${t.norm || "(trống)"}" → DB "${t.db || "(trống)"}"`);
       return;
     }
     toast(

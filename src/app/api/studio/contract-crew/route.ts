@@ -126,6 +126,9 @@ export async function POST(req: Request) {
   const portal = crewPortalUrl(me?.crew_token as string | null);
 
   const notified: string[] = [];
+  // Chẩn đoán giờ: ghi lại giá trị THÔ client gửi, giá trị sau chuẩn hoá, và giá
+  // trị ĐỌC LẠI từ DB. Ba con số đó chỉ đúng một thủ phạm, khỏi đoán tiếp.
+  const timeTrace: { name: string; sent: string; norm: string; db: string }[] = [];
 
   for (const [idx, c] of (body.crew ?? []).entries()) {
     const name = (c.name ?? "").trim();
@@ -176,6 +179,10 @@ export async function POST(req: Request) {
     // đồ; cột mới thêm mà cache chưa nạp lại thì có trường hợp giá trị bị BỎ QUA
     // lặng lẽ thay vì báo lỗi — nhìn ra ngoài y hệt "bấm lưu không ăn". Thà báo
     // rõ còn hơn để studio nhập lại lần thứ ba.
+    if (!row.start_time && (c.start ?? "").trim() === "") {
+      timeTrace.push({ name: name || phone, sent: "", norm: "", db: "" });
+    }
+
     if (row.start_time || row.task || row.side) {
       const { data: check } = await db
         .from("contract_crew")
@@ -187,6 +194,12 @@ export async function POST(req: Request) {
       if (row.side && !check?.side) missing.push("side");
       if (row.start_time && !check?.start_time) missing.push("start_time");
       if (row.end_time && !check?.end_time) missing.push("end_time");
+      timeTrace.push({
+        name: name || phone,
+        sent: (c.start ?? "") as string,
+        norm: row.start_time ?? "",
+        db: (check?.start_time as string | null)?.slice(0, 5) ?? "",
+      });
       if (missing.length) {
         return NextResponse.json(
           {
@@ -253,5 +266,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, notified: notified.length });
+  return NextResponse.json({ ok: true, notified: notified.length, timeTrace });
 }
