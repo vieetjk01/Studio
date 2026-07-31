@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, Lock, ChevronDown, Search, X } from "lucide-react";
 import { CREW_ROLE_LABEL, CREW_STATUS_LABEL, type CrewRole, type CrewStatus } from "@/lib/types";
 import { lunarCellLabel } from "@/lib/lunar";
 import { todayVN } from "@/lib/date";
@@ -69,12 +69,32 @@ export default function TeamCalendar({
   const [who, setWho] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ phone: "", start: "08:00", end: "17:00", title: "", allDay: false });
+  const [pickOpen, setPickOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const pickRef = useRef<HTMLDivElement>(null);
+
+  // Bấm ra ngoài thì đóng menu chọn thợ.
+  useEffect(() => {
+    if (!pickOpen) return;
+    function onDown(e: MouseEvent) {
+      if (pickRef.current && !pickRef.current.contains(e.target as Node)) setPickOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [pickOpen]);
 
   const nameOf = useMemo(() => {
     const m: Record<string, string> = {};
     for (const c of members) m[c.phone] = c.name;
     return m;
   }, [members]);
+
+  const filteredMembers = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return members;
+    // Tìm theo cả tên lẫn SĐT — studio nhớ số nhanh hơn nhớ tên là chuyện thường.
+    return members.filter((m) => m.name.toLowerCase().includes(needle) || m.phone.includes(needle.replace(/\D/g, "")));
+  }, [members, q]);
 
   const visibleSchedule = useMemo(
     () => (who ? schedule.filter((r) => r.phone === who) : schedule),
@@ -176,21 +196,72 @@ export default function TeamCalendar({
         </p>
       </div>
 
-      {/* Lọc theo thợ */}
+      {/* Lọc theo thợ — dạng menu đổ xuống có ô tìm kiếm. Đội đông thì một hàng
+          chip sẽ tràn kín màn hình và không tìm nổi ai. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <button onClick={() => setWho("")} className={who ? "btn-ghost px-3 py-1.5 text-xs" : "btn-primary px-3 py-1.5 text-xs"}>
-          Cả đội
-        </button>
-        {members.map((m) => (
-          <button
-            key={m.phone}
-            onClick={() => setWho(m.phone)}
-            className={who === m.phone ? "btn-primary px-3 py-1.5 text-xs" : "btn-ghost px-3 py-1.5 text-xs"}
-          >
-            {m.name}
-            {shifts[m.phone] ? ` · ca ${shifts[m.phone]}` : ""}
+        <div className="relative" ref={pickRef}>
+          <button onClick={() => setPickOpen((o) => !o)} className="btn-ghost px-3 py-1.5 text-xs">
+            {who ? nameOf[who] || who : "Cả đội"}
+            {who && shifts[who] ? ` · ca ${shifts[who]}` : ""}
+            <ChevronDown size={14} />
           </button>
-        ))}
+
+          {pickOpen && (
+            <div
+              className="absolute left-0 z-30 mt-1 w-64 rounded-xl p-2 shadow-xl"
+              style={{ background: "var(--bg2)", border: "1px solid var(--border2)" }}
+            >
+              <div className="mb-2 flex items-center gap-2 rounded-lg px-2" style={{ background: "var(--surface2)" }}>
+                <Search size={13} style={{ color: "var(--text3)" }} />
+                <input
+                  autoFocus
+                  className="w-full bg-transparent py-1.5 text-xs outline-none"
+                  placeholder="Tìm thợ theo tên hoặc SĐT…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+                {q && (
+                  <button onClick={() => setQ("")} aria-label="Xoá tìm kiếm" style={{ color: "var(--text3)" }}>
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-64 overflow-y-auto">
+                <button
+                  onClick={() => { setWho(""); setPickOpen(false); }}
+                  className="block w-full rounded-lg px-2 py-1.5 text-left text-xs"
+                  style={{ background: who ? "transparent" : "var(--surface2)" }}
+                >
+                  Cả đội <span style={{ color: "var(--text3)" }}>({members.length})</span>
+                </button>
+                {filteredMembers.map((m) => (
+                  <button
+                    key={m.phone}
+                    onClick={() => { setWho(m.phone); setPickOpen(false); }}
+                    className="block w-full rounded-lg px-2 py-1.5 text-left text-xs"
+                    style={{ background: who === m.phone ? "var(--surface2)" : "transparent" }}
+                  >
+                    <span className="block truncate">{m.name}</span>
+                    <span className="block text-[10px]" style={{ color: "var(--text3)" }}>
+                      {m.phone}
+                      {shifts[m.phone] ? ` · ca ${shifts[m.phone]}` : ""}
+                    </span>
+                  </button>
+                ))}
+                {filteredMembers.length === 0 && (
+                  <p className="px-2 py-3 text-center text-[11px]" style={{ color: "var(--text3)" }}>Không tìm thấy thợ nào.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {who && (
+          <button onClick={() => setWho("")} className="btn-ghost px-2.5 py-1.5 text-xs" title="Xem lại cả đội">
+            <X size={13} /> Bỏ lọc
+          </button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

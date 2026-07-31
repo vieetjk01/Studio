@@ -11,12 +11,15 @@ export default function CrewManager({
   initial,
   stats,
   registerUrl = "",
+  registerError = null,
 }: {
   ownerId: string;
   initial: StudioCrew[];
   stats: Record<string, { total: number; accepted: number; declined: number }>;
   /** Link riêng của studio để thợ tự đăng ký vào sổ. */
   registerUrl?: string;
+  /** Vì sao chưa cấp được link (thường là DB chưa có cột crew_token). */
+  registerError?: string | null;
 }) {
   const supabase = createClient();
   const statFor = (phone: string) => stats[(phone || "").replace(/\D/g, "")] || null;
@@ -84,6 +87,19 @@ export default function CrewManager({
           Xem lịch cả đội ở <a href="/dashboard/studio/team" style={{ color: "var(--text)" }}>Lịch đội ngũ</a>.
         </p>
       </div>
+
+      {/* Không cấp được link thì NÓI RA — trước đây card lặng lẽ biến mất và
+          không ai biết vì sao. */}
+      {!registerUrl && registerError && (
+        <div className="card mb-4 p-4">
+          <p className="text-[13px] font-medium" style={{ color: "var(--s-amber)" }}>Chưa cấp được link đăng ký cho thợ</p>
+          <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
+            Cơ sở dữ liệu chưa có cột <code>crew_token</code> — chạy
+            {" "}<code>supabase/migrations/crew_profile_show.sql</code> rồi tải lại trang.
+          </p>
+          <p className="mt-1 font-mono text-[11px]" style={{ color: "var(--text3)" }}>{registerError}</p>
+        </div>
+      )}
 
       {registerUrl && (
         <div className="card mb-4 p-4">

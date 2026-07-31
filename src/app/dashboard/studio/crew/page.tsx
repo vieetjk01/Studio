@@ -32,14 +32,16 @@ export default async function CrewPage() {
       .map((n) => ALPHABET[n % ALPHABET.length])
       .join("");
 
-  let crewToken = profile.crew_token as string | null;
+  let crewToken = (profile.crew_token as string | null) ?? null;
   // Token dài kiểu UUID cấp ở bản trước cũng rút gọn luôn.
+  let tokenError: string | null = null;
   if (profile.actingRole !== "staff" && (!crewToken || crewToken.length > 12)) {
     for (let i = 0; i < 5; i++) {
       const candidate = shortCode();
       // Cột là unique — đụng mã thì thử lại, gần như không bao giờ xảy ra.
       const { error } = await supabase.from("profiles").update({ crew_token: candidate }).eq("id", profile.id);
-      if (!error) { crewToken = candidate; break; }
+      if (!error) { crewToken = candidate; tokenError = null; break; }
+      tokenError = error.message;
     }
   }
 
@@ -70,6 +72,7 @@ export default async function CrewPage() {
       initial={(data ?? []) as StudioCrew[]}
       stats={stats}
       registerUrl={crewToken ? mainUrl(`/crew/${crewToken}`) : ""}
+      registerError={crewToken ? null : tokenError}
     />
   );
 }
