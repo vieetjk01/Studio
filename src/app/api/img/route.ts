@@ -18,8 +18,24 @@ const CACHE_ERR = "public, max-age=0, s-maxage=60"; // don't pin failures for lo
 // Optional durable offload: set DRIVE_IMG_CACHE_BUCKET to a PUBLIC Supabase
 // Storage bucket. Cached images then 302-redirect straight to Supabase's CDN,
 // so Vercel serves ~0 image bytes. Unset → plain proxy (still edge-cached).
+//
+// NOTE ON SUPABASE QUOTAS: every byte the bucket serves is billed as Supabase
+// EGRESS, and every cached object counts against FILE STORAGE (1 GB free).
+// So the bucket is only worth using for objects that are SMALL and read MANY
+// times — i.e. gallery thumbnails. The two knobs below keep the fat, read-once
+// bytes (full-res originals, download-sized renders) OUT of Supabase entirely;
+// those stream from Google through Vercel instead, where bandwidth is far
+// cheaper. See docs/supabase-usage.md.
 const BUCKET = process.env.DRIVE_IMG_CACHE_BUCKET || "";
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+// Full-resolution originals (?orig=1) are the single heaviest thing this route
+// serves — one ZIP of a wedding can push hundreds of MB into the bucket and the
+// same amount straight back out as egress. Default OFF; opt in with =1.
+const CACHE_ORIGINALS = process.env.DRIVE_IMG_CACHE_ORIGINALS === "1";
+// Only persist renders at or below this width. Thumbnails (w≤1024) are reused
+// by every viewer of an album; w=2000/2560 renders are fetched once for a
+// download and would otherwise sit in the bucket forever.
+const CACHE_MAX_WIDTH = Number(process.env.DRIVE_IMG_CACHE_MAX_WIDTH || "1024");
 
 function cacheKey(id: string, width: number) { return `${id}_w${width}.jpg`; }
 function publicUrl(key: string) { return `${SUPA_URL}/storage/v1/object/public/${BUCKET}/${key}`; }
@@ -88,10 +104,11 @@ export async function GET(req: Request) {
   if (searchParams.get("orig") === "1") {
     // Durable offload: originals are the HEAVIEST bytes (full-res ZIP/download),
     // and browsers can't fetch them cross-origin from Google (no CORS), so they
-    // otherwise stream through Vercel every time. When a Supabase bucket is set,
-    // cache the original once and 302 to Supabase's CDN thereafter → Vercel
-    // serves ~0 bytes on repeats. Inert (falls through) when no bucket is set.
-    if (BUCKET && SUPA_URL) {
+    // otherwise stream through Vercel every time. Caching them shifts that load
+    // onto Supabase — which is exactly the wrong trade on the free plan, where
+    // storage (1 GB) and egress (5 GB) are the scarce budgets and Vercel's are
+    // not. Hence opt-in only: DRIVE_IMG_CACHE_ORIGINALS=1.
+    if (BUCKET && SUPA_URL && CACHE_ORIGINALS) {
       const key = `${id}_orig`;
       const pub = publicUrl(key);
       try {
@@ -137,7 +154,11 @@ export async function GET(req: Request) {
   }
 
   // ── Durable offload path ────────────────────────────────────────────────
-  if (BUCKET && SUPA_URL) {
+  // Thumbnail widths only: a w=2560 watermark render or a w=2000 ZIP frame is
+  // read once, so caching it buys nothing and costs both storage and egress.
+  // Wider requests skip the bucket entirely (no HEAD probe either) and take the
+  // plain-proxy path below.
+  if (BUCKET && SUPA_URL && width <= CACHE_MAX_WIDTH) {
     const key = cacheKey(id, width);
     const pub = publicUrl(key);
     try {

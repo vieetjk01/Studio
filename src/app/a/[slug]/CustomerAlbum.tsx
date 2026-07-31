@@ -429,7 +429,14 @@ export default function CustomerAlbum({
   useEffect(() => {
     if (!unlocked) return;
     refresh(); // fresh load right away — avoids showing stale/empty picks
-    const iv = setInterval(refresh, 5000);
+    // 20s, and only while the tab is actually on screen. An album left open in
+    // a background tab used to poll every 5s forever — 17k requests a day per
+    // tab against the Supabase egress quota, for a page nobody is looking at.
+    // Nothing is lost by waiting: the visibilitychange/focus handlers below
+    // refresh the moment the viewer comes back.
+    const iv = setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 20_000);
     const onFocus = () => refresh();
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flush();
