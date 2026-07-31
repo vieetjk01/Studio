@@ -78,7 +78,7 @@ const STATUS_TONE: Record<string, string> = {
   declined: "#c77b7b",
 };
 
-export default function CrewPortal({ studio }: { studio?: { name: string; crewToken: string } } = {}) {
+export default function CrewPortal({ studio }: { studio?: { id: string; name: string; crewToken: string } } = {}) {
   const [lang, setLang] = useState<Lang>("vi");
   useEffect(() => {
     const stored = localStorage.getItem("vk_lang") as Lang | null;
@@ -92,6 +92,9 @@ export default function CrewPortal({ studio }: { studio?: { name: string; crewTo
   const [shiftPlan, setShiftPlan] = useState<ShiftPlan>(null);
   const [calToken, setCalToken] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<CrewProfile[]>([]);
+  // Vào bằng link riêng của studio: chưa có trong sổ studio đó thì CHỈ hiện form
+  // đăng ký, không hiện lịch — lịch của studio này chưa liên quan gì tới họ.
+  const inThisStudio = !studio || profiles.some((p) => p.owner_id === studio.id);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -111,13 +114,15 @@ export default function CrewPortal({ studio }: { studio?: { name: string; crewTo
     setSchedule(j.busy ?? []);
     setShiftPlan(j.shift ?? null);
     setCalToken(j.calendarToken ?? null);
-    // Hồ sơ nạp riêng: không chặn danh sách việc nếu route này lỗi.
-    fetch("/api/crew/profile", {
+    // Phải CHỜ hồ sơ: khi vào bằng link riêng của studio, việc hiện lịch hay
+    // hiện form đăng ký phụ thuộc vào thợ đã có trong sổ studio đó chưa. Nạp
+    // song song rồi mới vẽ thì tránh chớp nhoáng sai màn hình.
+    const prof = await fetch("/api/crew/profile", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }),
     })
       .then((r) => r.json())
-      .then((d) => setProfiles(d.profiles ?? []))
-      .catch(() => setProfiles([]));
+      .catch(() => ({ profiles: [] }));
+    setProfiles(prof.profiles ?? []);
   }
 
   // Mọi thao tác ghi đều nạp lại: server là nơi chốt giờ (chuẩn hoá, cờ ca đêm),
@@ -181,13 +186,13 @@ export default function CrewPortal({ studio }: { studio?: { name: string; crewTo
         />
       </form>
 
-      {studio && (
+      {studio && list !== null && !inThisStudio && (
         <div className="mt-6">
           <CrewRegisterCard studioName={studio.name} crewToken={studio.crewToken} phone={phone} />
         </div>
       )}
 
-      {list !== null && (
+      {list !== null && inThisStudio && (
         <div className="mt-6 space-y-3">
           {list.length === 0 ? (
             <div className="card flex flex-col items-center justify-center py-14 text-center">

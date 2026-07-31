@@ -11,7 +11,7 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
  * Các trường thợ được tự khai. SĐT không nằm ở đây — nó là DANH TÍNH của thợ
  * (khoá tra cứu mọi bảng), sửa được thì thành mạo danh người khác.
  */
-const SELF_FIELDS = ["email", "address", "bank_name", "bank_account", "skills"] as const;
+const SELF_FIELDS = ["name", "email", "address", "bank_name", "bank_account", "skills", "equipment"] as const;
 type SelfField = (typeof SELF_FIELDS)[number];
 
 function clean(v: unknown): string | null {
@@ -59,6 +59,8 @@ export async function POST(req: Request) {
 
     const patch: Record<string, string | null> = { self_filled_at: new Date().toISOString() };
     for (const k of SELF_FIELDS) patch[k] = clean(body.profile?.[k as SelfField]);
+    // Tên rỗng thì giữ tên studio đã đặt, đừng xoá mất.
+    if (!patch.name) delete patch.name;
     await db.from("studio_crew").update(patch).eq("id", target.id);
     return NextResponse.json({ ok: true });
   }
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
     };
     for (const k of SELF_FIELDS) patch[k] = clean(body.profile?.[k as SelfField]);
     // Sổ thợ hiển thị theo tên; thợ chưa khai thì tạm lấy SĐT, studio sửa sau.
-    patch.name = phone;
+    patch.name = patch.name || phone;
     const { error } = await db.from("studio_crew").insert(patch);
     if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
 

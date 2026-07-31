@@ -22,11 +22,25 @@ export default async function CrewPage() {
   }
 
   const supabase = createClient();
-  // Link đăng ký riêng của studio (/crew/<crew_token>) — cấp một lần rồi dùng mãi.
+  // Link đăng ký riêng của studio: /crew/<crew_token>. Mã NGẮN vì thợ hay phải
+  // gõ tay hoặc đọc qua điện thoại — 8 ký tự là ~2,8 nghìn tỷ tổ hợp, thừa an
+  // toàn cho một link chỉ dẫn tới form đăng ký (không lộ dữ liệu gì).
+  // Bỏ chữ dễ đọc nhầm: 0/O, 1/l/I.
+  const ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
+  const shortCode = () =>
+    Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((n) => ALPHABET[n % ALPHABET.length])
+      .join("");
+
   let crewToken = profile.crew_token as string | null;
-  if (!crewToken && profile.actingRole !== "staff") {
-    crewToken = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "");
-    await supabase.from("profiles").update({ crew_token: crewToken }).eq("id", profile.id);
+  // Token dài kiểu UUID cấp ở bản trước cũng rút gọn luôn.
+  if (profile.actingRole !== "staff" && (!crewToken || crewToken.length > 12)) {
+    for (let i = 0; i < 5; i++) {
+      const candidate = shortCode();
+      // Cột là unique — đụng mã thì thử lại, gần như không bao giờ xảy ra.
+      const { error } = await supabase.from("profiles").update({ crew_token: candidate }).eq("id", profile.id);
+      if (!error) { crewToken = candidate; break; }
+    }
   }
 
   const [{ data }, { data: assignments }] = await Promise.all([

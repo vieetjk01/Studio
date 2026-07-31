@@ -11,7 +11,8 @@ alter table public.studio_crew add column if not exists email        text;
 alter table public.studio_crew add column if not exists address      text;
 alter table public.studio_crew add column if not exists bank_name    text;   -- tên ngân hàng của STK
 alter table public.studio_crew add column if not exists bank_account text;
-alter table public.studio_crew add column if not exists skills       text;
+alter table public.studio_crew add column if not exists skills       text;   -- kỹ năng (chụp, quay, dựng…)
+alter table public.studio_crew add column if not exists equipment    text;   -- thiết bị mang theo được
 -- Thợ tự điền lúc nào (để studio biết dòng nào do thợ khai).
 alter table public.studio_crew add column if not exists self_filled_at timestamptz;
 -- 'active'  = studio đã nhận vào sổ

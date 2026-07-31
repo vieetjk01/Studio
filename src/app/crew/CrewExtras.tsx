@@ -10,6 +10,7 @@ export type CrewProfile = {
   studio_name: string;
   name: string | null;
   email: string | null;
+  equipment: string | null;
   address: string | null;
   bank_name: string | null;
   bank_account: string | null;
@@ -24,11 +25,13 @@ export type CrewProfile = {
  * không sửa được.
  */
 const FIELDS: { key: keyof CrewProfile; label: string; type?: string }[] = [
+  { key: "name", label: "Họ tên (trùng tên trên tài khoản ngân hàng)" },
   { key: "email", label: "Email", type: "email" },
   { key: "address", label: "Địa chỉ" },
   { key: "bank_name", label: "Tên ngân hàng" },
   { key: "bank_account", label: "Số tài khoản" },
-  { key: "skills", label: "Kỹ năng / thiết bị" },
+  { key: "skills", label: "Kỹ năng (chụp, quay, dựng…)" },
+  { key: "equipment", label: "Thiết bị (body, lens, gimbal…)" },
 ];
 
 /** Hồ sơ của thợ ở từng studio — studio nhập gì thì hiện thế, trống thì thợ tự điền. */

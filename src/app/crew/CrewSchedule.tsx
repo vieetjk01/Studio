@@ -214,7 +214,18 @@ export default function CrewSchedule({
                 </span>
               )}
               {list.slice(0, 2).map((e) => (
-                <span key={e.id} className="block truncate text-[9px]" style={{ color: "var(--s-amber)" }}>
+                // Việc studio phân được tô đậm + chấm dẫn: đó là thứ thợ cần
+                // thấy ngay, khác hẳn mốc bận do chính mình ghi.
+                <span
+                  key={e.id}
+                  className="block truncate text-[9px]"
+                  style={
+                    e.created_by === "studio"
+                      ? { color: "var(--s-green)", fontWeight: 600 }
+                      : { color: "var(--s-amber)" }
+                  }
+                >
+                  {e.created_by === "studio" ? "● " : ""}
                   {e.start_time ? hhmm(e.start_time) : "cả ngày"}
                 </span>
               ))}
@@ -227,6 +238,12 @@ export default function CrewSchedule({
       </div>
 
       {/* Chi tiết ngày đang chọn + thêm mốc */}
+      <div className="mt-3 flex flex-wrap gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-green)" }} /> Studio phân việc</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-amber)" }} /> Bạn tự báo bận</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-blue)" }} /> Ca công ty</span>
+      </div>
+
       <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
         <p className="mb-2 text-[13px] font-medium">{selected}</p>
 
@@ -239,8 +256,21 @@ export default function CrewSchedule({
         {selEntries.length > 0 && (
           <ul className="mb-3 space-y-2">
             {selEntries.map((e) => (
-              <li key={e.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm" style={{ background: "var(--surface2)" }}>
+              <li
+                key={e.id}
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-sm"
+                style={
+                  e.created_by === "studio"
+                    ? { background: "var(--s-greenS, var(--surface2))", borderLeft: "3px solid var(--s-green)" }
+                    : { background: "var(--surface2)" }
+                }
+              >
                 <span className="min-w-0">
+                  {e.created_by === "studio" && (
+                    <span className="block text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--s-green)" }}>
+                      Studio phân việc
+                    </span>
+                  )}
                   <span className="block truncate">{entryTimeLabel(e)}{e.title ? ` · ${e.title}` : ""}</span>
                   {e.created_by === "studio" && (
                     <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text3)" }}>

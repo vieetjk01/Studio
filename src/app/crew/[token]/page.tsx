@@ -16,10 +16,10 @@ export default async function CrewStudioPortalPage({ params }: { params: { token
   const db = createAdminClient();
   const { data: studio } = await db
     .from("profiles")
-    .select("full_name")
+    .select("id, full_name")
     .eq("crew_token", params.token)
     .maybeSingle();
 
   if (!studio) return <CrewPortal />;
-  return <CrewPortal studio={{ name: studio.full_name || "Studio", crewToken: params.token }} />;
+  return <CrewPortal studio={{ id: studio.id as string, name: studio.full_name || "Studio", crewToken: params.token }} />;
 }
