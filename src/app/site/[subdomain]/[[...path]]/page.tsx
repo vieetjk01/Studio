@@ -77,10 +77,30 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const name = data.owner?.full_name || data.site.subdomain || "Portfolio";
   const title = data.site.seo?.title || name;
   const description = data.site.seo?.description || `Portfolio của ${name}`;
+  // Ảnh chia sẻ: ảnh studio tự đặt → ảnh bìa của khối hero → không có.
+  const heroImage = data.blocks.find((b) => b.type === "hero" && typeof b.config?.image === "string" && b.config.image)?.config
+    ?.image as string | undefined;
+  const image = data.site.seo?.og_image || heroImage;
+  const canonical = `https://${data.site.custom_domain_verified && data.site.custom_domain ? data.site.custom_domain : key}`;
+  const logo = (data.site.theme || {}).logo;
   return {
     title,
     description,
-    openGraph: { title, description, images: data.site.seo?.og_image ? [data.site.seo.og_image] : undefined },
+    alternates: { canonical },
+    // Trang chỉ tồn tại khi đã xuất bản (loadTenant trả null nếu chưa), nên cho
+    // Google lập chỉ mục bình thường.
+    robots: { index: true, follow: true },
+    icons: logo ? { icon: logo } : undefined,
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url: canonical,
+      siteName: name,
+      locale: "vi_VN",
+      images: image ? [image] : undefined,
+    },
+    twitter: { card: image ? "summary_large_image" : "summary", title, description, images: image ? [image] : undefined },
   };
 }
 

@@ -1,6 +1,8 @@
 import HtmlEmbed from "@/components/HtmlEmbed";
 import SiteNav from "@/components/SiteNav";
 import SitePricing from "@/components/site/SitePricing";
+import SiteContactFab, { type FabConfig } from "@/components/site/SiteContactFab";
+import SiteViewPing from "@/components/site/SiteViewPing";
 import { SITE_BLOCK_LABEL, type SiteBlock } from "@/lib/types";
 import { buildPriceView } from "@/lib/site-pricing";
 import { mapEmbedSrc, mapOpenHref } from "@/lib/site-map";
@@ -148,6 +150,20 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
     </footer>
   );
 
+  // Đếm lượt xem — chỉ trên trang thật (bản xem trước của studio không tính).
+  const viewPing = !demo && <SiteViewPing siteId={site.id} />;
+
+  // Nút liên hệ nổi — dùng luôn thông tin studio đã có, studio bật/tắt trong
+  // trình tạo website (theme.fab).
+  const fab = blocks.length > 0 && (
+    <SiteContactFab
+      phone={owner?.pl_phone ?? null}
+      facebook={owner?.pl_facebook ?? null}
+      bookingHref={bookingHref}
+      config={(t.fab || {}) as FabConfig}
+    />
+  );
+
   // Top / bottom navigation — responsive header (hamburger trên mobile).
   if (navPos === "top" || navPos === "bottom") {
     const bottom = navPos === "bottom";
@@ -163,7 +179,7 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
       />
     );
     return (
-      <div style={wrap} id="top">
+      <div style={wrap} id="top" className={bottom ? "s-has-bottom-nav" : undefined}>
         {customCssTag}
         {!bottom && bar}
         {content}
@@ -171,6 +187,8 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
         {/* leave room so the fixed bottom bar doesn't cover the footer */}
         {bottom && blocks.length > 0 && <div style={{ height: 72 }} />}
         {bottom && bar}
+        {fab}
+        {viewPing}
       </div>
     );
   }
@@ -214,6 +232,8 @@ export default function SiteRenderer({ data, demo = false }: { data: SiteData; d
           {footer}
         </main>
       </div>
+      {fab}
+      {viewPing}
     </div>
   );
 }

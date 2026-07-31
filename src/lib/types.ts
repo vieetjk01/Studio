@@ -735,6 +735,14 @@ export type SiteTheme = {
   heroSize?: "small" | "medium" | "large"; // cover height
   contentWidth?: "full" | "compact";       // published page width
   customCss?: string;                      // advanced: raw CSS applied site-wide
+  /** Nút liên hệ nổi góc phải (Zalo / gọi / Messenger / đặt lịch). */
+  fab?: {
+    off?: boolean;
+    phone?: boolean;
+    zalo?: boolean;
+    messenger?: boolean;
+    booking?: boolean;
+  };
 };
 export type SiteSeo = { title?: string; description?: string; og_image?: string };
 

@@ -29,6 +29,9 @@ const ADMIN_PATH = "/dashboard/admin";
  *   album.mstudo.com  → ONLY the album-creation / photo-filter tool
  *   img.mstudo.com    → image-compress tool
  */
+/** File SEO phục vụ theo từng host (route handler tự đọc Host header). */
+const SEO_FILES = new Set(["/robots.txt", "/sitemap.xml"]);
+
 function hostForPath(path: string): string | undefined {
   // Auth pages are shared — never redirect.
   if (path.startsWith("/login") || path.startsWith("/auth")) return undefined;
@@ -94,6 +97,9 @@ export async function middleware(request: NextRequest) {
         if (pathname.startsWith("/dashboard") || pathname === "/start" || pathname.startsWith("/login") || pathname.startsWith("/auth")) {
           return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
         }
+        // robots.txt / sitemap.xml được xử lý bởi route handler đọc Host header
+        // (mỗi tenant một nội dung) — không rewrite vào /site/<sub>/…
+        if (SEO_FILES.has(pathname)) return NextResponse.next();
         // Customer/app routes are SERVED on the studio's own subdomain so every
         // activity a studio shares runs under its personalised URL.
         const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/quote", "/showcase", "/story", "/form/"];
@@ -119,6 +125,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/dashboard") || pathname === "/start" || pathname.startsWith("/login") || pathname.startsWith("/auth")) {
       return NextResponse.redirect(new URL(pathname + search, `https://${MAIN_HOST}`));
     }
+    if (SEO_FILES.has(pathname)) return NextResponse.next();
     const CUSTOMER = ["/a/", "/album", "/c/", "/q/", "/gia/", "/book/", "/crew", "/showcase", "/story", "/form/"];
     if (CUSTOMER.some((p) => pathname.startsWith(p))) {
       return NextResponse.next();

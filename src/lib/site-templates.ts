@@ -277,3 +277,94 @@ export const SITE_TEMPLATES: SiteTemplate[] = RAW_TEMPLATES.map((t) => ({
   ...t,
   thumb: makeThumb(t.theme, t.name),
 }));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CỤM KHỐI — thêm nhiều khối đã soạn sẵn nội dung trong một lần bấm.
+
+   Khác "Mẫu trang" (thay cả trang + đổi màu), cụm khối chỉ CHÈN THÊM vào cuối
+   trang và không đụng tới theme — dùng để dựng nhanh từng phần còn thiếu.
+   ───────────────────────────────────────────────────────────────────────────── */
+export type SectionPreset = {
+  key: string;
+  name: string;
+  hint: string;
+  blocks: { type: SiteBlockType; config: Record<string, unknown> }[];
+};
+
+export const SECTION_PRESETS: SectionPreset[] = [
+  {
+    key: "pricing-faq-cta",
+    name: "Bảng giá + Câu hỏi + Đặt lịch",
+    hint: "Cụm chốt khách: giá → giải đáp thắc mắc → kêu gọi đặt lịch",
+    blocks: [
+      { type: "pricing", config: { heading: "Bảng giá", eyebrow: "Chi phí", layout: "card", grouping: "tabs" } },
+      {
+        type: "faq",
+        config: {
+          heading: "Câu hỏi thường gặp",
+          eyebrow: "Giải đáp",
+          items: "Đặt cọc bao nhiêu? | Studio giữ lịch khi cọc 20–30% giá trị hợp đồng.\nKhi nào nhận được ảnh? | File gốc giao trong 3–5 ngày, ảnh chỉnh sửa 15–20 ngày.\nCó đi tỉnh không? | Có, chi phí đi lại tính riêng theo khoảng cách.\nĐổi lịch được không? | Được, báo trước ít nhất 7 ngày để studio xếp lại lịch.",
+        },
+      },
+      { type: "cta", config: { heading: "Giữ ngày đẹp của bạn", text: "Lịch cuối tuần thường hết sớm — đặt trước để chắc chỗ.", button: "Đặt lịch ngay" } },
+    ],
+  },
+  {
+    key: "trust",
+    name: "Uy tín: Con số + Đánh giá",
+    hint: "Số năm kinh nghiệm, số album, kèm đánh giá khách đã duyệt",
+    blocks: [
+      { type: "stats", config: { items: "8 năm | Kinh nghiệm\n300+ | Album đã giao\n100% | Khách hài lòng" } },
+      { type: "testimonials", config: { heading: "Khách hàng nói gì", eyebrow: "Cảm nhận" } },
+    ],
+  },
+  {
+    key: "process",
+    name: "Quy trình làm việc",
+    hint: "4 bước từ tư vấn đến giao ảnh — giảm hẳn câu hỏi lặp lại",
+    blocks: [
+      {
+        type: "services",
+        config: {
+          heading: "Quy trình làm việc",
+          eyebrow: "Cách chúng tôi làm",
+          items: "Tư vấn & chốt gói | Nghe mong muốn của bạn, gợi ý gói phù hợp ngân sách.\nKý hợp đồng & giữ lịch | Cọc để giữ ngày, chốt lịch trình chi tiết.\nBuổi chụp | Ekip có mặt sớm, chủ động dẫn dắt để bạn thoải mái.\nHậu kỳ & giao ảnh | Giao file gốc trước, ảnh chỉnh sửa và album sau.",
+        },
+      },
+    ],
+  },
+  {
+    key: "story",
+    name: "Giới thiệu + Trích dẫn",
+    hint: "Kể câu chuyện studio kèm một câu nói tạo cảm xúc",
+    blocks: [
+      { type: "quote", config: { text: "Chúng tôi không chỉ chụp ảnh — chúng tôi giữ lại cảm xúc của ngày hôm đó.", author: "" } },
+      {
+        type: "about",
+        config: {
+          heading: "Về studio",
+          eyebrow: "Câu chuyện",
+          text: "Chúng tôi bắt đầu từ một chiếc máy phim cũ và tình yêu với những khoảnh khắc thật.\nĐến nay, mỗi năm studio đồng hành cùng hàng trăm cặp đôi và gia đình.",
+        },
+      },
+    ],
+  },
+  {
+    key: "contact-map",
+    name: "Liên hệ + Bản đồ",
+    hint: "Thông tin liên hệ, nút đặt lịch và bản đồ đường tới studio",
+    blocks: [
+      { type: "contact", config: { heading: "Liên hệ & đặt lịch", eyebrow: "Kết nối", email: "", address: "" } },
+      { type: "map", config: { heading: "Ghé studio", address: "", mapUrl: "" } },
+    ],
+  },
+  {
+    key: "gallery-social",
+    name: "Bộ sưu tập + Mạng xã hội",
+    hint: "Khoe ảnh đã giao rồi dẫn khách sang Facebook / Instagram",
+    blocks: [
+      { type: "gallery", config: { heading: "Bộ sưu tập", eyebrow: "Tác phẩm" } },
+      { type: "social", config: { heading: "Theo dõi studio", facebook: "", instagram: "" } },
+    ],
+  },
+];

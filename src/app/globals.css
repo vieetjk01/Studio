@@ -481,6 +481,33 @@ body {
 .s-faq[open] > summary::after { content: "–"; }
 .s-faq-a { padding: 0 20px 18px; opacity: 0.82; line-height: 1.65; }
 
+/* ── Nút liên hệ nổi (Zalo / gọi / Messenger / đặt lịch) ──────────────────── */
+.s-fab-wrap { position: fixed; right: 18px; bottom: 18px; z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.s-fab {
+  width: 54px; height: 54px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--s-accent); color: var(--s-accentInk, #fff);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.s-fab:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.s-fab-menu { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; animation: sFabIn 0.16s ease both; }
+@keyframes sFabIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.s-fab-item {
+  display: inline-flex; align-items: center; gap: 9px; padding: 10px 16px 10px 12px;
+  border-radius: 999px; text-decoration: none; font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  background: var(--s-bg); color: var(--s-text); border: 1px solid var(--s-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+}
+.s-fab-item:hover { border-color: var(--s-accent); }
+.s-fab-ico { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--s-accent); color: var(--s-accentInk, #fff); flex-shrink: 0; }
+@media (max-width: 560px) {
+  .s-fab-wrap { right: 14px; bottom: 14px; }
+  .s-fab { width: 50px; height: 50px; }
+}
+/* Menu ở dưới trang thì nhấc nút nổi lên khỏi thanh menu. */
+.s-has-bottom-nav .s-fab-wrap { bottom: 84px; }
+
 /* ── BẢNG GIÁ ─────────────────────────────────────────────────────────────── */
 .sp-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
 .sp-tab {

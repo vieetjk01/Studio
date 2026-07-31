@@ -3,9 +3,9 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  Monitor, Smartphone, Undo2, Redo2, Eye, Rocket, ArrowLeft, Plus,
+  Monitor, Smartphone, Undo2, Redo2, Eye, EyeOff, Rocket, ArrowLeft, Plus,
   LayoutTemplate, Blocks, GripVertical, ChevronUp, ChevronDown, Copy,
-  Trash2, ImagePlus, X, Type as TypeIcon, Check, ExternalLink,
+  Trash2, ImagePlus, X, Type as TypeIcon, Check, ExternalLink, Layers, BarChart3,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { MAIN_HOST } from "@/lib/hosts";
@@ -14,9 +14,10 @@ import {
   type Site,
   type SiteBlock,
   type SiteBlockType,
+  type SiteSeo,
   type SiteTheme,
 } from "@/lib/types";
-import { SITE_TEMPLATES, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
+import { SITE_TEMPLATES, SECTION_PRESETS, personalizeBlocks, EMPTY_INTAKE } from "@/lib/site-templates";
 import SitePricing from "@/components/site/SitePricing";
 import {
   buildPriceView,
@@ -38,7 +39,9 @@ import { useTheme } from "@/lib/theme";
    ───────────────────────────────────────────────────────────────────────── */
 
 type Device = "desktop" | "mobile";
-type AlbumLite = { id: string; slug: string; title: string; cover_url: string | null };
+/** Album của studio + `pinned`: có đủ điều kiện lên trang công khai hay chưa. */
+type AlbumLite = { id: string; slug: string; title: string; cover_url: string | null; pinned?: boolean };
+export type AlbumOption = AlbumLite;
 
 // Bộ màu nhấn người dùng có thể chọn nhanh (theo handoff §5).
 const ACCENTS = ["#1A1815", "#C9A24B", "#E0533D", "#C0837D", "#3E6F63", "#5566B5"];
@@ -90,6 +93,12 @@ const lines = (v: unknown) => String(v ?? "").split("\n").map((s) => s.trim()).f
 
 export type PriceItem = SitePriceItem;
 export type PriceListOption = { key: string; label: string; count: number };
+export type SiteViewStats = {
+  today: number;
+  week: number;
+  month: number;
+  daily: { day: string; views: number }[];
+};
 
 export default function CanvasBuilder({
   site,
@@ -98,6 +107,7 @@ export default function CanvasBuilder({
   pricelist = [],
   priceLists = [],
   priceLabels = {},
+  siteViews,
   canPublish,
   canCustomDomain = false,
   mainHost,
@@ -108,6 +118,7 @@ export default function CanvasBuilder({
   pricelist?: PriceItem[];
   priceLists?: PriceListOption[];
   priceLabels?: Record<string, string>;
+  siteViews?: SiteViewStats;
   canPublish: boolean;
   canCustomDomain?: boolean;
   mainHost: string;
@@ -125,7 +136,7 @@ export default function CanvasBuilder({
   const [savedSub, setSavedSub] = useState(site.subdomain ?? "");
   const [savingDomain, setSavingDomain] = useState(false);
   const [selId, setSelId] = useState<string | null>(null);
-  const [leftTab, setLeftTab] = useState<"blocks" | "templates">("blocks");
+  const [leftTab, setLeftTab] = useState<"blocks" | "presets" | "templates">("blocks");
   const [device, setDevice] = useState<Device>("desktop");
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -204,15 +215,25 @@ export default function CanvasBuilder({
     await supabase.from("site_blocks").update({ config: b.config, visible: b.visible }).eq("id", b.id);
   }, [supabase]);
 
-  // Full rewrite of positions/blocks — used by reorder/template/undo.
+  // Lưu lại toàn bộ thứ tự/khối — dùng khi kéo thả, thêm/xoá, áp mẫu, hoàn tác.
+  // GHI TRƯỚC (upsert) rồi mới xoá phần dư: nếu request thứ hai lỗi (mạng rớt)
+  // thì chỉ còn sót vài khối cũ — sửa được. Cách trước đây là xoá HẾT rồi chèn
+  // lại, nên hỏng giữa hai bước là mất sạch trang.
   const persistAll = useCallback(async (bl: SiteBlock[], th: SiteTheme) => {
     await persistTheme(th);
-    await supabase.from("site_blocks").delete().eq("site_id", site.id);
-    if (bl.length) {
-      await supabase.from("site_blocks").insert(
-        bl.map((b, i) => ({ id: b.id, site_id: site.id, type: b.type, position: i, visible: b.visible, config: b.config }))
-      );
+    const rows = bl.map((b, i) => ({
+      id: b.id, site_id: site.id, type: b.type, position: i, visible: b.visible, config: b.config,
+    }));
+    if (rows.length) {
+      const { error } = await supabase.from("site_blocks").upsert(rows, { onConflict: "id" });
+      if (error) { flash(`Chưa lưu được: ${error.message}`); return; }
     }
+    // Xoá những khối không còn trong danh sách (đã bị xoá / thay bằng mẫu khác).
+    let del = supabase.from("site_blocks").delete().eq("site_id", site.id);
+    if (rows.length) del = del.not("id", "in", `(${rows.map((r) => r.id).join(",")})`);
+    const { error } = await del;
+    if (error) flash(`Chưa dọn được khối cũ: ${error.message}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistTheme, site.id, supabase]);
 
   // ── Block mutations ───────────────────────────────────────────────────
@@ -261,6 +282,22 @@ export default function CanvasBuilder({
     persistAll(next, theme);
   }
 
+  // Cụm khối: chèn thêm vài khối đã soạn nội dung vào cuối trang (không đổi theme).
+  function insertPreset(key: string) {
+    const preset = SECTION_PRESETS.find((p) => p.key === key);
+    if (!preset) return;
+    snapshot();
+    const rows: SiteBlock[] = preset.blocks.map((b, i) => ({
+      id: uid(), site_id: site.id, type: b.type, position: blocks.length + i,
+      visible: true, config: { ...b.config }, created_at: new Date().toISOString(),
+    }));
+    const next = [...blocks, ...rows];
+    setBlocks(next);
+    setSelId(rows[0]?.id ?? null);
+    persistAll(next, theme);
+    flash(`Đã thêm cụm “${preset.name}” (${rows.length} khối)`);
+  }
+
   function dupBlock(id: string) {
     const i = blocks.findIndex((b) => b.id === id);
     if (i < 0) return;
@@ -272,6 +309,17 @@ export default function CanvasBuilder({
     setSelId(copy.id);
     persistAll(next, theme);
     flash("Đã nhân bản khối");
+  }
+
+  // Tạm ẩn khối: vẫn giữ nội dung nhưng không hiện trên trang đã xuất bản
+  // (loadSiteBundle chỉ lấy khối visible=true).
+  function toggleVisible(id: string) {
+    snapshot();
+    const next = blocks.map((b) => (b.id === id ? { ...b, visible: !b.visible } : b));
+    setBlocks(next);
+    const b = next.find((x) => x.id === id);
+    if (b) persistBlock(b);
+    flash(b?.visible ? "Đã hiện khối trên trang" : "Đã ẩn khối khỏi trang");
   }
 
   function delBlock(id: string) {
@@ -360,6 +408,9 @@ export default function CanvasBuilder({
 
   const selected = blocks.find((b) => b.id === selId) || null;
   const dragging = dragType !== null || dragId !== null;
+  // Xem trước = đúng trang thật → bỏ các khối đang ẩn. Khi soạn thì vẫn hiện
+  // (mờ đi) để studio bật lại được.
+  const canvasBlocks = preview ? blocks.filter((b) => b.visible !== false) : blocks;
   const accent = theme.accent || "#1A1815";
   const canvasMax: number | string = device === "mobile" ? 402 : (theme.contentWidth === "full" ? "100%" : 1080);
 
@@ -430,8 +481,9 @@ export default function CanvasBuilder({
         {!preview && (
           <aside style={{ width: 284, flexShrink: 0, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", padding: 10, gap: 6, borderBottom: "1px solid var(--border)" }}>
-              <button onClick={() => setLeftTab("blocks")} style={tabBtn(leftTab === "blocks")}><Blocks size={15} /> Khối</button>
-              <button onClick={() => setLeftTab("templates")} style={tabBtn(leftTab === "templates")}><LayoutTemplate size={15} /> Mẫu trang</button>
+              <button onClick={() => setLeftTab("blocks")} style={tabBtn(leftTab === "blocks")}><Blocks size={14} /> Khối</button>
+              <button onClick={() => setLeftTab("presets")} style={tabBtn(leftTab === "presets")}><Layers size={14} /> Cụm</button>
+              <button onClick={() => setLeftTab("templates")} style={tabBtn(leftTab === "templates")}><LayoutTemplate size={14} /> Mẫu</button>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
@@ -450,6 +502,25 @@ export default function CanvasBuilder({
                       >
                         <Plus size={14} style={{ color: "var(--brand)" }} />
                         <span style={{ fontSize: 11.5, fontWeight: 600, lineHeight: 1.2 }}>{SITE_BLOCK_LABEL[type]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : leftTab === "presets" ? (
+                <>
+                  <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 10 }}>
+                    Thêm cả cụm khối đã soạn sẵn nội dung vào cuối trang — không đổi màu sắc đang có.
+                  </p>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {SECTION_PRESETS.map((p) => (
+                      <button key={p.key} onClick={() => insertPreset(p.key)} style={presetCard}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+                          <Plus size={13} style={{ color: "var(--brand)", flexShrink: 0 }} /> {p.name}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{p.hint}</span>
+                        <span style={{ fontSize: 10.5, color: "var(--text3)", opacity: 0.8 }}>
+                          {p.blocks.map((b) => SITE_BLOCK_LABEL[b.type]).join(" · ")}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -491,14 +562,16 @@ export default function CanvasBuilder({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {blocks.length === 0 ? (
+            {canvasBlocks.length === 0 ? (
               <div style={{ padding: "120px 24px", textAlign: "center", color: "var(--s-text)", opacity: 0.6 }}>
                 <p style={{ fontFamily: fontHead, fontSize: 30 }}>Trang trống</p>
-                <p style={{ marginTop: 8, fontSize: 14 }}>Chọn một <b>Mẫu trang</b> hoặc kéo khối từ bên trái vào đây.</p>
+                <p style={{ marginTop: 8, fontSize: 14 }}>
+                  {preview && blocks.length ? "Mọi khối đang bị ẩn — bật lại bằng con mắt trên khối." : <>Chọn một <b>Mẫu trang</b> hoặc kéo khối từ bên trái vào đây.</>}
+                </p>
               </div>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start" }}>
-                {blocks.map((b, i) => {
+                {canvasBlocks.map((b, i) => {
                   const isHero = b.type === "hero";
                   const half = b.config?.width === "half" && !isHero;
                   return (
@@ -514,7 +587,7 @@ export default function CanvasBuilder({
                           selected={selId === b.id}
                           preview={preview}
                           first={i === 0}
-                          last={i === blocks.length - 1}
+                          last={i === canvasBlocks.length - 1}
                           fontHead={fontHead}
                           accent={accent}
                           albums={albums}
@@ -526,6 +599,7 @@ export default function CanvasBuilder({
                           onMove={(d) => moveDir(b.id, d)}
                           onDup={() => dupBlock(b.id)}
                           onDel={() => delBlock(b.id)}
+                          onToggleVisible={() => toggleVisible(b.id)}
                           onEdit={(k, v, commit) => setConfig(b.id, k, v, commit)}
                           onBeforeEdit={snapshot}
                         />
@@ -643,6 +717,30 @@ export default function CanvasBuilder({
                   ))}
                 </div>
 
+                <label style={insLabel}>Nút liên hệ nổi (góc phải trang)</label>
+                <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55, marginBottom: 8 }}>
+                  Lấy sẵn số điện thoại &amp; Facebook trong thông tin studio. Khách bấm là gọi / nhắn Zalo ngay.
+                </p>
+                <div style={{ display: "grid", gap: 6, marginBottom: 16 }}>
+                  {([["booking", "Đặt lịch"], ["zalo", "Chat Zalo"], ["messenger", "Messenger"], ["phone", "Gọi điện"]] as const).map(([k, lbl]) => {
+                    const f = theme.fab || {};
+                    const on = !f.off && f[k] !== false;
+                    return (
+                      <button key={k} onClick={() => patchTheme({ fab: { ...f, off: false, [k]: !on } })}
+                        style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 10, cursor: "pointer", textAlign: "left", border: `1px solid ${on ? "var(--brand)" : "var(--border)"}`, background: on ? "var(--brandSoft)" : "var(--surface)", color: "var(--text)" }}>
+                        <span style={{ width: 17, height: 17, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? "var(--brand)" : "var(--border)"}`, background: on ? "var(--brand)" : "transparent", color: "var(--brandFg)" }}>
+                          {on && <Check size={12} />}
+                        </span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{lbl}</span>
+                      </button>
+                    );
+                  })}
+                  <button onClick={() => patchTheme({ fab: { ...(theme.fab || {}), off: !(theme.fab?.off) } })}
+                    style={{ ...segWide(false), height: 30, fontSize: 12 }}>
+                    {theme.fab?.off ? "Bật lại nút nổi" : "Tắt hẳn nút nổi"}
+                  </button>
+                </div>
+
                 <label style={insLabel}>Logo studio</label>
                 <div style={{ marginBottom: 16 }}>
                   {theme.logo ? (
@@ -666,6 +764,10 @@ export default function CanvasBuilder({
                     }} />
                   </label>
                 </div>
+
+                {siteViews && <ViewStats stats={siteViews} published={published} />}
+
+                <SeoPanel site={site} supabase={supabase} onFlash={flash} />
 
                 <label style={insLabel}>CSS tùy chỉnh (nâng cao)</label>
                 <textarea
@@ -720,7 +822,7 @@ function DropZone({ dragging, active, onOver, onDrop, tall }: { dragging: boolea
 /* ── Block shell: floating toolbar + selection border + editable content ── */
 function BlockShell({
   block, selected, preview, first, last, fontHead, accent, albums, pricelist, priceLabels,
-  onSelect, onDragStart, onDragEnd, onMove, onDup, onDel, onEdit, onBeforeEdit,
+  onSelect, onDragStart, onDragEnd, onMove, onDup, onDel, onToggleVisible, onEdit, onBeforeEdit,
 }: {
   block: SiteBlock;
   selected: boolean;
@@ -738,11 +840,13 @@ function BlockShell({
   onMove: (d: -1 | 1) => void;
   onDup: () => void;
   onDel: () => void;
+  onToggleVisible: () => void;
   onEdit: (k: string, v: unknown, commit?: boolean) => void;
   onBeforeEdit: () => void;
 }) {
   const [hover, setHover] = useState(false);
   const showTools = !preview && (hover || selected);
+  const hidden = block.visible === false;
 
   return (
     <div
@@ -754,6 +858,9 @@ function BlockShell({
         outline: preview ? "none" : selected ? `2px solid ${accent}` : hover ? "2px solid rgba(184,92,59,.45)" : "2px solid transparent",
         outlineOffset: -2,
         cursor: preview ? "default" : "pointer",
+        // Khối đang ẩn: làm mờ + gạch chéo nhẹ để thấy ngay là không lên trang.
+        opacity: hidden ? 0.42 : 1,
+        filter: hidden ? "grayscale(.7)" : undefined,
       }}
     >
       {showTools && (
@@ -761,13 +868,23 @@ function BlockShell({
           <span draggable onDragStart={(e) => { e.stopPropagation(); onDragStart(); }} onDragEnd={onDragEnd} title="Kéo để di chuyển" style={toolBtn}><GripVertical size={15} /></span>
           <button disabled={first} onClick={(e) => { e.stopPropagation(); onMove(-1); }} title="Lên" style={toolBtn}><ChevronUp size={15} /></button>
           <button disabled={last} onClick={(e) => { e.stopPropagation(); onMove(1); }} title="Xuống" style={toolBtn}><ChevronDown size={15} /></button>
+          <button onClick={(e) => { e.stopPropagation(); onToggleVisible(); }} title={hidden ? "Hiện lại khối trên trang" : "Tạm ẩn khối khỏi trang"} style={toolBtn}>
+            {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
           <button onClick={(e) => { e.stopPropagation(); onDup(); }} title="Nhân bản" style={toolBtn}><Copy size={14} /></button>
           <button onClick={(e) => { e.stopPropagation(); onDel(); }} title="Xoá" style={{ ...toolBtn, color: "#f0a39e" }}><Trash2 size={14} /></button>
         </div>
       )}
       {showTools && (
-        <span style={{ position: "absolute", top: 8, left: 8, zIndex: 5, background: accent, color: contrastInk(accent), fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
-          {SITE_BLOCK_LABEL[block.type]}
+        <span style={{ position: "absolute", top: 8, left: 8, zIndex: 5, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ background: accent, color: contrastInk(accent), fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
+            {SITE_BLOCK_LABEL[block.type]}
+          </span>
+          {hidden && (
+            <span style={{ background: "#23201B", color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
+              Đang ẩn
+            </span>
+          )}
         </span>
       )}
       <BlockBody block={block} fontHead={fontHead} accent={accent} albums={albums} pricelist={pricelist} priceLabels={priceLabels} preview={preview} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
@@ -867,7 +984,12 @@ function BlockBody({ block, fontHead, accent, albums, pricelist, priceLabels, pr
       );
     }
     case "gallery": {
-      const covers = albums.filter((a) => a.cover_url).slice(0, 6);
+      // Tôn trọng album studio đã chọn (album_ids); chưa chọn thì lấy album mới nhất.
+      const ids = Array.isArray(c.album_ids) ? (c.album_ids as string[]) : [];
+      const picked = ids.length
+        ? (ids.map((id) => albums.find((a) => a.id === id)).filter(Boolean) as AlbumLite[])
+        : albums.filter((a) => a.cover_url);
+      const covers = picked.slice(0, 6);
       return (
         <section style={sec}>
           {heading("heading", "Bộ sưu tập")}
@@ -1245,6 +1367,10 @@ function Inspector({ block, blocks = [], siteUrl = "", albums, priceLists = [], 
           <Field label="Địa chỉ"><input style={insInput} value={S("address")} onFocus={onBeforeEdit} onChange={(e) => onEdit("address", e.target.value)} onBlur={(e) => onEdit("address", e.target.value, true)} /></Field>
         </>
       )}
+      {block.type === "gallery" && (
+        <AlbumPicker block={block} albums={albums} onEdit={onEdit} onBeforeEdit={onBeforeEdit} />
+      )}
+
       {block.type === "map" && (
         <>
           <Field label="Địa chỉ (chữ hiện trên trang)">
@@ -1371,6 +1497,217 @@ function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; o
       </button>
       {hint && <p style={{ marginTop: 5, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{hint}</p>}
     </div>
+  );
+}
+
+/* ── Lượt xem website (bảng site_views) ────────────────────────────────────── */
+function ViewStats({ stats, published }: { stats: SiteViewStats; published: boolean }) {
+  const max = Math.max(1, ...stats.daily.map((d) => d.views));
+  // Dựng đủ 30 cột (ngày không có lượt xem = 0) để cột không bị dồn lệch ngày.
+  const days: { day: string; views: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const day = new Date(Date.now() - i * 86400_000).toISOString().slice(0, 10);
+    days.push({ day, views: stats.daily.find((d) => d.day === day)?.views ?? 0 });
+  }
+
+  return (
+    <div style={{ marginBottom: 18, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+      <label style={{ ...insLabel, display: "flex", alignItems: "center", gap: 6 }}>
+        <BarChart3 size={13} /> Lượt xem trang
+      </label>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {([["Hôm nay", stats.today], ["7 ngày", stats.week], ["30 ngày", stats.month]] as const).map(([lbl, n]) => (
+          <div key={lbl} style={{ flex: 1, padding: "8px 6px", borderRadius: 10, background: "var(--surface2)", border: "1px solid var(--border)", textAlign: "center" }}>
+            <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-.02em" }}>{n}</div>
+            <div style={{ fontSize: 10.5, color: "var(--text3)" }}>{lbl}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 42 }} title="30 ngày gần nhất">
+        {days.map((d) => (
+          <div
+            key={d.day}
+            title={`${d.day}: ${d.views} lượt`}
+            style={{
+              flex: 1,
+              height: `${Math.max(3, Math.round((d.views / max) * 100))}%`,
+              borderRadius: 2,
+              background: d.views ? "var(--brand)" : "var(--border)",
+            }}
+          />
+        ))}
+      </div>
+      <p style={{ marginTop: 7, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>
+        {published
+          ? "Đếm mỗi khách một lượt trong một phiên truy cập. Không tính bản xem trước của bạn."
+          : "Trang chưa xuất bản nên chưa có lượt xem nào."}
+      </p>
+    </div>
+  );
+}
+
+/* ── SEO & ảnh chia sẻ (sites.seo) ─────────────────────────────────────────
+   Đây là chữ hiện trên Google và khi dán link vào Facebook/Zalo. Trước đây bảng
+   `sites` đã có cột `seo` và generateMetadata đã đọc, chỉ thiếu chỗ nhập. */
+function SeoPanel({ site, supabase, onFlash }: {
+  site: Site;
+  supabase: ReturnType<typeof createClient>;
+  onFlash: (m: string) => void;
+}) {
+  const initial = (site.seo || {}) as SiteSeo;
+  const [seo, setSeo] = useState<SiteSeo>(initial);
+  const [busy, setBusy] = useState(false);
+
+  const save = useCallback(async (next: SiteSeo) => {
+    setSeo(next);
+    const { error } = await supabase.from("sites").update({ seo: next, updated_at: new Date().toISOString() }).eq("id", site.id);
+    if (error) onFlash(`Chưa lưu được SEO: ${error.message}`);
+  }, [site.id, supabase, onFlash]);
+
+  async function pickOg(file: File) {
+    const check = checkImageFile(file);
+    if (!check.ok) { onFlash(check.error); return; }
+    setBusy(true);
+    // 1200×630 là khổ ảnh chia sẻ chuẩn của Facebook/Zalo.
+    const dataUrl = await compressImage(file, { maxDim: 1200, quality: 0.72, mime: "image/jpeg" });
+    let url = dataUrl;
+    try { url = await uploadImage(await dataUrlToBlob(dataUrl), { filename: "og.jpg" }); } catch { /* fallback: nhúng data URL */ }
+    setBusy(false);
+    save({ ...seo, og_image: url });
+  }
+
+  const titleLen = (seo.title || "").length;
+  const descLen = (seo.description || "").length;
+
+  return (
+    <div style={{ marginBottom: 18, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+      <label style={insLabel}>SEO &amp; ảnh chia sẻ</label>
+      <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55, marginBottom: 10 }}>
+        Chữ hiện trên Google và khi dán link trang vào Facebook / Zalo.
+      </p>
+
+      <input
+        style={insInput}
+        placeholder="Tiêu đề trang (vd: Mộc Studio — Ảnh cưới Đà Nẵng)"
+        value={seo.title ?? ""}
+        onChange={(e) => setSeo({ ...seo, title: e.target.value })}
+        onBlur={(e) => save({ ...seo, title: e.target.value.trim() })}
+      />
+      <p style={{ margin: "3px 0 8px", fontSize: 10.5, color: titleLen > 60 ? "#c0603d" : "var(--text3)" }}>
+        {titleLen}/60 ký tự{titleLen > 60 ? " — Google sẽ cắt bớt" : ""}
+      </p>
+
+      <textarea
+        style={{ ...insInput, minHeight: 64 }}
+        placeholder="Mô tả ngắn: studio làm gì, ở đâu, thế mạnh gì."
+        value={seo.description ?? ""}
+        onChange={(e) => setSeo({ ...seo, description: e.target.value })}
+        onBlur={(e) => save({ ...seo, description: e.target.value.trim() })}
+      />
+      <p style={{ margin: "3px 0 8px", fontSize: 10.5, color: descLen > 160 ? "#c0603d" : "var(--text3)" }}>
+        {descLen}/160 ký tự{descLen > 160 ? " — Google sẽ cắt bớt" : ""}
+      </p>
+
+      {seo.og_image ? (
+        <div style={{ position: "relative", marginBottom: 8 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={seo.og_image} alt="" style={{ width: "100%", aspectRatio: "1200/630", objectFit: "cover", borderRadius: 10, display: "block" }} />
+          <button onClick={() => save({ ...seo, og_image: "" })} title="Gỡ ảnh"
+            style={{ position: "absolute", top: 6, right: 6, background: "var(--text)", color: "var(--bg)", border: 0, borderRadius: 999, width: 26, height: 26, cursor: "pointer" }}>
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
+      <label style={{ ...insInput, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: busy ? "wait" : "pointer", background: "var(--surface2)" }}>
+        <ImagePlus size={15} /> {busy ? "Đang tải…" : seo.og_image ? "Đổi ảnh chia sẻ" : "Tải ảnh chia sẻ (1200×630)"}
+        <input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickOg(f); }} />
+      </label>
+      <p style={{ marginTop: 5, fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>
+        Để trống thì hệ thống dùng tên studio và ảnh bìa sẵn có.
+      </p>
+    </div>
+  );
+}
+
+/* ── Bộ sưu tập: chọn album nào hiện & theo thứ tự nào ─────────────────────── */
+function AlbumPicker({ block, albums, onEdit, onBeforeEdit }: {
+  block: SiteBlock;
+  albums: AlbumLite[];
+  onEdit: (k: string, v: unknown, commit?: boolean) => void;
+  onBeforeEdit: () => void;
+}) {
+  const c = block.config || {};
+  const ids = Array.isArray(c.album_ids) ? (c.album_ids as string[]) : [];
+  const auto = ids.length === 0;
+
+  function setIds(next: string[]) {
+    onBeforeEdit();
+    onEdit("album_ids", next, true);
+  }
+  function toggle(id: string) {
+    setIds(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  }
+
+  // Album chưa "ghim ở trang chủ" / chưa ở giai đoạn giao khách sẽ KHÔNG lên
+  // trang công khai — cảnh báo ngay để studio không tưởng là lỗi.
+  const chosen = ids.map((id) => albums.find((a) => a.id === id)).filter(Boolean) as AlbumLite[];
+  const notPinned = (auto ? albums : chosen).filter((a) => a.pinned === false);
+
+  return (
+    <Field label="Album hiện trong khối này">
+      {albums.length === 0 ? (
+        <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.5 }}>
+          Chưa có album nào đã xuất bản. Tạo album trước rồi quay lại chọn.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+            {albums.map((a) => {
+              const at = ids.indexOf(a.id);
+              const on = at >= 0;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  title={`${a.title}${a.pinned === false ? " — chưa ghim ở trang chủ" : ""}`}
+                  onClick={() => toggle(a.id)}
+                  style={{
+                    position: "relative", padding: 0, aspectRatio: "4/3", borderRadius: 8, overflow: "hidden", cursor: "pointer",
+                    border: on ? "2px solid var(--brand)" : "1px solid var(--border)",
+                    background: "var(--surface2)",
+                    opacity: a.pinned === false ? 0.55 : 1,
+                  }}
+                >
+                  {a.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.cover_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : null}
+                  {on && (
+                    <span style={{ position: "absolute", top: 3, left: 3, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "var(--brand)", color: "var(--brandFg)", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {at + 1}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={() => setIds([])} style={{ ...segWide(auto), height: 30, fontSize: 12 }}>Tự động (mới nhất)</button>
+            <button type="button" onClick={() => setIds(albums.map((a) => a.id))} style={{ ...segWide(false), height: 30, fontSize: 12 }}>Chọn tất cả</button>
+          </div>
+          <p style={{ marginTop: 6, fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>
+            {auto
+              ? "Đang tự lấy album mới nhất. Bấm vào ảnh để tự chọn — số trên ảnh là thứ tự hiện."
+              : `Đang chọn ${ids.length} album, hiện theo thứ tự bạn bấm.`}
+          </p>
+          {notPinned.length > 0 && (
+            <p style={{ marginTop: 6, fontSize: 11, color: "var(--warn, #b4690e)", lineHeight: 1.55 }}>
+              ⚠ {notPinned.length} album sẽ KHÔNG lên trang công khai vì chưa ở giai đoạn giao khách hoặc chưa tích “Hiện ở trang chủ”. Sửa trong trang Album.
+            </p>
+          )}
+        </>
+      )}
+    </Field>
   );
 }
 
@@ -1623,6 +1960,7 @@ function tabBtn(active: boolean): React.CSSProperties {
 }
 const paletteCard: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, padding: "10px 11px", borderRadius: 11, border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)", cursor: "grab", textAlign: "left" };
 const tplCard: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" };
+const presetCard: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, width: "100%", textAlign: "left", padding: "10px 11px", borderRadius: 11, border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)", cursor: "pointer" };
 function segWide(active: boolean): React.CSSProperties {
   return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 9, border: active ? "1px solid var(--brand)" : "1px solid var(--border)", background: active ? "var(--brand)" : "var(--surface)", color: active ? "var(--brandFg)" : "var(--text)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
 }
