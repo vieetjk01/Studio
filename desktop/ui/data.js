@@ -243,7 +243,30 @@ function renderOverview() {
 
   return serverDiffBanner() + statsHtml +
     `<div class="ogrid">${upcomingHtml}${recentHtml}</div>${bookingsHtml}` +
-    `<p class="dnote">Dữ liệu cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}. Tất cả tính từ dữ liệu đã lưu trên máy.</p>`;
+    cacheProvenance();
+}
+
+/**
+ * Xuất xứ của bản dữ liệu đang hiển thị: máy chủ tạo lúc nào, cho TÀI KHOẢN NÀO,
+ * và lần tải gần nhất có hỏng không.
+ *
+ * Bản backup mang sẵn `owner_id` + `exported_at`, nên chính tệp cache trả lời
+ * được câu "số này của ai, cũ tới mức nào" — không cần đoán. Lỗi tải cũng đưa
+ * lên đây: nằm trong nhật ký ở tab khác thì không ai thấy, và một bản cache cũ
+ * đứng im trông y hệt một bản cache đúng.
+ */
+function cacheProvenance() {
+  const err = window.cacheError ? window.cacheError() : null;
+  const parts = [
+    `Dữ liệu cập nhật lần cuối: ${window.cacheStamp ? window.cacheStamp() : "—"}`,
+    DB.exported_at ? `bản xuất từ máy chủ lúc ${D(DB.exported_at)} ${String(DB.exported_at).slice(11, 16)}` : null,
+    DB.owner_id ? `tài khoản trong bản dữ liệu: <code>${esc(String(DB.owner_id).slice(0, 8))}…</code>` : null,
+  ].filter(Boolean);
+  return `<p class="dnote">${parts.join(" · ")}. Tất cả tính từ dữ liệu đã lưu trên máy.</p>` +
+    (err
+      ? `<p class="dnote" style="color:#b4341f"><b>Lần tải dữ liệu gần nhất THẤT BẠI</b> (${esc(err.atText)}): ${esc(err.msg)}.
+         Các con số ở trên là bản cũ còn lưu trên máy.</p>`
+      : "");
 }
 
 /**

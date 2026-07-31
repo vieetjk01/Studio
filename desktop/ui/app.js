@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.7"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.8"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -38,6 +38,9 @@ const join = (...parts) => parts.filter(Boolean).join("\\").replace(/[\\/]+/g, "
 const cachePath = () => join(cfg.dir, "_offline-cache.json");
 // Mốc cập nhật cache (cho trình duyệt dữ liệu offline hiển thị).
 window.cacheStamp = () => (cfg.lastCache ? fmtTime(cfg.lastCache) : "chưa tải");
+// Lần tải dữ liệu GẦN NHẤT có lỗi hay không — để Tổng quan nói ra ngay dưới các
+// con số, thay vì chỉ nằm trong nhật ký ở tab khác.
+window.cacheError = () => (cfg.lastCacheErr ? { ...cfg.lastCacheErr, atText: fmtTime(cfg.lastCacheErr.at) } : null);
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtTime = (iso) => {
   if (!iso) return "—";
@@ -676,13 +679,19 @@ async function refreshData(manual = false) {
     const backup = await apiB64(`/api/desktop/export?type=backup`);
     await invoke("write_file_b64", { path: cachePath(), contentsB64: backup });
     setData(JSON.parse(b64ToText(backup)));
-    cfg.lastCache = new Date().toISOString(); saveCfg(); refreshStats();
+    cfg.lastCache = new Date().toISOString();
+    delete cfg.lastCacheErr;
+    saveCfg(); refreshStats();
     if (manual) log("Đã tải dữ liệu mới từ máy chủ.");
     return true;
   } catch (e) {
     // Báo cả khi TỰ ĐỘNG: cache cũ mà im lặng chính là thứ khiến số liệu lệch
-    // với web mà không ai biết.
+    // với web mà không ai biết. Lỗi được GHI LẠI để màn Tổng quan nói ra ngay
+    // dưới các con số — nhật ký trong tab khác thì không ai thấy.
+    cfg.lastCacheErr = { at: new Date().toISOString(), msg: String(e.message || e) };
+    saveCfg();
     log("Không tải được dữ liệu mới: " + (e.message || e), "err");
+    if (typeof renderData === "function") renderData();
     return false;
   } finally {
     refreshingData = false;
