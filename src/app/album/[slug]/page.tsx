@@ -116,8 +116,14 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
     // Share: cần đủ ảnh để lọc theo shareIds. Ngược lại chỉ gửi lô đầu.
     photos = shareMode ? filtered : filtered.slice(0, INITIAL_PHOTOS);
     sources = shownSources.map(({ id, name, position }) => ({ id, name, position }));
+    // Giai đoạn giao khách: nhận MỌI link Drive, không đòi kind === "folder".
+    // kind do isFolderLink() đoán từ URL lúc lưu, chỉ khớp dạng ".../folders/…";
+    // studio dán link chia sẻ dạng khác là thành "file" và nút biến mất, dù link
+    // vẫn mở đúng thư mục. Ở nhánh fallback (album chưa gắn giai đoạn) thì vẫn
+    // lọc theo folder, nếu không một album ghép từ nhiều link file lẻ sẽ đẻ ra
+    // cả danh sách nút vô nghĩa.
     driveFolders = shownSources
-      .filter((x) => x.kind === "folder" && x.drive_url)
+      .filter((x) => x.drive_url && (useStages || x.kind === "folder"))
       .map(({ name, drive_url }) => ({ name, url: drive_url as string }));
     originalFolders = await getOriginalFolders(admin, album.id, s ?? []);
   }

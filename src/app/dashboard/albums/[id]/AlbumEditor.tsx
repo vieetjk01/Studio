@@ -388,6 +388,30 @@ export default function AlbumEditor({
             giai đoạn trước tự thành nút <b>“File gốc (ảnh chọn)”</b> để khách xem/tải trên
             Drive. Thư mục cần chia sẻ ở chế độ “ai có link xem được”.
           </p>
+
+          {/* Nói thẳng nút "Tải file chỉnh sửa" bên album khách đã hiện chưa và
+              còn thiếu gì — ba điều kiện nằm ở ba màn hình khác nhau, không nói
+              ra thì studio không có cách nào đoán. */}
+          {(() => {
+            const missing: string[] = [];
+            if (!sources.some((x) => x.stage === "delivery" && x.drive_url)) missing.push("chưa lưu link Drive giao khách ở trên");
+            if (!form.download_enabled) missing.push("đang tắt “Cho phép khách tải ảnh xuống”");
+            if (form.status !== "published") missing.push("album chưa xuất bản");
+            return (
+              <p
+                className="mt-2 rounded-lg px-2.5 py-1.5 text-[11px]"
+                style={
+                  missing.length
+                    ? { background: "color-mix(in srgb, var(--s-amber) 12%, transparent)", color: "var(--s-amber)" }
+                    : { background: "color-mix(in srgb, var(--s-green) 12%, transparent)", color: "var(--s-green)" }
+                }
+              >
+                {missing.length
+                  ? `Nút “Tải file chỉnh sửa” CHƯA hiện với khách — ${missing.join("; ")}.`
+                  : "Nút “Tải file chỉnh sửa” đang hiện ở đầu album giao khách."}
+              </p>
+            );
+          })()}
         </div>
       )}
 
