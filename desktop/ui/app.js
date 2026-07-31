@@ -8,7 +8,7 @@
 
 const invoke = window.__TAURI__.core.invoke;
 
-const APP_VERSION = "1.0.6"; // giữ khớp với src-tauri/tauri.conf.json
+const APP_VERSION = "1.0.7"; // giữ khớp với src-tauri/tauri.conf.json
 
 // ─── Cấu hình (localStorage) ─────────────────────────────────────────────────
 const cfg = JSON.parse(localStorage.getItem("cfg") || "{}");
@@ -79,7 +79,13 @@ const apiB64 = async (path) => (await api(path)).body_b64;
 // ─── Màn hình ────────────────────────────────────────────────────────────────
 function show(screen) {
   for (const s of ["setup", "folder", "main"]) $("screen-" + s).classList.toggle("hidden", s !== screen);
-  const st = $("topStatus"); if (st) st.innerHTML = cfg.token ? `<span class="ok">● Đã kết nối</span> ${cfg.server || ""}` : "Chưa kết nối";
+  // Tên tài khoản LUÔN hiện cạnh trạng thái kết nối. Studio có nhiều tài khoản
+  // mà máy gắn nhầm cái khác thì mọi con số đều sai, và trước đây không có chỗ
+  // nào trong app nói ra máy đang đồng bộ cho ai.
+  const st = $("topStatus");
+  if (st) st.innerHTML = cfg.token
+    ? `<span class="ok">● Đã kết nối</span> ${cfg.acct ? `<b>${String(cfg.acct).replace(/</g, "&lt;")}</b> · ` : ""}${cfg.server || ""}`
+    : "Chưa kết nối";
   // Màn chính có sidebar riêng (brand ở đó) → ẩn thanh tiêu đề trên cùng.
   const tb = $("topbar"); if (tb) tb.classList.toggle("hidden", screen === "main");
 }
@@ -113,8 +119,19 @@ $("btnConnect").onclick = async () => {
     cfg.server = server; cfg.token = token;
     cfg.deviceName = await invoke("hostname").catch(() => "Máy tính Windows");
     saveCfg();
-    msg.className = "msg ok"; msg.textContent = "Kết nối thành công!";
-    log("Kết nối thiết bị thành công");
+    // Đọc luôn tài khoản của mã vừa dán — dán nhầm mã của studio khác thì phải
+    // biết NGAY tại đây, chứ không phải sau khi thấy số liệu sai.
+    let who = null;
+    try {
+      const rr = await invoke("http_get", { url: `${server}/api/desktop/whoami`, token });
+      if (rr.status === 200) who = JSON.parse(b64ToText(rr.body_b64));
+    } catch { /* không đọc được thì thôi, không chặn kết nối */ }
+    if (who?.account) { cfg.acct = who.account.name || who.account.email || ""; saveCfg(); }
+    const acctLine = who?.account
+      ? ` Tài khoản: ${who.account.name || who.account.email} (${who.counts?.contractsActive ?? "?"} hợp đồng).`
+      : "";
+    msg.className = "msg ok"; msg.textContent = "Kết nối thành công!" + acctLine;
+    log("Kết nối thiết bị thành công." + acctLine);
     show("folder");
   } catch (e) {
     msg.className = "msg err";

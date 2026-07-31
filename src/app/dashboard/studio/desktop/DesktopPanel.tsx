@@ -35,6 +35,10 @@ export default function DesktopPanel() {
   const [pairToken, setPairToken] = useState("");
   const [pairErr, setPairErr] = useState("");
   const [copied, setCopied] = useState("");
+  // Tài khoản mà mã kết nối này thuộc về. Studio có nhiều tài khoản mà dán nhầm
+  // mã sang máy đang dùng cho studio khác thì app đồng bộ đúng dữ liệu của TÀI
+  // KHOẢN CẤP MÃ — nhìn bề ngoài y hệt "đồng bộ thiếu". Nói rõ ngay tại đây.
+  const [acct, setAcct] = useState<{ name: string; email: string } | null>(null);
   // Link tải: mặc định là env cấu hình sẵn, nếu trống thì trang Releases. Sau đó
   // tự lấy file .exe MỚI NHẤT trực tiếp từ GitHub (kênh desktop-dev — cùng nguồn
   // bộ tự cập nhật đọc) để nút luôn ra link .exe đúng bản mới, không phụ thuộc env.
@@ -76,6 +80,10 @@ export default function DesktopPanel() {
   async function load() {
     setLoading(true);
     try {
+      fetch("/api/desktop/whoami")
+        .then((x) => (x.ok ? x.json() : null))
+        .then((j) => j?.account && setAcct({ name: j.account.name || "", email: j.account.email || "" }))
+        .catch(() => {});
       const r = await fetch("/api/desktop/devices");
       const j = await r.json();
       setDevices(j.devices ?? []);
@@ -166,10 +174,19 @@ export default function DesktopPanel() {
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
           Tối đa {limit} máy hoạt động cho mỗi tài khoản. Bấm “Kết nối thiết bị mới” để lấy mã, rồi dán vào ứng dụng MStudo Desktop trên máy tính.
         </p>
+        {acct && (
+          <p className="mt-2 text-sm" style={{ color: "var(--text2)" }}>
+            Thiết bị đăng ký ở đây sẽ đồng bộ dữ liệu của tài khoản{" "}
+            <b style={{ color: "var(--text)" }}>{acct.name || acct.email}</b>
+            {acct.name && acct.email ? ` (${acct.email})` : ""}.
+          </p>
+        )}
         {pairErr && <p className="mt-3 rounded-lg p-3 text-sm" style={{ background: "#fbeaea", color: "#8f3d3d" }}>{pairErr}</p>}
         {pairToken && (
           <div className="mt-3 rounded-xl p-4" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-            <p className="text-sm font-medium">Mã kết nối — chỉ hiện MỘT lần, hãy dán ngay vào app:</p>
+            <p className="text-sm font-medium">
+              Mã kết nối cho tài khoản <b>{acct?.name || acct?.email || "này"}</b> — chỉ hiện MỘT lần, hãy dán ngay vào app:
+            </p>
             <div className="mt-2 flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-xs" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>{pairToken}</code>
               <button onClick={() => copyText(pairToken, "token")} className="btn-ghost inline-flex flex-none items-center gap-1.5 text-sm">
