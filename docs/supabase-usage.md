@@ -4,6 +4,23 @@ Ghi chép cách mstudo tiêu tốn hạn mức Supabase, vì sao nó vượt, v�
 
 Hạn mức gói Free: **Egress 5 GB · File storage 1 GB · Database 500 MB · MAU 50.000**.
 
+## Đo thực tế (07/2026)
+
+```
+bucket_id        objects   size
+drive-cache      10656     13 GB     ← 99,7%
+payment-proofs   20        26 MB
+wedding-photos   42        9820 kB
+logos            3         410 kB
+```
+
+Bucket cache là toàn bộ vấn đề; ba bucket còn lại cộng lại 36 MB. Trung bình
+1,3 MB/file — thumbnail w≤1024 chỉ tầm 100–200 KB, nên phần lớn bucket là ảnh
+gốc `_orig`.
+
+Dashboard lúc đó báo 1.53 GB: metering storage của Supabase cập nhật theo chu kỳ
+nên số trên dashboard trễ hơn thực tế khá nhiều. Tin `storage.objects`.
+
 ## Cái gì đang tốn
 
 | Hạng mục | Nguồn tốn chính |
@@ -42,14 +59,20 @@ từ Drive ở lần xem kế tiếp, chỉ tốn đúng một lượt fetch qua
 
 Các thay đổi trên chặn tăng trưởng về sau; phần đã chiếm chỗ phải tự thu hồi.
 
-**1. Dọn sạch bucket cache một lần:**
+**1. Dọn sạch bucket cache một lần.** Nhanh nhất với bucket đã phình to: Supabase →
+Storage → `drive-cache` → **Empty bucket**. Chạy phía server nên không vướng giới hạn
+thời gian của function. Không mất gì: mọi object đều dựng lại được từ Drive.
+
+Hoặc qua endpoint (chạy lặp tới khi `done: true`):
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \
   "https://<domain>/api/cron/cleanup-drive-cache?purge=1"
 ```
 
-Chạy lặp lại tới khi `removed` trả về 0 (mỗi lượt xử lý tối đa 100 trang × 1000 file).
+Storage chỉ xoá được 1000 object mỗi lượt gọi, nên job có ngân sách thời gian và
+tự dừng trước khi hết giờ. `done: false` nghĩa là còn việc — gọi lại; tiến độ đã
+xoá không mất đi.
 
 **2. Dọn ảnh thiệp cưới mồ côi:**
 
@@ -69,9 +92,14 @@ group by bucket_id
 order by sum((metadata->>'size')::bigint) desc;
 ```
 
-**4. Nếu vẫn chật:** đặt `DRIVE_IMG_CACHE_BUCKET=` (để trống) trên Vercel. `/api/img`
-quay về chế độ proxy thuần — Supabase storage/egress cho ảnh về **0**, đổi lại Vercel
-gánh băng thông (hạn mức Free 100 GB/tháng, rộng hơn 5 GB của Supabase rất nhiều).
+**4. Cân nhắc tắt hẳn bucket cache** — đặt `DRIVE_IMG_CACHE_BUCKET=` (để trống) trên
+Vercel. `/api/img` quay về chế độ proxy thuần: storage và egress Supabase cho ảnh về
+**0**, Vercel gánh băng thông (Free 100 GB/tháng, rộng hơn 5 GB của Supabase 20 lần).
+
+Với gói Supabase Free thì đây gần như luôn là lựa chọn đúng. Ngay cả sau khi đã chặn
+ảnh gốc và đặt trần 500 MB, bucket vẫn ăn một nửa hạn mức storage, và mỗi thumbnail
+nó phục vụ vẫn tính egress — ~150 KB/ảnh nghĩa là chỉ khoảng 33.000 lượt xem ảnh mỗi
+tháng là chạm trần 5 GB. Chỉ nên bật lại bucket khi đã lên gói Pro.
 
 ## Vài điều cần biết
 

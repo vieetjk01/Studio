@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
+// A neglected bucket can hold tens of thousands of objects, and Storage only
+// deletes 1000 per call — well past the 10–15s default. Give the job room, and
+// stop it early enough (TIME_BUDGET_MS) to always return a JSON verdict rather
+// than dying mid-sweep with no idea how far it got.
+export const maxDuration = 300;
+const TIME_BUDGET_MS = 270_000;
 
 // The /api/img durable cache (DRIVE_IMG_CACHE_BUCKET). Files are content-
 // addressed (`<id>_w<width>.jpg`, `<id>_orig`) and never mutate, so nothing
@@ -56,10 +62,16 @@ export async function GET(req: NextRequest) {
 
   const db = createAdminClient();
   const purge = req.nextUrl.searchParams.get("purge") === "1";
-  const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 3600 * 1000;
+  const startedAt = Date.now();
+  const outOfTime = () => Date.now() - startedAt > TIME_BUDGET_MS;
+  const cutoff = startedAt - MAX_AGE_DAYS * 24 * 3600 * 1000;
   let removed = 0;
   let scanned = 0;
   let freed = 0;
+  // false ⇒ the sweep stopped on the clock, not because it ran out of work.
+  // Re-run the same request to continue; progress is durable (deleted is
+  // deleted) and every pass re-lists from the current oldest object.
+  let done = true;
 
   // ── Pass 1: age (or purge everything) ─────────────────────────────────────
   // Oldest-first from offset 0: each round removes the stale head of the
@@ -67,7 +79,8 @@ export async function GET(req: NextRequest) {
   // the next stale batch until a page holds a non-stale object — the age
   // boundary — at which point we stop. Bounded rounds guard against runaway
   // loops and long function runs.
-  for (let round = 0; round < 100; round++) {
+  for (let round = 0; round < 1000; round++) {
+    if (outOfTime()) { done = false; break; }
     const files = await listOldest(db, 0);
     if (!files || files.length === 0) break;
     scanned += files.length;
@@ -91,9 +104,10 @@ export async function GET(req: NextRequest) {
   // MAX_BYTES. Skipped after a purge (bucket is already empty).
   let bytesBefore = 0;
   let bytesAfter = 0;
-  if (!purge) {
+  if (!purge && done) {
     const all: StorageObject[] = [];
-    for (let offset = 0; offset < 100 * PAGE; offset += PAGE) {
+    for (let offset = 0; offset < 1000 * PAGE; offset += PAGE) {
+      if (outOfTime()) { done = false; break; }
       const page = await listOldest(db, offset);
       if (!page || page.length === 0) break;
       all.push(...page);
@@ -102,7 +116,10 @@ export async function GET(req: NextRequest) {
     bytesBefore = all.reduce((n, o) => n + sizeOf(o), 0);
     bytesAfter = bytesBefore;
 
-    if (bytesAfter > MAX_BYTES) {
+    // `done` still true ⇒ the listing above saw the WHOLE bucket, so the total
+    // is trustworthy. A partial listing under-counts, which would evict against
+    // a phantom total — leave it to the next run instead.
+    if (done && bytesAfter > MAX_BYTES) {
       // `all` is already oldest-first; walk forward marking victims until the
       // running total fits, then delete them in list()-sized batches.
       const victims: string[] = [];
@@ -112,6 +129,7 @@ export async function GET(req: NextRequest) {
         bytesAfter -= sizeOf(o);
       }
       for (let i = 0; i < victims.length; i += PAGE) {
+        if (outOfTime()) { done = false; break; }
         const batch = victims.slice(i, i + PAGE);
         const { error } = await db.storage.from(BUCKET).remove(batch);
         if (error) break;
@@ -129,6 +147,7 @@ export async function GET(req: NextRequest) {
     maxBytes: MAX_BYTES,
     scanned,
     removed,
+    done, // false ⇒ hit the time budget; run it again to continue
     freedBytes: freed,
     bucketBytes: bytesAfter,
   });

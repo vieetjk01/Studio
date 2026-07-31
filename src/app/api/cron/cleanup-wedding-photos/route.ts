@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+// Stop early enough to always return a verdict instead of dying mid-walk.
+const TIME_BUDGET_MS = 270_000;
 
 // Uploads from the wedding-invitation editor land at
 //   <owner_id>/<invitation_id>/<uuid>.<ext>
@@ -62,7 +65,11 @@ export async function GET(req: NextRequest) {
 
   let removed = 0;
   let orphanFolders = 0;
+  let done = true;
+  const startedAt = Date.now();
+  const outOfTime = () => Date.now() - startedAt > TIME_BUDGET_MS;
   for (const owner of owners) {
+    if (outOfTime()) { done = false; break; }
     const invitations = (await listAll(db, owner.name)).filter((o) => !o.id);
     for (const inv of invitations) {
       if (live.has(inv.name)) continue; // still in use — leave it
@@ -86,5 +93,6 @@ export async function GET(req: NextRequest) {
     ownersScanned: owners.length,
     orphanFolders,
     removed,
+    done, // false ⇒ hit the time budget; run it again to continue
   });
 }
