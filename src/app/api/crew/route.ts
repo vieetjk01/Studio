@@ -157,11 +157,9 @@ export async function POST(req: Request) {
   const mine = (rows ?? []).filter((r) => digits(r.phone) === phone);
 
   const [{ data: busy }, { data: shiftPlan }] = await Promise.all([
-    db
-      .from("crew_unavailable")
-      .select("id, date, note, start_time, end_time, overnight, title, owner_id")
-      .eq("phone", phone)
-      .order("date"),
+    // select("*") để cổng thợ vẫn chạy trước khi migration crew_schedule.sql
+    // được chạy — xem ghi chú ở dashboard/studio/team/page.tsx.
+    db.from("crew_unavailable").select("*").eq("phone", phone).order("date"),
     db.from("crew_shift_plan").select("company, shift").eq("phone", phone).maybeSingle(),
   ]);
 

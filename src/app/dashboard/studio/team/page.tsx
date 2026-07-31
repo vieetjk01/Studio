@@ -65,11 +65,10 @@ export default async function TeamPage() {
   const shifts: Record<string, ShiftLetter> = {};
   if (phones.length) {
     const [{ data: rows }, { data: plans }] = await Promise.all([
-      supabase
-        .from("crew_unavailable")
-        .select("id, phone, date, note, start_time, end_time, overnight, title, owner_id")
-        .in("phone", phones)
-        .order("date"),
+      // select("*") chứ không liệt kê cột: chạy được cả TRƯỚC khi migration
+      // crew_schedule.sql chạy (lúc đó chưa có start_time/overnight/…). Thiếu cột
+      // thì mốc cũ hiện thành "cả ngày", thay vì cả truy vấn hỏng và mất sạch.
+      supabase.from("crew_unavailable").select("*").in("phone", phones).order("date"),
       supabase.from("crew_shift_plan").select("phone, company, shift").in("phone", phones),
     ]);
     schedule = ((rows ?? []) as CrewScheduleRow[]).map((r) => ({ ...r, phone: digits(r.phone) }));
