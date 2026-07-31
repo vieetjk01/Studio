@@ -8,7 +8,10 @@ const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function normTime(v: string | null | undefined): string | null {
-  const m = (v ?? "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  // Chấp nhận cả GIÂY: <input type="time"> ở Safari/một số trình duyệt di động
+  // trả "08:00:00" chứ không phải "08:00". Regex cũ loại thẳng giá trị đó và trả
+  // null, nên giờ biến mất im lặng trong khi task/side (kiểu text) vẫn lưu được.
+  const m = (v ?? "").trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (!m) return null;
   const h = Number(m[1]);
   if (h > 23 || Number(m[2]) > 59) return null;

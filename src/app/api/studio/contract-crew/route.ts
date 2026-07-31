@@ -11,7 +11,10 @@ export const maxDuration = 60;
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 
 function normTime(v: string | null | undefined): string | null {
-  const m = (v ?? "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  // Chấp nhận cả GIÂY: <input type="time"> ở Safari/một số trình duyệt di động
+  // trả "08:00:00" chứ không phải "08:00". Regex cũ loại thẳng giá trị đó và trả
+  // null, nên giờ biến mất im lặng trong khi task/side (kiểu text) vẫn lưu được.
+  const m = (v ?? "").trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (!m) return null;
   const h = Number(m[1]);
   if (h > 23 || Number(m[2]) > 59) return null;
@@ -128,6 +131,14 @@ export async function POST(req: Request) {
     const name = (c.name ?? "").trim();
     const phone = (c.phone ?? "").trim();
     if (!name && !phone) continue;
+
+    // Gửi giờ lên mà chuẩn hoá ra null nghĩa là định dạng lạ — báo ngay thay vì
+    // lưu null rồi để studio tưởng đã lưu.
+    for (const [field, raw] of [["Từ giờ", c.start], ["Đến giờ", c.end]] as const) {
+      if ((raw ?? "").trim() && !normTime(raw)) {
+        return NextResponse.json({ error: `${field} không hợp lệ: "${raw}"` }, { status: 400 });
+      }
+    }
 
     const row = {
       name,

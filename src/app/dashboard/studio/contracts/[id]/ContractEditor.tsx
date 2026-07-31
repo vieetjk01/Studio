@@ -1844,6 +1844,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                               location: f.location,
                               role: CREW_ROLE_LABEL[c.role],
                               studio: studioName,
+                              link: crewPortalUrl,
                             })}
                           />
                           <button onClick={() => deleteCrew(c.id, idx)} className="text-xs" style={{ color: "var(--text3)" }}>
