@@ -10,6 +10,8 @@ export function shootReminderMessage(opts: {
   location?: string | null;
   role?: string | null;
   studio?: string | null;
+  /** Cổng thợ — để thợ bấm xem lịch còn lại của mình, không phải hỏi lại studio. */
+  link?: string | null;
 }): string {
   const lines: string[] = [];
   lines.push(`Chào ${opts.name || "bạn"},`);
@@ -20,6 +22,7 @@ export function shootReminderMessage(opts: {
   );
   if (opts.role) lines.push(`Vai trò: ${opts.role}.`);
   lines.push("Vui lòng có mặt đúng giờ nhé. Cảm ơn bạn!");
+  if (opts.link) lines.push(`Xem & xác nhận lịch của bạn: ${opts.link}`);
   if (opts.studio) lines.push(`— ${opts.studio}`);
   return lines.join("\n");
 }

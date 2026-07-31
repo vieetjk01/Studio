@@ -1,3 +1,5 @@
+import { mainUrl } from "@/lib/hosts";
+
 /**
  * Thông tin SHOW gắn vào một phân công thợ — studio gán gì thì thợ thấy đúng
  * thế trên lịch và trong tin Zalo.
@@ -34,4 +36,9 @@ export function showLabel(opts: {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** Link cổng thợ của một studio; không có token thì về cổng chung (tra bằng SĐT). */
+export function crewPortalUrl(token: string | null | undefined): string {
+  return mainUrl(token ? `/crew/${token}` : "/crew");
 }

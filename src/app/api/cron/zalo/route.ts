@@ -10,6 +10,7 @@ import {
 import { ensureIntakeToken, intakeUrl } from "@/lib/contract-intake";
 import { listFolderImages } from "@/lib/drive-server";
 import { mainUrl } from "@/lib/hosts";
+import { crewPortalUrl } from "@/lib/crew-show";
 import { vnd, CREW_ROLE_LABEL } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -57,14 +58,23 @@ export async function GET(req: NextRequest) {
     return !!(data && data.length);
   }
 
-  // Tên studio để ký tin.
+  // Tên studio để ký tin + cổng thợ riêng của studio đó. Nhớ lại theo owner để
+  // một đêm chạy hàng trăm hợp đồng không truy vấn lặp.
   const ownerNames = new Map<string, string>();
+  const ownerPortals = new Map<string, string>();
+  async function loadOwner(ownerId: string): Promise<void> {
+    if (ownerNames.has(ownerId)) return;
+    const { data } = await db.from("profiles").select("full_name, crew_token").eq("id", ownerId).maybeSingle();
+    ownerNames.set(ownerId, (data?.full_name as string) || "Studio");
+    ownerPortals.set(ownerId, crewPortalUrl((data?.crew_token as string | null) ?? null));
+  }
   async function studioName(ownerId: string): Promise<string> {
-    if (ownerNames.has(ownerId)) return ownerNames.get(ownerId)!;
-    const { data } = await db.from("profiles").select("full_name").eq("id", ownerId).maybeSingle();
-    const name = (data?.full_name as string) || "Studio";
-    ownerNames.set(ownerId, name);
-    return name;
+    await loadOwner(ownerId);
+    return ownerNames.get(ownerId)!;
+  }
+  async function crewPortal(ownerId: string): Promise<string> {
+    await loadOwner(ownerId);
+    return ownerPortals.get(ownerId)!;
   }
 
   let shootSent = 0;
@@ -120,6 +130,7 @@ export async function GET(req: NextRequest) {
           location: s.location,
           role: CREW_ROLE_LABEL[c.role as keyof typeof CREW_ROLE_LABEL],
           studio,
+          link: await crewPortal(s.owner_id),
         }),
         contractId: s.id,
       });

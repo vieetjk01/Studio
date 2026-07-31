@@ -8,6 +8,7 @@ import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
 import AutoEmailToggle from "@/components/AutoEmailToggle";
 import { shootReminderMessage } from "@/lib/zalo";
+import { crewPortalUrl } from "@/lib/crew-show";
 import {
   contractTotal,
   sumAmounts,
@@ -255,6 +256,8 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
 
 export default async function StudioOverview() {
   const profile = await requireStudio("booking");
+  // Cổng thợ riêng của studio — đính vào tin Zalo gửi cho thợ.
+  const crewPortal = crewPortalUrl((profile?.crew_token as string | null) ?? null);
   // Free/Basic accounts have no studio tier — send them to the album library
   // (not /dashboard, which redirects back here and would loop).
   if (!profile) redirect("/dashboard/albums");
@@ -768,7 +771,7 @@ export default async function StudioOverview() {
                     </Link>
                     <MessengerButton
                       label="Gửi cho thợ"
-                      message={shootReminderMessage({ name: cr.name, title: c.title, date: c.event_date, time: c.event_time, location: c.location, role: CREW_ROLE_LABEL[cr.role] })}
+                      message={shootReminderMessage({ name: cr.name, title: c.title, date: c.event_date, time: c.event_time, location: c.location, role: CREW_ROLE_LABEL[cr.role], link: crewPortal })}
                     />
                   </li>
                 ))}

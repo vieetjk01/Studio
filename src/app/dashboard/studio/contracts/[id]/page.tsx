@@ -19,6 +19,7 @@ import type {
   StudioEvent,
   StudioExpense,
 } from "@/lib/types";
+import { crewPortalUrl as buildCrewPortalUrl } from "@/lib/crew-show";
 import ContractEditor from "./ContractEditor";
 import StudioDenied from "@/components/StudioDenied";
 
@@ -134,6 +135,8 @@ export default async function ContractPage({ params }: { params: { id: string } 
     conflictByPhone[p] = `Đã có lịch ${when}${what ? `: ${what}` : ""}`;
   }
   const sameDayContracts = (sameDay ?? []) as { id: string; title: string; client_name: string | null }[];
+  // Link cổng thợ riêng của studio — đính vào mọi tin Zalo gửi cho thợ.
+  const crewPortalUrl = buildCrewPortalUrl(profile.crew_token as string | null);
 
   const studioHost = await getStudioHost(supabase, profile.id);
   const storyLocked = storyComingSoon(await getFeatureFlags()) && profile.actingRole !== "admin";
@@ -154,6 +157,7 @@ export default async function ContractPage({ params }: { params: { id: string } 
       pricelist={(pricelistRows ?? []) as { name: string; price: number; unit: string | null }[]}
       initialItems={(items ?? []) as ContractItem[]}
       initialCrew={(crew ?? []) as ContractCrew[]}
+      crewPortalUrl={crewPortalUrl}
       initialRequests={(requests ?? []) as ContractEditRequest[]}
       initialPayments={(payments ?? []) as ContractPayment[]}
       roster={(roster ?? []) as StudioCrew[]}

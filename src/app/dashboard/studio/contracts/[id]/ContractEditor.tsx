@@ -150,6 +150,7 @@ export default function ContractEditor({
   studioHost = null,
   initialItems,
   initialCrew,
+  crewPortalUrl = "",
   initialRequests,
   initialPayments,
   roster,
@@ -177,6 +178,8 @@ export default function ContractEditor({
   storyComingSoon?: boolean;
   initialItems: ContractItem[];
   initialCrew: ContractCrew[];
+  /** Cổng thợ của studio — nhét vào tin nhắn gửi thợ. */
+  crewPortalUrl?: string;
   initialRequests: ContractEditRequest[];
   initialPayments: ContractPayment[];
   roster: StudioCrew[];
@@ -1823,6 +1826,7 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
                               time: f.event_time,
                               location: f.location,
                               role: CREW_ROLE_LABEL[c.role],
+                              link: crewPortalUrl,
                             })}
                           />
                           <ZaloSendButton

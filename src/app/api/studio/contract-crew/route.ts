@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { autoNotify } from "@/lib/zalo/notify";
-import { showLabel } from "@/lib/crew-show";
+import { showLabel, crewPortalUrl } from "@/lib/crew-show";
 import { fmtDate } from "@/lib/date";
-import { mainUrl } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -121,7 +120,7 @@ export async function POST(req: Request) {
   // Link cổng thợ RIÊNG của studio này để thợ bấm vào xem luôn các lịch khác.
   // Không có token thì dùng cổng chung — vẫn tra được bằng SĐT.
   const { data: me } = await db.from("profiles").select("crew_token").eq("id", ownerId).maybeSingle();
-  const portal = mainUrl(me?.crew_token ? `/crew/${me.crew_token}` : "/crew");
+  const portal = crewPortalUrl(me?.crew_token as string | null);
 
   const notified: string[] = [];
 
