@@ -576,11 +576,19 @@ async function driveSyncRun(contracts, manual = false) {
   return uploaded;
 }
 
+let mediaDirWarned = false;
+
 // Vòng CHẬM + nút bấm tay: quét toàn bộ hợp đồng đã ký.
 async function runDriveSync(manual = false) {
   if (driveSyncing || !cfg.token) return;
   if (!cfg.mediaDir) {
-    if (manual) log("Chưa chọn thư mục gốc ảnh/video — bấm “Chọn thư mục gốc” trước.", "warn");
+    // Cảnh báo cả ở vòng TỰ ĐỘNG (một lần), không chỉ khi bấm tay. Studio bỏ qua
+    // bước chọn thư mục gốc rồi dùng desktop như app studio sẽ không bao giờ có
+    // thư mục trên máy — mà trước đây tuyệt đối không có dòng nào nói ra.
+    if (manual || !mediaDirWarned) {
+      log("Chưa chọn THƯ MỤC GỐC ảnh/video trên máy — thư mục hợp đồng sẽ không được tạo. Bấm “Chọn thư mục gốc” ở Bảng điều khiển.", "warn");
+      mediaDirWarned = true;
+    }
     return;
   }
   driveSyncing = true;

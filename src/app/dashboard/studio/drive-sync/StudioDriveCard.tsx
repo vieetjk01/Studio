@@ -187,6 +187,14 @@ export default function StudioDriveCard() {
           {foldersBusy ? "Đang tạo…" : "Tạo thư mục cho các hợp đồng còn thiếu"}
         </button>
         {foldersMsg && <p className="mt-2 text-[11px]" style={{ color: "var(--text2)" }}>{foldersMsg}</p>}
+        {/* Nút trên chỉ tạo thư mục TRÊN DRIVE. Máy chủ không với tới ổ đĩa của
+            studio được, nên phần trên máy vẫn phải do desktop làm — nói rõ kẻo
+            bấm xong lại tưởng máy cũng có thư mục. */}
+        <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
+          Nút này chỉ tạo thư mục <b>trên Drive</b>. Thư mục <b>trên máy</b> do MStudo Desktop tạo, và nó cần
+          bạn đã chọn <b>Thư mục gốc ảnh/video</b> một lần: biểu tượng khay → <i>Bảng điều khiển &amp; đồng bộ</i>
+          {" "}→ <i>Chọn thư mục gốc</i>. Chưa chọn thì desktop bỏ qua im lặng và máy sẽ không có thư mục nào.
+        </p>
       </div>
 
       {flash && (
