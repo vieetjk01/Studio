@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
-import TeamCalendar, { type TeamAssignment } from "./TeamCalendar";
+import type { ShiftLetter } from "@/lib/crew-shift";
+import TeamCalendar, { type TeamAssignment, type CrewScheduleRow, type CrewMember } from "./TeamCalendar";
 
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
@@ -26,7 +27,7 @@ export default async function TeamPage() {
       .select("name, phone, role, status, contract:studio_contracts!inner(id, owner_id, title, event_date, status)")
       .eq("contract.owner_id", profile.id)
       .not("contract.event_date", "is", null),
-    supabase.from("studio_crew").select("name, phone").eq("owner_id", profile.id),
+    supabase.from("studio_crew").select("name, phone, role").eq("owner_id", profile.id).order("name"),
   ]);
 
   type Row = {
@@ -49,21 +50,40 @@ export default async function TeamPage() {
       contractTitle: r.contract!.title,
     }));
 
-  // Busy days for the team (match crew_unavailable by digit phone to the roster).
-  const nameByDigits: Record<string, string> = {};
-  for (const r of (roster ?? []) as Array<{ name: string | null; phone: string | null }>) {
-    const p = digits(r.phone);
-    if (p) nameByDigits[p] = r.name || r.phone || p;
-  }
-  const phones = Object.keys(nameByDigits);
-  const busyByDate: Record<string, string[]> = {};
+  // Sổ thợ, khoá theo SĐT dạng số — crew_unavailable/crew_shift_plan đều lưu
+  // theo SĐT (thợ không có tài khoản nên không có id để tham chiếu).
+  const members: CrewMember[] = ((roster ?? []) as Array<{ name: string | null; phone: string | null; role: string | null }>)
+    .map((r) => ({
+      phone: digits(r.phone),
+      name: r.name || r.phone || digits(r.phone),
+      role: (r.role || "photographer") as CrewMember["role"],
+    }))
+    .filter((m) => m.phone);
+
+  const phones = members.map((m) => m.phone);
+  let schedule: CrewScheduleRow[] = [];
+  const shifts: Record<string, ShiftLetter> = {};
   if (phones.length) {
-    const { data: busy } = await supabase.from("crew_unavailable").select("phone, date").in("phone", phones);
-    for (const b of (busy ?? []) as Array<{ phone: string; date: string }>) {
-      const name = nameByDigits[digits(b.phone)] || b.phone;
-      (busyByDate[b.date] ||= []).push(name);
+    const [{ data: rows }, { data: plans }] = await Promise.all([
+      supabase
+        .from("crew_unavailable")
+        .select("id, phone, date, note, start_time, end_time, overnight, title, owner_id")
+        .in("phone", phones)
+        .order("date"),
+      supabase.from("crew_shift_plan").select("phone, company, shift").in("phone", phones),
+    ]);
+    schedule = ((rows ?? []) as CrewScheduleRow[]).map((r) => ({ ...r, phone: digits(r.phone) }));
+    for (const p of (plans ?? []) as Array<{ phone: string; shift: ShiftLetter }>) {
+      shifts[digits(p.phone)] = p.shift;
     }
   }
 
-  return <TeamCalendar assignments={assignments} busyByDate={busyByDate} />;
+  return (
+    <TeamCalendar
+      assignments={assignments}
+      members={members}
+      schedule={schedule}
+      shifts={shifts}
+    />
+  );
 }

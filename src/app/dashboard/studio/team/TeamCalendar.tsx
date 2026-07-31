@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, CalendarOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, Lock } from "lucide-react";
 import { CREW_ROLE_LABEL, CREW_STATUS_LABEL, type CrewRole, type CrewStatus } from "@/lib/types";
 import { lunarCellLabel } from "@/lib/lunar";
 import { todayVN } from "@/lib/date";
+import { SHIFT_COMPANY_LABEL, shiftBlockFor, type ShiftLetter } from "@/lib/crew-shift";
 
 export type TeamAssignment = {
   name: string;
@@ -17,6 +19,21 @@ export type TeamAssignment = {
   contractTitle: string;
 };
 
+export type CrewMember = { phone: string; name: string; role: CrewRole };
+
+export type CrewScheduleRow = {
+  id: string;
+  phone: string;
+  date: string;
+  note: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  overnight: boolean;
+  title: string | null;
+  /** Có giá trị ⇒ studio xếp hộ (chỉ studio gỡ được). */
+  owner_id: string | null;
+};
+
 const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const MONTHS = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 const STATUS_TONE: Record<CrewStatus, string> = { pending: "var(--text3)", accepted: "var(--s-green)", declined: "var(--s-red)" };
@@ -25,23 +42,75 @@ function ymd(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+const hhmm = (t: string | null) => (t ?? "").slice(0, 5);
+
+function timeLabel(r: CrewScheduleRow): string {
+  if (!r.start_time || !r.end_time) return "Cả ngày";
+  return `${hhmm(r.start_time)}–${hhmm(r.end_time)}${r.overnight ? " (+1)" : ""}`;
+}
+
 export default function TeamCalendar({
   assignments,
-  busyByDate,
+  members,
+  schedule,
+  shifts,
 }: {
   assignments: TeamAssignment[];
-  busyByDate: Record<string, string[]>;
+  members: CrewMember[];
+  schedule: CrewScheduleRow[];
+  shifts: Record<string, ShiftLetter>;
 }) {
+  const router = useRouter();
   const todayStr = todayVN();
   const [y, mIdx] = todayStr.split("-").map(Number);
   const [cursor, setCursor] = useState({ year: y, month: mIdx - 1 });
-  const [selected, setSelected] = useState<string | null>(todayStr);
+  const [selected, setSelected] = useState<string>(todayStr);
+  // "" = cả đội. Lọc theo một thợ để xem riêng lịch của người đó.
+  const [who, setWho] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ phone: "", start: "08:00", end: "17:00", title: "", allDay: false });
 
-  const byDate = useMemo(() => {
+  const nameOf = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const c of members) m[c.phone] = c.name;
+    return m;
+  }, [members]);
+
+  const visibleSchedule = useMemo(
+    () => (who ? schedule.filter((r) => r.phone === who) : schedule),
+    [schedule, who],
+  );
+  const visibleAssignments = useMemo(
+    () => (who ? assignments.filter((a) => (a.phone ?? "").replace(/\D/g, "") === who) : assignments),
+    [assignments, who],
+  );
+  // Chỉ tính ca của những thợ đang hiển thị.
+  const visibleShifts = useMemo(
+    () => (who ? (shifts[who] ? { [who]: shifts[who] } : {}) : shifts),
+    [shifts, who],
+  );
+
+  const byDateAssign = useMemo(() => {
     const map: Record<string, TeamAssignment[]> = {};
-    for (const a of assignments) (map[a.date] ||= []).push(a);
+    for (const a of visibleAssignments) (map[a.date] ||= []).push(a);
     return map;
-  }, [assignments]);
+  }, [visibleAssignments]);
+
+  const byDateSched = useMemo(() => {
+    const map: Record<string, CrewScheduleRow[]> = {};
+    for (const r of visibleSchedule) (map[r.date] ||= []).push(r);
+    return map;
+  }, [visibleSchedule]);
+
+  /** Ca công ty của những thợ đang hiển thị, cho một ngày cụ thể. */
+  function shiftsOn(dateStr: string) {
+    const out: { phone: string; name: string; label: string }[] = [];
+    for (const [phone, letter] of Object.entries(visibleShifts)) {
+      const b = shiftBlockFor(dateStr, letter);
+      if (b) out.push({ phone, name: nameOf[phone] || phone, label: `Ca ${b.shift} ${b.start}–${b.end}${b.overnight ? " (+1)" : ""}` });
+    }
+    return out;
+  }
 
   const grid = useMemo(() => {
     const first = new Date(cursor.year, cursor.month, 1);
@@ -61,14 +130,67 @@ export default function TeamCalendar({
     });
   }
 
-  const selAssign = selected ? byDate[selected] ?? [] : [];
-  const selBusy = selected ? busyByDate[selected] ?? [] : [];
+  async function addForCrew() {
+    const phone = form.phone || who;
+    if (!phone) return;
+    setBusy(true);
+    const res = await fetch("/api/studio/crew-schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone,
+        date: selected,
+        start: form.allDay ? "" : form.start,
+        end: form.allDay ? "" : form.end,
+        title: form.title,
+      }),
+    });
+    setBusy(false);
+    if (res.ok) {
+      setForm((f) => ({ ...f, title: "" }));
+      router.refresh();
+    }
+  }
+
+  async function removeEntry(r: CrewScheduleRow) {
+    setBusy(true);
+    await fetch("/api/studio/crew-schedule", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: r.phone, id: r.id }),
+    });
+    setBusy(false);
+    router.refresh();
+  }
+
+  const selAssign = byDateAssign[selected] ?? [];
+  const selSched = byDateSched[selected] ?? [];
+  const selShifts = shiftsOn(selected);
 
   return (
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-4">
         <h1 className="font-serif text-2xl font-medium">Lịch đội ngũ</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>Ai làm gì ngày nào — toàn đội trong một màn hình.</p>
+        <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
+          Ai làm gì ngày nào — toàn đội trong một màn hình. Ngày không có mốc nào là ngày trống.
+        </p>
+      </div>
+
+      {/* Lọc theo thợ */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <button onClick={() => setWho("")} className={who ? "btn-ghost px-3 py-1.5 text-xs" : "btn-primary px-3 py-1.5 text-xs"}>
+          Cả đội
+        </button>
+        {members.map((m) => (
+          <button
+            key={m.phone}
+            onClick={() => setWho(m.phone)}
+            className={who === m.phone ? "btn-primary px-3 py-1.5 text-xs" : "btn-ghost px-3 py-1.5 text-xs"}
+          >
+            {m.name}
+            {shifts[m.phone] ? ` · ca ${shifts[m.phone]}` : ""}
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -87,15 +209,16 @@ export default function TeamCalendar({
             {grid.map((d, i) => {
               if (d === null) return <div key={i} />;
               const dateStr = ymd(cursor.year, cursor.month, d);
-              const a = byDate[dateStr] ?? [];
-              const busy = busyByDate[dateStr] ?? [];
+              const a = byDateAssign[dateStr] ?? [];
+              const sch = byDateSched[dateStr] ?? [];
+              const sh = shiftsOn(dateStr);
               const isToday = dateStr === todayStr;
               const isSel = dateStr === selected;
               return (
                 <button
                   key={i}
                   onClick={() => setSelected(dateStr)}
-                  className="flex min-h-[64px] flex-col rounded-lg p-1.5 text-left text-sm transition-colors"
+                  className="flex min-h-[70px] flex-col rounded-lg p-1.5 text-left text-sm transition-colors"
                   style={{ background: isSel ? "var(--surface2)" : "transparent", border: isToday ? "1px solid var(--border2)" : "1px solid transparent" }}
                 >
                   <span className="flex items-baseline gap-1">
@@ -107,7 +230,17 @@ export default function TeamCalendar({
                       <span key={k} className="block truncate text-[10px]" style={{ color: STATUS_TONE[x.status] }}>{x.name}</span>
                     ))}
                     {a.length > 2 && <span className="block text-[10px]" style={{ color: "var(--text3)" }}>+{a.length - 2}</span>}
-                    {busy.length > 0 && <span className="block text-[10px]" style={{ color: "var(--s-amber)" }}>bận {busy.length}</span>}
+                    {sch.slice(0, 2).map((r) => (
+                      <span key={r.id} className="block truncate text-[10px]" style={{ color: "var(--s-amber)" }}>
+                        {nameOf[r.phone] || r.phone} {r.start_time ? hhmm(r.start_time) : ""}
+                      </span>
+                    ))}
+                    {sch.length > 2 && <span className="block text-[10px]" style={{ color: "var(--s-amber)" }}>+{sch.length - 2}</span>}
+                    {sh.slice(0, 2).map((s) => (
+                      <span key={s.phone} className="block truncate text-[10px]" style={{ color: "var(--s-blue)" }}>
+                        {s.name} {s.label.replace("Ca ", "")}
+                      </span>
+                    ))}
                   </span>
                 </button>
               );
@@ -116,15 +249,17 @@ export default function TeamCalendar({
           <div className="mt-3 flex flex-wrap gap-4 text-[11px]" style={{ color: "var(--text3)" }}>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-green)" }} /> Đã nhận</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--text3)" }} /> Chờ phản hồi</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-amber)" }} /> Báo bận</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-amber)" }} /> Thợ báo lịch</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-blue)" }} /> Ca {SHIFT_COMPANY_LABEL.hoa_phat}</span>
           </div>
         </div>
 
-        {/* Day detail */}
+        {/* Chi tiết ngày */}
         <div className="card p-5">
-          <h2 className="mb-3 font-serif text-lg font-medium">{selected || "Chọn ngày"}</h2>
-          {selAssign.length === 0 && selBusy.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text3)" }}>Không có lịch trong ngày.</p>
+          <h2 className="mb-3 font-serif text-lg font-medium">{selected}</h2>
+
+          {selAssign.length === 0 && selSched.length === 0 && selShifts.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--text3)" }}>Ngày trống — chưa ai báo lịch.</p>
           ) : (
             <div className="space-y-3">
               {selAssign.map((a, k) => (
@@ -136,14 +271,65 @@ export default function TeamCalendar({
                   <p className="text-[11px]" style={{ color: "var(--text3)" }}>{CREW_ROLE_LABEL[a.role]} · {a.contractTitle}</p>
                 </Link>
               ))}
-              {selBusy.length > 0 && (
-                <div className="rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--s-amber)" }}>
-                    <CalendarOff size={12} /> Báo bận
-                  </p>
-                  <p className="mt-1 text-sm">{selBusy.join(", ")}</p>
+
+              {selShifts.map((s) => (
+                <div key={s.phone} className="rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                  <p className="text-sm font-medium">{s.name}</p>
+                  <p className="text-[11px]" style={{ color: "var(--s-blue)" }}>{SHIFT_COMPANY_LABEL.hoa_phat} · {s.label}</p>
                 </div>
-              )}
+              ))}
+
+              {selSched.map((r) => (
+                <div key={r.id} className="flex items-start justify-between gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{nameOf[r.phone] || r.phone}</p>
+                    <p className="flex items-center gap-1 text-[11px]" style={{ color: "var(--s-amber)" }}>
+                      <Clock size={11} /> {timeLabel(r)}{r.title ? ` · ${r.title}` : ""}
+                    </p>
+                    {r.owner_id && (
+                      <p className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text3)" }}>
+                        <Lock size={10} /> studio xếp
+                      </p>
+                    )}
+                  </div>
+                  {/* Chỉ gỡ được mốc do studio xếp; mốc thợ tự thêm là của thợ. */}
+                  {r.owner_id && (
+                    <button onClick={() => removeEntry(r)} disabled={busy} aria-label="Gỡ mốc lịch" title="Gỡ mốc lịch" className="shrink-0 rounded-md p-1.5" style={{ color: "var(--text3)" }}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Studio xếp lịch hộ thợ */}
+          {members.length > 0 && (
+            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+              <p className="mb-2 text-[13px] font-medium">Thêm lịch cho thợ</p>
+              <div className="space-y-2">
+                <select className="input" value={form.phone || who} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} aria-label="Chọn thợ">
+                  <option value="">— Chọn thợ —</option>
+                  {members.map((m) => (
+                    <option key={m.phone} value={m.phone}>{m.name}</option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-2 text-[13px]">
+                  <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))} />
+                  Bận cả ngày
+                </label>
+                {!form.allDay && (
+                  <div className="flex items-center gap-2">
+                    <input type="time" className="input w-auto" value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} aria-label="Từ giờ" />
+                    <span className="text-sm" style={{ color: "var(--text3)" }}>→</span>
+                    <input type="time" className="input w-auto" value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} aria-label="Đến giờ" />
+                  </div>
+                )}
+                <input className="input" placeholder="Nội dung (tuỳ chọn)" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+                <button onClick={addForCrew} disabled={busy || !(form.phone || who)} className="btn-primary w-full">
+                  <Plus size={15} /> Thêm vào {selected}
+                </button>
+              </div>
             </div>
           )}
         </div>

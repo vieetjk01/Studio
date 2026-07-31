@@ -8,13 +8,28 @@ export const dynamic = "force-dynamic";
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** "8:5" | "08:05" → "08:05"; rác hoặc rỗng → null (nghĩa là cả ngày). */
+function normTime(v: string | null | undefined): string | null {
+  const m = (v ?? "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const mi = Number(m[2]);
+  if (h > 23 || mi > 59) return null;
+  return `${String(h).padStart(2, "0")}:${m[2]}`;
+}
+
 /**
  * Public crew portal (no login). A photographer/cameraman enters their phone to
  * see every job they've been assigned across studios + accept/decline.
  *   POST { phone }                                   -> list assignments + busy days
  *   POST { action: "respond", id, phone, status }    -> accept | decline a job
- *   POST { action: "busy_add", phone, date, note }   -> mark a day unavailable
- *   POST { action: "busy_remove", id, phone }        -> clear a busy day
+ *   POST { action: "busy_add", phone, date, start?, end?, title?, note? }
+ *                                                    -> add a schedule entry
+ *                                                       (no times = cả ngày)
+ *   POST { action: "busy_remove", id, phone }        -> clear one entry
+ *   POST { action: "shift_set", phone, company, shift } -> set/clear công ty + ca
  */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
@@ -24,6 +39,11 @@ export async function POST(req: Request) {
     status?: string;
     date?: string;
     note?: string;
+    start?: string;
+    end?: string;
+    title?: string;
+    company?: string;
+    shift?: string;
     captcha?: string;
   };
   const phone = digits(body.phone);
@@ -47,17 +67,50 @@ export async function POST(req: Request) {
   const db = createAdminClient();
 
   if (body.action === "busy_add") {
-    if (!body.date) return NextResponse.json({ error: "no_date" }, { status: 400 });
-    const { error } = await db
-      .from("crew_unavailable")
-      .upsert({ phone, date: body.date, note: body.note?.trim() || null }, { onConflict: "phone,date" });
+    if (!DATE_RE.test(body.date ?? "")) return NextResponse.json({ error: "no_date" }, { status: 400 });
+    const start = normTime(body.start);
+    const end = normTime(body.end);
+    // Chỉ nhận CẢ HAI giờ hoặc KHÔNG giờ nào. Một đầu giờ lửng thì không biểu
+    // diễn được khoảng thời gian nào cả.
+    if ((start && !end) || (!start && end)) {
+      return NextResponse.json({ error: "bad_time" }, { status: 400 });
+    }
+    // insert chứ không upsert: một ngày thợ có thể nhận nhiều việc, và ràng buộc
+    // duy nhất (phone, date) đã được gỡ ở migration crew_schedule.sql.
+    const { error } = await db.from("crew_unavailable").insert({
+      phone,
+      date: body.date,
+      start_time: start,
+      end_time: end,
+      // Giờ kết thúc nhỏ hơn giờ bắt đầu ⇒ vắt qua nửa đêm (vd 20:00 → 08:00).
+      overnight: !!(start && end && end <= start),
+      title: body.title?.trim() || null,
+      note: body.note?.trim() || null,
+    });
     if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
 
   if (body.action === "busy_remove") {
     if (!body.id) return NextResponse.json({ error: "bad_request" }, { status: 400 });
-    await db.from("crew_unavailable").delete().eq("id", body.id).eq("phone", phone);
+    // Chỉ xoá được mốc của chính SĐT này, và chỉ mốc do THỢ tự thêm — mốc studio
+    // xếp hộ (owner_id khác null) thì studio mới được gỡ.
+    await db.from("crew_unavailable").delete().eq("id", body.id).eq("phone", phone).is("owner_id", null);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "shift_set") {
+    const shift = (body.shift || "").toUpperCase();
+    if (!shift) {
+      await db.from("crew_shift_plan").delete().eq("phone", phone);
+      return NextResponse.json({ ok: true });
+    }
+    if (!["A", "B", "C"].includes(shift)) return NextResponse.json({ error: "bad_shift" }, { status: 400 });
+    const { error } = await db.from("crew_shift_plan").upsert(
+      { phone, company: body.company || "hoa_phat", shift, updated_at: new Date().toISOString() },
+      { onConflict: "phone" },
+    );
+    if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
 
@@ -103,11 +156,14 @@ export async function POST(req: Request) {
 
   const mine = (rows ?? []).filter((r) => digits(r.phone) === phone);
 
-  const { data: busy } = await db
-    .from("crew_unavailable")
-    .select("id, date, note")
-    .eq("phone", phone)
-    .order("date");
+  const [{ data: busy }, { data: shiftPlan }] = await Promise.all([
+    db
+      .from("crew_unavailable")
+      .select("id, date, note, start_time, end_time, overnight, title, owner_id")
+      .eq("phone", phone)
+      .order("date"),
+    db.from("crew_shift_plan").select("company, shift").eq("phone", phone).maybeSingle(),
+  ]);
 
-  return NextResponse.json({ assignments: mine, busy: busy ?? [] });
+  return NextResponse.json({ assignments: mine, busy: busy ?? [], shift: shiftPlan ?? null });
 }

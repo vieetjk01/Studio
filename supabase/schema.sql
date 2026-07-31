@@ -1191,6 +1191,28 @@ drop policy if exists crew_unavailable_read on public.crew_unavailable;
 create policy crew_unavailable_read on public.crew_unavailable
   for select using (auth.role() = 'authenticated');
 
+-- Lịch thợ: mở rộng crew_unavailable từ "ngày bận" thành "mốc lịch có giờ".
+-- Xem supabase/migrations/crew_schedule.sql.
+alter table public.crew_unavailable add column if not exists start_time time;
+alter table public.crew_unavailable add column if not exists end_time   time;
+alter table public.crew_unavailable add column if not exists overnight  boolean not null default false;
+alter table public.crew_unavailable add column if not exists title      text;
+alter table public.crew_unavailable add column if not exists owner_id   uuid references public.profiles (id) on delete set null;
+alter table public.crew_unavailable drop constraint if exists crew_unavailable_phone_date_key;
+
+-- Ca công ty của thợ freelancer (Hòa Phát A/B/C). Chỉ nhớ thợ thuộc ca nào; các
+-- ca cụ thể được TÍNH lúc hiển thị (src/lib/crew-shift.ts), không sinh sẵn dòng.
+create table if not exists public.crew_shift_plan (
+  phone      text primary key,
+  company    text not null default 'hoa_phat',
+  shift      text not null check (shift in ('A', 'B', 'C')),
+  updated_at timestamptz not null default now()
+);
+alter table public.crew_shift_plan enable row level security;
+drop policy if exists crew_shift_plan_read on public.crew_shift_plan;
+create policy crew_shift_plan_read on public.crew_shift_plan
+  for select using (auth.role() = 'authenticated');
+
 alter table public.contract_templates      enable row level security;
 alter table public.contract_template_items enable row level security;
 

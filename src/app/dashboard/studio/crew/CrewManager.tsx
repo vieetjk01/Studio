@@ -68,7 +68,9 @@ export default function CrewManager({
         <h1 className="font-serif text-2xl font-medium">Sổ thợ</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text2)" }}>
           Lưu photographer / cameramen theo số điện thoại để gán nhanh vào hợp đồng.
-          Thợ tự xem việc của mình tại <span style={{ color: "var(--text)" }}>{mainUrl("/crew")}</span>.
+          Thợ vào <span style={{ color: "var(--text)" }}>{mainUrl("/crew")}</span> để xem việc và
+          tự báo lịch đã nhận — mỗi thợ chỉ thấy lịch của mình.
+          Xem lịch cả đội ở <a href="/dashboard/studio/team" style={{ color: "var(--text)" }}>Lịch đội ngũ</a>.
         </p>
       </div>
 
