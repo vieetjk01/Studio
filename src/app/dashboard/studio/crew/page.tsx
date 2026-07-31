@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/auth-guards";
 import { mainUrl } from "@/lib/hosts";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { StudioCrew } from "@/lib/types";
 import CrewManager from "./CrewManager";
 
@@ -39,7 +40,14 @@ export default async function CrewPage() {
     for (let i = 0; i < 5; i++) {
       const candidate = shortCode();
       // Cột là unique — đụng mã thì thử lại, gần như không bao giờ xảy ra.
-      const { error } = await supabase.from("profiles").update({ crew_token: candidate }).eq("id", profile.id);
+      // Service role chứ KHÔNG phải client của user: c1_profiles_column_grants.sql
+      // đã thu hồi UPDATE toàn bảng profiles và chỉ cấp lại một số cột an toàn —
+      // crew_token không nằm trong đó, nên ghi bằng client user sẽ bị chặn ở mức
+      // quyền CỘT. Giữ nguyên như vậy (chặt hơn) và ghi ở server.
+      const { error } = await createAdminClient()
+        .from("profiles")
+        .update({ crew_token: candidate })
+        .eq("id", profile.id);
       if (!error) { crewToken = candidate; tokenError = null; break; }
       tokenError = error.message;
     }

@@ -94,8 +94,8 @@ export default function CrewManager({
         <div className="card mb-4 p-4">
           <p className="text-[13px] font-medium" style={{ color: "var(--s-amber)" }}>Chưa cấp được link đăng ký cho thợ</p>
           <p className="mt-1 text-[11px]" style={{ color: "var(--text3)" }}>
-            Cơ sở dữ liệu chưa có cột <code>crew_token</code> — chạy
-            {" "}<code>supabase/migrations/crew_profile_show.sql</code> rồi tải lại trang.
+            Chưa ghi được mã link vào hồ sơ studio. Thường là do chưa chạy
+            {" "}<code>supabase/migrations/crew_profile_show.sql</code>. Chạy xong tải lại trang.
           </p>
           <p className="mt-1 font-mono text-[11px]" style={{ color: "var(--text3)" }}>{registerError}</p>
         </div>
