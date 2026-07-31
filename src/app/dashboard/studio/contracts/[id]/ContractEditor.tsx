@@ -297,6 +297,27 @@ export default function ContractEditor({
   const [crew, setCrew] = useState<CrewRow[]>(initialCrew.map(toCrewRow));
   // Kết quả truy vết lần lưu nhân sự gần nhất — hiện cố định dưới nút Lưu.
   const [crewDebug, setCrewDebug] = useState<string | null>(null);
+  const [driveMsg, setDriveMsg] = useState<string | null>(null);
+  const [driveBusy, setDriveBusy] = useState(false);
+
+  /** Tạo cây thư mục Drive cho hợp đồng này (idempotent — bấm lại không tạo trùng). */
+  async function makeDriveFolder() {
+    setDriveBusy(true);
+    setDriveMsg(null);
+    try {
+      const r = await fetch("/api/studio/contract-drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId: contract.id }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { url?: string; path?: string; error?: string };
+      setDriveMsg(r.ok && j.url ? `Đã tạo: ${j.path} — ${j.url}` : `Không tạo được: ${j.error ?? "lỗi không rõ"}`);
+    } catch (e) {
+      setDriveMsg(`Không tạo được: ${(e as Error)?.message || e}`);
+    } finally {
+      setDriveBusy(false);
+    }
+  }
   const [requests, setRequests] = useState<ContractEditRequest[]>(initialRequests);
   const [payments, setPayments] = useState<ContractPayment[]>(initialPayments);
   const [milestones, setMilestones] = useState<StudioEvent[]>(initialMilestones);
@@ -1893,6 +1914,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <div className="mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border)" }}>
               <span className="text-sm" style={{ color: "var(--text2)" }}>Tổng lương nhân sự</span>
               <span className="font-serif text-lg font-medium">{vnd(payroll)}</span>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button onClick={makeDriveFolder} disabled={driveBusy} className="btn-ghost px-3 py-1.5 text-xs">
+                {driveBusy ? "Đang tạo…" : "Tạo thư mục Drive cho hợp đồng"}
+              </button>
+              {driveMsg && (
+                <span className="break-all text-[11px]" style={{ color: "var(--text3)" }}>{driveMsg}</span>
+              )}
             </div>
             <button onClick={saveCrew} disabled={busy === "crew"} className="btn-primary mt-4">
               {busy === "crew" ? "Đang lưu…" : "Lưu nhân sự & lương"}

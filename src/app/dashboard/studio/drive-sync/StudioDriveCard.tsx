@@ -18,6 +18,40 @@ type Status = { configured: boolean; connected: boolean; rootFolderName: string;
 const ROLE_LABEL: Record<string, string> = { selection: "Album chọn ảnh", delivery: "Gallery giao khách", none: "Chỉ sao lưu" };
 
 export default function StudioDriveCard() {
+  const [foldersBusy, setFoldersBusy] = useState(false);
+  const [foldersMsg, setFoldersMsg] = useState<string | null>(null);
+
+  /** Tạo cây thư mục cho mọi hợp đồng đã chốt còn thiếu. */
+  async function makeAllFolders() {
+    setFoldersBusy(true);
+    setFoldersMsg(null);
+    try {
+      const r = await fetch("/api/studio/contract-drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const j = (await r.json().catch(() => ({}))) as {
+        ok?: boolean; error?: string; created?: number; failed?: number; done?: boolean; firstError?: string | null; pending?: number;
+      };
+      if (!r.ok || !j.ok) {
+        setFoldersMsg(j.error ?? "Không tạo được thư mục.");
+        return;
+      }
+      setFoldersMsg(
+        j.pending === 0
+          ? "Mọi hợp đồng đã chốt đều có thư mục rồi."
+          : `Đã tạo ${j.created ?? 0} thư mục` +
+              (j.failed ? ` · ${j.failed} hợp đồng lỗi (${j.firstError ?? ""})` : "") +
+              (j.done === false ? " · còn dở, bấm lại để chạy tiếp" : "."),
+      );
+    } catch (e) {
+      setFoldersMsg(`Không tạo được: ${(e as Error)?.message || e}`);
+    } finally {
+      setFoldersBusy(false);
+    }
+  }
+
   const [state, setState] = useState<Status | null>(null);
   const [tpl, setTpl] = useState<Template | null>(null);
   const [rootName, setRootName] = useState("");
@@ -140,6 +174,20 @@ export default function StudioDriveCard() {
         Trong thư mục hợp đồng có <code>Photo/JPG Goc · Raw · File ChinhSua</code> (và <code>Video</code> nếu có quay);{" "}
         <b>JPG Goc</b> tự thành album chọn ảnh, <b>File ChinhSua</b> tự thành gallery giao khách.
       </p>
+
+      {/* Không chạy desktop thì trước đây KHÔNG hợp đồng nào có thư mục, và cũng
+          không có chỗ nào báo. Nút này tạo thẳng từ web. */}
+      <div className="mt-3 rounded-lg p-3" style={{ background: "var(--surface2)" }}>
+        <p className="text-[13px] font-medium">Tạo thư mục cho hợp đồng ngay trên web</p>
+        <p className="mb-2 text-[11px]" style={{ color: "var(--text3)" }}>
+          Dành cho lúc không mở MStudo Desktop. Chạy cho mọi hợp đồng đã chốt mà chưa có thư mục;
+          hợp đồng đã có thì bỏ qua, bấm lại không tạo trùng.
+        </p>
+        <button onClick={makeAllFolders} disabled={foldersBusy} className="btn-ghost px-3 py-1.5 text-xs">
+          {foldersBusy ? "Đang tạo…" : "Tạo thư mục cho các hợp đồng còn thiếu"}
+        </button>
+        {foldersMsg && <p className="mt-2 text-[11px]" style={{ color: "var(--text2)" }}>{foldersMsg}</p>}
+      </div>
 
       {flash && (
         <p className="mt-3 rounded-lg p-3 text-sm" style={{ background: "var(--surface2)", color: "var(--text)" }}>
