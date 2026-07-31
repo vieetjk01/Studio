@@ -26,9 +26,32 @@ export async function GET(req: Request) {
     return n ?? 0;
   };
 
-  const [profile, contracts, events, quotes, expenses, crew] = await Promise.all([
+  // Lặp lại ĐÚNG bộ lọc của trang Tổng quan để so trực tiếp với con số trên màn
+  // hình, thay vì bắt người dùng tự quy đổi.
+  const countActive = async () => {
+    const { count: n } = await db
+      .from("studio_contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", owner)
+      .neq("status", "cancelled");
+    return n ?? 0;
+  };
+  const countSelectingAlbums = async () => {
+    const { count: n } = await db
+      .from("albums")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", owner)
+      .eq("phase", "selection")
+      .eq("status", "published")
+      .eq("is_gallery", false);
+    return n ?? 0;
+  };
+
+  const [profile, contracts, contractsActive, albumsSelecting, events, quotes, expenses, crew] = await Promise.all([
     db.from("profiles").select("full_name, email, studio_brand_name, plan, plan_expires_at").eq("id", owner).maybeSingle(),
     count("studio_contracts"),
+    countActive(),
+    countSelectingAlbums(),
     count("studio_events"),
     count("studio_quotes"),
     count("studio_expenses"),
@@ -37,6 +60,9 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ownerId: owner,
+    // "device" = trả lời cho token của app desktop; "session" = trả lời cho
+    // phiên đăng nhập web đang mở. Mở URL này ở CẢ HAI nơi rồi so ownerId là
+    // biết ngay hai bên có cùng một tài khoản hay không.
     via: auth.via,
     account: {
       name: profile.data?.studio_brand_name || profile.data?.full_name || "",
@@ -44,7 +70,7 @@ export async function GET(req: Request) {
       plan: profile.data?.plan || "",
       planExpiresAt: profile.data?.plan_expires_at || null,
     },
-    counts: { contracts, events, quotes, expenses, crew },
+    counts: { contracts, contractsActive, albumsSelecting, events, quotes, expenses, crew },
     now: new Date().toISOString(),
   });
 }
