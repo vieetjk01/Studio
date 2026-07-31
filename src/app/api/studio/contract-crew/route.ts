@@ -179,27 +179,26 @@ export async function POST(req: Request) {
     // đồ; cột mới thêm mà cache chưa nạp lại thì có trường hợp giá trị bị BỎ QUA
     // lặng lẽ thay vì báo lỗi — nhìn ra ngoài y hệt "bấm lưu không ăn". Thà báo
     // rõ còn hơn để studio nhập lại lần thứ ba.
-    if (!row.start_time && (c.start ?? "").trim() === "") {
-      timeTrace.push({ name: name || phone, sent: "", norm: "", db: "" });
-    }
+    // Đọc lại dòng vừa ghi cho MỌI người: có vết đầy-đủ mới truy được lỗi, chứ
+    // chỉ ghi vết khi đã nghi ngờ thì đúng ca khó lại không có dữ liệu.
+    const { data: check, error: checkErr } = await db
+      .from("contract_crew")
+      .select("task, side, start_time, end_time")
+      .eq("id", assignId)
+      .maybeSingle();
+    timeTrace.push({
+      name: name || phone,
+      sent: (c.start ?? "") as string,
+      norm: row.start_time ?? "",
+      db: checkErr ? `LỖI ĐỌC: ${checkErr.message}` : ((check?.start_time as string | null)?.slice(0, 5) ?? ""),
+    });
 
     if (row.start_time || row.task || row.side) {
-      const { data: check } = await db
-        .from("contract_crew")
-        .select("task, side, start_time, end_time")
-        .eq("id", assignId)
-        .maybeSingle();
       const missing: string[] = [];
       if (row.task && !check?.task) missing.push("task");
       if (row.side && !check?.side) missing.push("side");
       if (row.start_time && !check?.start_time) missing.push("start_time");
       if (row.end_time && !check?.end_time) missing.push("end_time");
-      timeTrace.push({
-        name: name || phone,
-        sent: (c.start ?? "") as string,
-        norm: row.start_time ?? "",
-        db: (check?.start_time as string | null)?.slice(0, 5) ?? "",
-      });
       if (missing.length) {
         return NextResponse.json(
           {

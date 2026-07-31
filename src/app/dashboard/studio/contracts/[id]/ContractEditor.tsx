@@ -97,6 +97,8 @@ function serializeItems(items: ItemRow[]): { name: string; qty: number; unit_pri
     })
     .filter((i) => i.name);
 }
+type TimeTrace = { name: string; sent: string; norm: string; db: string };
+
 type CrewRow = {
   id?: string;
   name: string;
@@ -285,6 +287,8 @@ export default function ContractEditor({
   // trang ô đó trắng, và lần lưu kế tiếp ghi đè trắng lên giá trị đã lưu —
   // trông y như "bấm lưu không ăn".
   const [crew, setCrew] = useState<CrewRow[]>(initialCrew.map(toCrewRow));
+  // Kết quả truy vết lần lưu nhân sự gần nhất — hiện cố định dưới nút Lưu.
+  const [crewDebug, setCrewDebug] = useState<string | null>(null);
   const [requests, setRequests] = useState<ContractEditRequest[]>(initialRequests);
   const [payments, setPayments] = useState<ContractPayment[]>(initialPayments);
   const [milestones, setMilestones] = useState<StudioEvent[]>(initialMilestones);
@@ -457,38 +461,45 @@ export default function ContractEditor({
 
   async function saveCrew() {
     setBusy("crew");
-    // Qua route server chứ không ghi thẳng: mỗi lần lưu còn kéo theo ghi mốc vào
-    // LỊCH CỦA THỢ (bảng chỉ mở policy đọc, ghi phải qua service role) và gửi
-    // Zalo báo thợ — hai việc client không làm được.
-    const res = await fetch("/api/studio/contract-crew", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contractId: contract.id, crew }),
-    });
-    const j = (await res.json().catch(() => ({}))) as {
-      notified?: number;
-      error?: string;
-      timeTrace?: { name: string; sent: string; norm: string; db: string }[];
-    };
-    await refetchCrew();
-    setBusy(null);
-    if (!res.ok) {
-      toast(j.error === "forbidden" ? "Không có quyền." : `Lưu nhân sự thất bại: ${j.error ?? "lỗi không rõ"}`);
-      return;
+    setCrewDebug(null);
+    // Bọc try/finally: trước đây fetch ném lỗi là nút kẹt vĩnh viễn ở "Đang lưu…"
+    // và KHÔNG hiện gì cả — người dùng không biết đã hỏng hay đang chạy.
+    try {
+      // Qua route server chứ không ghi thẳng: mỗi lần lưu còn kéo theo ghi mốc
+      // vào LỊCH CỦA THỢ (bảng chỉ mở policy đọc, ghi phải qua service role) và
+      // gửi Zalo báo thợ — hai việc client không làm được.
+      const res = await fetch("/api/studio/contract-crew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId: contract.id, crew }),
+      });
+      const raw = await res.text();
+      let j: { notified?: number; error?: string; timeTrace?: TimeTrace[] } = {};
+      try { j = JSON.parse(raw); } catch { /* không phải JSON — giữ nguyên raw để hiện */ }
+
+      if (!res.ok) {
+        setCrewDebug(`Lưu thất bại (HTTP ${res.status}): ${j.error ?? raw.slice(0, 300)}`);
+        return;
+      }
+
+      await refetchCrew();
+
+      // Bảng CỐ ĐỊNH thay vì toast 2,2 giây: dòng truy vết dài, tắt trước khi
+      // đọc xong thì vô dụng.
+      const trace = j.timeTrace ?? [];
+      if (trace.length) {
+        setCrewDebug(
+          trace
+            .map((t) => `${t.name}: ô nhập "${t.sent || "(trống)"}" → chuẩn hoá "${t.norm || "(trống)"}" → DB "${t.db || "(trống)"}"`)
+            .join("\n"),
+        );
+      }
+      toast(j.notified ? `Đã lưu · đã báo Zalo ${j.notified} thợ.` : "Đã lưu nhân sự & lương.");
+    } catch (e) {
+      setCrewDebug(`Không gọi được máy chủ: ${(e as Error)?.message || String(e)}`);
+    } finally {
+      setBusy(null);
     }
-    // Nếu có dòng nào GỬI giờ mà DB không nhận (hoặc client gửi rỗng dù ô có
-    // giá trị), nói thẳng ba giá trị ra thay vì báo "đã lưu" chung chung.
-    const odd = (j.timeTrace ?? []).filter((t) => t.sent !== t.db);
-    if (odd.length) {
-      const t = odd[0];
-      toast(`${t.name}: ô nhập "${t.sent || "(trống)"}" → chuẩn hoá "${t.norm || "(trống)"}" → DB "${t.db || "(trống)"}"`);
-      return;
-    }
-    toast(
-      j.notified
-        ? `Đã lưu nhân sự & lương · đã báo Zalo ${j.notified} thợ.`
-        : "Đã lưu nhân sự & lương.",
-    );
   }
 
   async function togglePaid(c: CrewRow, idx: number) {
@@ -1876,6 +1887,14 @@ h1{text-align:center;font-size:20px;margin:0}.muted{color:#555}.row{display:flex
             <button onClick={saveCrew} disabled={busy === "crew"} className="btn-primary mt-4">
               {busy === "crew" ? "Đang lưu…" : "Lưu nhân sự & lương"}
             </button>
+            {crewDebug && (
+              <div className="mt-3 rounded-lg p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <pre className="whitespace-pre-wrap break-words font-mono text-[11px]" style={{ color: "var(--text2)" }}>{crewDebug}</pre>
+                  <button onClick={() => setCrewDebug(null)} className="shrink-0 text-[11px]" style={{ color: "var(--text3)" }}>Đóng</button>
+                </div>
+              </div>
+            )}
             <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
               Thợ tự nhập SĐT tại {mainUrl("/crew")} để xem việc &amp; lương rồi nhận/từ chối.
             </p>
