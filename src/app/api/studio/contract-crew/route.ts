@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { autoNotify } from "@/lib/zalo/notify";
 import { showLabel } from "@/lib/crew-show";
 import { fmtDate } from "@/lib/date";
+import { mainUrl } from "@/lib/hosts";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -117,6 +118,11 @@ export async function POST(req: Request) {
   if (g.error) return g.error;
   const { db, contract, ownerId } = g as { db: ReturnType<typeof createAdminClient>; contract: { id: string; title: string; event_date: string | null; event_time: string | null; location: string | null }; ownerId: string };
 
+  // Link cổng thợ RIÊNG của studio này để thợ bấm vào xem luôn các lịch khác.
+  // Không có token thì dùng cổng chung — vẫn tra được bằng SĐT.
+  const { data: me } = await db.from("profiles").select("crew_token").eq("id", ownerId).maybeSingle();
+  const portal = mainUrl(me?.crew_token ? `/crew/${me.crew_token}` : "/crew");
+
   const notified: string[] = [];
 
   for (const [idx, c] of (body.crew ?? []).entries()) {
@@ -155,6 +161,31 @@ export async function POST(req: Request) {
       assignId = (data?.id as string) ?? null;
     }
     if (!assignId) continue;
+
+    // Tự kiểm chứng: đọc lại đúng dòng vừa ghi. PostgREST giữ một bản cache lược
+    // đồ; cột mới thêm mà cache chưa nạp lại thì có trường hợp giá trị bị BỎ QUA
+    // lặng lẽ thay vì báo lỗi — nhìn ra ngoài y hệt "bấm lưu không ăn". Thà báo
+    // rõ còn hơn để studio nhập lại lần thứ ba.
+    if (row.start_time || row.task || row.side) {
+      const { data: check } = await db
+        .from("contract_crew")
+        .select("task, side, start_time, end_time")
+        .eq("id", assignId)
+        .maybeSingle();
+      const missing: string[] = [];
+      if (row.task && !check?.task) missing.push("task");
+      if (row.side && !check?.side) missing.push("side");
+      if (row.start_time && !check?.start_time) missing.push("start_time");
+      if (row.end_time && !check?.end_time) missing.push("end_time");
+      if (missing.length) {
+        return NextResponse.json(
+          {
+            error: `Cột ${missing.join(", ")} không nhận được giá trị. Chạy supabase/migrations/crew_profile_show.sql, rồi vào Supabase → Settings → API → Reload schema cache.`,
+          },
+          { status: 500 },
+        );
+      }
+    }
 
     // ── Ghi mốc vào lịch của thợ ─────────────────────────────────────────
     // Nối bằng contract_crew_id: mỗi phân công đúng MỘT mốc, sửa thì cập nhật
@@ -196,8 +227,15 @@ export async function POST(req: Request) {
           audience: "crew",
           toPhone: phone,
           toName: name || null,
-          body: `Bạn được xếp lịch: ${label} — ${when}${contract.location ? ` tại ${contract.location}` : ""}. Vào mstudo.com/crew để xác nhận.`,
-          templateData: { name: name || "", show: label, date: fmtDate(contract.event_date), time: start ?? "", location: contract.location ?? "" },
+          body: `Bạn được xếp lịch: ${label} — ${when}${contract.location ? ` tại ${contract.location}` : ""}.\nXác nhận và xem các lịch khác của bạn: ${portal}`,
+          templateData: {
+            name: name || "",
+            show: label,
+            date: fmtDate(contract.event_date),
+            time: start ?? "",
+            location: contract.location ?? "",
+            link: portal,
+          },
           contractId: contract.id,
         });
         if (r.ok) notified.push(phone);

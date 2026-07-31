@@ -71,6 +71,7 @@ export default function TeamCalendar({
   const [form, setForm] = useState({ phone: "", start: "08:00", end: "17:00", title: "", allDay: false });
   const [pickOpen, setPickOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [showShift, setShowShift] = useState(false);
   const pickRef = useRef<HTMLDivElement>(null);
 
   // Bấm ra ngoài thì đóng menu chọn thợ.
@@ -104,10 +105,12 @@ export default function TeamCalendar({
     () => (who ? assignments.filter((a) => (a.phone ?? "").replace(/\D/g, "") === who) : assignments),
     [assignments, who],
   );
-  // Chỉ tính ca của những thợ đang hiển thị.
+  // Ca công ty CHỈ hiện khi đang xem một thợ cụ thể và studio bật lên. Ở chế độ
+  // cả đội thì lịch chỉ còn việc của studio — ca nhà máy của chục người chồng
+  // lên nhau làm lịch không đọc nổi, mà cũng không phải việc studio xếp.
   const visibleShifts = useMemo(
-    () => (who ? (shifts[who] ? { [who]: shifts[who] } : {}) : shifts),
-    [shifts, who],
+    () => (who && showShift && shifts[who] ? { [who]: shifts[who] } : {}),
+    [shifts, who, showShift],
   );
 
   const byDateAssign = useMemo(() => {
@@ -229,7 +232,7 @@ export default function TeamCalendar({
 
               <div className="max-h-64 overflow-y-auto">
                 <button
-                  onClick={() => { setWho(""); setPickOpen(false); }}
+                  onClick={() => { setWho(""); setShowShift(false); setPickOpen(false); }}
                   className="block w-full rounded-lg px-2 py-1.5 text-left text-xs"
                   style={{ background: who ? "transparent" : "var(--surface2)" }}
                 >
@@ -238,7 +241,7 @@ export default function TeamCalendar({
                 {filteredMembers.map((m) => (
                   <button
                     key={m.phone}
-                    onClick={() => { setWho(m.phone); setPickOpen(false); }}
+                    onClick={() => { setWho(m.phone); setShowShift(false); setPickOpen(false); }}
                     className="block w-full rounded-lg px-2 py-1.5 text-left text-xs"
                     style={{ background: who === m.phone ? "var(--surface2)" : "transparent" }}
                   >
@@ -260,6 +263,16 @@ export default function TeamCalendar({
         {who && (
           <button onClick={() => setWho("")} className="btn-ghost px-2.5 py-1.5 text-xs" title="Xem lại cả đội">
             <X size={13} /> Bỏ lọc
+          </button>
+        )}
+
+        {who && shifts[who] && (
+          <button
+            onClick={() => setShowShift((v) => !v)}
+            className={showShift ? "btn-primary px-3 py-1.5 text-xs" : "btn-ghost px-3 py-1.5 text-xs"}
+            title={`Ca ${shifts[who]} tại ${SHIFT_COMPANY_LABEL.hoa_phat}`}
+          >
+            {showShift ? "Đang hiện" : "Hiện"} ca công ty ({shifts[who]})
           </button>
         )}
       </div>
@@ -321,7 +334,9 @@ export default function TeamCalendar({
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-green)" }} /> Đã nhận</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--text3)" }} /> Chờ phản hồi</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-amber)" }} /> Thợ báo lịch</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-blue)" }} /> Ca {SHIFT_COMPANY_LABEL.hoa_phat}</span>
+            {who && showShift && shifts[who] && (
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: "var(--s-blue)" }} /> Ca {SHIFT_COMPANY_LABEL.hoa_phat}</span>
+            )}
           </div>
         </div>
 
