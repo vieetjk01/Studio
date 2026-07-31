@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { autoCreateContractDeliveryOnComplete } from "@/lib/studio-drive";
+import { autoCreateContractDeliveryOnComplete, autoCreateContractSelectionOnProduction } from "@/lib/studio-drive";
 import { autoNotify } from "@/lib/zalo/notify";
 import { deliveryReadyMessage } from "@/lib/zalo/messages";
 import { mainUrl } from "@/lib/hosts";
@@ -47,6 +47,17 @@ export async function POST(req: Request) {
 
   const { error } = await db.from("studio_contracts").update(patch).eq("id", contractId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Chuyển SANG "đang thực hiện" / "hoàn thành" → giờ mới tạo album CHỌN ẢNH
+  // (trước mốc này album được giữ chưa tạo để không hiện trong thư viện). Bao cả
+  // completed để trường hợp bỏ qua bước in_progress vẫn có album chọn ảnh.
+  if ((status === "in_progress" || status === "completed") && contract.status !== status) {
+    try {
+      await autoCreateContractSelectionOnProduction(user.id, contractId);
+    } catch {
+      // Studio chưa nối Drive / lỗi tạm — desktop sẽ tạo bù khi đồng bộ.
+    }
+  }
 
   // Chuyển SANG "completed" (từ trạng thái khác) → tạo album giao khách.
   let deliveryAlbum = false;
