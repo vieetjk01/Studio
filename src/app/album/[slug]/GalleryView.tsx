@@ -15,7 +15,6 @@ const TR = {
     downloadAll: "Tải cả album",
     driveDownload: "Tải album (Drive)",
     driveDownloadOne: "Tải từ Drive",
-    zipDownload: "Tải ZIP nén",
     dlPhoto: "Tải ảnh",
     photoCount: "ảnh",
     tabAll: "Tất cả",
@@ -38,7 +37,6 @@ const TR = {
     downloadAll: "Download album",
     driveDownload: "Download album (Drive)",
     driveDownloadOne: "Download from Drive",
-    zipDownload: "Download ZIP",
     dlPhoto: "Download",
     photoCount: "photos",
     tabAll: "All",
@@ -61,7 +59,7 @@ import ShareButton from "@/components/ShareButton";
 import ShareDialog from "@/components/ShareDialog";
 import { mainUrl } from "@/lib/hosts";
 import { thumbnailUrl, fullImageUrl } from "@/lib/drive";
-import { buildZip, triggerDownload, downloadImage } from "@/lib/download";
+import { downloadImage } from "@/lib/download";
 import type { Feedback } from "@/lib/types";
 
 interface P { id: string; drive_file_id: string; name: string; source_id: string | null; position: number; is_video?: boolean; }
@@ -69,7 +67,7 @@ interface P { id: string; drive_file_id: string; name: string; source_id: string
 const isVideo = (p: P) => p.is_video || /\.(mp4|mov|m4v|webm|avi|mkv|wmv|flv|3gp)$/i.test(p.name);
 interface S { id: string; name: string; position: number; }
 interface DriveFolder { name: string; url: string; }
-interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; canZip?: boolean; watermark?: string | null; }
+interface G { id: string; slug: string; title: string; event_date: string | null; cover_url: string | null; hasPassword: boolean; allowDownload?: boolean; watermark?: string | null; }
 
 export default function GalleryView({
   gallery, initialPhotos, totalPhotos = null, initialSources, initialDriveFolders = [], initialOriginalFolders = [], feedback, shareIds, studioName = "Studio", logoUrl = null,
@@ -101,7 +99,6 @@ export default function GalleryView({
   const [lbIdx, setLbIdx] = useState<number | null>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const [swipeDx, setSwipeDx] = useState(0);
-  const [zipProgress, setZipProgress] = useState<number | null>(null);
 
   // Client-side photo selection → build a "share only these" link.
   const shareMode = shareIds != null && shareIds.length > 0;
@@ -293,19 +290,6 @@ export default function GalleryView({
     else if (dx >= 50) go(-1);
   }
 
-  async function downloadAll() {
-    // Nén TOÀN BỘ album (mọi nguồn/tab), không chỉ tab đang xem; ở chế độ chia sẻ
-    // chọn lọc thì chỉ nén đúng những ảnh được chia sẻ.
-    const zipPhotos = shareSet ? photos.filter((p) => shareSet.has(p.id)) : photos;
-    if (zipPhotos.length === 0) return;
-    setZipProgress(0);
-    const blob = await buildZip(
-      zipPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
-      { watermark: wm, onProgress: (d, t) => setZipProgress(Math.round((d / t) * 100)) }
-    );
-    triggerDownload(blob, `${gallery.slug}.zip`);
-    setZipProgress(null);
-  }
 
   async function sendFeedback() {
     if (!fbContent.trim() || !fbCaptcha) return;
@@ -353,19 +337,15 @@ export default function GalleryView({
               {shareBusy ? "Đang tạo link…" : `Chia sẻ ${selected.size} ảnh đã chọn`}
             </button>
           )}
-          {/* Tải cả album = link Drive (mọi gói). ZIP nén chỉ Studio & Photographer Plus.
-              Ẩn ở chế độ chia sẻ chọn lọc: link Drive trỏ cả thư mục → sẽ lộ toàn album. */}
+          {/* Tải cả album = link Drive: Google tự nén và phục vụ, không tốn byte nào
+              của Vercel/Supabase. Ẩn ở chế độ chia sẻ chọn lọc vì link Drive trỏ cả
+              thư mục → sẽ lộ toàn album. */}
           {!shareMode && allowDownload && driveFolders.length > 0 && (
             <DriveDownload folders={driveFolders} label={tr.driveDownload} labelOne={tr.driveDownloadOne} />
           )}
           {/* File gốc ở giai đoạn chọn ảnh (JPG gốc) — cho khách muốn lấy file gốc. */}
           {!shareMode && originalFolders.length > 0 && (
             <DriveDownload folders={originalFolders} label="File gốc (ảnh chọn)" labelOne="File gốc (ảnh chọn)" />
-          )}
-          {!shareMode && allowDownload && gallery.canZip && (
-            <button onClick={downloadAll} disabled={zipProgress !== null} className="btn-ghost px-3 py-1.5 text-[13px]" title={tr.zipDownload}>
-              <Download size={14} /> {zipProgress !== null ? `${zipProgress}%` : tr.zipDownload}
-            </button>
           )}
           {!shareMode && <ShareButton path={mainUrl(`/album/${gallery.slug}`)} title={gallery.title} className="btn-ghost px-3 py-1.5 text-[13px]" />}
           <LanguageSwitcher />

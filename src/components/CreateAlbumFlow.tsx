@@ -17,6 +17,7 @@ import {
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { isFolderLink } from "@/lib/drive";
+import { effectivePlan, planAllowsWatermark, type Plan } from "@/lib/plans";
 import PlanUsage from "@/components/PlanUsage";
 
 function slugify(s: string) {
@@ -48,6 +49,9 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
   const [allowDownload, setAllowDownload] = useState(true);
   // Plan permissions — free accounts cannot enable download / notes.
   const [canZip, setCanZip] = useState(true);
+  // Watermark: chỉ Photographer Plus & Studio (ảnh có watermark không tải thẳng
+  // từ Drive được, phải đi qua proxy).
+  const [canWatermark, setCanWatermark] = useState(true);
   const [canNotes, setCanNotes] = useState(true);
 
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
@@ -96,13 +100,14 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
       setLoggedIn(!!user);
 
       if (user) {
-        const { data: p } = await supabase.from("profiles").select("can_zip, can_notes, full_name").eq("id", user.id).maybeSingle();
+        const { data: p } = await supabase.from("profiles").select("can_zip, can_notes, full_name, role, plan, plan_expires_at").eq("id", user.id).maybeSingle();
         // Default the watermark to the studio's OWN name (not a fixed brand).
         const studioName = (p?.full_name ?? "").trim() || "Studio";
         setWatermark((w) => w || studioName);
         if (p) {
           setCanZip(!!p.can_zip);
           setCanNotes(!!p.can_notes);
+          setCanWatermark(planAllowsWatermark(effectivePlan(p.plan as Plan, p.plan_expires_at), p.role === "admin"));
           if (!p.can_zip) setAllowDownload(false);
           if (!p.can_notes) setAllowNote(false);
         }
@@ -169,7 +174,7 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
           title: name.trim(),
           slug,
           selection_limit: isDelivery ? null : (max ? Number(max) : null),
-          watermark_enabled: !!watermark.trim(),
+          watermark_enabled: canWatermark && !!watermark.trim(),
           download_enabled: allowDownload,
           watermark_text: watermark.trim() || null,
           phase: isDelivery ? "delivery" : "selection",
@@ -310,8 +315,12 @@ export default function CreateAlbumFlow({ mode = "selection" }: { mode?: "select
           )}
         </div>
 
-        <label className="label mt-4">Watermark</label>
-        <input value={watermark} onChange={(e) => setWatermark(e.target.value)} placeholder="Tên studio" className="input" />
+        {canWatermark && (
+          <>
+            <label className="label mt-4">Watermark</label>
+            <input value={watermark} onChange={(e) => setWatermark(e.target.value)} placeholder="Tên studio" className="input" />
+          </>
+        )}
 
         {/* Ghi chú trên ảnh chỉ có nghĩa ở album CHỌN ẢNH, không áp dụng khi giao khách. */}
         {!isDelivery && (

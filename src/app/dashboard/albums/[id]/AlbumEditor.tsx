@@ -24,7 +24,6 @@ import { studioUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import ZaloSendButton from "@/components/ZaloSendButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
-import { buildZip, triggerDownload } from "@/lib/download";
 import { fetchAllPhotos } from "@/lib/photos";
 import { CATEGORY_PRESETS, slugifyVi } from "@/lib/category";
 import type { Album, AlbumSource, Photo, SourceKind, AlbumPhase, SourceStage } from "@/lib/types";
@@ -35,6 +34,7 @@ export default function AlbumEditor({
   initialPhotos,
   canDelivery = true,
   canPinHome = true,
+  canWatermark = true,
   studioName = "Studio",
   studioHost = null,
   studioCats = [],
@@ -47,6 +47,7 @@ export default function AlbumEditor({
   initialPhotos: Photo[];
   canDelivery?: boolean;
   canPinHome?: boolean;
+  canWatermark?: boolean;
   studioName?: string;
   studioHost?: string | null;
   studioCats?: { slug: string; label: string }[];
@@ -108,8 +109,6 @@ export default function AlbumEditor({
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [zipping, setZipping] = useState(false);
-  const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
 
   function flash(m: string) {
     setMsg(m);
@@ -125,25 +124,6 @@ export default function AlbumEditor({
   // true originals — Google serves the download, not us).
   const deliveryFolders = sources.filter((s) => s.stage === "delivery" && s.kind === "folder");
 
-  // Download the whole delivery album as a ZIP of ORIGINAL files pulled from Drive.
-  async function downloadDeliveryOriginals() {
-    const items = deliveryPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name }));
-    if (items.length === 0) return;
-    setZipping(true);
-    setZipProgress({ done: 0, total: items.length });
-    try {
-      const blob = await buildZip(items, {
-        original: true,
-        onProgress: (done, total) => setZipProgress({ done, total }),
-      });
-      triggerDownload(blob, `${album.slug}-album-goc.zip`);
-    } catch {
-      flash(t("error"));
-    } finally {
-      setZipping(false);
-      setZipProgress(null);
-    }
-  }
 
   async function saveSettings() {
     setSaving(true);
@@ -155,9 +135,9 @@ export default function AlbumEditor({
         slug: form.slug,
         selection_limit:
           form.selection_limit === "" ? null : Number(form.selection_limit),
-        watermark_enabled: form.watermark_enabled,
+        watermark_enabled: canWatermark && form.watermark_enabled,
         watermark_text: form.watermark_text || null,
-        watermark_delivery: form.watermark_delivery,
+        watermark_delivery: canWatermark && form.watermark_delivery,
         gallery_pinned: canPinHome ? form.gallery_pinned : false,
         download_enabled: form.download_enabled,
         status: form.status,
@@ -412,7 +392,7 @@ export default function AlbumEditor({
       )}
 
       {/* Delivery phase: download the finished album at ORIGINAL quality from Drive. */}
-      {phase === "delivery" && (deliveryCount > 0 || deliveryFolders.length > 0) && (
+      {phase === "delivery" && deliveryFolders.length > 0 && (
         <div className="card mb-6 p-5">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, var(--success) 15%, transparent)", color: "var(--success)" }}>
@@ -421,19 +401,10 @@ export default function AlbumEditor({
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-accent">Tải album gốc từ Drive</p>
               <p className="mb-3 text-xs" style={{ color: "var(--text3)" }}>
-                Tải toàn bộ ảnh giao khách ở chất lượng gốc (không nén, không watermark) lấy trực tiếp từ Google Drive.
+                Tải toàn bộ ảnh giao khách ở chất lượng gốc (không nén, không watermark) trực tiếp
+                từ Google Drive — Google tự nén và phục vụ, không tốn băng thông máy chủ.
               </p>
               <div className="flex flex-wrap gap-2">
-                {deliveryCount > 0 && (
-                  <button onClick={downloadDeliveryOriginals} disabled={zipping} className="btn-primary">
-                    <HardDriveDownload size={15} />
-                    {zipping
-                      ? zipProgress
-                        ? `Đang tải ${zipProgress.done}/${zipProgress.total}…`
-                        : "Đang tải…"
-                      : `Tải ZIP ảnh gốc (${deliveryCount})`}
-                  </button>
-                )}
                 {deliveryFolders.map((s) => (
                   <a
                     key={s.id}
@@ -507,31 +478,42 @@ export default function AlbumEditor({
             />
           </div>
 
-          <div className="rounded-md border border-ink-800 p-3">
-            <label className="flex items-center gap-2 text-sm text-accent">
-              <input
-                type="checkbox"
-                checked={form.watermark_enabled}
-                onChange={(e) =>
-                  setForm({ ...form, watermark_enabled: e.target.checked })
-                }
-              />
-              {t("enableWatermark")}
-            </label>
-            {form.watermark_enabled && (
-              <input
-                className="input mt-3"
-                placeholder={t("watermarkText")}
-                value={form.watermark_text}
-                onChange={(e) =>
-                  setForm({ ...form, watermark_text: e.target.value })
-                }
-              />
-            )}
-            <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>
-              Bật watermark để chữ tự gắn lên ảnh khi khách xem (kể cả ảnh phóng to) — chống chụp màn hình.
-            </p>
-          </div>
+          {canWatermark ? (
+            <div className="rounded-md border border-ink-800 p-3">
+              <label className="flex items-center gap-2 text-sm text-accent">
+                <input
+                  type="checkbox"
+                  checked={form.watermark_enabled}
+                  onChange={(e) =>
+                    setForm({ ...form, watermark_enabled: e.target.checked })
+                  }
+                />
+                {t("enableWatermark")}
+              </label>
+              {form.watermark_enabled && (
+                <input
+                  className="input mt-3"
+                  placeholder={t("watermarkText")}
+                  value={form.watermark_text}
+                  onChange={(e) =>
+                    setForm({ ...form, watermark_text: e.target.value })
+                  }
+                />
+              )}
+              <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>
+                Bật watermark để chữ tự gắn lên ảnh khi khách xem (kể cả ảnh phóng to) — chống chụp màn hình.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-md border border-ink-800 p-3">
+              <p className="text-sm text-accent">{t("enableWatermark")}</p>
+              <p className="mt-2 text-xs" style={{ color: "var(--text3)" }}>
+                Watermark có ở gói <strong>Photographer Plus</strong> và <strong>Studio</strong>.
+                Ảnh không watermark được tải thẳng từ Google Drive nên nhanh hơn và
+                không giới hạn lượt tải.
+              </p>
+            </div>
+          )}
 
           <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
             <input
@@ -542,7 +524,7 @@ export default function AlbumEditor({
             Cho phép khách tải ảnh xuống
           </label>
 
-          {canDelivery && (
+          {canDelivery && canWatermark && (
             <label className="flex items-center gap-2 rounded-md border border-ink-800 p-3 text-sm text-accent">
               <input
                 type="checkbox"

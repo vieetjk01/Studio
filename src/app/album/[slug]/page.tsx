@@ -6,7 +6,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import GalleryView from "./GalleryView";
 import { buildAlbumMetadata } from "@/lib/album-meta";
 import { MAIN_HOST } from "@/lib/hosts";
-import { effectivePlan, type Plan } from "@/lib/plans";
+import { effectivePlan, planAllowsWatermark, type Plan } from "@/lib/plans";
 import { getOriginalFolders } from "@/lib/album-original";
 import type { Feedback } from "@/lib/types";
 
@@ -85,9 +85,12 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   ]);
   const studioName = brand.name;
 
-  // Chỉ gói Studio & Photographer Plus (và admin) được tải ZIP nén từ link album.
+  // Watermark chỉ mở cho Studio & Photographer Plus (và admin). Chốt ở ĐÂY chứ
+  // không chỉ ở form trong dashboard: album được bật watermark từ trước, hoặc
+  // của một gói đã hết hạn, phải tự thôi watermark — nếu không thì mỗi lượt tải
+  // vẫn đi vòng qua proxy thay vì tải thẳng từ Drive.
   const ownerPlan = effectivePlan(owner?.plan as Plan, owner?.plan_expires_at);
-  const canZip = owner?.role === "admin" || ownerPlan === "studio" || ownerPlan === "photographer_plus";
+  const canWatermark = planAllowsWatermark(ownerPlan, owner?.role === "admin");
 
   // Sources hiển thị (ưu tiên stage 'delivery', fallback tất cả nếu chưa gắn).
   const delSources = (s ?? []).filter((x) => x.stage === "delivery");
@@ -129,8 +132,7 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
         cover_url: album.cover_url,
         hasPassword,
         allowDownload: album.download_enabled !== false,
-        canZip,
-        watermark: album.watermark_delivery ? (album.watermark_text || studioName) : null,
+        watermark: canWatermark && album.watermark_delivery ? (album.watermark_text || studioName) : null,
       }}
       initialPhotos={photos}
       totalPhotos={totalPhotos}

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllPhotos } from "@/lib/photos";
 import { getStudioHost } from "@/lib/studio-site";
-import { effectivePlan, planAllowsDelivery, planAllowsPublicGallery } from "@/lib/plans";
+import { effectivePlan, planAllowsDelivery, planAllowsPublicGallery, planAllowsWatermark } from "@/lib/plans";
 import AlbumEditor from "./AlbumEditor";
 import { categoryLabel } from "@/lib/category";
 import type { Album, AlbumSource, Photo } from "@/lib/types";
@@ -71,6 +71,7 @@ export default async function AlbumEditPage({
       initialPhotos={(photos ?? []) as Photo[]}
       canDelivery={planAllowsDelivery(plan, isAdmin)}
       canPinHome={planAllowsPublicGallery(plan, isAdmin)}
+      canWatermark={planAllowsWatermark(plan, isAdmin)}
       studioName={studioName}
       studioHost={studioHost}
       studioCats={studioCats}

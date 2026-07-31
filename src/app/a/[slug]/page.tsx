@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { effectivePlan, planAllowsDelivery } from "@/lib/plans";
+import { effectivePlan, planAllowsDelivery, planAllowsWatermark, type Plan } from "@/lib/plans";
 import { fetchAllPhotos } from "@/lib/photos";
 import CustomerAlbum from "./CustomerAlbum";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -121,15 +121,24 @@ export default async function PublicAlbumPage({
   const [{ data: owner }, brand] = await Promise.all([
     admin
       .from("profiles")
-      .select("role, can_zip, can_notes, full_name")
+      .select("role, can_zip, can_notes, full_name, plan, plan_expires_at")
       .eq("id", album.owner_id)
       .maybeSingle(),
     getStudioBrand(admin, album.owner_id),
   ]);
   const studioName = brand.name;
   const isAdminOwner = owner?.role === "admin";
-  const allowZip = (isAdminOwner || !!owner?.can_zip) && album.download_enabled !== false;
+  // `can_zip` là cờ gói "cho khách tải ảnh" (nay tải thẳng từ Drive, không còn
+  // nén ZIP) — giữ nguyên cột cũ để khỏi phải di trú dữ liệu.
+  const allowDownload = (isAdminOwner || !!owner?.can_zip) && album.download_enabled !== false;
   const allowNotes = isAdminOwner || !!owner?.can_notes;
+  // Watermark: chỉ Photographer Plus & Studio. Chốt phía server để album bật từ
+  // trước, hoặc của gói đã hết hạn, tự thôi watermark — ảnh không watermark mới
+  // tải thẳng từ Drive được.
+  const canWatermark = planAllowsWatermark(
+    effectivePlan(owner?.plan as Plan, owner?.plan_expires_at),
+    isAdminOwner,
+  );
 
   let photos = null;
   let sources = null;
@@ -170,10 +179,10 @@ export default async function PublicAlbumPage({
         title: album.title,
         description: album.description,
         selection_limit: album.selection_limit,
-        watermark_enabled: album.watermark_enabled,
+        watermark_enabled: canWatermark && album.watermark_enabled,
         watermark_text: album.watermark_text,
         hasPassword,
-        allowZip,
+        allowDownload,
         allowNotes,
       }}
       initialPhotos={photos}

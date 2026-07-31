@@ -24,7 +24,7 @@ export interface AlbumRow {
   selections: { count: number }[];
 }
 
-export default function AlbumList({ albums, showTrial = false, trialUsed = false, canDelivery = true }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean; canDelivery?: boolean }) {
+export default function AlbumList({ albums, showTrial = false, trialUsed = false, canDelivery = true, canWatermark = true }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean; canDelivery?: boolean; canWatermark?: boolean }) {
   const { t } = useLang();
 
   return (
@@ -70,7 +70,7 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
           </Link>
         </div>
       ) : (
-        <AlbumSections albums={albums} canDelivery={canDelivery} />
+        <AlbumSections albums={albums} canDelivery={canDelivery} canWatermark={canWatermark} />
       )}
     </div>
   );
@@ -79,14 +79,14 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
 // Tách thư viện thành 2 nhóm theo giai đoạn: ALBUM CHỌN ẢNH (phase 'selection')
 // và ALBUM GIAO KHÁCH (phase 'delivery'). Khi chỉ có một nhóm thì hiển thị lưới
 // gọn như cũ, không cần tiêu đề nhóm.
-function AlbumSections({ albums, canDelivery }: { albums: AlbumRow[]; canDelivery: boolean }) {
+function AlbumSections({ albums, canDelivery, canWatermark }: { albums: AlbumRow[]; canDelivery: boolean; canWatermark: boolean }) {
   const deliveryAlbums = albums.filter((a) => (a.phase ?? "selection") === "delivery");
   const selectionAlbums = albums.filter((a) => (a.phase ?? "selection") !== "delivery");
 
   const grid = (rows: AlbumRow[]) => (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((a) => (
-        <AlbumCard key={a.id} a={a} canDelivery={canDelivery} />
+        <AlbumCard key={a.id} a={a} canDelivery={canDelivery} canWatermark={canWatermark} />
       ))}
     </div>
   );
@@ -118,7 +118,7 @@ function AlbumSections({ albums, canDelivery }: { albums: AlbumRow[]; canDeliver
   );
 }
 
-function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boolean }) {
+function AlbumCard({ a, canDelivery = true, canWatermark = true }: { a: AlbumRow; canDelivery?: boolean; canWatermark?: boolean }) {
   const { t } = useLang();
   const supabase = createClient();
   const [menu, setMenu] = useState(false);
@@ -216,7 +216,11 @@ function AlbumCard({ a, canDelivery = true }: { a: AlbumRow; canDelivery?: boole
           {canDelivery && (
             <Toggle label="Giao khách (ảnh hoàn thiện)" on={phase === "delivery"} onChange={(v) => { const next = v ? "delivery" : "selection"; setPhase(next); patch({ phase: next }); }} />
           )}
-          <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
+          {/* Watermark: chỉ Photographer Plus & Studio — ảnh có watermark buộc phải
+              đi qua proxy khi khách tải, ảnh thường tải thẳng từ Drive. */}
+          {canWatermark && (
+            <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
+          )}
           <Toggle label="Cho tải xuống" on={download} onChange={(v) => { setDownload(v); patch({ download_enabled: v }); }} />
           <div className="mt-2 flex gap-2">
             <Link href={`/dashboard/albums/${a.id}`} className="btn-ghost flex-1 py-1.5 text-xs">Chỉnh sửa đầy đủ</Link>

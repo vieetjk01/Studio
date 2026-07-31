@@ -95,7 +95,7 @@ export const dict: Dict = {
   exportList: { vi: "Xuất danh sách", en: "Export list" },
   copyList: { vi: "Copy danh sách (không đuôi)", en: "Copy list (no extension)" },
   copied: { vi: "Đã copy!", en: "Copied!" },
-  downloadZip: { vi: "Tải ZIP", en: "Download ZIP" },
+  downloadPhoto: { vi: "Tải ảnh", en: "Download photo" },
   preparingZip: { vi: "Đang nén ảnh…", en: "Preparing ZIP…" },
   yourName: { vi: "Tên của bạn (tuỳ chọn)", en: "Your name (optional)" },
   submitSelection: { vi: "Gửi lựa chọn cho photographer", en: "Send selection to photographer" },

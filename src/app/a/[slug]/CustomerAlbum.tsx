@@ -21,7 +21,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ShareDialog from "@/components/ShareDialog";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl, fullImageUrl, stripExtension } from "@/lib/drive";
-import { buildZip, triggerDownload, downloadImage } from "@/lib/download";
+import { triggerDownload, downloadImage } from "@/lib/download";
 
 interface PublicPhoto {
   id: string;
@@ -44,7 +44,7 @@ interface PublicAlbum {
   watermark_enabled: boolean;
   watermark_text: string | null;
   hasPassword: boolean;
-  allowZip: boolean;
+  allowDownload: boolean;
   allowNotes: boolean;
 }
 
@@ -92,7 +92,6 @@ export default function CustomerAlbum({
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const [swipeDx, setSwipeDx] = useState(0);
-  const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -331,21 +330,6 @@ export default function CustomerAlbum({
       new Blob([text], { type: "text/plain;charset=utf-8" }),
       `${album.slug}-selection.txt`
     );
-  }
-  async function downloadZip() {
-    if (selectedPhotos.length === 0) return;
-    setZipProgress(0);
-    try {
-      const blob = await buildZip(
-        selectedPhotos.map((p) => ({ fileId: p.drive_file_id, name: p.name })),
-        { watermark: wm, onProgress: (d, tot) => setZipProgress(Math.round((d / tot) * 100)) }
-      );
-      triggerDownload(blob, `${album.slug}-photos.zip`);
-    } catch {
-      /* lỗi mạng giữa chừng: không được khoá nút tải vĩnh viễn */
-    } finally {
-      setZipProgress(null);
-    }
   }
 
   useEffect(() => {
@@ -620,12 +604,6 @@ export default function CustomerAlbum({
               <FileText size={14} /> {t("exportList")}
             </ToolButton>
           )}
-          {!shareMode && album.allowZip && (
-            <ToolButton onClick={downloadZip} disabled={selected.size === 0 || zipProgress !== null}>
-              <Download size={14} />
-              {zipProgress !== null ? `${zipProgress}%` : t("downloadZip")}
-            </ToolButton>
-          )}
           {!shareMode && (
             <ToolButton onClick={shareSelected} disabled={selected.size === 0 || shareBusy}>
               <Share2 size={14} />
@@ -785,12 +763,12 @@ export default function CustomerAlbum({
                 {selected.has(lbPhoto.id) ? "Đã thích" : "Thích ảnh này"}
               </button>
             )}
-            {album.allowZip && (
+            {album.allowDownload && (
               <button
                 type="button"
                 onClick={() => downloadImage(lbPhoto.drive_file_id, lbPhoto.name, wm)}
-                title={t("downloadZip")}
-                aria-label={t("downloadZip")}
+                title={t("downloadPhoto")}
+                aria-label={t("downloadPhoto")}
                 className="flex h-10 w-10 items-center justify-center rounded-lg"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
               >

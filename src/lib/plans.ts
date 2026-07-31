@@ -107,6 +107,22 @@ export function planAllowsCustomDomain(plan: Plan, isAdmin = false): boolean {
   return isAdmin || plan === "photographer_plus" || plan === "studio";
 }
 
+/**
+ * Watermark trên album của khách (chữ đè lên ảnh khi xem, và đóng vào ảnh khi
+ * khách tải): chỉ Photographer Plus & Studio.
+ *
+ * Đây là ràng buộc HẠ TẦNG chứ không chỉ là phân gói: ảnh CÓ watermark bắt buộc
+ * phải đi qua proxy của mình — canvas cần đọc pixel, mà Drive không gửi header
+ * CORS — nên mỗi lượt tải ngốn băng thông Vercel. Ảnh KHÔNG watermark tải thẳng
+ * từ Drive, tốn 0 byte. Vì vậy chi phí đó chỉ mở cho hai gói cao nhất.
+ *
+ * KHÁC với `watermarkPro` ở PlanLimits — cái đó là watermark logo trong công cụ
+ * NÉN ảnh, không liên quan tới album.
+ */
+export function planAllowsWatermark(plan: Plan, isAdmin = false): boolean {
+  return isAdmin || plan === "photographer_plus" || plan === "studio";
+}
+
 export function limitsFor(plan: Plan, isAdmin: boolean): PlanLimits {
   return isAdmin ? ADMIN_LIMITS : PLAN_LIMITS[plan];
 }
@@ -214,6 +230,7 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
     "5 album / tháng",
     "Khách chọn ảnh & gửi lại studio (QR + link)",
     "Cho khách tải ảnh: chưa có",
+    "Watermark trên album: chưa có",
     "Ghi chú trên ảnh: chưa có",
     "Watermark: chỉ chữ (không logo, không nén kèm)",
     "Lọc ảnh AI: 10 lần / tháng",
@@ -224,7 +241,8 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
   ],
   basic: [
     "15 album / tháng",
-    "Cho khách tải ảnh (ZIP + từng ảnh)",
+    "Cho khách tải ảnh — tải thẳng từ Google Drive (bản gốc, không giới hạn)",
+    "Watermark trên album: chưa có",
     "Cho khách ghi chú trên ảnh",
     "Watermark đầy đủ (logo + nén kèm)",
     "Lọc ảnh AI: không giới hạn",
@@ -247,6 +265,7 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
   photographer_plus: [
     "100 album / tháng · Picker Drive 30 lần / tháng",
     "Tất cả tính năng gói Photographer",
+    "Watermark bảo vệ ảnh — khi khách xem và khi khách tải",
     "Báo giá hạng mục chi tiết cho khách",
     "Quản lý hợp đồng: tạo, gửi khách ký online, yêu cầu chỉnh sửa",
     "Mẫu hợp đồng tái sử dụng",
@@ -256,6 +275,7 @@ export const PLAN_FEATURES: Record<Plan, string[]> = {
   studio: [
     "Album không giới hạn · Picker Drive không giới hạn",
     "Tất cả tính năng gói Photographer",
+    "Watermark bảo vệ ảnh — khi khách xem và khi khách tải",
     "Quản lý hợp đồng + báo giá hạng mục chi tiết",
     "Khách xem & ký hợp đồng online, yêu cầu chỉnh sửa",
     "Quản lý tài chính — thu chi, công nợ, bảng lương",
