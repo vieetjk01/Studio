@@ -63,7 +63,9 @@ export default function DashboardChrome({
   return (
     <>
       <DashboardHeader profile={profile} kind={kind} />
-      <main className={`mx-auto max-w-6xl px-6 py-8 md:px-10${showFooter ? " pb-24" : ""}`}>
+      {/* overflow-x-clip: xem ghi chú ở StudioShell — chặn tràn ngang làm lệch
+          cả trang, dùng `clip` để không phá sticky bên trong. */}
+      <main className={`mx-auto max-w-6xl overflow-x-clip px-6 py-8 md:px-10${showFooter ? " pb-24" : ""}`}>
         {children}
       </main>
       {showFooter && <StudioFooterNav tier={tier} role={role} />}

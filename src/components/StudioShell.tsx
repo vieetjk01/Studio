@@ -603,8 +603,14 @@ export default function StudioShell({
             </div>
           </header>
 
-          {/* Page content */}
-          <main className="page-in px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
+          {/* Page content
+              overflow-x-clip: chặn một phần tử quá rộng nới cả trang ra rồi đẩy
+              mọi thứ lệch khỏi màn hình điện thoại. Dùng `clip` chứ không phải
+              `hidden` vì clip KHÔNG tạo scroll container → các phần tử sticky
+              bên trong (topbar, thanh hành động) vẫn dính theo viewport, và
+              trục dọc vẫn `visible`. Nội dung rộng thật (bảng, khối code) phải
+              tự bọc `overflow-x-auto` để còn cuộn xem được. */}
+          <main className="page-in min-w-0 overflow-x-clip px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
         </div>
       </div>
 

@@ -155,6 +155,9 @@ export default function AffiliatePage() {
           </div>
         ) : (
           <>
+            {/* Cuộn ngang riêng cho bảng — main của shell đã clip trục ngang nên
+                bảng 6 cột phải tự cuộn, không thì bị cắt mất cột trên mobile. */}
+            <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -204,6 +207,7 @@ export default function AffiliatePage() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {commissions.length > 5 && (
               <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { MessageCircle, Check, Loader2, AlertCircle, Users, Search } from "lucide-react";
 
 /**
@@ -59,6 +59,30 @@ export default function ZaloSendButton({
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [friendsErr, setFriendsErr] = useState("");
   const [q, setQ] = useState("");
+  // Popover rộng 260px: neo cứng trái hay phải đều tràn khỏi màn hình điện
+  // thoại tùy nút nằm đâu trong hàng (hàng nút wrap nên vị trí không đoán
+  // được). Đo rồi kẹp vào trong viewport — main của shell clip trục ngang nên
+  // phần tràn sẽ bị cắt mất, không cuộn tới được.
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [popLeft, setPopLeft] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!pickOpen) return;
+    const place = () => {
+      const wrap = wrapRef.current;
+      const pop = popRef.current;
+      if (!wrap || !pop) return;
+      const pad = 12;
+      const { left: wrapLeft } = wrap.getBoundingClientRect();
+      const maxLeft = window.innerWidth - pad - pop.offsetWidth;
+      // Mặc định thẳng mép trái của nút, rồi kẹp cả hai đầu.
+      setPopLeft(Math.max(pad, Math.min(wrapLeft, maxLeft)) - wrapLeft);
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [pickOpen]);
 
   const fixed = (phone || "").trim();
   const inputMode = !fixed && askPhone;
@@ -133,7 +157,7 @@ export default function ZaloSendButton({
     : friends;
 
   return (
-    <span className="relative inline-flex flex-col items-start gap-0.5">
+    <span ref={wrapRef} className="relative inline-flex flex-col items-start gap-0.5">
       <span className="inline-flex flex-wrap items-center gap-1.5">
         {inputMode && (
           <input
@@ -167,12 +191,10 @@ export default function ZaloSendButton({
       </span>
 
       {pickOpen && (
-        // Neo theo mép PHẢI của nút: nút này hầu như luôn nằm cuối một hàng
-        // hành động sát lề phải, neo trái sẽ đẩy popover 260px tràn khỏi màn
-        // hình điện thoại → cả trang bị nới ngang.
         <div
-          className="absolute right-0 z-50 mt-1 w-[260px] max-w-[calc(100vw-2rem)] rounded-xl border p-2 shadow-xl"
-          style={{ top: "100%", background: "var(--surface)", borderColor: "var(--border)" }}
+          ref={popRef}
+          className="absolute z-50 mt-1 w-[260px] max-w-[calc(100vw-1.5rem)] rounded-xl border p-2 shadow-xl"
+          style={{ top: "100%", left: popLeft, background: "var(--surface)", borderColor: "var(--border)" }}
         >
           <div className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ background: "var(--surface2)" }}>
             <Search size={13} style={{ color: "var(--text3)" }} />
