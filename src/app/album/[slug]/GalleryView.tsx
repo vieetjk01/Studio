@@ -55,7 +55,6 @@ import {
   Lock, ChevronLeft, ChevronRight, ChevronDown, X, Download, Calendar, Star, Send, Check, Play, Heart, Share2, ExternalLink,
 } from "lucide-react";
 import StudioBrand from "@/components/StudioBrand";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Turnstile from "@/components/Turnstile";
 import ShareButton from "@/components/ShareButton";
 import ShareDialog from "@/components/ShareDialog";
@@ -174,11 +173,10 @@ export default function GalleryView({
     setShareBusy(false);
   }
 
-  const [lang, setLang] = useState<Lang>("vi");
-  useEffect(() => {
-    const stored = localStorage.getItem("vk_lang") as Lang | null;
-    if (stored === "en") setLang("en");
-  }, []);
+  // Album khách chốt tiếng Việt: nút VI/EN nằm trong hàng nút đầu trang, thêm
+  // vào là hàng đó tràn và vỡ bố cục trên điện thoại. Bộ chữ TR.en giữ lại
+  // nguyên trong file để bật lại được khi cần.
+  const lang: Lang = "vi";
   const tr = TR[lang];
 
   // feedback form
@@ -310,7 +308,7 @@ export default function GalleryView({
   if (!unlocked) {
     return (
       <main className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between px-6 py-5 md:px-10"><StudioBrand name={studioName} logoUrl={logoUrl} /><LanguageSwitcher /></header>
+        <header className="flex items-center justify-between px-6 py-5 md:px-10"><StudioBrand name={studioName} logoUrl={logoUrl} /></header>
         <div className="flex flex-1 items-center justify-center px-6">
           <form onSubmit={unlock} className="card w-full max-w-sm p-8 text-center">
             <Lock className="mx-auto mb-4" size={26} style={{ color: "var(--gold)" }} />
@@ -354,10 +352,9 @@ export default function GalleryView({
           )}
           {/* File gốc ở giai đoạn chọn ảnh (JPG gốc) — cho khách muốn lấy file gốc. */}
           {!shareMode && originalFolders.length > 0 && (
-            <DriveDownload folders={originalFolders} label="File gốc (ảnh chọn)" labelOne="File gốc (ảnh chọn)" />
+            <DriveDownload folders={originalFolders} label="Ảnh gốc" labelOne="Ảnh gốc" />
           )}
           {!shareMode && <ShareButton path={mainUrl(`/album/${gallery.slug}`)} title={gallery.title} className="btn-ghost px-3 py-1.5 text-[13px]" />}
-          <LanguageSwitcher />
         </div>
       </header>
 
@@ -373,7 +370,7 @@ export default function GalleryView({
       <div className="mx-auto max-w-[1500px] px-6 md:px-10" style={{ marginTop: gallery.cover_url ? "-60px" : "28px", position: "relative" }}>
         <h1 className="font-serif text-[clamp(30px,5vw,52px)] font-medium leading-none">{gallery.title}</h1>
         <p className="mt-2 flex items-center gap-3 text-[13.5px]" style={{ color: "var(--text2)" }}>
-          {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString(lang === "en" ? "en-GB" : "vi-VN")}</span>)}
+          {gallery.event_date && (<span className="flex items-center gap-1"><Calendar size={13} /> {new Date(gallery.event_date).toLocaleDateString("vi-VN")}</span>)}
           <span>{shareMode ? visible.length : (totalPhotos ?? photos.length)} {tr.photoCount}</span>
         </p>
         {shareMode ? (

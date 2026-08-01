@@ -70,18 +70,20 @@ export default function AlbumList({ albums, showTrial = false, trialUsed = false
           </Link>
         </div>
       ) : (
-        <AlbumSections albums={albums} canDelivery={canDelivery} canWatermark={canWatermark} />
+        <AlbumTabs albums={albums} canDelivery={canDelivery} canWatermark={canWatermark} />
       )}
     </div>
   );
 }
 
-// Tách thư viện thành 2 nhóm theo giai đoạn: ALBUM CHỌN ẢNH (phase 'selection')
-// và ALBUM GIAO KHÁCH (phase 'delivery'). Khi chỉ có một nhóm thì hiển thị lưới
-// gọn như cũ, không cần tiêu đề nhóm.
-function AlbumSections({ albums, canDelivery, canWatermark }: { albums: AlbumRow[]; canDelivery: boolean; canWatermark: boolean }) {
+// Tách thư viện thành 2 TAB theo giai đoạn: ALBUM CHỌN ẢNH (phase 'selection') và
+// ALBUM GIAO KHÁCH (phase 'delivery') — cùng kiểu tab với trang Hợp đồng.
+// Dùng --gold/--accentInk chứ không phải --brand: trang này chạy trong CẢ hai
+// chrome (StudioShell và header thường), mà --brand chỉ có trong .studio-shell.
+function AlbumTabs({ albums, canDelivery, canWatermark }: { albums: AlbumRow[]; canDelivery: boolean; canWatermark: boolean }) {
   const deliveryAlbums = albums.filter((a) => (a.phase ?? "selection") === "delivery");
   const selectionAlbums = albums.filter((a) => (a.phase ?? "selection") !== "delivery");
+  const [tab, setTab] = useState<"selection" | "delivery">("selection");
 
   const grid = (rows: AlbumRow[]) => (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -91,29 +93,45 @@ function AlbumSections({ albums, canDelivery, canWatermark }: { albums: AlbumRow
     </div>
   );
 
-  // Không có album giao khách → hiển thị một lưới duy nhất như trước.
-  if (deliveryAlbums.length === 0) return grid(albums);
+  // Gói không dùng giao khách và cũng chưa có album giao khách nào → giữ một lưới
+  // gọn như trước, thêm tab rỗng chỉ làm rối.
+  if (!canDelivery && deliveryAlbums.length === 0) return grid(albums);
+
+  const rows = tab === "delivery" ? deliveryAlbums : selectionAlbums;
 
   return (
-    <div className="space-y-8">
-      {selectionAlbums.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center gap-2">
-            <ImageIcon size={16} style={{ color: "var(--gold)" }} />
-            <h2 className="text-lg font-light text-accent">Album chọn ảnh</h2>
-            <span className="text-xs text-accent-muted">({selectionAlbums.length})</span>
-          </div>
-          {grid(selectionAlbums)}
-        </section>
-      )}
-      <section>
-        <div className="mb-3 flex items-center gap-2">
-          <CheckSquare size={16} style={{ color: "var(--success)" }} />
-          <h2 className="text-lg font-light text-accent">Album giao khách</h2>
-          <span className="text-xs text-accent-muted">({deliveryAlbums.length})</span>
+    <div>
+      <div role="tablist" aria-label="Nhóm album" className="mb-4 flex flex-wrap gap-2">
+        {([
+          ["selection", "Album chọn ảnh", selectionAlbums.length, ImageIcon],
+          ["delivery", "Album giao khách", deliveryAlbums.length, CheckSquare],
+        ] as const).map(([key, label, count, Icon]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors"
+            style={
+              tab === key
+                ? { background: "var(--gold)", color: "var(--accentInk)" }
+                : { background: "var(--surface2)", color: "var(--text2)" }
+            }
+          >
+            <Icon size={13} /> {label} ({count})
+          </button>
+        ))}
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
+          {tab === "delivery"
+            ? "Chưa có album giao khách nào. Chuyển một album sang giai đoạn Giao khách, hoặc tạo album hoàn thiện."
+            : "Chưa có album chọn ảnh nào — tất cả đang ở nhóm Giao khách."}
         </div>
-        {grid(deliveryAlbums)}
-      </section>
+      ) : (
+        grid(rows)
+      )}
     </div>
   );
 }

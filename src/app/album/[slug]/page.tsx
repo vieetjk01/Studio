@@ -2,7 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllPhotos, filterDeliveryPhotos } from "@/lib/photos";
 import { getStudioBrand } from "@/lib/studio-brand";
 import Brand from "@/components/Brand";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 import GalleryView from "./GalleryView";
 import { buildAlbumMetadata } from "@/lib/album-meta";
 import { MAIN_HOST } from "@/lib/hosts";
@@ -52,9 +51,8 @@ export default async function GalleryPage({ params, searchParams }: { params: { 
   if (!album || !isDelivery || album.status !== "published") {
     return (
       <main className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between px-6 py-5 md:px-10">
+        <header className="flex items-center px-6 py-5 md:px-10">
           <Brand />
-          <LanguageSwitcher />
         </header>
         <div className="flex flex-1 items-center justify-center px-6 text-center">
           <p style={{ color: "var(--text2)" }}>Album không khả dụng.</p>

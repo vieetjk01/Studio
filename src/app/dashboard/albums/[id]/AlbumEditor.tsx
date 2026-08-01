@@ -387,7 +387,7 @@ export default function AlbumEditor({
           </div>
           <p className="mt-2 text-[11px]" style={{ color: "var(--text3)" }}>
             Ảnh trong thư mục này sẽ hiện ở album giao khách. Ảnh gốc khách đã chọn ở
-            giai đoạn trước tự thành nút <b>“File gốc (ảnh chọn)”</b> để khách xem/tải trên
+            giai đoạn trước tự thành nút <b>“Ảnh gốc”</b> để khách xem/tải trên
             Drive. Thư mục cần chia sẻ ở chế độ “ai có link xem được”.
           </p>
 
