@@ -7,6 +7,7 @@ import StudioTrialButton from "@/components/StudioTrialButton";
 import MessengerButton from "@/components/MessengerButton";
 import VietQRButton from "@/components/VietQR";
 import AutoEmailToggle from "@/components/AutoEmailToggle";
+import WebappV2BannerSlot from "@/components/WebappV2BannerSlot";
 import { shootReminderMessage } from "@/lib/zalo";
 import { crewPortalUrl } from "@/lib/crew-show";
 import {
@@ -188,7 +189,10 @@ async function BookingOverview({ ownerId }: { ownerId: string }) {
         </Link>
 
       </div>
-      <p className="mb-6 text-[13px]" style={{ color: "var(--text3)" }}>Quản lý lịch chụp & yêu cầu đặt lịch của khách</p>
+      <p className="mb-4 text-[13px]" style={{ color: "var(--text3)" }}>Quản lý lịch chụp & yêu cầu đặt lịch của khách</p>
+
+      {/* Thông báo giao diện 2.0 — điểm nhấn: toàn bộ giao diện được làm mới */}
+      <WebappV2BannerSlot />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((s) => (
@@ -476,6 +480,9 @@ export default async function StudioOverview() {
         </Link>
       </div>
       <p className="mb-4 text-[13px]" style={{ color: "var(--text3)" }}>Tổng quan hoạt động studio</p>
+
+      {/* Thông báo giao diện 2.0 — điểm nhấn: toàn bộ giao diện được làm mới */}
+      <WebappV2BannerSlot />
 
       {/* Mobile quick actions — prominent tappable shortcuts */}
       <div className="mb-5 grid grid-cols-3 gap-3 sm:hidden">

@@ -7,6 +7,7 @@ import {
   WEBAPP_V2_HIGHLIGHTS,
   WEBAPP_V2_LABEL,
   WEBAPP_V2_SEEN_KEY,
+  requestWebappUi,
   webappV2Note,
   webappV2StageLabel,
   type WebappUi,
@@ -74,14 +75,10 @@ export default function WebappVersionButton({
   async function switchTo(next: WebappUi) {
     setBusy(true);
     setErr(null);
-    const res = await fetch("/api/webapp-version", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ui: next }),
-    }).catch(() => null);
-    if (!res || !res.ok) {
+    const problem = await requestWebappUi(next);
+    if (problem) {
       setBusy(false);
-      setErr(res?.status === 403 ? "Giao diện 2.0 chưa mở cho tài khoản này." : "Không đổi được giao diện, thử lại sau.");
+      setErr(problem);
       return;
     }
     window.location.reload();

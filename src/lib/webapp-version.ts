@@ -25,6 +25,9 @@ export const WEBAPP_UI_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 /** localStorage: đã xem thông báo 2.0 chưa (để tắt chấm đỏ trên nút). */
 export const WEBAPP_V2_SEEN_KEY = "mstudo_v2_teaser_seen";
 
+/** localStorage: đã ẩn bảng thông báo trên trang Tổng quan chưa. */
+export const WEBAPP_V2_BANNER_HIDDEN_KEY = "mstudo_v2_banner_hidden";
+
 export type WebappUi = "v1" | "v2";
 export type WebappV2Stage = "coming_soon" | "beta" | "live";
 
@@ -62,9 +65,13 @@ export function resolveWebappUi(
 /** Nội dung nút/bảng thông báo (sửa ở đây là đổi mọi nơi hiển thị). */
 export const WEBAPP_V2_HEADLINE = `Giao diện mstudo ${WEBAPP_V2_LABEL} sắp ra mắt`;
 
+/** Điểm nhấn số 1 của bản 2.0 — GIAO DIỆN (dùng cho bảng trên trang Tổng quan). */
+export const WEBAPP_V2_LEAD =
+  "Nâng cấp đáng chú ý nhất của bản 2.0 là GIAO DIỆN: toàn bộ màn hình được thiết kế lại — gọn hơn, sáng rõ hơn và thao tác nhanh hơn trên cả điện thoại lẫn máy tính.";
+
 export const WEBAPP_V2_HIGHLIGHTS: string[] = [
-  "Bố cục mới gọn gàng hơn, dễ dùng trên cả điện thoại và máy tính",
-  "Thao tác nhanh hơn: tìm kiếm, tạo hợp đồng, xem lịch ngay trên thanh trên",
+  "Toàn bộ giao diện thiết kế lại: bố cục, màu sắc và kiểu chữ đồng bộ",
+  "Dễ dùng hơn trên điện thoại — việc hay làm nằm trong tầm ngón tay",
   "Bảng biểu & báo cáo đọc rõ hơn ở cả giao diện sáng và tối",
   "Dữ liệu giữ nguyên — chỉ đổi lớp giao diện, quay lại 1.0 được bất cứ lúc nào",
 ];
@@ -74,6 +81,22 @@ export function webappV2Note(stage: WebappV2Stage): string {
   if (stage === "live") return "Bạn có thể chuyển qua lại giữa hai giao diện bất cứ lúc nào.";
   if (stage === "beta") return "Bản thử nghiệm nội bộ: đang kiểm thử trước khi mở cho toàn bộ studio.";
   return "Đang hoàn thiện & kiểm thử. Chúng tôi sẽ mở nút chuyển ngay khi bản 2.0 sẵn sàng.";
+}
+
+/**
+ * Đổi giao diện (dùng chung cho nút trên thanh trên & bảng ở Tổng quan).
+ * Trả về câu lỗi tiếng Việt khi không đổi được, null khi thành công.
+ * KHÔNG tự tải lại trang — nơi gọi tự quyết định.
+ */
+export async function requestWebappUi(next: WebappUi): Promise<string | null> {
+  const res = await fetch("/api/webapp-version", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ui: next }),
+  }).catch(() => null);
+  if (res?.ok) return null;
+  if (res?.status === 403) return `Giao diện ${WEBAPP_V2_LABEL} chưa mở cho tài khoản này.`;
+  return "Không đổi được giao diện, thử lại sau.";
 }
 
 /** Nhãn ngắn hiển thị cạnh tiêu đề bảng thông báo. */
