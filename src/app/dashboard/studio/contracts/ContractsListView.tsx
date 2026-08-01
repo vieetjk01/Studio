@@ -14,7 +14,7 @@ import {
   type ShootType,
 } from "@/lib/types";
 import { fmtDate } from "@/lib/date";
-import { filterContracts, splitContracts } from "@/lib/contract-filter";
+import { filterContracts, sortContracts, splitContracts, type ContractSort } from "@/lib/contract-filter";
 
 export type ContractRow = {
   id: string;
@@ -38,6 +38,15 @@ const STATUS_TONE: Record<ContractStatus, string> = {
   cancelled: "var(--s-red)",
 };
 
+/** Nhãn sắp xếp — nói rõ chiều để không phải đoán "gần nhất" là trước hay sau. */
+const SORT_OPTIONS: [ContractSort, string][] = [
+  ["default", "Mới tạo trước"],
+  ["event_asc", "Ngày thực hiện: cũ → mới"],
+  ["event_desc", "Ngày thực hiện: mới → cũ"],
+  ["code_asc", "Mã HĐ: A → Z"],
+  ["code_desc", "Mã HĐ: Z → A"],
+];
+
 /** Trạng thái chọn được ở tab "Đang thực hiện" — completed đã có tab riêng. */
 const ACTIVE_STATUSES = (Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).filter(
   (k) => k !== "completed"
@@ -52,6 +61,7 @@ export default function ContractsListView() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState<ContractSort>("default");
   // HĐ đã hoàn thành tách hẳn sang tab riêng để danh sách việc đang chạy gọn lại.
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [updating, setUpdating] = useState<string | null>(null);
@@ -74,7 +84,10 @@ export default function ContractsListView() {
   const completedCount = useMemo(() => matched.filter((c) => c.status === "completed").length, [matched]);
   const activeCount = matched.length - completedCount;
 
-  const filtered = useMemo(() => splitContracts(matched, tab, status), [matched, tab, status]);
+  const filtered = useMemo(
+    () => sortContracts(splitContracts(matched, tab, status), sort),
+    [matched, tab, status, sort]
+  );
 
   const filterCount = (code.trim() ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0) + (status !== "all" ? 1 : 0);
 
@@ -149,6 +162,16 @@ export default function ContractsListView() {
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
+            <select
+              className="input w-auto shrink-0 py-2 text-xs"
+              aria-label="Sắp xếp hợp đồng"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as ContractSort)}
+            >
+              {SORT_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
             <button
               onClick={() => setShowFilters((v) => !v)}
               className="btn-ghost shrink-0 px-3 py-2 text-xs"

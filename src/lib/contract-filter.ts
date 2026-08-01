@@ -66,6 +66,38 @@ export function filterContracts<T extends FilterableContract>(
 }
 
 /**
+ * Kiểu sắp xếp. "default" = giữ nguyên thứ tự server trả về (mới tạo trước),
+ * nên KHÔNG sắp lại — danh sách vốn đã order by created_at desc.
+ */
+export type ContractSort = "default" | "event_asc" | "event_desc" | "code_asc" | "code_desc";
+
+/** So sánh mã HĐ có số: "HD-2" phải đứng trước "HD-10" (numeric), không phân biệt hoa thường. */
+const cmpCode = (a: string, b: string) => a.localeCompare(b, "vi", { numeric: true, sensitivity: "base" });
+
+/**
+ * Sắp xếp theo ngày thực hiện hoặc mã HĐ. Không sửa mảng gốc (rows là state +
+ * cache trên máy). HĐ thiếu ngày/mã luôn xuống cuối ở CẢ hai chiều — xếp chúng
+ * lẫn vào giữa thì vô nghĩa và làm studio tưởng mất dữ liệu. Cùng khoá thì
+ * chốt thứ tự bằng mã rồi tên để kết quả không nhảy giữa các lần render.
+ */
+export function sortContracts<T extends FilterableContract>(rows: readonly T[], sort: ContractSort): T[] {
+  if (sort === "default") return [...rows];
+  const dir = sort === "event_desc" || sort === "code_desc" ? -1 : 1;
+  const key = (c: T) => (sort === "code_asc" || sort === "code_desc" ? c.code : c.event_date) || "";
+  return [...rows].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    // Thiếu khoá → xuống cuối, không nhân với dir.
+    if (!ka && !kb) return cmpCode(a.code || a.title, b.code || b.title);
+    if (!ka) return 1;
+    if (!kb) return -1;
+    const primary = sort === "code_asc" || sort === "code_desc" ? cmpCode(ka, kb) : ka < kb ? -1 : ka > kb ? 1 : 0;
+    if (primary !== 0) return primary * dir;
+    return cmpCode(a.code || a.title, b.code || b.title);
+  });
+}
+
+/**
  * Tách HĐ đã hoàn thành sang nhóm riêng. Ở nhóm "đang thực hiện" mới áp thêm
  * lọc trạng thái ("all" = mọi trạng thái chưa hoàn thành, kể cả nháp/đã huỷ).
  */

@@ -8,7 +8,7 @@
  *  - "Tất cả" ở nhóm đang thực hiện vẫn gồm nháp và đã huỷ, KHÔNG gồm hoàn thành
  *  - lọc mã / tìm kiếm không phân biệt hoa thường
  */
-import { filterContracts, splitContracts } from "../../src/lib/contract-filter.ts";
+import { filterContracts, sortContracts, splitContracts } from "../../src/lib/contract-filter.ts";
 
 const rows = [
   { code: "HD-001", title: "Cưới Hiền & Nương", client_name: "Hiền", client_phone: "0900000001", event_date: "2026-03-15", status: "approved" },
@@ -84,6 +84,48 @@ check("lọc trạng thái không ảnh hưởng nhóm hoàn thành", codes(spli
 const q1 = filterContracts(rows, { q: "hiền" });
 check("tìm 'hiền' → nhóm đang thực hiện", codes(splitContracts(q1, "active", "all")), "HD-001");
 check("tìm 'hiền' → nhóm hoàn thành", codes(splitContracts(q1, "completed", "all")), "HD-006");
+
+// ── Sắp xếp ─────────────────────────────────────────────────────────────────
+check("mặc định giữ nguyên thứ tự server (mới tạo trước)", codes(sortContracts(rows, "default")), codes(rows));
+check("sortContracts KHÔNG sửa mảng gốc", (sortContracts(rows, "event_desc"), codes(rows)), codes(rows));
+check(
+  "ngày thực hiện cũ → mới, HĐ thiếu ngày xuống cuối",
+  codes(sortContracts(rows, "event_asc")),
+  "HD-001,(không mã),HD-002,hd-003,HD-006,HD-004"
+);
+check(
+  "ngày thực hiện mới → cũ, HĐ thiếu ngày VẪN xuống cuối",
+  codes(sortContracts(rows, "event_desc")),
+  "HD-006,hd-003,HD-002,HD-001,(không mã),HD-004"
+);
+check(
+  "mã A → Z, HĐ không có mã xuống cuối",
+  codes(sortContracts(rows, "code_asc")),
+  "HD-001,HD-002,hd-003,HD-004,HD-006,(không mã)"
+);
+check(
+  "mã Z → A, HĐ không có mã VẪN xuống cuối",
+  codes(sortContracts(rows, "code_desc")),
+  "HD-006,HD-004,hd-003,HD-002,HD-001,(không mã)"
+);
+// Cùng ngày thực hiện (HD-001 và HĐ không mã đều 15/03) → thứ tự phải ổn định.
+check(
+  "cùng ngày thì chốt thứ tự, không nhảy giữa các lần gọi",
+  codes(sortContracts(rows, "event_asc")),
+  codes(sortContracts([...rows].reverse(), "event_asc"))
+);
+// Mã có số không đệm 0: "HD-2" phải trước "HD-10".
+const numeric = [
+  { code: "HD-10", title: "j", client_name: null, client_phone: null, event_date: null, status: "draft" },
+  { code: "HD-2", title: "b", client_name: null, client_phone: null, event_date: null, status: "draft" },
+  { code: "HD-1", title: "a", client_name: null, client_phone: null, event_date: null, status: "draft" },
+];
+check("mã có số so sánh theo số, không theo chuỗi", codes(sortContracts(numeric, "code_asc")), "HD-1,HD-2,HD-10");
+
+// Sắp xếp phải giữ nguyên kết quả lọc/tách nhóm.
+const activeSorted = sortContracts(splitContracts(all, "active", "all"), "event_asc");
+check("sắp xếp không thêm/bớt HĐ nào của nhóm", activeSorted.length, splitContracts(all, "active", "all").length);
+check("sắp xếp không kéo HĐ hoàn thành vào nhóm đang thực hiện", activeSorted.some((c) => c.status === "completed"), false);
 
 console.log(fail ? `\n${fail} kiểm thử KHÔNG đạt` : "\nTất cả kiểm thử đạt");
 process.exit(fail ? 1 : 0);
