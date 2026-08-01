@@ -222,7 +222,9 @@ export default function ZaloPanel() {
           Tự động gửi theo mốc
           {savingEvt && <Loader2 size={13} className="animate-spin opacity-60" />}
         </div>
-        <div className="mt-2 overflow-hidden rounded-xl border border-white/10">
+        {/* overflow-x-auto (không phải hidden): vẫn bo góc như cũ nhưng nếu bảng
+            rộng hơn khung thì cuộn ngang được, không bị cắt mất cột. */}
+        <div className="mt-2 overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full text-sm">
             <thead className="bg-white/5 text-xs opacity-70">
               <tr>
