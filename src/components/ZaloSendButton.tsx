@@ -134,7 +134,7 @@ export default function ZaloSendButton({
 
   return (
     <span className="relative inline-flex flex-col items-start gap-0.5">
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex flex-wrap items-center gap-1.5">
         {inputMode && (
           <input
             value={manualPhone}
@@ -167,9 +167,12 @@ export default function ZaloSendButton({
       </span>
 
       {pickOpen && (
+        // Neo theo mép PHẢI của nút: nút này hầu như luôn nằm cuối một hàng
+        // hành động sát lề phải, neo trái sẽ đẩy popover 260px tràn khỏi màn
+        // hình điện thoại → cả trang bị nới ngang.
         <div
-          className="absolute z-50 mt-1 rounded-xl border p-2 shadow-xl"
-          style={{ top: "100%", left: 0, width: 260, background: "var(--surface)", borderColor: "var(--border)" }}
+          className="absolute right-0 z-50 mt-1 w-[260px] max-w-[calc(100vw-2rem)] rounded-xl border p-2 shadow-xl"
+          style={{ top: "100%", background: "var(--surface)", borderColor: "var(--border)" }}
         >
           <div className="flex items-center gap-1.5 rounded-lg px-2 py-1" style={{ background: "var(--surface2)" }}>
             <Search size={13} style={{ color: "var(--text3)" }} />

@@ -275,16 +275,18 @@ export default function AlbumEditor({
     <div className="animate-fade-in pb-20">
       {/* Header */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <Link
             href="/dashboard"
             className="mb-2 inline-flex items-center gap-1 text-sm text-accent-muted hover:text-accent"
           >
             <ArrowLeft size={15} /> {t("back")}
           </Link>
-          <h1 className="text-2xl font-light text-accent">{form.title}</h1>
+          <h1 className="break-words text-2xl font-light text-accent">{form.title}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Bọc phải wrap: 5 nút + ô SĐT Zalo rộng hơn màn hình điện thoại, không
+            wrap thì cả trang bị nới ngang và mọi thứ lệch sang trái. */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Link
             href={`/dashboard/albums/${album.id}/selections`}
             className="btn-ghost"
