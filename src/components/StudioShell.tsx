@@ -17,9 +17,11 @@ import StudioFooterNav from "@/components/StudioFooterNav";
 import MobileSearch from "@/components/MobileSearch";
 import DownloadAppButton from "@/components/DownloadAppButton";
 import SyncControlButton from "@/components/SyncControlButton";
+import WebappVersionButton from "@/components/WebappVersionButton";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
 import { APP_VERSION } from "@/lib/version";
+import type { WebappUi, WebappV2Stage } from "@/lib/webapp-version";
 import type { Profile } from "@/lib/types";
 
 type StudioTier = "none" | "booking" | "plus" | "full";
@@ -157,6 +159,9 @@ export default function StudioShell({
   role,
   comingSoon = [],
   hiddenNav = [],
+  v2Stage = "coming_soon",
+  ui = "v1",
+  canSwitchV2 = false,
   children,
 }: {
   profile: Profile;
@@ -164,6 +169,10 @@ export default function StudioShell({
   role: string;
   comingSoon?: string[];
   hiddenNav?: string[]; // mục ẨN HOÀN TOÀN với non-admin (chưa xuất bản)
+  /** Giao diện 2.0 — mặc định chỉ hiện nút thông báo (xem lib/webapp-version). */
+  v2Stage?: WebappV2Stage;
+  ui?: WebappUi;
+  canSwitchV2?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -221,7 +230,7 @@ export default function StudioShell({
   };
 
   return (
-    <div className="studio-shell" data-theme={theme} style={{ background: "var(--bg)", color: "var(--text)" }}>
+    <div className="studio-shell" data-theme={theme} data-webapp={ui} style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
 
         {/* ── Mobile drawer overlay ──────────────────────────────── */}
@@ -322,6 +331,8 @@ export default function StudioShell({
 
           {/* Drawer footer actions */}
           <div className="mt-auto pt-6 flex flex-col gap-2">
+            {/* Thông báo giao diện 2.0 (kèm nút chuyển khi đã mở) */}
+            <WebappVersionButton stage={v2Stage} ui={ui} canSwitch={canSwitchV2} variant="row" />
             <Link
               href="/dashboard/affiliate"
               onClick={() => setDrawerOpen(false)}
@@ -518,6 +529,10 @@ export default function StudioShell({
                 <StudioSearch />
               </div>
               <NotificationBell />
+              {/* Thông báo "giao diện 2.0 sắp ra mắt" — hiện ở mọi khổ máy vì đây
+                  là thông báo phát hành; khi cờ webapp_v2 mở thì chính nút này
+                  là nút chuyển phiên bản. */}
+              <WebappVersionButton stage={v2Stage} ui={ui} canSwitch={canSwitchV2} />
               {/* Language + theme: desktop only */}
               <div className="hidden lg:flex lg:items-center lg:gap-1.5">
                 <LanguageSwitcher />

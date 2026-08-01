@@ -241,6 +241,34 @@ single host and the compress tool stays at `/dashboard/compress`.
 
 ---
 
+## 🔀 Giao diện 2.0 (webapp v2)
+
+Webapp có sẵn cơ chế **chuyển phiên bản giao diện 1.0 ↔ 2.0**. Bản 2.0 đang được
+thiết kế nên mặc định **chưa chạy**: người dùng chỉ thấy một nút thông báo
+(hình ✨ trên thanh trên) cho biết "giao diện 2.0 sắp ra mắt".
+
+Bật/tắt tại **Cài đặt hệ thống → Tính năng → Giao diện 2.0** (cờ
+`site_settings.feature_flags.webapp_v2`):
+
+| Giá trị cờ | Ai chuyển được | Hiển thị |
+|---|---|---|
+| *(không có)* / `coming_soon` | Không ai | Nút thông báo + "Sắp ra mắt · đang kiểm thử" |
+| `beta` | Chỉ admin | Nút chuyển hoạt động (kiểm thử nội bộ) |
+| `live` | Mọi studio | Nút chuyển hoạt động, vẫn quay lại 1.0 được |
+
+Cách hoạt động:
+
+- Lựa chọn của người dùng lưu ở cookie `mstudo_ui` (`POST /api/webapp-version`);
+  quyền được **kiểm tra lại ở server**, nút chỉ là lớp hiển thị.
+- Hạ cờ về `coming_soon` là mọi phiên đang ở 2.0 **tự trở lại 1.0** ở lần tải
+  trang sau — không cần xoá cookie của ai.
+- Dashboard được bọc `data-webapp="v1" | "v2"`. Giao diện 2.0 viết CSS **bên
+  trong** `[data-webapp="v2"]` (xem khối khung chờ ở cuối `src/app/globals.css`),
+  kèm hai lớp `.v1-only` / `.v2-only` để dựng song song hai bố cục.
+- Logic cờ/cookie: `src/lib/webapp-version.ts` — kiểm thử: `npm run test:webapp-version`.
+
+---
+
 ## 🔐 Security notes
 
 - The Google API key and Supabase service-role key are **server-only**; Drive
