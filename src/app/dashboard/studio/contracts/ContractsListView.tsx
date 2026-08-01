@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Download } from "lucide-react";
+import { Plus, Search, Download, SlidersHorizontal, X } from "lucide-react";
 import { useCachedJson } from "@/lib/client-cache";
 import {
   contractTotal,
@@ -14,6 +14,7 @@ import {
   type ShootType,
 } from "@/lib/types";
 import { fmtDate } from "@/lib/date";
+import { filterContracts, splitContracts } from "@/lib/contract-filter";
 
 export type ContractRow = {
   id: string;
@@ -37,9 +38,22 @@ const STATUS_TONE: Record<ContractStatus, string> = {
   cancelled: "var(--s-red)",
 };
 
+/** Trạng thái chọn được ở tab "Đang thực hiện" — completed đã có tab riêng. */
+const ACTIVE_STATUSES = (Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).filter(
+  (k) => k !== "completed"
+);
+
 export default function ContractsListView() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | ContractStatus>("all");
+  const [code, setCode] = useState("");
+  // Khoảng NGÀY THỰC HIỆN (event_date). Cột kiểu date → "YYYY-MM-DD", so sánh
+  // chuỗi là đúng thứ tự nên không cần parse ra Date.
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  // HĐ đã hoàn thành tách hẳn sang tab riêng để danh sách việc đang chạy gọn lại.
+  const [tab, setTab] = useState<"active" | "completed">("active");
   const [updating, setUpdating] = useState<string | null>(null);
 
   // Tải danh sách + cache trên máy: hiện tức thì bản đã lưu, làm mới ngầm.
@@ -53,16 +67,23 @@ export default function ContractsListView() {
   // Lần đầu chưa có cache và đang tải → hiện trạng thái tải thay vì "chưa có HĐ".
   const initialLoading = loading && !fromCache && rows.length === 0;
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return rows.filter((c) => {
-      if (status !== "all" && c.status !== status) return false;
-      if (!needle) return true;
-      return [c.title, c.client_name, c.code, c.client_phone]
-        .filter(Boolean)
-        .some((v) => (v as string).toLowerCase().includes(needle));
-    });
-  }, [rows, q, status]);
+  // Lọc chung (tìm kiếm + mã + khoảng ngày) TRƯỚC khi tách tab, để số đếm trên
+  // hai tab phản ánh đúng bộ lọc đang bật. Logic ở @/lib/contract-filter.
+  const matched = useMemo(() => filterContracts(rows, { q, code, from, to }), [rows, q, code, from, to]);
+
+  const completedCount = useMemo(() => matched.filter((c) => c.status === "completed").length, [matched]);
+  const activeCount = matched.length - completedCount;
+
+  const filtered = useMemo(() => splitContracts(matched, tab, status), [matched, tab, status]);
+
+  const filterCount = (code.trim() ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0) + (status !== "all" ? 1 : 0);
+
+  function clearFilters() {
+    setCode("");
+    setFrom("");
+    setTo("");
+    setStatus("all");
+  }
 
   async function changeStatus(id: string, next: ContractStatus, e: React.ChangeEvent<HTMLSelectElement>) {
     e.stopPropagation();
@@ -99,7 +120,9 @@ export default function ContractsListView() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "hop-dong.csv";
+    // Xuất đúng danh sách đang thấy (tab + bộ lọc), tên file theo tab để hai
+    // lần xuất không ghi đè nhau.
+    a.download = tab === "completed" ? "hop-dong-hoan-thanh.csv" : "hop-dong-dang-thuc-hien.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -108,31 +131,115 @@ export default function ContractsListView() {
     <div className="animate-[vkFade_.5s_ease_both]">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="font-serif text-2xl font-medium mr-auto">Hợp đồng</h1>
-        {rows.length > 0 && (
-          <>
+        <Link href="/dashboard/studio/contracts/new" className="btn-primary shrink-0">
+          <Plus size={16} /> Hợp đồng mới
+        </Link>
+      </div>
+
+      {rows.length > 0 && (
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text3)" }} />
               <input
                 className="input pl-9"
-                placeholder="Tìm theo tên, khách, mã, SĐT…"
+                placeholder="Tìm tên HĐ, khách, ngày thực hiện, mã, SĐT…"
                 aria-label="Tìm hợp đồng"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
-            <select className="input w-auto shrink-0" aria-label="Lọc theo trạng thái" value={status} onChange={(e) => setStatus(e.target.value as "all" | ContractStatus)}>
-              <option value="all">Tất cả</option>
-              {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((k) => (
-                <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
-              ))}
-            </select>
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              className="btn-ghost shrink-0 px-3 py-2 text-xs"
+              aria-expanded={showFilters}
+            >
+              <SlidersHorizontal size={14} /> Bộ lọc
+              {filterCount > 0 && (
+                <span
+                  className="ml-0.5 rounded-full px-1.5 text-[10px] font-semibold"
+                  style={{ background: "var(--brandSoft)", color: "var(--brand)" }}
+                >
+                  {filterCount}
+                </span>
+              )}
+            </button>
             <button onClick={exportCsv} className="btn-ghost shrink-0 px-3 py-2 text-xs"><Download size={14} /> CSV</button>
-          </>
-        )}
-        <Link href="/dashboard/studio/contracts/new" className="btn-primary shrink-0">
-          <Plus size={16} /> Hợp đồng mới
-        </Link>
-      </div>
+          </div>
+
+          {showFilters && (
+            <div className="card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label className="label" htmlFor="f-code">Mã hợp đồng</label>
+                <input
+                  id="f-code"
+                  className="input"
+                  placeholder="Nhập mã…"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="f-status">Trạng thái</label>
+                <select
+                  id="f-status"
+                  className="input"
+                  value={tab === "completed" ? "completed" : status}
+                  disabled={tab === "completed"}
+                  onChange={(e) => setStatus(e.target.value as "all" | ContractStatus)}
+                >
+                  {tab === "completed" ? (
+                    <option value="completed">{CONTRACT_STATUS_LABEL.completed}</option>
+                  ) : (
+                    <>
+                      <option value="all">Tất cả</option>
+                      {ACTIVE_STATUSES.map((k) => (
+                        <option key={k} value={k}>{CONTRACT_STATUS_LABEL[k]}</option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="f-from">Ngày thực hiện từ</label>
+                <input id="f-from" type="date" className="input" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="f-to">Đến ngày</label>
+                <input id="f-to" type="date" className="input" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+              </div>
+              {filterCount > 0 && (
+                <button onClick={clearFilters} className="btn-ghost justify-self-start px-3 py-2 text-xs sm:col-span-2 lg:col-span-4">
+                  <X size={14} /> Xoá bộ lọc
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Tách HĐ đã hoàn thành sang tab riêng. Số đếm theo bộ lọc đang bật. */}
+          <div role="tablist" aria-label="Nhóm hợp đồng" className="flex flex-wrap gap-2">
+            {([
+              ["active", "Đang thực hiện", activeCount],
+              ["completed", "Đã hoàn thành", completedCount],
+            ] as const).map(([key, label, count]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => { setTab(key); setStatus("all"); }}
+                className="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors"
+                style={
+                  tab === key
+                    ? { background: "var(--brand)", color: "var(--brandFg, #fff)" }
+                    : { background: "var(--surface2)", color: "var(--text2)" }
+                }
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {initialLoading ? (
         <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Đang tải hợp đồng…</div>
@@ -144,7 +251,15 @@ export default function ContractsListView() {
           </Link>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>Không tìm thấy hợp đồng phù hợp.</div>
+        <div className="card py-16 text-center text-sm" style={{ color: "var(--text3)" }}>
+          {/* Nói rõ trống vì chưa có HĐ trong nhóm hay vì bộ lọc — không thì
+              studio tưởng mất dữ liệu. */}
+          {q.trim() || filterCount > 0
+            ? "Không tìm thấy hợp đồng phù hợp với tìm kiếm / bộ lọc."
+            : tab === "completed"
+              ? "Chưa có hợp đồng nào hoàn thành."
+              : "Tất cả hợp đồng đã hoàn thành — xem ở tab “Đã hoàn thành”."}
+        </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((c) => {

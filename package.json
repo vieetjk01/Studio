@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:overview": "node desktop/test/overview-parity.mjs"
+    "test:overview": "node desktop/test/overview-parity.mjs",
+    "test:contract-filter": "node --experimental-strip-types desktop/test/contract-filter.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

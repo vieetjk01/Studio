@@ -1,0 +1,89 @@
+/* Kiểm thử bộ lọc trang "Quản lý hợp đồng" (src/lib/contract-filter.ts).
+ * Nạp thẳng file .ts thật bằng type-stripping của Node — không phải bản chép
+ * lại — nên test đúng code đang chạy. Các bẫy được nhắm tới:
+ *  - HĐ không có ngày thực hiện khi đang lọc khoảng ngày (phải bị loại)
+ *  - khoảng ngày là bao gồm hai đầu (inclusive)
+ *  - tìm ngày gõ theo dd/mm/yyyy như đang hiện, không chỉ dạng ISO
+ *  - HĐ đã hoàn thành phải TÁCH khỏi nhóm đang thực hiện
+ *  - "Tất cả" ở nhóm đang thực hiện vẫn gồm nháp và đã huỷ, KHÔNG gồm hoàn thành
+ *  - lọc mã / tìm kiếm không phân biệt hoa thường
+ */
+import { filterContracts, splitContracts } from "../../src/lib/contract-filter.ts";
+
+const rows = [
+  { code: "HD-001", title: "Cưới Hiền & Nương", client_name: "Hiền", client_phone: "0900000001", event_date: "2026-03-15", status: "approved" },
+  { code: "HD-002", title: "Prewedding Đà Lạt", client_name: "Nương", client_phone: "0900000002", event_date: "2026-03-20", status: "draft" },
+  { code: "hd-003", title: "Quay phóng sự cưới", client_name: "Trâm", client_phone: "0900000003", event_date: "2026-04-01", status: "completed" },
+  { code: "HD-004", title: "Chụp kỷ yếu", client_name: "Khoa", client_phone: "0900000004", event_date: null, status: "in_progress" },
+  { code: null, title: "Thuê áo dài", client_name: null, client_phone: null, event_date: "2026-03-15", status: "cancelled" },
+  { code: "HD-006", title: "Trang điểm cô dâu", client_name: "Hiền", client_phone: "0900000006", event_date: "2026-05-09", status: "completed" },
+];
+
+const codes = (list) => list.map((c) => c.code ?? "(không mã)").join(",");
+let fail = 0;
+const check = (name, got, want) => {
+  const ok = got === want;
+  if (!ok) fail++;
+  console.log(`${ok ? "✓" : "✗"} ${name}${ok ? "" : `\n    nhận: ${got}\n    cần : ${want}`}`);
+};
+
+// ── Không lọc gì ────────────────────────────────────────────────────────────
+check("không lọc → giữ nguyên cả 6", filterContracts(rows, {}).length, 6);
+
+// ── Lọc theo mã ─────────────────────────────────────────────────────────────
+check("mã 'HD-002'", codes(filterContracts(rows, { code: "HD-002" })), "HD-002");
+check("mã không phân biệt hoa thường", codes(filterContracts(rows, { code: "HD-003" })), "hd-003");
+check("mã một phần '00'", filterContracts(rows, { code: "00" }).length, 5);
+check("HĐ không có mã bị loại khi lọc mã", filterContracts(rows, { code: "HD" }).some((c) => c.code === null), false);
+
+// ── Khoảng ngày thực hiện ───────────────────────────────────────────────────
+check(
+  "từ 2026-03-15 → gồm cả đúng ngày đầu",
+  codes(filterContracts(rows, { from: "2026-03-15" })),
+  "HD-001,HD-002,hd-003,(không mã),HD-006"
+);
+check(
+  "đến 2026-03-20 → gồm cả đúng ngày cuối",
+  codes(filterContracts(rows, { to: "2026-03-20" })),
+  "HD-001,HD-002,(không mã)"
+);
+check(
+  "khoảng 2026-03-16..2026-04-01",
+  codes(filterContracts(rows, { from: "2026-03-16", to: "2026-04-01" })),
+  "HD-002,hd-003"
+);
+check(
+  "HĐ chưa có ngày thực hiện bị loại khi lọc khoảng ngày",
+  filterContracts(rows, { from: "2020-01-01", to: "2030-01-01" }).some((c) => c.event_date === null),
+  false
+);
+check("khoảng ngày rỗng → không loại ai", filterContracts(rows, { from: "", to: "" }).length, 6);
+
+// ── Tìm kiếm ────────────────────────────────────────────────────────────────
+check("tìm theo tên HĐ", codes(filterContracts(rows, { q: "prewedding" })), "HD-002");
+check("tìm theo tên khách (2 HĐ)", codes(filterContracts(rows, { q: "hiền" })), "HD-001,HD-006");
+check("tìm theo ngày dd/mm/yyyy", codes(filterContracts(rows, { q: "15/03/2026" })), "HD-001,(không mã)");
+check("tìm theo ngày dạng ISO", codes(filterContracts(rows, { q: "2026-04-01" })), "hd-003");
+check("tìm theo tháng/năm '03/2026'", codes(filterContracts(rows, { q: "03/2026" })), "HD-001,HD-002,(không mã)");
+check("tìm theo mã qua ô tìm chung", codes(filterContracts(rows, { q: "hd-004" })), "HD-004");
+check("tìm theo SĐT", codes(filterContracts(rows, { q: "0900000006" })), "HD-006");
+check("tìm không khớp → rỗng", filterContracts(rows, { q: "khong-co-gi" }).length, 0);
+check("HĐ thiếu khách/mã không làm vỡ tìm kiếm", codes(filterContracts(rows, { q: "áo dài" })), "(không mã)");
+
+// ── Tách nhóm hoàn thành ────────────────────────────────────────────────────
+const all = filterContracts(rows, {});
+check("nhóm đang thực hiện KHÔNG có HĐ hoàn thành", codes(splitContracts(all, "active", "all")), "HD-001,HD-002,HD-004,(không mã)");
+check("nhóm hoàn thành chỉ có HĐ hoàn thành", codes(splitContracts(all, "completed", "all")), "hd-003,HD-006");
+check("tổng hai nhóm = tổng đã lọc", splitContracts(all, "active", "all").length + splitContracts(all, "completed", "all").length, all.length);
+check("'Tất cả' ở nhóm đang thực hiện vẫn gồm nháp", splitContracts(all, "active", "all").some((c) => c.status === "draft"), true);
+check("'Tất cả' ở nhóm đang thực hiện vẫn gồm đã huỷ", splitContracts(all, "active", "all").some((c) => c.status === "cancelled"), true);
+check("lọc trạng thái trong nhóm đang thực hiện", codes(splitContracts(all, "active", "draft")), "HD-002");
+check("lọc trạng thái không ảnh hưởng nhóm hoàn thành", codes(splitContracts(all, "completed", "draft")), "hd-003,HD-006");
+
+// ── Kết hợp lọc + tách nhóm ─────────────────────────────────────────────────
+const q1 = filterContracts(rows, { q: "hiền" });
+check("tìm 'hiền' → nhóm đang thực hiện", codes(splitContracts(q1, "active", "all")), "HD-001");
+check("tìm 'hiền' → nhóm hoàn thành", codes(splitContracts(q1, "completed", "all")), "HD-006");
+
+console.log(fail ? `\n${fail} kiểm thử KHÔNG đạt` : "\nTất cả kiểm thử đạt");
+process.exit(fail ? 1 : 0);
