@@ -50,8 +50,13 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const sources = shown.map(({ id, name, position }) => ({ id, name, position }));
   // Folder Drive links of the shown sources → "Tải album" gives the customer a
   // Drive link (gated behind the password like the photos themselves).
+  // Phải khớp Y HỆT src/app/album/[slug]/page.tsx: ở giai đoạn giao khách nhận
+  // MỌI link Drive, không đòi kind === "folder" (kind chỉ là phỏng đoán từ dạng
+  // URL lúc lưu). Trước đây chỗ này còn lọc theo folder nên album CÓ MẬT KHẨU
+  // mất nút "Tải file chỉnh sửa", còn album không mật khẩu thì có — cùng một
+  // album, hai kết quả khác nhau.
   const driveFolders = shown
-    .filter((x) => x.kind === "folder" && x.drive_url)
+    .filter((x) => x.drive_url && (useStages || x.kind === "folder"))
     .map(({ name, drive_url }) => ({ name, url: drive_url as string }));
   // Link file gốc giai đoạn chọn ảnh (JPG Goc) — cũng gated sau mật khẩu.
   const originalFolders = await getOriginalFolders(admin, album.id, allSources ?? []);

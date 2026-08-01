@@ -10,6 +10,23 @@ type SourceRow = {
 export type DriveFolderLink = { name: string; url: string };
 
 /**
+ * Chọn link Drive để dựng nút "File gốc (ảnh chọn)".
+ *
+ * Nguồn ĐÃ gắn stage='selection' thì nhận MỌI link Drive: `kind` chỉ do
+ * isFolderLink() phỏng đoán từ dạng URL lúc lưu (chỉ khớp ".../folders/…"), nên
+ * studio dán link chia sẻ dạng khác là nguồn thành "file" và nút biến mất dù
+ * link vẫn mở đúng thư mục. Nguồn CHƯA gắn giai đoạn (stage == null) thì vẫn đòi
+ * kind === "folder", nếu không một album ghép từ nhiều link file lẻ sẽ đẻ ra cả
+ * danh sách nút vô nghĩa. Cùng quy tắc với nút "Tải file chỉnh sửa" ở
+ * src/app/album/[slug]/page.tsx.
+ */
+export function pickOriginalLinks(sources: readonly SourceRow[]): DriveFolderLink[] {
+  return sources
+    .filter((x) => !!x.drive_url && (x.stage === "selection" || x.kind === "folder"))
+    .map((x) => ({ name: x.name || "File gốc", url: x.drive_url as string }));
+}
+
+/**
  * Link Drive "file gốc" của giai đoạn chọn ảnh (JPG Goc), hiển thị bên trong
  * album giai đoạn hoàn thiện (giao khách) để khách có thể lấy file gốc.
  *
@@ -24,13 +41,9 @@ export async function getOriginalFolders(
   galleryAlbumId: string,
   ownSources: SourceRow[]
 ): Promise<DriveFolderLink[]> {
-  const isFolder = (x: SourceRow) => x.kind === "folder" && !!x.drive_url;
-
   // (A) folder giai đoạn chọn ảnh nằm ngay trên album này.
-  const own = ownSources.filter((x) => x.stage === "selection" && isFolder(x));
-  if (own.length > 0) {
-    return own.map((x) => ({ name: x.name || "File gốc", url: x.drive_url as string }));
-  }
+  const own = pickOriginalLinks(ownSources.filter((x) => x.stage === "selection"));
+  if (own.length > 0) return own;
 
   // (B) album chọn ảnh riêng, liên kết qua hợp đồng.
   const { data: contract } = await admin
@@ -46,7 +59,7 @@ export async function getOriginalFolders(
     .select("name, drive_url, kind, stage")
     .eq("album_id", selectionAlbumId)
     .order("position");
-  return ((selSources ?? []) as SourceRow[])
-    .filter((x) => isFolder(x) && (x.stage === "selection" || x.stage == null))
-    .map((x) => ({ name: x.name || "File gốc", url: x.drive_url as string }));
+  return pickOriginalLinks(
+    ((selSources ?? []) as SourceRow[]).filter((x) => x.stage === "selection" || x.stage == null)
+  );
 }

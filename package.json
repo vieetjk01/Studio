@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:overview": "node desktop/test/overview-parity.mjs",
-    "test:contract-filter": "node --experimental-strip-types desktop/test/contract-filter.mjs"
+    "test:contract-filter": "node --experimental-strip-types desktop/test/contract-filter.mjs",
+    "test:album-buttons": "node --experimental-strip-types desktop/test/album-buttons.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
