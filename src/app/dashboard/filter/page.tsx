@@ -21,6 +21,15 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { thumbnailUrl, stripExtension } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
+import {
+  pickerConfigured,
+  preloadGoogle,
+  requestDriveToken,
+  openDrivePicker,
+  listFolderImages,
+  createDriveFolder,
+  copyDriveFile,
+} from "@/lib/google-picker";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -71,10 +80,9 @@ export default function FilterPage() {
   const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
 
-  // Copy ảnh đã lọc thẳng sang thư mục Drive (không tải về máy).
-  const [driveCopyMode, setDriveCopyMode] = useState<"new" | "existing">("new");
+  // Copy ảnh đã lọc thẳng sang thư mục Drive (không tải về máy, không cần kết nối
+  // Drive với mstudo — đăng nhập Google 1 lần rồi chọn thư mục qua Google Picker).
   const [newFolderName, setNewFolderName] = useState("Anh Chon");
-  const [targetFolderUrl, setTargetFolderUrl] = useState("");
   const [driveCopying, setDriveCopying] = useState(false);
   const [driveCopyMsg, setDriveCopyMsg] = useState<string | null>(null);
   const [driveCopyLink, setDriveCopyLink] = useState<string | null>(null);
@@ -88,6 +96,9 @@ export default function FilterPage() {
 
   useEffect(() => {
     setFsSupported(typeof window !== "undefined" && "showDirectoryPicker" in window);
+    // Nạp sẵn script Google để popup đăng nhập mở ngay trong cú click (không bị
+    // trình duyệt chặn popup).
+    if (pickerConfigured) preloadGoogle();
     // Chỉ lấy album CHỌN ẢNH của CHÍNH studio đang đăng nhập:
     //  - eq owner_id: RLS cho admin đọc mọi album, nên phải tự giới hạn theo chủ
     //    sở hữu để admin không thấy danh sách của studio khác.
@@ -340,42 +351,64 @@ export default function FilterPage() {
     setCopyMsg(`Đã copy ${done}/${shown.length} ảnh sang “${destName}”.`);
   }
 
-  // Copy ảnh đã lọc THẲNG sang một thư mục trên Drive (không tải về máy). Chỉ
-  // dùng được với nguồn Drive (mỗi file có driveId).
+  // Copy ảnh đã lọc THẲNG sang Drive qua Google Picker — KHÔNG cần kết nối Drive
+  // với mstudo. Studio đăng nhập Google 1 lần (token tạm, không lưu), chọn thư
+  // mục ảnh gốc (thư mục họ có quyền sửa); ta tạo thư mục con "Anh Chon" bên
+  // trong rồi chép chính những ảnh đã lọc vào đó (chép server-side trên Drive,
+  // bytes không qua máy). File thuộc chính tài khoản Google của studio.
   async function copyToDrive() {
-    const files = shown.filter((f) => f.driveId).map((f) => ({ id: f.driveId as string, name: f.name }));
-    if (files.length === 0) return;
-    if (driveCopyMode === "existing" && !targetFolderUrl.trim()) {
-      setDriveCopyMsg("Hãy dán link thư mục đích trên Drive.");
+    if (!pickerConfigured) {
+      setDriveCopyMsg("Tính năng copy sang Drive chưa được cấu hình trên máy chủ.");
       return;
     }
+    // Tập tên ảnh cần chép = kết quả đã lọc (đã áp bộ lọc định dạng).
+    const wantNames = new Set(shown.map((f) => norm(f.name)));
+    if (wantNames.size === 0) return;
     if (!(await ensureFilterUse())) return;
     setDriveCopying(true);
     setDriveCopyMsg(null);
     setDriveCopyLink(null);
     try {
-      const res = await fetch("/api/filter/copy-to-drive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          files,
-          ...(driveCopyMode === "existing"
-            ? { targetFolderUrl: targetFolderUrl.trim() }
-            : { sourceFolderUrl: driveUrl.trim(), newFolderName: newFolderName.trim() }),
-        }),
-      });
-      const d = await res.json().catch(() => null);
-      if (!res.ok || d?.error) {
-        setDriveCopyMsg(d?.error || "Không copy được sang Drive.");
-      } else {
-        setDriveCopyLink(d.folderUrl ?? null);
-        const failN = Array.isArray(d.failed) ? d.failed.length : 0;
-        setDriveCopyMsg(
-          `Đã copy ${d.copied}/${files.length} ảnh sang “${d.folderName || "thư mục Drive"}”${failN ? ` · ${failN} ảnh lỗi` : ""}.`
-        );
+      const token = await requestDriveToken();
+      const picked = await openDrivePicker(token);
+      const folder = picked.find((p) => p.isFolder);
+      if (!folder) {
+        setDriveCopyMsg("Bạn chưa chọn thư mục đích trên Drive.");
+        setDriveCopying(false);
+        return;
       }
-    } catch {
-      setDriveCopyMsg("Mất kết nối khi copy sang Drive.");
+      // Ảnh có trong thư mục đã chọn + khớp danh sách đã lọc.
+      const imgs = await listFolderImages(token, folder.id);
+      const toCopy = imgs.filter((im) => wantNames.has(norm(im.name)));
+      if (toCopy.length === 0) {
+        setDriveCopyMsg("Không tìm thấy ảnh nào khớp danh sách trong thư mục đã chọn.");
+        setDriveCopying(false);
+        return;
+      }
+      const destName = newFolderName.trim() || "Anh Chon";
+      const destId = await createDriveFolder(token, destName, folder.id);
+      let done = 0;
+      const failed: string[] = [];
+      for (const f of toCopy) {
+        try {
+          await copyDriveFile(token, f.id, f.name, destId);
+          done++;
+          setDriveCopyMsg(`Đang copy… ${done}/${toCopy.length}`);
+        } catch {
+          failed.push(f.name);
+        }
+      }
+      setDriveCopyLink(`https://drive.google.com/drive/folders/${destId}`);
+      setDriveCopyMsg(`Đã copy ${done}/${toCopy.length} ảnh sang “${destName}”${failed.length ? ` · ${failed.length} lỗi` : ""}.`);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "";
+      setDriveCopyMsg(
+        m === "drive_unauthorized"
+          ? "Không có quyền ghi vào thư mục đã chọn. Hãy chọn thư mục mà bạn có quyền chỉnh sửa."
+          : m === "no_token" || m.includes("popup") || m.includes("cancel")
+          ? "Đã hủy đăng nhập Google."
+          : "Không copy được sang Drive. Thử lại sau."
+      );
     }
     setDriveCopying(false);
   }
@@ -424,52 +457,34 @@ export default function FilterPage() {
                 <p className="mt-3 text-[13px]" style={{ color: "var(--text2)" }}>Đã tải <b>{driveFiles.length}</b> ảnh từ Drive.</p>
               )}
 
-              {/* Copy ảnh đã lọc thẳng sang một thư mục trên Drive — không tải về máy. */}
-              {driveFiles.length > 0 && (
+              {/* Copy ảnh đã lọc sang Drive — qua Google Picker, không cần kết nối
+                  Drive với mstudo, không tải về máy. */}
+              {driveFiles.length > 0 && pickerConfigured && (
                 <div className="mt-4 rounded-xl p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
                   <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--text2)" }}>
                     <FolderPlus size={14} /> Copy ảnh đã lọc sang Drive (không tải về máy)
                   </p>
-                  <div className="mb-2 flex gap-2">
-                    <button
-                      onClick={() => setDriveCopyMode("new")}
-                      className="rounded-lg px-3 py-1.5 text-[12.5px]"
-                      style={driveCopyMode === "new" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
-                    >
-                      Tạo thư mục mới
-                    </button>
-                    <button
-                      onClick={() => setDriveCopyMode("existing")}
-                      className="rounded-lg px-3 py-1.5 text-[12.5px]"
-                      style={driveCopyMode === "existing" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
-                    >
-                      Thư mục có sẵn
-                    </button>
-                  </div>
-                  {driveCopyMode === "new" ? (
-                    <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Tên thư mục ảnh chọn (tạo ngay trong link Drive gốc)" className="input" />
-                  ) : (
-                    <input value={targetFolderUrl} onChange={(e) => setTargetFolderUrl(e.target.value)} placeholder="Dán link thư mục đích trên Drive" className="input" />
-                  )}
+                  <label className="mb-1 block text-[12px]" style={{ color: "var(--text3)" }}>Tên thư mục ảnh chọn</label>
+                  <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Anh Chon" className="input" />
                   <button
                     onClick={copyToDrive}
-                    disabled={driveCopying || shown.filter((f) => f.driveId).length === 0}
+                    disabled={driveCopying || shown.length === 0}
                     className="btn-primary mt-2 w-full py-2.5 disabled:opacity-40"
                   >
-                    <CopyCheck size={15} /> {driveCopying ? "Đang copy…" : `Copy ${shown.filter((f) => f.driveId).length} ảnh sang Drive`}
+                    <CopyCheck size={15} /> {driveCopying ? "Đang copy…" : `Copy ${shown.length} ảnh sang Drive`}
                   </button>
                   {driveCopyMsg && (
                     <p className="mt-2 text-[12.5px]" style={{ color: "var(--gold)" }}>
                       {driveCopyMsg}{" "}
                       {driveCopyLink && (
                         <a href={driveCopyLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline" style={{ color: "var(--accent)" }}>
-                          <ExternalLink size={12} /> Mở thư mục
+                          <ExternalLink size={12} /> Mở thư mục ảnh chọn
                         </a>
                       )}
                     </p>
                   )}
                   <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text3)" }}>
-                    Chỉ hoạt động với Drive đã kết nối qua ứng dụng (ví dụ album hợp đồng đồng bộ qua desktop). Tạo thư mục con ngay trong link Drive gốc, hoặc dán link thư mục đích của bạn.
+                    Bấm Copy sẽ đăng nhập Google 1 lần (không lưu kết nối) rồi chọn <b>thư mục ảnh gốc</b> mà bạn có quyền chỉnh sửa. Ảnh chép vào thư mục con “{newFolderName.trim() || "Anh Chon"}” bên trong, thuộc chính tài khoản Drive của bạn.
                   </p>
                 </div>
               )}

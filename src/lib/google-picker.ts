@@ -148,3 +148,32 @@ export async function fetchDriveBytes(token: string, fileId: string): Promise<Bl
   if (!res.ok) throw new Error(`drive_error_${res.status}`);
   return res.blob();
 }
+
+/** Create a sub-folder inside a folder the user granted via the Picker. */
+export async function createDriveFolder(token: string, name: string, parentId: string): Promise<string> {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
+  });
+  if (res.status === 401 || res.status === 403) throw new Error("drive_unauthorized");
+  if (!res.ok) throw new Error(`drive_error_${res.status}`);
+  const data = await res.json();
+  if (!data.id) throw new Error("create_folder_failed");
+  return data.id as string;
+}
+
+/**
+ * Copy a Drive file into `parentId` (server-side on Google — no bytes touch the
+ * browser). Source must be readable by the signed-in account (public link, or a
+ * file the user opened via the Picker); destination is a folder they can edit.
+ */
+export async function copyDriveFile(token: string, fileId: string, name: string, parentId: string): Promise<void> {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/copy?fields=id`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name, parents: [parentId] }),
+  });
+  if (res.status === 401 || res.status === 403) throw new Error("drive_unauthorized");
+  if (!res.ok) throw new Error(`drive_error_${res.status}`);
+}
