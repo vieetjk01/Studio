@@ -266,7 +266,7 @@ export async function copyFilesToStudioDrive(
     }
   } else {
     if (!opts.newFolder) return { ok: false, error: "no_target" };
-    folderName = cleanFolderName(opts.newFolder.name) || "Anh khach chon";
+    folderName = cleanFolderName(opts.newFolder.name) || "Anh Chon";
     try {
       folderId = await mkFolder(drive, folderName, opts.newFolder.parentId?.trim() || null);
     } catch {

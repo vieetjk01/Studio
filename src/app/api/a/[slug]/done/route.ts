@@ -40,15 +40,19 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const who = body.clientName?.trim().slice(0, 120) || "Khách";
   const message = `${who} đã chọn xong ${n} ảnh cho album “${album.title}”`;
 
-  // 1) Chuông trong dashboard.
-  await admin.from("studio_notifications").insert({ owner_id: album.owner_id, kind: "selection", message });
+  // 1) Chuông trong dashboard (bấm vào → mở thẳng album chọn ảnh). Thử kèm
+  //    album_id; nếu DB chưa có cột (chưa chạy lại schema.sql) thì chèn không kèm
+  //    để thông báo vẫn hiện.
+  const notif = { owner_id: album.owner_id, kind: "selection", message };
+  const { error: insErr } = await admin.from("studio_notifications").insert({ ...notif, album_id: album.id });
+  if (insErr) await admin.from("studio_notifications").insert(notif);
 
-  // 2) Web-push tới điện thoại chủ studio.
+  // 2) Web-push tới điện thoại chủ studio → mở album chọn ảnh.
   try {
     await sendPushToOwner(album.owner_id, {
       title: "Khách đã chọn ảnh xong",
       body: message,
-      url: `/dashboard/albums/${album.id}/selections`,
+      url: `/dashboard/albums/${album.id}`,
       tag: `selection-${album.id}`,
     });
   } catch {

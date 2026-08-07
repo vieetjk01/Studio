@@ -17,6 +17,7 @@ import {
   ArrowRight,
   FolderOpen,
   HardDriveDownload,
+  Filter,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -293,6 +294,13 @@ export default function AlbumEditor({
           >
             <Users size={15} /> {t("customerSelections")}
           </Link>
+          {/* Lọc ảnh NGAY từ cài đặt album — không cần vào lựa chọn của khách.
+              Chỉ hiện ở album chọn ảnh (giai đoạn giao khách không cần lọc). */}
+          {phase !== "delivery" && (
+            <Link href={`/dashboard/filter?album=${album.id}`} className="btn-primary">
+              <Filter size={15} /> Lọc ảnh
+            </Link>
+          )}
           <a href={studioUrl(studioHost, `/a/${form.slug}`)} target="_blank" rel="noreferrer" className="btn-ghost">
             <ExternalLink size={15} /> {t("view")}
           </a>

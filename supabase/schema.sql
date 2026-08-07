@@ -1124,6 +1124,8 @@ create table if not exists public.studio_notifications (
 create index if not exists studio_notifications_owner_idx on public.studio_notifications (owner_id, read, created_at);
 -- Thông báo hệ thống quan trọng: hiện popup nổi bắt buộc xác nhận (do admin bật).
 alter table public.studio_notifications add column if not exists important boolean not null default false;
+-- Album liên quan (vd khách chọn ảnh xong) → bấm thông báo mở thẳng album đó.
+alter table public.studio_notifications add column if not exists album_id uuid references public.albums (id) on delete cascade;
 alter table public.studio_notifications enable row level security;
 drop policy if exists studio_notifications_owner_all on public.studio_notifications;
 create policy studio_notifications_owner_all on public.studio_notifications

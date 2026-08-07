@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const res = await copyFilesToStudioDrive(user.id, {
     files,
     targetFolderId,
-    newFolder: targetFolderId ? null : { name: body.newFolderName?.trim() || "Anh khach chon", parentId },
+    newFolder: targetFolderId ? null : { name: body.newFolderName?.trim() || "Anh Chon", parentId },
   });
 
   if (!res.ok) {

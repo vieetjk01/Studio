@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell, FileCheck, CheckCheck, Megaphone, UserPlus, ArrowUpCircle, Mail } from "lucide-react";
+import { PenLine, MessageSquare, UserCheck, UserX, Star, Wallet, Bell, FileCheck, CheckCheck, Megaphone, UserPlus, ArrowUpCircle, Mail, ImageDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PushToggle from "@/components/PushToggle";
 import type { StudioNotification, NotificationKind } from "@/lib/types";
@@ -19,6 +19,7 @@ const ICON: Record<NotificationKind, typeof Bell> = {
   new_user: UserPlus,
   upgrade_request: ArrowUpCircle,
   contact: Mail,
+  selection: ImageDown,
   info: Bell,
 };
 const TONE: Record<NotificationKind, string> = {
@@ -33,11 +34,14 @@ const TONE: Record<NotificationKind, string> = {
   new_user: "var(--s-blue)",
   upgrade_request: "var(--s-amber)",
   contact: "var(--s-green)",
+  selection: "var(--s-blue)",
   info: "var(--text3)",
 };
 
 /** Where a notification points to (its "content"). */
 function targetHref(n: StudioNotification): string | null {
+  // Khách chọn ảnh xong → mở thẳng album chọn ảnh (có nút Lọc ảnh ngay đó).
+  if (n.album_id) return `/dashboard/albums/${n.album_id}`;
   if (n.contract_id) return `/dashboard/studio/contracts/${n.contract_id}`;
   if (n.kind === "quote_accepted") return "/dashboard/studio/quotes";
   if (n.kind === "review") return "/dashboard/studio/ranking";

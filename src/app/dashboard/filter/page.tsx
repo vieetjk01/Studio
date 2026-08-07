@@ -73,7 +73,7 @@ export default function FilterPage() {
 
   // Copy ảnh đã lọc thẳng sang thư mục Drive (không tải về máy).
   const [driveCopyMode, setDriveCopyMode] = useState<"new" | "existing">("new");
-  const [newFolderName, setNewFolderName] = useState("Ảnh khách chọn");
+  const [newFolderName, setNewFolderName] = useState("Anh Chon");
   const [targetFolderUrl, setTargetFolderUrl] = useState("");
   const [driveCopying, setDriveCopying] = useState(false);
   const [driveCopyMsg, setDriveCopyMsg] = useState<string | null>(null);
