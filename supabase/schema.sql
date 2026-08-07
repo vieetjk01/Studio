@@ -1858,6 +1858,10 @@ create table if not exists public.studio_drive (
   connected_at     timestamptz,
   updated_at       timestamptz not null default now()
 );
+-- Kết nối Drive TOÀN QUYỀN (scope drive) cho công cụ Lọc ảnh: chép ảnh vào bất
+-- kỳ link studio có quyền sửa, tự động không cần đăng nhập lại. Tách riêng khỏi
+-- refresh_token (drive.file) của luồng đồng bộ hợp đồng.
+alter table public.studio_drive add column if not exists filter_refresh_token text;
 revoke all on public.studio_drive from anon, authenticated;
 alter table public.studio_drive enable row level security;
 
