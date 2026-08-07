@@ -97,6 +97,8 @@ export default function FilterPage() {
       .catch(() => {});
     const conn = new URLSearchParams(window.location.search).get("driveconn");
     if (conn === "connected") setDriveCopyMsg("Đã kết nối Google Drive. Giờ bấm Copy là chép tự động, không cần đăng nhập lại.");
+    else if (conn === "unauthorized") setDriveCopyMsg("Phiên đăng nhập đã hết. Hãy đăng nhập lại rồi bấm “Kết nối Google Drive”.");
+    else if (conn === "notconfigured") setDriveCopyMsg("Máy chủ chưa bật kết nối Google Drive cho công cụ Lọc ảnh. Hãy liên hệ quản trị.");
     else if (conn === "error") setDriveCopyMsg("Kết nối Google Drive thất bại. Hãy thử lại.");
     // Chỉ lấy album CHỌN ẢNH của CHÍNH studio đang đăng nhập:
     //  - eq owner_id: RLS cho admin đọc mọi album, nên phải tự giới hạn theo chủ
