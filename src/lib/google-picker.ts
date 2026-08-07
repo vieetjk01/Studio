@@ -14,6 +14,10 @@ export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 export const GOOGLE_PICKER_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "";
 export const GOOGLE_APP_ID = process.env.NEXT_PUBLIC_GOOGLE_APP_ID || "";
 export const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+// Quyền Drive ĐẦY ĐỦ: cho phép mở thư mục theo ID (link dán sẵn) mà không cần
+// Picker. Là scope "hạn chế" của Google → hiện màn "app chưa xác minh" cho tới
+// khi app được Google kiểm duyệt.
+export const DRIVE_FULL_SCOPE = "https://www.googleapis.com/auth/drive";
 
 export const pickerConfigured = !!GOOGLE_CLIENT_ID && !!GOOGLE_PICKER_KEY;
 
@@ -62,12 +66,12 @@ export async function preloadGoogle(): Promise<void> {
  * Request a Drive access token via Google Identity Services. `forceConsent`
  * shows the account/consent chooser (use when the previous token expired).
  */
-export async function requestDriveToken(forceConsent = false): Promise<string> {
+export async function requestDriveToken(forceConsent = false, scope: string = DRIVE_FILE_SCOPE): Promise<string> {
   await ensureGoogle();
   return new Promise<string>((resolve, reject) => {
     const client = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: DRIVE_FILE_SCOPE,
+      scope,
       callback: (resp: any) =>
         resp?.access_token ? resolve(resp.access_token) : reject(new Error("no_token")),
       error_callback: (err: any) =>
