@@ -19,16 +19,15 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { thumbnailUrl, stripExtension } from "@/lib/drive";
+import { thumbnailUrl, stripExtension, extractFolderId } from "@/lib/drive";
 import { buildZip, triggerDownload } from "@/lib/download";
 import {
   pickerConfigured,
   preloadGoogle,
   requestDriveToken,
-  openDrivePicker,
-  listFolderImages,
   createDriveFolder,
   copyDriveFile,
+  DRIVE_FULL_SCOPE,
 } from "@/lib/google-picker";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -351,63 +350,66 @@ export default function FilterPage() {
     setCopyMsg(`Đã copy ${done}/${shown.length} ảnh sang “${destName}”.`);
   }
 
-  // Copy ảnh đã lọc THẲNG sang Drive qua Google Picker — KHÔNG cần kết nối Drive
-  // với mstudo. Studio đăng nhập Google 1 lần (token tạm, không lưu), chọn thư
-  // mục ảnh gốc (thư mục họ có quyền sửa); ta tạo thư mục con "Anh Chon" bên
-  // trong rồi chép chính những ảnh đã lọc vào đó (chép server-side trên Drive,
-  // bytes không qua máy). File thuộc chính tài khoản Google của studio.
+  // Copy ảnh đã lọc THẲNG sang Drive — TỰ TẠO thư mục trong link ảnh gốc, KHÔNG
+  // cần chọn thư mục. Đăng nhập Google 1 lần (quyền Drive đầy đủ để mở thư mục
+  // theo ID từ link đã nhập), tạo thư mục con rồi chép ảnh đã lọc vào. File
+  // thuộc chính tài khoản Google của studio; bytes không qua máy chủ.
   async function copyToDrive() {
     if (!pickerConfigured) {
       setDriveCopyMsg("Tính năng copy sang Drive chưa được cấu hình trên máy chủ.");
       return;
     }
-    // Tập tên ảnh cần chép = kết quả đã lọc (đã áp bộ lọc định dạng).
-    const wantNames = new Set(shown.map((f) => norm(f.name)));
-    if (wantNames.size === 0) return;
-    if (!(await ensureFilterUse())) return;
+    // Chép chính những ảnh đã lọc (đã áp bộ lọc định dạng) đang có driveId.
+    const files = shown.filter((f) => f.driveId).map((f) => ({ id: f.driveId as string, name: f.name }));
+    if (files.length === 0) return;
+    // Thư mục đích = TỰ TẠO ngay trong link ảnh gốc (không cần chọn thư mục).
+    const parentId = extractFolderId(driveUrl.trim());
+    if (!parentId) {
+      setDriveCopyMsg("Nguồn ảnh không phải là link thư mục Google Drive.");
+      return;
+    }
     setDriveCopying(true);
     setDriveCopyMsg(null);
     setDriveCopyLink(null);
+    // Xin token Google NGAY ĐẦU cú click (trước mọi fetch) — nếu chờ fetch xong
+    // mới mở popup, trình duyệt coi như hết "user gesture" và CHẶN popup. Dùng
+    // quyền Drive ĐẦY ĐỦ để tạo/chép thẳng trong link đã nhập, khỏi phải chọn
+    // thư mục qua Picker.
+    let token: string;
     try {
-      const token = await requestDriveToken();
-      const picked = await openDrivePicker(token);
-      const folder = picked.find((p) => p.isFolder);
-      if (!folder) {
-        setDriveCopyMsg("Bạn chưa chọn thư mục đích trên Drive.");
-        setDriveCopying(false);
-        return;
-      }
-      // Ảnh có trong thư mục đã chọn + khớp danh sách đã lọc.
-      const imgs = await listFolderImages(token, folder.id);
-      const toCopy = imgs.filter((im) => wantNames.has(norm(im.name)));
-      if (toCopy.length === 0) {
-        setDriveCopyMsg("Không tìm thấy ảnh nào khớp danh sách trong thư mục đã chọn.");
-        setDriveCopying(false);
-        return;
-      }
+      token = await requestDriveToken(false, DRIVE_FULL_SCOPE);
+    } catch {
+      setDriveCopyMsg("Chưa đăng nhập được Google (bạn đã hủy hoặc trình duyệt chặn cửa sổ). Hãy bấm lại và cho phép cửa sổ Google hiện lên.");
+      setDriveCopying(false);
+      return;
+    }
+    // Kiểm tra hạn mức lọc sau khi đã có token.
+    if (!(await ensureFilterUse())) {
+      setDriveCopying(false);
+      return;
+    }
+    try {
       const destName = newFolderName.trim() || "Anh Chon";
-      const destId = await createDriveFolder(token, destName, folder.id);
+      const destId = await createDriveFolder(token, destName, parentId);
       let done = 0;
       const failed: string[] = [];
-      for (const f of toCopy) {
+      for (const f of files) {
         try {
           await copyDriveFile(token, f.id, f.name, destId);
           done++;
-          setDriveCopyMsg(`Đang copy… ${done}/${toCopy.length}`);
+          setDriveCopyMsg(`Đang copy… ${done}/${files.length}`);
         } catch {
           failed.push(f.name);
         }
       }
       setDriveCopyLink(`https://drive.google.com/drive/folders/${destId}`);
-      setDriveCopyMsg(`Đã copy ${done}/${toCopy.length} ảnh sang “${destName}”${failed.length ? ` · ${failed.length} lỗi` : ""}.`);
+      setDriveCopyMsg(`Đã copy ${done}/${files.length} ảnh sang “${destName}”${failed.length ? ` · ${failed.length} lỗi` : ""}.`);
     } catch (e) {
       const m = e instanceof Error ? e.message : "";
       setDriveCopyMsg(
         m === "drive_unauthorized"
-          ? "Không có quyền ghi vào thư mục đã chọn. Hãy chọn thư mục mà bạn có quyền chỉnh sửa."
-          : m === "no_token" || m.includes("popup") || m.includes("cancel")
-          ? "Đã hủy đăng nhập Google."
-          : "Không copy được sang Drive. Thử lại sau."
+          ? "Tài khoản Google vừa đăng nhập không có quyền ghi vào link ảnh gốc. Hãy đăng nhập bằng tài khoản sở hữu link, hoặc đặt link ở chế độ “Bất kỳ ai có đường liên kết → Người chỉnh sửa”."
+          : "Không tạo được thư mục / copy sang Drive. Thử lại sau."
       );
     }
     setDriveCopying(false);
@@ -457,8 +459,8 @@ export default function FilterPage() {
                 <p className="mt-3 text-[13px]" style={{ color: "var(--text2)" }}>Đã tải <b>{driveFiles.length}</b> ảnh từ Drive.</p>
               )}
 
-              {/* Copy ảnh đã lọc sang Drive — qua Google Picker, không cần kết nối
-                  Drive với mstudo, không tải về máy. */}
+              {/* Copy ảnh đã lọc sang Drive — tự tạo thư mục trong link ảnh gốc,
+                  không cần chọn thư mục, không tải về máy. */}
               {driveFiles.length > 0 && pickerConfigured && (
                 <div className="mt-4 rounded-xl p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
                   <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--text2)" }}>
@@ -484,7 +486,7 @@ export default function FilterPage() {
                     </p>
                   )}
                   <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text3)" }}>
-                    Bấm Copy sẽ đăng nhập Google 1 lần (không lưu kết nối) rồi chọn <b>thư mục ảnh gốc</b> mà bạn có quyền chỉnh sửa. Ảnh chép vào thư mục con “{newFolderName.trim() || "Anh Chon"}” bên trong, thuộc chính tài khoản Drive của bạn.
+                    Bấm Copy sẽ đăng nhập Google 1 lần rồi <b>tự tạo thư mục “{newFolderName.trim() || "Anh Chon"}” ngay trong link ảnh gốc</b> và chép ảnh đã lọc vào — không phải chọn thư mục. Cần link ảnh gốc bạn có <b>quyền chỉnh sửa</b>. Lần đầu Google có thể hiện cảnh báo “app chưa được xác minh” → bấm <b>Nâng cao → Tiếp tục</b>.
                   </p>
                 </div>
               )}
