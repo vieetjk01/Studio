@@ -8,6 +8,7 @@ import { thumbnailUrl } from "@/lib/drive";
 import { createClient } from "@/lib/supabase/client";
 import PlanUsage from "@/components/PlanUsage";
 import StudioTrialButton from "@/components/StudioTrialButton";
+import FilterDialog from "@/components/FilterDialog";
 
 export interface AlbumRow {
   id: string;
@@ -144,6 +145,7 @@ function AlbumCard({ a, canDelivery = true, canWatermark = true }: { a: AlbumRow
   const [watermark, setWatermark] = useState(a.watermark_enabled);
   const [download, setDownload] = useState(a.download_enabled);
   const [phase, setPhase] = useState<"selection" | "delivery">(a.phase ?? "selection");
+  const [filterOpen, setFilterOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Đóng menu bật/tắt nhanh khi nhấp RA NGOÀI card (card khác hoặc vùng trang) —
@@ -240,10 +242,14 @@ function AlbumCard({ a, canDelivery = true, canWatermark = true }: { a: AlbumRow
             <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
           )}
           <Toggle label="Cho tải xuống" on={download} onChange={(v) => { setDownload(v); patch({ download_enabled: v }); }} />
+          {/* Mở POPUP công cụ lọc ảnh ngay trong quản lý album (chọn nguồn Drive
+              hoặc thư mục trên máy tính) — trong popup có nút mở trang đầy đủ.
+              Popup được render Ở NGOÀI khối menu này: nhấp vào popup nằm ngoài
+              card nên menu tự đóng, nếu popup nằm trong menu thì nó bị gỡ theo. */}
           {phase !== "delivery" && (
-            <Link href={`/dashboard/filter?album=${a.id}`} className="btn-ghost mt-2 w-full py-1.5 text-xs">
-              <Filter size={13} /> Lọc ảnh (copy sang Drive)
-            </Link>
+            <button type="button" onClick={() => setFilterOpen(true)} className="btn-ghost mt-2 w-full py-1.5 text-xs">
+              <Filter size={13} /> Lọc ảnh (Drive / máy tính)
+            </button>
           )}
           <div className="mt-2 flex gap-2">
             <Link href={`/dashboard/albums/${a.id}`} className="btn-ghost flex-1 py-1.5 text-xs">Chỉnh sửa đầy đủ</Link>
@@ -251,6 +257,10 @@ function AlbumCard({ a, canDelivery = true, canWatermark = true }: { a: AlbumRow
           </div>
         </div>
         </>
+      )}
+
+      {filterOpen && (
+        <FilterDialog albumId={a.id} albumTitle={a.title} onClose={() => setFilterOpen(false)} />
       )}
     </div>
   );

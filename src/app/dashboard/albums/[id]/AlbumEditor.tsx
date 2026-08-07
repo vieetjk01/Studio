@@ -17,13 +17,13 @@ import {
   ArrowRight,
   FolderOpen,
   HardDriveDownload,
-  Filter,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { studioUrl } from "@/lib/hosts";
 import ShareButton from "@/components/ShareButton";
 import ZaloSendButton from "@/components/ZaloSendButton";
+import FilterPhotosButton from "@/components/FilterPhotosButton";
 import { thumbnailUrl, isFolderLink } from "@/lib/drive";
 import { fetchAllPhotos } from "@/lib/photos";
 import { CATEGORY_PRESETS, slugifyVi } from "@/lib/category";
@@ -294,12 +294,11 @@ export default function AlbumEditor({
           >
             <Users size={15} /> {t("customerSelections")}
           </Link>
-          {/* Lọc ảnh NGAY từ cài đặt album — không cần vào lựa chọn của khách.
-              Chỉ hiện ở album chọn ảnh (giai đoạn giao khách không cần lọc). */}
+          {/* Lọc ảnh NGAY từ cài đặt album — mở popup công cụ lọc ảnh tại chỗ
+              (nguồn Drive hoặc máy tính), không cần rời trang. Chỉ hiện ở album
+              chọn ảnh (giai đoạn giao khách không cần lọc). */}
           {phase !== "delivery" && (
-            <Link href={`/dashboard/filter?album=${album.id}`} className="btn-primary">
-              <Filter size={15} /> Lọc ảnh
-            </Link>
+            <FilterPhotosButton albumId={album.id} albumTitle={form.title} />
           )}
           <a href={studioUrl(studioHost, `/a/${form.slug}`)} target="_blank" rel="noreferrer" className="btn-ghost">
             <ExternalLink size={15} /> {t("view")}
