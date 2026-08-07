@@ -14,7 +14,9 @@ import {
   FolderOpen,
   FolderInput,
   FolderOutput,
+  FolderPlus,
   CopyCheck,
+  ExternalLink,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { thumbnailUrl, stripExtension } from "@/lib/drive";
@@ -69,6 +71,14 @@ export default function FilterPage() {
   const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
 
+  // Copy ảnh đã lọc thẳng sang thư mục Drive (không tải về máy).
+  const [driveCopyMode, setDriveCopyMode] = useState<"new" | "existing">("new");
+  const [newFolderName, setNewFolderName] = useState("Ảnh khách chọn");
+  const [targetFolderUrl, setTargetFolderUrl] = useState("");
+  const [driveCopying, setDriveCopying] = useState(false);
+  const [driveCopyMsg, setDriveCopyMsg] = useState<string | null>(null);
+  const [driveCopyLink, setDriveCopyLink] = useState<string | null>(null);
+
   // Monthly filter quota (free = 10/month). One "use" is counted per result set.
   const [filterQuota, setFilterQuota] = useState<
     { unlimited: boolean; limit: number | null; used: number; remaining: number | null } | null
@@ -98,16 +108,52 @@ export default function FilterPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setFilterQuota({ unlimited: d.unlimited, limit: d.limit, used: d.used, remaining: d.remaining }))
       .catch(() => {});
+
+    // Mở sẵn từ nút "Lọc ảnh" trong quản trị: ?album=<id> tự chọn danh sách ảnh
+    // khách chọn + nạp nguồn ảnh là link Drive của album; ?drive=<url> nạp thẳng
+    // nguồn Drive.
+    (async () => {
+      const sp = new URLSearchParams(window.location.search);
+      const albumParam = sp.get("album");
+      const driveParam = sp.get("drive");
+      if (albumParam) {
+        setMode("album");
+        await loadAlbum(albumParam);
+        let url = driveParam || "";
+        if (!url) {
+          const { data } = await supabase
+            .from("album_sources")
+            .select("drive_url")
+            .eq("album_id", albumParam)
+            .eq("kind", "folder")
+            .not("drive_url", "is", null)
+            .order("position", { ascending: true })
+            .limit(1);
+          url = (data?.[0]?.drive_url as string) || "";
+        }
+        if (url) {
+          setPhotoSource("drive");
+          setDriveUrl(url);
+          await loadDrive(url);
+        }
+      } else if (driveParam) {
+        setPhotoSource("drive");
+        setDriveUrl(driveParam);
+        await loadDrive(driveParam);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadDrive() {
+  async function loadDrive(url?: string) {
+    const u = (url ?? driveUrl).trim();
+    if (!u) return;
     setLoadingDrive(true);
     setDriveError(null);
     const res = await fetch("/api/drive/list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: driveUrl }),
+      body: JSON.stringify({ url: u }),
     });
     const data = await res.json();
     setLoadingDrive(false);
@@ -294,6 +340,46 @@ export default function FilterPage() {
     setCopyMsg(`Đã copy ${done}/${shown.length} ảnh sang “${destName}”.`);
   }
 
+  // Copy ảnh đã lọc THẲNG sang một thư mục trên Drive (không tải về máy). Chỉ
+  // dùng được với nguồn Drive (mỗi file có driveId).
+  async function copyToDrive() {
+    const files = shown.filter((f) => f.driveId).map((f) => ({ id: f.driveId as string, name: f.name }));
+    if (files.length === 0) return;
+    if (driveCopyMode === "existing" && !targetFolderUrl.trim()) {
+      setDriveCopyMsg("Hãy dán link thư mục đích trên Drive.");
+      return;
+    }
+    if (!(await ensureFilterUse())) return;
+    setDriveCopying(true);
+    setDriveCopyMsg(null);
+    setDriveCopyLink(null);
+    try {
+      const res = await fetch("/api/filter/copy-to-drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          files,
+          ...(driveCopyMode === "existing"
+            ? { targetFolderUrl: targetFolderUrl.trim() }
+            : { sourceFolderUrl: driveUrl.trim(), newFolderName: newFolderName.trim() }),
+        }),
+      });
+      const d = await res.json().catch(() => null);
+      if (!res.ok || d?.error) {
+        setDriveCopyMsg(d?.error || "Không copy được sang Drive.");
+      } else {
+        setDriveCopyLink(d.folderUrl ?? null);
+        const failN = Array.isArray(d.failed) ? d.failed.length : 0;
+        setDriveCopyMsg(
+          `Đã copy ${d.copied}/${files.length} ảnh sang “${d.folderName || "thư mục Drive"}”${failN ? ` · ${failN} ảnh lỗi` : ""}.`
+        );
+      }
+    } catch {
+      setDriveCopyMsg("Mất kết nối khi copy sang Drive.");
+    }
+    setDriveCopying(false);
+  }
+
   const srcTab = (key: "drive" | "local", label: string, Icon: typeof Link2) => (
     <button
       onClick={() => setPhotoSource(key)}
@@ -329,13 +415,63 @@ export default function FilterPage() {
             <>
               <div className="flex gap-2.5">
                 <input value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/drive/folders/..." className="input" />
-                <button onClick={loadDrive} disabled={loadingDrive || !driveUrl.trim()} className="btn-primary whitespace-nowrap">
+                <button onClick={() => loadDrive()} disabled={loadingDrive || !driveUrl.trim()} className="btn-primary whitespace-nowrap">
                   <Search size={15} /> {loadingDrive ? "Đang tải…" : "Tải ảnh"}
                 </button>
               </div>
               {driveError && <p className="mt-3 text-sm" style={{ color: "var(--danger)" }}>{driveError}</p>}
               {driveFiles.length > 0 && (
                 <p className="mt-3 text-[13px]" style={{ color: "var(--text2)" }}>Đã tải <b>{driveFiles.length}</b> ảnh từ Drive.</p>
+              )}
+
+              {/* Copy ảnh đã lọc thẳng sang một thư mục trên Drive — không tải về máy. */}
+              {driveFiles.length > 0 && (
+                <div className="mt-4 rounded-xl p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                  <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--text2)" }}>
+                    <FolderPlus size={14} /> Copy ảnh đã lọc sang Drive (không tải về máy)
+                  </p>
+                  <div className="mb-2 flex gap-2">
+                    <button
+                      onClick={() => setDriveCopyMode("new")}
+                      className="rounded-lg px-3 py-1.5 text-[12.5px]"
+                      style={driveCopyMode === "new" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+                    >
+                      Tạo thư mục mới
+                    </button>
+                    <button
+                      onClick={() => setDriveCopyMode("existing")}
+                      className="rounded-lg px-3 py-1.5 text-[12.5px]"
+                      style={driveCopyMode === "existing" ? { background: "var(--accent)", color: "var(--accentInk)" } : { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text2)" }}
+                    >
+                      Thư mục có sẵn
+                    </button>
+                  </div>
+                  {driveCopyMode === "new" ? (
+                    <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="Tên thư mục ảnh chọn (tạo ngay trong link Drive gốc)" className="input" />
+                  ) : (
+                    <input value={targetFolderUrl} onChange={(e) => setTargetFolderUrl(e.target.value)} placeholder="Dán link thư mục đích trên Drive" className="input" />
+                  )}
+                  <button
+                    onClick={copyToDrive}
+                    disabled={driveCopying || shown.filter((f) => f.driveId).length === 0}
+                    className="btn-primary mt-2 w-full py-2.5 disabled:opacity-40"
+                  >
+                    <CopyCheck size={15} /> {driveCopying ? "Đang copy…" : `Copy ${shown.filter((f) => f.driveId).length} ảnh sang Drive`}
+                  </button>
+                  {driveCopyMsg && (
+                    <p className="mt-2 text-[12.5px]" style={{ color: "var(--gold)" }}>
+                      {driveCopyMsg}{" "}
+                      {driveCopyLink && (
+                        <a href={driveCopyLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline" style={{ color: "var(--accent)" }}>
+                          <ExternalLink size={12} /> Mở thư mục
+                        </a>
+                      )}
+                    </p>
+                  )}
+                  <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--text3)" }}>
+                    Chỉ hoạt động với Drive đã kết nối qua ứng dụng (ví dụ album hợp đồng đồng bộ qua desktop). Tạo thư mục con ngay trong link Drive gốc, hoặc dán link thư mục đích của bạn.
+                  </p>
+                </div>
               )}
             </>
           ) : (

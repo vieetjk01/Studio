@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Copy, Download, Check, Wifi, HardDriveDownload } from "lucide-react";
+import { ArrowLeft, Copy, Download, Check, Wifi, HardDriveDownload, Filter } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { thumbnailUrl, stripExtension } from "@/lib/drive";
@@ -159,6 +159,10 @@ export default function SelectionsView({
             <Wifi size={12} /> Trực tiếp
           </span>
         )}
+        {/* Mở công cụ Lọc ảnh với sẵn danh sách khách chọn + nguồn Drive của album. */}
+        <Link href={`/dashboard/filter?album=${album.id}`} className="btn-primary ml-auto">
+          <Filter size={15} /> Lọc ảnh
+        </Link>
       </div>
 
       {groups.length === 0 ? (

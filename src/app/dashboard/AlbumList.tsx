@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe, Tag } from "lucide-react";
+import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe, Tag, Filter } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { createClient } from "@/lib/supabase/client";
@@ -240,6 +240,11 @@ function AlbumCard({ a, canDelivery = true, canWatermark = true }: { a: AlbumRow
             <Toggle label="Watermark" on={watermark} onChange={(v) => { setWatermark(v); patch({ watermark_enabled: v }); }} />
           )}
           <Toggle label="Cho tải xuống" on={download} onChange={(v) => { setDownload(v); patch({ download_enabled: v }); }} />
+          {phase !== "delivery" && (
+            <Link href={`/dashboard/filter?album=${a.id}`} className="btn-ghost mt-2 w-full py-1.5 text-xs">
+              <Filter size={13} /> Lọc ảnh (copy sang Drive)
+            </Link>
+          )}
           <div className="mt-2 flex gap-2">
             <Link href={`/dashboard/albums/${a.id}`} className="btn-ghost flex-1 py-1.5 text-xs">Chỉnh sửa đầy đủ</Link>
             <button onClick={() => setMenu(false)} className="btn-ghost py-1.5 text-xs">Đóng</button>
