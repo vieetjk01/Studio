@@ -62,18 +62,44 @@ export async function preloadGoogle(): Promise<void> {
   }
 }
 
+// Token đã cấp (giữ trong bộ nhớ trang) → tái dùng cho các lần sau, KHÔNG bắt
+// đăng nhập lại mỗi lần. Token Google sống ~1 giờ; hết hạn/bị từ chối thì xin lại.
+let cachedToken: { token: string; scope: string; expiry: number } | null = null;
+
+/** Xoá token đã cache (khi bị từ chối quyền) để lần sau đăng nhập lại tài khoản khác. */
+export function clearDriveToken(): void {
+  cachedToken = null;
+}
+
 /**
  * Request a Drive access token via Google Identity Services. `forceConsent`
  * shows the account/consent chooser (use when the previous token expired).
+ * Tự cache token còn hạn cho cùng scope → chỉ hiện popup đăng nhập LẦN ĐẦU,
+ * các lần sau trong phiên dùng lại token (không popup).
  */
 export async function requestDriveToken(forceConsent = false, scope: string = DRIVE_FILE_SCOPE): Promise<string> {
+  if (
+    !forceConsent &&
+    cachedToken &&
+    cachedToken.scope === scope &&
+    cachedToken.expiry > Date.now() + 60_000
+  ) {
+    return cachedToken.token;
+  }
   await ensureGoogle();
   return new Promise<string>((resolve, reject) => {
     const client = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope,
-      callback: (resp: any) =>
-        resp?.access_token ? resolve(resp.access_token) : reject(new Error("no_token")),
+      callback: (resp: any) => {
+        if (resp?.access_token) {
+          const ttl = (Number(resp.expires_in) || 3000) * 1000;
+          cachedToken = { token: resp.access_token, scope, expiry: Date.now() + ttl };
+          resolve(resp.access_token);
+        } else {
+          reject(new Error("no_token"));
+        }
+      },
       error_callback: (err: any) =>
         reject(new Error(err?.type || err?.message || "token_error")),
     });
@@ -160,7 +186,10 @@ export async function createDriveFolder(token: string, name: string, parentId: s
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
   });
-  if (res.status === 401 || res.status === 403) throw new Error("drive_unauthorized");
+  if (res.status === 401 || res.status === 403) {
+    cachedToken = null;
+    throw new Error("drive_unauthorized");
+  }
   if (!res.ok) throw new Error(`drive_error_${res.status}`);
   const data = await res.json();
   if (!data.id) throw new Error("create_folder_failed");
@@ -178,6 +207,9 @@ export async function copyDriveFile(token: string, fileId: string, name: string,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name, parents: [parentId] }),
   });
-  if (res.status === 401 || res.status === 403) throw new Error("drive_unauthorized");
+  if (res.status === 401 || res.status === 403) {
+    cachedToken = null;
+    throw new Error("drive_unauthorized");
+  }
   if (!res.ok) throw new Error(`drive_error_${res.status}`);
 }
