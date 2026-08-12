@@ -71,6 +71,10 @@ export default function SelectionsView({
       if (data) setRows(data as Selection[]);
       if (dis) setDisRows(dis as Dislike[]);
     }
+    // HAI channel riêng, không gộp binding: một channel chỉ join được khi MỌI
+    // binding hợp lệ. DB chưa chạy migration album_dislikes.sql thì binding
+    // `dislikes` làm hỏng cả channel — mất luôn cập nhật trực tiếp của
+    // selections (tính năng đã có từ trước). Tách ra thì phần nào lỗi phần đó.
     const channel = supabase
       .channel(`selections-${album.id}`)
       .on(
@@ -78,14 +82,18 @@ export default function SelectionsView({
         { event: "*", schema: "public", table: "selections", filter: `album_id=eq.${album.id}` },
         () => refetch()
       )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+    const disChannel = supabase
+      .channel(`dislikes-${album.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "dislikes", filter: `album_id=eq.${album.id}` },
         () => refetch()
       )
-      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+      .subscribe();
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(disChannel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [album.id]);
