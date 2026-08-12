@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { COOKIE_DOMAIN } from "@/lib/hosts";
+import { cookieDomainForHost } from "@/lib/hosts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdmins } from "@/lib/notify-admin";
 
@@ -74,8 +74,20 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // Share the session cookie across mstudo.com subdomains (album/img/studio).
-      ...(COOKIE_DOMAIN ? { cookieOptions: { domain: COOKIE_DOMAIN } } : {}),
+      // Share the session cookie across MAIN_HOST subdomains (album/img/studio)
+      // — nhưng CHỈ khi request thực sự đến trên host đó.
+      //
+      // Trước đây chỗ này dùng COOKIE_DOMAIN cố định (suy ra từ
+      // NEXT_PUBLIC_MAIN_HOST) thay vì xét host của request, khác với
+      // middleware.ts và lib/supabase/client.ts. Hậu quả: nếu app được phục vụ
+      // trên một host khác MAIN_HOST (vừa đổi domain mà chưa sửa env, domain
+      // riêng, bản preview *.vercel.app), trình duyệt ÂM THẦM TỪ CHỐI cookie có
+      // Domain không khớp trang → phiên không bao giờ được lưu → đăng nhập
+      // Google xong lại bị đá về /login.
+      ...((() => {
+        const domain = cookieDomainForHost(request.headers.get("host"));
+        return domain ? { cookieOptions: { domain } } : {};
+      })()),
       cookies: {
         getAll() {
           return request.cookies.getAll();
