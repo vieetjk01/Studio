@@ -119,6 +119,38 @@ begin
 end $$;
 
 -- ============================================================================
+-- dislikes: photos the customer explicitly does NOT want (selection albums).
+-- Bấm "không thích" → ảnh ẩn khỏi lưới chọn, chuyển sang tab riêng; studio dùng
+-- danh sách này để xoá file trên link Drive gốc nếu khách yêu cầu.
+-- Bảng riêng để danh sách "khách chọn" (Lọc ảnh, ZIP, thông báo) không lẫn ảnh
+-- bị loại. Xem supabase/migrations/album_dislikes.sql.
+-- ============================================================================
+create table if not exists public.dislikes (
+  id           uuid primary key default gen_random_uuid(),
+  album_id     uuid not null references public.albums (id) on delete cascade,
+  photo_id     uuid not null references public.photos (id) on delete cascade,
+  photo_name   text not null default '',
+  session_id   text not null,
+  client_note  text,
+  created_at   timestamptz not null default now(),
+  unique (album_id, photo_id, session_id)
+);
+create index if not exists dislikes_album_idx on public.dislikes (album_id);
+create index if not exists dislikes_session_idx on public.dislikes (album_id, session_id);
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'dislikes'
+  ) then
+    alter publication supabase_realtime add table public.dislikes;
+  end if;
+end $$;
+
+-- ============================================================================
 -- album_shares: short-token links to a hand-picked subset of an album's photos.
 -- Lets "share N selected photos" produce a short URL (?s=token) instead of
 -- cramming every photo id into the query string.
@@ -211,6 +243,7 @@ alter table public.albums         enable row level security;
 alter table public.album_sources  enable row level security;
 alter table public.photos         enable row level security;
 alter table public.selections     enable row level security;
+alter table public.dislikes       enable row level security;
 
 -- profiles -------------------------------------------------------------------
 drop policy if exists profiles_self_read on public.profiles;
@@ -280,6 +313,19 @@ create policy photos_owner_all on public.photos
 -- service role through API routes, so no public insert policy is needed.
 drop policy if exists selections_owner_rw on public.selections;
 create policy selections_owner_rw on public.selections
+  for all using (
+    exists (select 1 from public.albums a
+            where a.id = album_id and (a.owner_id = auth.uid() or public.is_admin()))
+  )
+  with check (
+    exists (select 1 from public.albums a
+            where a.id = album_id and (a.owner_id = auth.uid() or public.is_admin()))
+  );
+
+-- dislikes: same shape as selections — owners read/delete, customer writes go
+-- through the service role in the public API route.
+drop policy if exists dislikes_owner_rw on public.dislikes;
+create policy dislikes_owner_rw on public.dislikes
   for all using (
     exists (select 1 from public.albums a
             where a.id = album_id and (a.owner_id = auth.uid() or public.is_admin()))

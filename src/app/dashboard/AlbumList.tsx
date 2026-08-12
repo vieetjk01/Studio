@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe, Tag, Filter } from "lucide-react";
+import { Plus, Image as ImageIcon, CheckSquare, ExternalLink, Settings2, Globe, Tag, Filter, HeartOff } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { thumbnailUrl } from "@/lib/drive";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +23,8 @@ export interface AlbumRow {
   photoCount: number;
   coverFallback: string | null;
   selections: { count: number }[];
+  // Ảnh khách đánh dấu "không thích" — studio cần xoá khỏi Drive gốc.
+  dislikes?: { count: number }[];
 }
 
 export default function AlbumList({ albums, showTrial = false, trialUsed = false, canDelivery = true, canWatermark = true }: { albums: AlbumRow[]; showTrial?: boolean; trialUsed?: boolean; canDelivery?: boolean; canWatermark?: boolean }) {
@@ -207,6 +209,13 @@ function AlbumCard({ a, canDelivery = true, canWatermark = true }: { a: AlbumRow
           <span className="flex items-center gap-1">
             <CheckSquare size={13} /> {a.selections?.[0]?.count ?? 0} {t("selections")}
           </span>
+          {/* Có ảnh khách không thích ⇒ nhắc ngay ở thẻ album (bấm vào trang
+              Lựa chọn khách để xoá trên Drive gốc). */}
+          {(a.dislikes?.[0]?.count ?? 0) > 0 && (
+            <span className="flex items-center gap-1" style={{ color: "var(--danger)" }}>
+              <HeartOff size={13} /> {a.dislikes![0].count} không thích
+            </span>
+          )}
         </div>
         <div className="mt-4 flex items-center gap-2">
           <Link href={`/dashboard/albums/${a.id}/selections`} className="btn-primary flex-1 min-h-[44px] py-2.5 text-xs">
