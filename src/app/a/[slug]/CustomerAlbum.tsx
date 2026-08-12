@@ -780,7 +780,9 @@ export default function CustomerAlbum({
                     </span>
                   </h2>
                 )}
-                <div className="grid items-start gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
+                {/* Khe hẹp (8px) để phần lớn bề rộng dành cho ẢNH. Giữ nguyên
+                    minmax 160px: nới thêm là điện thoại 390px rơi từ 2 cột về 1. */}
+                <div className="grid items-start gap-2 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
             {items.map(({ p, idx }) => {
               const isSel = selected.has(p.id);
               const isDis = disliked.has(p.id);
@@ -831,9 +833,11 @@ export default function CustomerAlbum({
                         ))}
                       </div>
                     )}
+                    {/* Vệt tối chỉ cần cao vừa đủ đỡ hai nút 32px — trước là 64px,
+                        che mất một dải ảnh không cần thiết. */}
                     <div
-                      className="pointer-events-none absolute inset-x-0 top-0 h-16"
-                      style={{ background: "linear-gradient(to bottom, rgba(0,0,0,.5), transparent)" }}
+                      className="pointer-events-none absolute inset-x-0 top-0 h-11"
+                      style={{ background: "linear-gradient(to bottom, rgba(0,0,0,.45), transparent)" }}
                     />
                     {/* heart select — large tap target for mobile. Ảnh đang ở mục
                         không thích thì chỉ còn nút hoàn tác, không cho thích luôn. */}
@@ -844,14 +848,14 @@ export default function CustomerAlbum({
                           toggle(p.id);
                         }}
                         title={t("selectThis")}
-                        className="absolute right-2 top-2 z-[4] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90"
+                        className="absolute right-1.5 top-1.5 z-[4] flex h-8 w-8 items-center justify-center rounded-full transition-transform active:scale-90"
                         style={
                           isSel
-                            ? { background: "var(--gold)", color: "#1a1205", border: "2px solid var(--gold)" }
-                            : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }
+                            ? { background: "var(--gold)", color: "#1a1205", border: "1.5px solid var(--gold)" }
+                            : { background: "rgba(10,10,12,.5)", color: "#fff", border: "1.5px solid rgba(255,255,255,.75)" }
                         }
                       >
-                        <Heart size={20} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2} />
+                        <Heart size={15} fill={isSel ? "currentColor" : "none"} strokeWidth={isSel ? 0 : 2.2} />
                       </button>
                     )}
                     {/* Không thích (góc trái) — bấm là ảnh ẩn khỏi lưới, sang tab
@@ -864,14 +868,14 @@ export default function CustomerAlbum({
                         }}
                         title={isDis ? t("undislike") : t("dislikeThis")}
                         aria-label={isDis ? t("undislike") : t("dislikeThis")}
-                        className="absolute left-2 top-2 z-[4] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90"
+                        className="absolute left-1.5 top-1.5 z-[4] flex h-8 w-8 items-center justify-center rounded-full transition-transform active:scale-90"
                         style={
                           isDis
-                            ? { background: "var(--danger)", color: "#fff", border: "2px solid var(--danger)" }
-                            : { background: "rgba(10,10,12,.5)", color: "#fff", border: "2px solid rgba(255,255,255,.75)" }
+                            ? { background: "var(--danger)", color: "#fff", border: "1.5px solid var(--danger)" }
+                            : { background: "rgba(10,10,12,.5)", color: "#fff", border: "1.5px solid rgba(255,255,255,.75)" }
                         }
                       >
-                        {isDis ? <Undo2 size={18} /> : <X size={20} strokeWidth={2.4} />}
+                        {isDis ? <Undo2 size={15} /> : <X size={16} strokeWidth={2.6} />}
                       </button>
                     )}
                   </div>
