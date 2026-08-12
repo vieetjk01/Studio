@@ -46,6 +46,15 @@ panel.
 - **Download ZIP** — client-side zip of selected images (watermarked if enabled).
 - **Customer notes** — clients can leave a note on each photo (in the lightbox);
   notes are sent to the studio with the selection.
+- **Disliked photos** — clients tap the `×` on a photo to ask for it to be
+  dropped: it disappears from the selection grid and moves to its own
+  **“Không thích”** tab (undo available there). The studio sees that list under
+  *Customer selections* and can delete those exact files from the original Drive
+  folder in one click — Drive trash by default (30-day undo), permanent on
+  request. Needs the one-time full-access Drive connection (same one the filter
+  tool uses), by an account that owns the files. Run
+  `supabase/migrations/album_dislikes.sql`. *(Khách bấm × để yêu cầu studio xoá
+  ảnh khỏi album; studio xoá thẳng trên link Drive gốc theo danh sách đó.)*
 - **Photographer tools** — edit album, change cover, re-sync Drive, view customer
   selections (with the client's notes) and add their own notes per chosen photo.
 - **Admin** — manage photographers: roles, activation, album limit, ZIP
@@ -233,7 +242,7 @@ single host and the compress tool stays at `/dashboard/compress`.
 | `/dashboard` | auth | Album list |
 | `/dashboard/create` | auth | 2-step create flow (Drive links → share link + QR) |
 | `/dashboard/albums/[id]` | owner/admin | Edit album, sources, photos, settings |
-| `/dashboard/albums/[id]/selections` | owner/admin | Customer selections + notes |
+| `/dashboard/albums/[id]/selections` | owner/admin | Customer selections + notes, disliked photos + delete from Drive |
 | `/dashboard/compress` | auth | Compress images (Drive link or local files) + optional text/image watermark |
 | `/dashboard/admin` | admin | Manage photographers |
 | `/dashboard/settings` | admin | Studio profile/contact + booking leads |
