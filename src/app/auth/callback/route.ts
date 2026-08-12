@@ -7,6 +7,28 @@ import { notifyAdmins } from "@/lib/notify-admin";
 export const dynamic = "force-dynamic";
 
 /**
+ * Redirect back to /login carrying the REAL reason.
+ *
+ * Supabase trả lỗi OAuth dưới dạng ba tham số: `error` (mã chung, hay gặp nhất
+ * là `server_error`), `error_code` (mã cụ thể, vd `unexpected_failure`) và
+ * `error_description` (câu mô tả, vd "Database error saving new user"). Trước
+ * đây ta chỉ chuyển tiếp `error`, nên người dùng chỉ thấy "server_error" —
+ * không đủ để biết hỏng ở đâu. Giữ đủ ba tham số + log lại phía server.
+ */
+function loginError(
+  origin: string,
+  code: string,
+  errorCode?: string | null,
+  description?: string | null
+) {
+  const url = new URL("/login", origin);
+  url.searchParams.set("error", code);
+  if (errorCode) url.searchParams.set("error_code", errorCode);
+  if (description) url.searchParams.set("error_description", description);
+  return NextResponse.redirect(url.toString());
+}
+
+/**
  * OAuth (Google) callback — exchange the code for a session, then continue.
  *
  * IMPORTANT: We MUST create the redirect response first and let
@@ -24,14 +46,22 @@ export async function GET(request: NextRequest) {
   // C-1: Prevent open redirect — only allow relative paths (not //evil.com or https://...)
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard/studio";
   const oauthError = searchParams.get("error");
+  const oauthErrorCode = searchParams.get("error_code");
+  const oauthErrorDescription = searchParams.get("error_description");
 
-  // Provider-side error (e.g. user cancelled the Google consent screen).
+  // Provider-side error: người dùng bấm Huỷ trên màn hình Google (access_denied),
+  // hoặc Supabase/Google hỏng phía trong (server_error + unexpected_failure).
   if (oauthError) {
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(oauthError)}`);
+    console.error("[auth/callback] OAuth provider error", {
+      error: oauthError,
+      error_code: oauthErrorCode,
+      error_description: oauthErrorDescription,
+    });
+    return loginError(origin, oauthError, oauthErrorCode, oauthErrorDescription);
   }
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`);
+    return loginError(origin, "missing_code");
   }
 
   // 1) Build the redirect response we'll return on success.
@@ -73,9 +103,12 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(error.message || "oauth")}`
-    );
+    console.error("[auth/callback] exchangeCodeForSession failed", {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+    });
+    return loginError(origin, error.code || "oauth", null, error.message);
   }
 
   // 4) Save affiliate referral code if present and user has no referrer yet.

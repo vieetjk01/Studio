@@ -156,19 +156,34 @@ create trigger albums_set_updated_at
 -- ============================================================================
 -- New auth user -> profile (default photographer, inactive until admin enables)
 -- ============================================================================
+-- Trigger này chạy TRONG cùng transaction với insert vào auth.users: nếu nó
+-- lỗi thì tài khoản mới KHÔNG được lưu và Supabase trả về
+-- "Database error saving new user" → màn hình đăng nhập báo server_error.
+-- Vì vậy mọi lỗi tạo hồ sơ chỉ ghi cảnh báo, không chặn việc đăng ký/đăng nhập.
+-- Xem thêm supabase/migrations/fix_google_signup_trigger.sql (kèm backfill).
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, email, full_name, role, is_active)
   values (
     new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', new.email),
+    -- profiles.email là NOT NULL, còn auth.users.email có thể null.
+    coalesce(new.email, new.raw_user_meta_data ->> 'email', new.id::text),
+    coalesce(
+      new.raw_user_meta_data ->> 'full_name',
+      new.raw_user_meta_data ->> 'name',
+      new.email,
+      ''
+    ),
     'photographer',
     true   -- self-serve: new sign-ups (incl. Google) can create albums right away
   )
   on conflict (id) do nothing;
   return new;
+exception
+  when others then
+    raise warning 'handle_new_user failed for % : % (%)', new.id, sqlerrm, sqlstate;
+    return new;
 end;
 $$;
 
