@@ -32,6 +32,12 @@ function describeOAuthError(
   if (lower.includes("user profile from external provider")) {
     return "Không lấy được thông tin tài khoản từ Google. Kiểm tra Client ID / Client Secret của Google trong Supabase.";
   }
+  // Google đã cấp mã (4/0A…) nhưng từ chối đổi mã đó lấy token. Bước /authorize
+  // trước đó đã chạy được, tức Client ID và redirect URI đều hợp lệ — nên biến
+  // duy nhất còn lại của lần đổi mã này là CLIENT SECRET.
+  if (lower.includes("unable to exchange external code")) {
+    return "Google từ chối đổi mã đăng nhập. Gần như chắc chắn Client Secret trong Supabase không khớp với OAuth Client trên Google Cloud — vào Supabase → Authentication → Providers → Google và dán lại Client ID + Client Secret.";
+  }
   if (lower.includes("already registered") || errorCode === "identity_already_exists") {
     return "Email này đã đăng ký bằng mật khẩu. Hãy đăng nhập bằng email + mật khẩu, hoặc liên kết Google trong phần Tài khoản.";
   }
