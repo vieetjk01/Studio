@@ -16,10 +16,10 @@
  * 2026-08-12 06:00 giờ Việt Nam (UTC+7) = 2026-08-11T23:00:00Z.
  * Đặt `null` để tắt hẳn chế độ bảo trì.
  */
-export const MAINTENANCE_UNTIL: string | null = "2026-08-11T23:00:00.000Z";
+export const MAINTENANCE_UNTIL: string | null = "2026-08-1T23:00:00.000Z";
 
 /** Nhãn hiển thị cho người dùng (giờ Việt Nam). */
-export const MAINTENANCE_UNTIL_LABEL = "6h00 sáng 12/08/2026";
+export const MAINTENANCE_UNTIL_LABEL = "6h00 sáng 14/08/2026";
 
 /** Lý do bảo trì — hiện trên trang chặn. */
 export const MAINTENANCE_REASON =
